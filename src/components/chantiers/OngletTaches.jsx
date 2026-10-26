@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useConfirm } from '../../context/AppContext';
 import { ChevronRight, Plus, MoreVertical, Sparkles, ListChecks, Trash2, CheckCircle } from 'lucide-react';
 import Carte from '../ui/Carte';
 import Pastille from '../ui/Pastille';
@@ -17,7 +18,9 @@ import { FONCTIONS } from '../../lib/fonctions';
 export default function OngletTaches({
   taches = [], peutModifier, animatedTaskId, onBascule, onAjouter, onModifier, onSupprimer, onGenerer, onListeType,
 }) {
+  const { confirm } = useConfirm();
   const [nouvelle, setNouvelle] = useState('');
+  const [enCours, setEnCours] = useState(false);
   const [filtre, setFiltre] = useState('toutes');
   const [replie, setReplie] = useState({});
   const [termineesOuvertes, setTermineesOuvertes] = useState(false);
@@ -37,11 +40,23 @@ export default function OngletTaches({
     const faitesPhase = l.filter((t) => t.done).length;
     return { faites: faitesPhase, total: l.length, pct: l.length ? Math.round((faitesPhase / l.length) * 100) : 0 };
   };
-  const ajouter = () => {
+  // La saisie reste tant que l'écriture n'a pas abouti (refusée par la base : on ne perd pas le texte)
+  const ajouter = async () => {
     const texte = nouvelle.trim();
-    if (!texte) return;
-    onAjouter(texte);
-    setNouvelle('');
+    if (!texte || enCours) return;
+    setEnCours(true);
+    try {
+      if (await onAjouter(texte)) setNouvelle('');
+    } finally {
+      setEnCours(false);
+    }
+  };
+  const enregistrerEdition = async () => {
+    if (await onModifier(enEdition.id, { text: enEdition.text, phase: enEdition.phase, critical: enEdition.critical })) setEnEdition(null);
+  };
+  const supprimerEdition = async () => {
+    if (!(await confirm({ title: 'Supprimer la tâche', message: `Supprimer « ${enEdition.text} » ?` }))) return;
+    if (await onSupprimer(enEdition.id)) setEnEdition(null);
   };
 
   const ligne = (t, avecPriorite) => (
@@ -197,7 +212,7 @@ export default function OngletTaches({
             onChange={(e) => setNouvelle(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') ajouter(); }}
             className="flex-1 min-w-0 h-12 px-3.5 rounded-xl border border-bord-fort bg-surface text-base text-encre placeholder:text-encre-3 focus:outline-none focus:ring-4 focus:border-accent focus:ring-accent/20"
           />
-          <BoutonIcone icone={Plus} libelle="Ajouter la tâche" variante="secondaire" onClick={ajouter} disabled={!nouvelle.trim()} />
+          <BoutonIcone icone={Plus} libelle="Ajouter la tâche" variante="secondaire" onClick={ajouter} disabled={!nouvelle.trim() || enCours} />
         </div>
       )}
 
@@ -218,12 +233,12 @@ export default function OngletTaches({
             </label>
           </ModalBody>
           <ModalFooter className="justify-between">
-            <Bouton variante="discret" icone={Trash2} className="text-danger-texte" onClick={() => { onSupprimer(enEdition.id); setEnEdition(null); }}>Supprimer</Bouton>
+            <Bouton variante="discret" icone={Trash2} className="text-danger-texte" onClick={supprimerEdition}>Supprimer</Bouton>
             <div className="flex gap-2">
               <Bouton variante="secondaire" onClick={() => setEnEdition(null)}>Annuler</Bouton>
               <Bouton
                 variante="principal" disabled={!enEdition.text?.trim()}
-                onClick={() => { onModifier(enEdition.id, { text: enEdition.text, phase: enEdition.phase, critical: enEdition.critical }); setEnEdition(null); }}
+                onClick={enregistrerEdition}
               >
                 Enregistrer
               </Bouton>

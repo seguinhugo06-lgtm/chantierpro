@@ -54,8 +54,9 @@ export default function TaskItem({
         </button>
       ) : (
         <button
-          onClick={(e) => { e.stopPropagation(); onToggle(memo.id); }}
-          className="flex-shrink-0 min-w-[44px] min-h-[44px] sm:min-w-[28px] sm:min-h-[28px] flex items-center justify-center -m-2 sm:-m-0.5"
+          onClick={(e) => { e.stopPropagation(); onToggle?.(memo.id); }}
+          disabled={!onToggle}
+          className="flex-shrink-0 min-w-[44px] min-h-[44px] sm:min-w-[28px] sm:min-h-[28px] flex items-center justify-center -m-2 sm:-m-0.5 disabled:cursor-default"
           aria-label={memo.is_done ? 'Marquer comme non fait' : 'Marquer comme fait'}
         >
           <span className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
@@ -156,23 +157,29 @@ export default function TaskItem({
       </div>
 
       {/* Quick actions (hover) -- hidden on mobile */}
-      {!selectionMode && (
+      {!selectionMode && (onQuickDate || onQuickPriority || onQuickDelete) && (
         <div className="hidden sm:flex opacity-0 group-hover:opacity-100 items-center gap-0.5 flex-shrink-0 transition-opacity">
-          <button
-            onClick={(e) => { e.stopPropagation(); onQuickDate(memo.id); }}
-            className="p-1 rounded text-xs hover:bg-surface-2"
-            title="Mettre à aujourd'hui"
-          >📅</button>
-          <button
-            onClick={(e) => { e.stopPropagation(); onQuickPriority(memo.id); }}
-            className="p-1 rounded text-xs hover:bg-surface-2"
-            title="Priorité haute"
-          >🟠</button>
-          <button
-            onClick={(e) => { e.stopPropagation(); onQuickDelete(memo.id); }}
-            className="p-1 rounded text-xs hover:bg-surface-2"
-            title="Supprimer"
-          >🗑️</button>
+          {onQuickDate && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onQuickDate(memo.id); }}
+              className="p-1 rounded text-xs hover:bg-surface-2"
+              title="Mettre à aujourd'hui"
+            >📅</button>
+          )}
+          {onQuickPriority && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onQuickPriority(memo.id); }}
+              className="p-1 rounded text-xs hover:bg-surface-2"
+              title="Priorité haute"
+            >🟠</button>
+          )}
+          {onQuickDelete && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onQuickDelete(memo.id); }}
+              className="p-1 rounded text-xs hover:bg-surface-2"
+              title="Supprimer"
+            >🗑️</button>
+          )}
         </div>
       )}
     </div>

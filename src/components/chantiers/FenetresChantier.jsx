@@ -15,7 +15,7 @@ import { dateLue, jourLocal } from '../../lib/dates';
 const CATEGORIES_DEPENSE = ['Matériaux', 'Outillage', 'Location', 'Sous-traitance', 'Transport', 'Autre'];
 
 /** « Ajouter une dépense » : un achat de matériel pour ce chantier (montant HT et TVA de la facture du fournisseur). */
-export function FeuilleDepense({ ouvert, onFermer, onValider, depense, setDepense, franchiseTva, catalogue = [], fournituresManquantes = [], enCours = false }) {
+export function FeuilleDepense({ ouvert, onFermer, onValider, depense, setDepense, franchiseTva, catalogue = [], fournituresManquantes = [], voitPrix = true, enCours = false }) {
   const majQuantitePrix = (quantite, prixUnitaire) => {
     const q = Math.max(1, parseInt(quantite) || 1);
     const prix = parseFloat(String(prixUnitaire).replace(',', '.')) || 0;
@@ -57,12 +57,13 @@ export function FeuilleDepense({ ouvert, onFermer, onValider, depense, setDepens
             onChange={(e) => {
               const article = catalogue.find((c) => c.id === e.target.value);
               if (!article) return;
-              const prix = article.prixAchat || article.prix || 0;
-              setDepense((p) => ({ ...p, catalogueId: e.target.value, description: article.nom, prixUnitaire: String(prix), montant: String(prix * (p.quantite || 1)) }));
+              // Sans le droit de voir les prix, l'article donne sa description : le montant se saisit à la main
+              const prix = voitPrix ? (article.prixAchat || article.prix || 0) : 0;
+              setDepense((p) => ({ ...p, catalogueId: e.target.value, description: article.nom, prixUnitaire: voitPrix ? String(prix) : '', montant: voitPrix ? String(prix * (p.quantite || 1)) : '' }));
             }}
           >
             <option value="">Choisir un article...</option>
-            {catalogue.map((c) => <option key={c.id} value={c.id}>{c.nom} ({c.prixAchat || c.prix}€/{c.unite || 'unité'})</option>)}
+            {catalogue.map((c) => <option key={c.id} value={c.id}>{voitPrix ? `${c.nom} (${c.prixAchat || c.prix}€/${c.unite || 'unité'})` : c.nom}</option>)}
           </Champ>
         )}
 
@@ -174,7 +175,7 @@ export function FeuilleHeures({ ouvert, onFermer, onValider, heures, setHeures, 
 }
 
 /** Le détail de la main-d'œuvre : un pointage par ligne (date et heures modifiables), le total dessous. */
-export function DetailHeures({ ouvert, onFermer, pointages = [], equipe = [], coutHoraireDe, formatMoney, coutTotal, onModifier, onSupprimer, onAjouter }) {
+export function DetailHeures({ ouvert, onFermer, pointages = [], equipe = [], coutHoraireDe, formatMoney, voitPrix = true, coutTotal, onModifier, onSupprimer, onAjouter }) {
   return (
     <Modal isOpen={ouvert} onClose={onFermer} size="lg">
       <ModalHeader>
@@ -192,33 +193,37 @@ export function DetailHeures({ ouvert, onFermer, pointages = [], equipe = [], co
                   {p.approuve === false && <span className="text-xs text-alerte-texte">en attente</span>}
                   {p.manuel && <span className="text-xs px-2 py-0.5 rounded-full bg-info-fond text-info-texte">Manuel</span>}
                 </div>
-                {!p.verrouille && (
+                {!p.verrouille && onSupprimer && (
                   <BoutonIcone icone={Trash2} libelle="Supprimer le pointage" taille={16} onClick={() => onSupprimer(p.id)} />
                 )}
               </div>
-              <div className="grid grid-cols-3 gap-2 mt-2">
+              <div className={`grid ${voitPrix ? 'grid-cols-3' : 'grid-cols-2'} gap-2 mt-2`}>
                 <label className="text-sm text-encre-2">
                   Date
-                  <input type="date" value={p.date} onChange={(e) => onModifier(p.id, 'date', e.target.value)} disabled={p.verrouille} className="mt-1 w-full h-11 px-2 border border-bord-fort rounded-lg text-sm bg-surface text-encre" />
+                  <input type="date" value={p.date} onChange={(e) => onModifier(p.id, 'date', e.target.value)} disabled={p.verrouille || !onModifier} className="mt-1 w-full h-11 px-2 border border-bord-fort rounded-lg text-sm bg-surface text-encre" />
                 </label>
                 <label className="text-sm text-encre-2">
                   Heures
-                  <input type="number" step="0.5" value={p.heures} onChange={(e) => onModifier(p.id, 'heures', e.target.value)} disabled={p.verrouille} className="mt-1 w-full h-11 px-2 border border-bord-fort rounded-lg text-sm bg-surface text-encre" />
+                  <input type="number" step="0.5" value={p.heures} onChange={(e) => onModifier(p.id, 'heures', e.target.value)} disabled={p.verrouille || !onModifier} className="mt-1 w-full h-11 px-2 border border-bord-fort rounded-lg text-sm bg-surface text-encre" />
                 </label>
-                <div className="text-sm text-encre-2">
-                  Coût
-                  <p className="mt-1 h-11 flex items-center font-bold tabular-nums text-encre">{formatMoney(p.heures * (coutHoraireDe(emp) || 0))}</p>
-                </div>
+                {voitPrix && (
+                  <div className="text-sm text-encre-2">
+                    Coût
+                    <p className="mt-1 h-11 flex items-center font-bold tabular-nums text-encre">{formatMoney(p.heures * (coutHoraireDe(emp) || 0))}</p>
+                  </div>
+                )}
               </div>
             </div>
           );
         })}
       </ModalBody>
       <ModalFooter className="justify-between">
-        <div>
-          <span className="text-sm text-encre-2">Total </span>
-          <span className="text-xl font-bold tabular-nums text-encre">{formatMoney(coutTotal)}</span>
-        </div>
+        {voitPrix ? (
+          <div>
+            <span className="text-sm text-encre-2">Total </span>
+            <span className="text-xl font-bold tabular-nums text-encre">{formatMoney(coutTotal)}</span>
+          </div>
+        ) : <div />}
         <div className="flex gap-2">
           <Bouton variante="secondaire" onClick={onFermer}>Fermer</Bouton>
           {onAjouter && <Bouton variante="principal" icone={Clock} onClick={onAjouter}>Pointer des heures</Bouton>}
@@ -229,10 +234,10 @@ export function DetailHeures({ ouvert, onFermer, pointages = [], equipe = [], co
 }
 
 /** Un revenu ou une dépense en plus du devis : travaux supplémentaires acceptés, remise, achat imprévu. */
-export function FeuilleAjustement({ type, onFermer, onValider, valeur, setValeur }) {
+export function FeuilleAjustement({ type, onFermer, onValider, valeur, setValeur, enCours = false }) {
   const revenu = type === 'REVENU';
   return (
-    <Modal isOpen={!!type} onClose={onFermer} size="sm">
+    <Modal isOpen={!!type} onClose={onFermer} size="sm" closeOnBackdrop={!enCours} closeOnEscape={!enCours}>
       <ModalHeader>
         <ModalTitle>{revenu ? 'Ajustement de revenu' : 'Ajustement de dépense'}</ModalTitle>
         <ModalDescription>{revenu ? 'Ex: Travaux supplémentaires acceptés' : 'Ex: Achat imprévu, sous-traitance...'}</ModalDescription>
@@ -242,8 +247,8 @@ export function FeuilleAjustement({ type, onFermer, onValider, valeur, setValeur
         <Champ libelle="Montant HT (€)" type="number" inputMode="decimal" value={valeur.montant_ht} onChange={(e) => setValeur((p) => ({ ...p, montant_ht: e.target.value }))} />
       </ModalBody>
       <ModalFooter>
-        <Bouton variante="secondaire" onClick={onFermer}>Annuler</Bouton>
-        <Bouton variante="principal" onClick={onValider} disabled={!valeur.libelle || !valeur.montant_ht}>Ajouter</Bouton>
+        <Bouton variante="secondaire" onClick={onFermer} disabled={enCours}>Annuler</Bouton>
+        <Bouton variante="principal" onClick={onValider} disabled={!valeur.libelle || !valeur.montant_ht} chargement={enCours}>Ajouter</Bouton>
       </ModalFooter>
     </Modal>
   );

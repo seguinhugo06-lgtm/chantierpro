@@ -49,6 +49,7 @@ import { rappelsDus, DELAI_RAPPEL_DEFAUT } from '../lib/ramonage';
 import { profilManquant, enPhrase } from '../lib/profilLegal';
 import { devisARelancer, joursDepuisEnvoi } from '../lib/ventes';
 import { formatClientName } from '../lib/formatters';
+import { avancementChantier } from '../lib/avancementChantier';
 import { RELANCES_PAR_ENVOI } from '../lib/relanceEngine';
 
 /** La mallette — marque Mallettico, reprise du jeu d'icônes (grille 48, contour 3,2). */
@@ -109,7 +110,7 @@ export default function Dashboard({
   // Ouvre la page Devis & factures sur une demande : { relancer: id } (fiche + feuille « Relancer »), { etat } (liste filtrée)
   ouvrirDevis,
 }) {
-  const { paiements = [], ramonages = [], suivreRamonage, updateClient, dataLoading } = useData();
+  const { paiements = [], ramonages = [], suivreRamonage, updateClient, dataLoading, getChantierBilan } = useData();
   // Rappels du prochain ramonage (module ramonage, D-30) : le client apparaît ici dès « prochain − délai »
   const [rappelOuvert, setRappelOuvert] = useState(null);
   const rappelsRamonage = useMemo(() => (entreprise?.ramonageActif
@@ -640,11 +641,12 @@ export default function Dashboard({
           <GroupeListe>
             {activeChantiers.slice(0, 4).map(c => {
               const client = clients.find(cl => cl.id === c.client_id);
-              const av = Math.max(0, Math.min(100, Math.round(c.avancement || 0)));
+              const taches = c.taches || [];
+              const av = Math.max(0, Math.min(100, avancementChantier(c, getChantierBilan?.(c.id), taches.filter((t) => t.done).length, taches.length)));
               return (
                 <LigneListe
                   key={c.id}
-                  onClick={() => { setSelectedChantier?.(c); setPage('chantiers'); }}
+                  onClick={() => { setSelectedChantier?.(c.id); setPage('chantiers'); }}
                   debut={<span className="w-10 h-10 rounded-xl bg-surface-2 text-encre-2 flex items-center justify-center"><HardHat size={20} aria-hidden="true" /></span>}
                   titre={c.nom || c.titre || c.name || 'Chantier'}
                   meta={client ? [client.prenom, client.nom || client.name].filter(Boolean).join(' ') : undefined}

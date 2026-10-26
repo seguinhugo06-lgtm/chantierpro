@@ -371,7 +371,7 @@ export default function DicteeModal({
       : chantierConnu
         ? {
             label: `Ouvrir le chantier « ${chantierConnu.nom} »`,
-            action: () => { setSelectedChantier?.(chantierConnu); setPage?.('chantiers'); onClose?.(); },
+            action: () => { setSelectedChantier?.(chantierConnu.id); setPage?.('chantiers'); onClose?.(); },
           }
         : null;
 

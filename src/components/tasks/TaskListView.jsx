@@ -18,6 +18,9 @@ import { jourLocal } from '../../lib/dates';
 
 // ── Les chiffres : seulement quand il y a des tâches, et ils filtrent la liste (audit UX du 20 oct. 2026 : quatre tuiles
 // à zéro, « 0% » en rouge pour 0 sur 0, libellés de 10 px, et un chiffre dit deux fois) ──
+// Trois tuiles de front au téléphone : une marge intérieure resserrée pour que « Faites cette semaine » tienne sur deux lignes
+const SERRE = '!p-3 sm:!p-4';
+
 function Chiffres({ memos, quickFilter, onQuickFilter }) {
   const stats = useMemo(() => {
     const now = new Date();
@@ -42,11 +45,13 @@ function Chiffres({ memos, quickFilter, onQuickFilter }) {
         libelle="En retard" valeur={stats.enRetard}
         alerte={stats.enRetard > 0 ? 'Échéance dépassée' : undefined} contexte={stats.enRetard === 0 ? 'Rien en retard' : undefined}
         onClick={() => onQuickFilter(quickFilter === 'overdue' ? 'all' : 'overdue')} actif={quickFilter === 'overdue'}
+        className={SERRE}
       />
-      <TuileChiffre libelle="Cette semaine" valeur={stats.faitesCetteSemaine} contexte="faites depuis lundi" />
+      <TuileChiffre libelle="Faites cette semaine" valeur={stats.faitesCetteSemaine} contexte="depuis lundi" className={SERRE} />
       <TuileChiffre
         libelle="Ce mois" valeur={stats.faitesCeMois}
         contexte={stats.creeesCeMois > 0 ? `faites sur ${stats.creeesCeMois} créée${stats.creeesCeMois > 1 ? 's' : ''}` : undefined}
+        className={SERRE}
       />
     </div>
   );
@@ -70,6 +75,9 @@ export default function TaskListView({
   selectedMemoId,
   onSelectMemo,
   setPage,
+  peutCreer = true,
+  peutModifier = true,
+  peutSupprimer = true,
 }) {
   const [newMemoText, setNewMemoText] = useState('');
   const [collapsedSections, setCollapsedSections] = useState({ done: true });
@@ -165,12 +173,14 @@ export default function TaskListView({
   }, []);
 
   // ── Handle recurring memo completion ──
-  const handleToggle = useCallback((id) => {
+  const handleToggle = useCallback(async (id) => {
     const memo = memos.find(m => m.id === id);
-    if (memo && !memo.is_done && memo.recurrence) {
+    const etaitFaite = memo?.is_done;
+    if (!(await toggleMemo(id))) return; // refus : DataContext a dit pourquoi, rien n'est annoncé
+    if (memo && !etaitFaite && memo.recurrence) {
       const nextDate = getNextOccurrence(memo.due_date || today(), memo.recurrence);
       if (nextDate) {
-        addMemo({
+        const suivante = await addMemo({
           text: memo.text,
           notes: memo.notes,
           priority: memo.priority,
@@ -182,10 +192,10 @@ export default function TaskListView({
           recurrence: memo.recurrence,
           subtasks: (memo.subtasks || []).map(s => ({ ...s, done: false })),
         });
-        showToast('Prochaine occurrence créée', 'info');
+        if (suivante) showToast('Prochaine occurrence créée', 'info');
+        else showToast('La tâche est cochée, mais la prochaine occurrence n’a pas pu être créée', 'warning');
       }
     }
-    toggleMemo(id);
   }, [memos, toggleMemo, addMemo, showToast]);
 
   // ── Quick capture : « Tâche ajoutée » seulement si la base l'a prise ──
@@ -208,9 +218,8 @@ export default function TaskListView({
   };
 
   // ── Quick actions ──
-  const handleQuickDate = (id) => {
-    updateMemo(id, { due_date: today() });
-    showToast('Date mise à aujourd\'hui', 'success');
+  const handleQuickDate = async (id) => {
+    if (await updateMemo(id, { due_date: today() })) showToast('Date mise à aujourd\'hui', 'success');
   };
 
   const handleQuickPriority = (id) => {
@@ -227,10 +236,7 @@ export default function TaskListView({
       confirmText: 'Supprimer',
       variant: 'danger',
     });
-    if (ok) {
-      deleteMemo(id);
-      showToast('Tâche supprimée', 'success');
-    }
+    if (ok && (await deleteMemo(id))) showToast('Tâche supprimée', 'success');
   };
 
   // ── Drag & drop ──
@@ -246,6 +252,7 @@ export default function TaskListView({
   const handleDrop = (e, targetMemoId) => {
     e.preventDefault();
     setDragOverIndex(null);
+    if (!peutModifier) return;
     const sourceMemoId = e.dataTransfer.getData('memoId');
     if (sourceMemoId === targetMemoId) return;
 
@@ -362,8 +369,9 @@ export default function TaskListView({
   const selectedMemo = memos.find(m => m.id === selectedMemoId);
 
   // Section renderer : un titre, un ton (le rouge est pour « en retard »)
-  const renderSection = (title, items, key, ton, icon, draggable = false) => {
+  const renderSection = (title, items, key, ton, icon, glissable = false) => {
     if (items.length === 0) return null;
+    const draggable = glissable && peutModifier;
     const isCollapsed = collapsedSections[key];
     const Icon = icon;
 
@@ -403,16 +411,16 @@ export default function TaskListView({
                   <div className="flex-1">
                     <TaskItem
                       memo={m}
-                      onToggle={handleToggle}
+                      onToggle={peutModifier ? handleToggle : undefined}
                       onSelect={onSelectMemo}
                       isSelected={selectedMemoId === m.id}
                       chantiers={chantiers}
                       clients={clients}
                       equipe={equipe}
                       isDark={isDark}
-                      onQuickDate={handleQuickDate}
-                      onQuickPriority={handleQuickPriority}
-                      onQuickDelete={handleQuickDelete}
+                      onQuickDate={peutModifier ? handleQuickDate : undefined}
+                      onQuickPriority={peutModifier ? handleQuickPriority : undefined}
+                      onQuickDelete={peutSupprimer ? handleQuickDelete : undefined}
                       setPage={setPage}
                     />
                   </div>
@@ -430,7 +438,8 @@ export default function TaskListView({
       {/* Les chiffres : seulement quand il y a des tâches */}
       {memos.length > 0 && <Chiffres memos={memos} quickFilter={quickFilter} onQuickFilter={setQuickFilter} />}
 
-      {/* Saisie rapide : une tâche, une dictée */}
+      {/* Saisie rapide : une tâche, une dictée — réservée à qui peut créer des tâches */}
+      {peutCreer && (
       <div className="bg-surface rounded-2xl border border-bord shadow-e1 p-3 mb-4">
         <div className="flex items-center gap-2">
           <button
@@ -478,6 +487,7 @@ export default function TaskListView({
           </div>
         )}
       </div>
+      )}
 
       {/* Échéance (raccourcis) + tri sur une seule rangée — boîte à outils commune (ui/Filtres.jsx) */}
       {memos.length > 0 && (
@@ -518,7 +528,7 @@ export default function TaskListView({
         {renderSection('Terminées', sections.done, 'done', 'succes', CheckCircle2)}
 
         {/* Supprimer les terminées : la tâche est effacée, pas rangée (avant : « Archiver » qui supprimait) */}
-        {sections.done.length > 2 && (
+        {peutSupprimer && sections.done.length > 2 && (
           <div className="flex justify-center py-2">
             <Bouton
               variante="discret"
@@ -531,10 +541,12 @@ export default function TaskListView({
                   confirmText: 'Supprimer',
                   variant: 'danger',
                 });
-                if (ok) {
-                  sections.done.forEach(m => deleteMemo(m.id));
-                  showToast(`${sections.done.length} tâches supprimées`, 'success');
-                }
+                if (!ok) return;
+                const aSupprimer = sections.done;
+                const resultats = await Promise.all(aSupprimer.map(m => deleteMemo(m.id)));
+                const faites = resultats.filter(Boolean).length;
+                if (faites === aSupprimer.length) showToast(`${faites} tâche${faites > 1 ? 's' : ''} supprimée${faites > 1 ? 's' : ''}`, 'success');
+                else if (faites > 0) showToast(`${faites} tâche${faites > 1 ? 's' : ''} supprimée${faites > 1 ? 's' : ''} sur ${aSupprimer.length}`, 'warning');
               }}
             >
               Supprimer les {sections.done.length} terminées
@@ -544,7 +556,7 @@ export default function TaskListView({
 
         {filteredMemos.length === 0 && (
           memos.length === 0 ? (
-            <EtatVide icone={ClipboardList} titre="Aucune tâche" texte="Tapez dans le champ ci-dessus pour ajouter votre première tâche." />
+            <EtatVide icone={ClipboardList} titre="Aucune tâche" texte={peutCreer ? 'Tapez dans le champ ci-dessus pour ajouter votre première tâche.' : 'Aucune tâche pour le moment.'} />
           ) : (
             <EtatVide icone={SearchX} titre="Aucune tâche ne correspond" texte="Changez les filtres ou la recherche pour les voir." />
           )
@@ -557,6 +569,8 @@ export default function TaskListView({
           memo={selectedMemo}
           onUpdate={updateMemo}
           onDelete={deleteMemo}
+          peutModifier={peutModifier}
+          peutSupprimer={peutSupprimer}
           onClose={() => onSelectMemo(null)}
           chantiers={chantiers}
           clients={clients}

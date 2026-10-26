@@ -136,8 +136,10 @@ export default function TaskGeneratorModal({
     onClose();
   };
 
-  // Confirm and add selected tasks
-  const handleConfirm = () => {
+  // Confirm and add selected tasks : la fenêtre ne se ferme qu'une fois les tâches écrites (refus : la sélection reste)
+  const [enCours, setEnCours] = useState(false);
+  const handleConfirm = async () => {
+    if (enCours) return;
     const tasksToAdd = selectedTasks
       .filter(t => t.selected)
       .map(t => ({
@@ -149,8 +151,12 @@ export default function TaskGeneratorModal({
         source: 'generated'
       }));
 
-    onGenerateTasks(tasksToAdd);
-    handleClose();
+    setEnCours(true);
+    try {
+      if ((await onGenerateTasks(tasksToAdd)) !== false) handleClose();
+    } finally {
+      setEnCours(false);
+    }
   };
 
   const selectedCount = selectedTasks.filter(t => t.selected).length;
@@ -307,7 +313,7 @@ export default function TaskGeneratorModal({
       {step === 2 && selectedTasks.length > 0 && (
         <ModalFooter>
           <Bouton variante="secondaire" onClick={() => setStep(1)}>Retour</Bouton>
-          <Bouton variante="principal" onClick={handleConfirm} disabled={selectedCount === 0}>
+          <Bouton variante="principal" onClick={handleConfirm} disabled={selectedCount === 0} chargement={enCours}>
             Ajouter {selectedCount} tâche{selectedCount > 1 ? 's' : ''}
           </Bouton>
         </ModalFooter>

@@ -17,7 +17,8 @@ import { findDuplicateChantiers } from '../lib/utils';
 import { formatClientName } from '../lib/formatters';
 import { estFranchiseTva } from '../lib/franchiseTva';
 import { avancementChantier } from '../lib/avancementChantier';
-import { joursAvantFin } from '../lib/echeanceChantier';
+import { joursAvantFin, chantierEnRetard } from '../lib/echeanceChantier';
+import { budgetChantier } from '../lib/budgetChantier';
 import { ouvrirLienExterne } from '../lib/natif';
 import { FONCTIONS } from '../lib/fonctions';
 import { jourLocal, dateLue } from '../lib/dates';
@@ -27,6 +28,9 @@ const GanttView = lazy(() => import('./GanttView'));
 const GarantiesDashboard = lazy(() => import('./chantiers/GarantiesDashboard'));
 
 const CHARGEMENT = <div className="h-[400px] rounded-xl flex items-center justify-center bg-surface-2"><div className="w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin" role="status" aria-label="Chargement" /></div>;
+
+// Un chantier s'ouvre par son identifiant ; un appelant qui passerait l'objet entier ne doit pas faire un écran blanc.
+const idDe = (v) => (v && typeof v === 'object' ? v.id ?? null : v || null);
 
 /**
  * La rubrique « Chantiers » : la liste (cartes, frise, carte), puis la fiche d'un chantier (chantiers/FicheChantier.jsx).
@@ -41,10 +45,10 @@ export default function Chantiers({
 }) {
   const { confirm } = useConfirm();
   const { showToast } = useToast();
-  const { canPerform } = usePermissions();
+  const { canPerform, canViewPrices: voitPrix } = usePermissions();
   const franchiseTva = estFranchiseTva(entreprise);
 
-  const [view, setView] = useState(selectedChantier || null);
+  const [view, setView] = useState(idDe(selectedChantier));
   const [show, setShow] = useState(false);
   const [sortBy, setSortBy] = useState('recent'); // recent, name, status, margin
   const [filterStatus, setFilterStatus] = useState('all'); // all, cette_semaine, en_cours, prospect, termine, brouillons, archive
@@ -66,7 +70,7 @@ export default function Chantiers({
 
   const duplicateMap = React.useMemo(() => findDuplicateChantiers(chantiers || []), [chantiers]);
 
-  useEffect(() => { if (selectedChantier) setView(selectedChantier); }, [selectedChantier]);
+  useEffect(() => { const ouvert = idDe(selectedChantier); if (ouvert) setView(ouvert); }, [selectedChantier]);
   // Fiche ouverte → selectedChantier, gardé par App.jsx (une notification ou une recherche l'ouvre de la même façon)
   useEffect(() => { setSelectedChantier?.(view || null); }, [view, setSelectedChantier]);
   // createMode peut porter un client (ouvert depuis sa fiche) : le formulaire part avec lui.
@@ -239,7 +243,8 @@ export default function Chantiers({
       case 'name': return filtered.sort((a, b) => (a.nom || '').localeCompare(b.nom || ''));
       case 'status': {
         const ordre = { en_cours: 0, prospect: 1, termine: 2 };
-        return filtered.sort((a, b) => (ordre[a.statut] || 2) - (ordre[b.statut] || 2));
+        // « ?? » et non « || » : en_cours vaut 0, qui devenait 2 et se classait avec les terminés
+        return filtered.sort((a, b) => (ordre[a.statut] ?? 2) - (ordre[b.statut] ?? 2));
       }
       case 'margin': return filtered.sort((a, b) => (getChantierBilan(b.id)?.tauxMarge || 0) - (getChantierBilan(a.id)?.tauxMarge || 0));
       case 'recent':
@@ -259,7 +264,8 @@ export default function Chantiers({
     brouillons: brouillonsCount,
     archive: archivedCount,
   };
-  const budgetEnCours = actifs.filter((c) => c.statut === 'en_cours').reduce((s, c) => s + (c.budget_estime || c.budgetPrevu || 0), 0);
+  // Budget : UNE définition pour le sous-titre, les cartes et la fiche (src/lib/budgetChantier.js) ; aucun montant sans le droit de voir les prix
+  const budgetEnCours = voitPrix ? actifs.filter((c) => c.statut === 'en_cours').reduce((somme, c) => somme + budgetChantier(c, getChantierBilan(c.id)), 0) : 0;
   // Le sous-titre est un fait vivant (audit UX § 2.2) ; le budget était une tuile qui répétait les puces
   const sousTitre = chantiers.length === 0 ? undefined
     : statusCounts.en_cours > 0
@@ -351,7 +357,7 @@ export default function Chantiers({
         <>
           {/* Recherche, statut, filtres et tri : boîte à outils commune (ui/Filtres.jsx) */}
           {(() => {
-            const TRIS = [['recent', 'Plus récents'], ['name', 'Nom de A à Z'], ['status', 'Par statut'], ['margin', 'Par marge']];
+            const TRIS = [['recent', 'Plus récents'], ['name', 'Nom de A à Z'], ['status', 'Par statut'], ...(voitPrix ? [['margin', 'Par marge']] : [])];
             const clientChoisi = clients.find((c) => c.id === filterClient);
             const statuts = [
               { key: 'all', label: 'Tous' },
@@ -430,7 +436,8 @@ export default function Chantiers({
               <Suspense fallback={CHARGEMENT}>
                 <ChantierMap
                   chantiers={resultats} clients={clients} onSelectChantier={(id) => setView(id)} isDark={isDark} couleur={couleur}
-                  formatMoney={formatMoney} modeDiscret={modeDiscret}
+                  formatMoney={formatMoney} modeDiscret={modeDiscret} voitPrix={voitPrix}
+                  budgetDe={(c) => budgetChantier(c, getChantierBilan(c.id))}
                 />
               </Suspense>
             </ErrorBoundary>
@@ -472,23 +479,24 @@ export default function Chantiers({
                   const client = clients.find((c) => c.id === ch.client_id);
                   const bilan = getChantierBilan(ch.id) || { totalDepenses: 0, revenuPrevu: 0, margeBrute: 0, tauxMarge: 0 };
                   const devisLie = devis?.find((d) => d.chantier_id === ch.id && d.type === 'devis');
-                  const budgetPrevu = devisLie?.total_ht || ch.budget_estime || 0;
+                  const budgetPrevu = voitPrix ? budgetChantier(ch, bilan) : 0;
                   const revenuTotal = bilan.revenuPrevu + (bilan.adjRevenus || 0);
-                  const budgetPresqueConsomme = revenuTotal > 0 && bilan.totalDepenses > revenuTotal * 0.9;
+                  const budgetPresqueConsomme = voitPrix && revenuTotal > 0 && bilan.totalDepenses > revenuTotal * 0.9;
                   const taches = ch.taches || [];
                   const faites = taches.filter((t) => t.done).length;
                   const avancement = avancementChantier(ch, bilan, faites, taches.length);
 
-                  // Fin prévue : une règle pour la liste et la fiche (src/lib/echeanceChantier.js). Rouge = en retard ; ambre = à surveiller.
+                  // Fin prévue : une règle pour la cloche, la liste et la fiche (src/lib/echeanceChantier.js). Rouge = en retard
+                  // (chantier en cours, fin passée) ; ambre = à surveiller.
                   const jours = joursAvantFin(ch);
                   const fin = jours === null ? null
-                    : jours < 0 ? { texte: `Fin dépassée de ${-jours} j`, ton: 'text-danger-texte font-semibold' }
+                    : jours < 0 ? { texte: `Fin dépassée de ${-jours} j`, ton: `${chantierEnRetard(ch) ? 'text-danger-texte' : 'text-alerte-texte'} font-semibold` }
                       : jours === 0 ? { texte: "Fin prévue aujourd'hui", ton: 'text-alerte-texte font-semibold' }
                         : jours <= 7 ? { texte: `Fin dans ${jours} j`, ton: 'text-alerte-texte font-semibold' }
                           : { texte: `Fin le ${dateLue(String(ch.date_fin).slice(0, 10)).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}`, ton: 'text-encre-3' };
                   const ville = ch.ville || (String(ch.adresse || '').match(/\b\d{5}\s+([^,\n]+)\s*$/) || [])[1] || '';
                   const meta = [client ? formatClientName(client, 'Sans client') : 'Sans client', ville].filter(Boolean).join(' · ');
-                  const margeNegative = bilan.hasDepenses && bilan.tauxMarge < 0;
+                  const margeNegative = voitPrix && bilan.hasDepenses && bilan.tauxMarge < 0;
 
                   return (
                     <article key={ch.id} data-ui="Carte" className="bg-surface border border-bord rounded-2xl shadow-e1 overflow-hidden flex flex-col">
@@ -518,7 +526,7 @@ export default function Chantiers({
                           )}
                         </span>
                         {(margeNegative || budgetPresqueConsomme) && (
-                          <span className={`mt-2 flex items-center gap-1.5 text-sm font-medium ${margeNegative ? 'text-danger-texte' : 'text-alerte-texte'}`}>
+                          <span className="mt-2 flex items-center gap-1.5 text-sm font-medium text-alerte-texte">
                             <AlertTriangle size={16} aria-hidden="true" className="flex-shrink-0" />
                             {margeNegative ? `Marge ${formatPct(bilan.tauxMarge)}` : 'Budget presque consommé'}
                           </span>
@@ -536,7 +544,9 @@ export default function Chantiers({
                       )}
                       {ch.statut === 'prospect' && setPage && peutDevis && (
                         <div className="px-4 pb-4">
-                          <Bouton pleineLargeur icone={FileText} onClick={() => (nouveauDevisPour ? nouveauDevisPour(ch.client_id, ch.id) : setPage('devis'))}>Créer le devis</Bouton>
+                          {devisLie
+                            ? <Bouton pleineLargeur icone={FileText} onClick={() => ouvrirDevis?.({ ouvrir: devisLie.id })}>Ouvrir le devis</Bouton>
+                            : <Bouton pleineLargeur icone={FileText} onClick={() => (nouveauDevisPour ? nouveauDevisPour(ch.client_id, ch.id) : setPage('devis'))}>Créer le devis</Bouton>}
                         </div>
                       )}
                       {ch.statut === 'archive' && peutModifier && (
@@ -567,6 +577,7 @@ export default function Chantiers({
         devis={devis}
         isDark={isDark}
         couleur={couleur}
+        voitPrix={voitPrix}
       />
 
       {/* Fusion de deux doublons */}

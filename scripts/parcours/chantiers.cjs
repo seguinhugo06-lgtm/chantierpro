@@ -160,6 +160,9 @@ module.exports = [
         const statut = await page.evaluateHandle(() => [...document.querySelectorAll('label')].find((l) => l.innerText.includes('Statut du chantier'))?.querySelector('select'));
         verifier(await statut.evaluate((el) => !!el), 'le statut se change dans la fiche');
         await statut.asElement().select('termine');
+        await attendre(600);
+        // « Terminé » ferme le chantier : la fenêtre de confirmation passe avant l'écriture (relecture de la Task 6, tour 1)
+        await page.evaluate(() => [...document.querySelectorAll('[role="dialog"] button')].find((b) => b.innerText.trim() === 'Confirmer')?.click());
         await attendre(1800);
       };
       await ecouterMessages(page);
@@ -170,7 +173,7 @@ module.exports = [
       await page.evaluate(() => { window.__messages = []; });
       await choisirTermine();
       const messages = await page.evaluate(() => window.__messages || []);
-      verifier(messages.some((m) => /Statut : Terminé/.test(m)), `accepté, le geste se dit (${JSON.stringify(messages)})`);
+      verifier(messages.some((m) => /Chantier marqué comme terminé/.test(m)), `accepté, le geste se dit (${JSON.stringify(messages)})`);
       verifier(!messages.some((m) => /Chantier mis à jour/.test(m)), 'sans « Chantier mis à jour » par-dessus');
       verifier(base.tables.chantiers.find((c) => c.id === CHANTIER.id)?.statut === 'termine', 'le statut est en base');
     },

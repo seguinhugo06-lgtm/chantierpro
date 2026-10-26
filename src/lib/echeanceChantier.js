@@ -1,9 +1,10 @@
 /**
  * Échéance d'un chantier : UNE règle pour la liste, la fiche et l'alerte « en retard ».
  *
- * Le rouge veut dire « en retard » : un chantier est en retard quand sa date de fin est passée et qu'il n'est ni terminé,
- * ni archivé, ni abandonné. Le jour même n'est pas un retard (à surveiller : ambre). Les dates « AAAA-MM-JJ » sont lues en
- * heure locale (src/lib/dates.js).
+ * Le rouge veut dire « en retard » : seul un chantier EN COURS dont la date de fin est passée l'est (un prospect, un
+ * chantier terminé, archivé ou abandonné ne l'est jamais). Le jour même n'est pas un retard (à surveiller : ambre). Les
+ * dates « AAAA-MM-JJ » sont lues en heure locale (src/lib/dates.js). La cloche, l'Accueil, la liste et la fiche passent
+ * toutes par ici.
  */
 import { dateLue, jourLocal } from './dates';
 
@@ -22,8 +23,12 @@ export function joursAvantFin(chantier, maintenant = new Date()) {
   return Math.round((dateLue(jour) - dateLue(jourLocal(maintenant))) / JOUR_MS);
 }
 
-/** Un chantier est en retard quand sa fin prévue est passée. */
-export function estEnRetard(chantier, maintenant = new Date()) {
+/**
+ * Un chantier est en retard quand il est en cours et que sa fin prévue est passée.
+ * (Nommé « chantier… » pour ne pas le confondre avec estEnRetard de ventes.js, qui parle des factures.)
+ */
+export function chantierEnRetard(chantier, maintenant = new Date()) {
+  if (chantier?.statut !== 'en_cours') return false;
   const jours = joursAvantFin(chantier, maintenant);
   return jours !== null && jours < 0;
 }

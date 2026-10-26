@@ -11,7 +11,7 @@ import { PastilleStatut } from './ui/Pastille';
 import { Segmente } from './ui/Onglets';
 import { BoutonVolet, Volet, GroupeChoix, ListeChoix, PucesActives, useEstTelephone } from './ui/Filtres';
 import { PRIORITIES, CATEGORIES, classesTon } from './tasks/constants';
-import { developperRecurrences } from '../lib/evenementsPlanning';
+import { developperRecurrences, evenementsDesTaches, evenementsDesDocuments } from '../lib/evenementsPlanning';
 import { dateLue, jourLocal } from '../lib/dates';
 
 const DURATIONS = [
@@ -224,14 +224,14 @@ function BandeauChantiers({ chantiers, onOuvrir }) {
 
 export default function Planning({
   events, setEvents, addEvent, updateEvent: updateEventProp, deleteEvent: deleteEventProp, chantiers, clients = [], equipe, memos = [], toggleMemo, updateMemo,
-  setPage, setSelectedChantier, updateChantier: _updateChantier, isDark, prefill, clearPrefill, devis = [], demandeAjout,
+  setPage, setSelectedChantier, updateChantier: _updateChantier, isDark, prefill, clearPrefill, devis = [], paiements = [], ouvrirDevis, modeDiscret = false, demandeAjout,
 }) {
   const { confirm } = useConfirm();
   const { showToast } = useToast();
   const telephone = useEstTelephone();
 
   // Droits
-  const { canPerform } = usePermissions();
+  const { canPerform, canAccess, canViewPrices } = usePermissions();
   const peutCreer = canPerform('planning', 'create');
   const peutModifier = canPerform('planning', 'edit');
   const peutSupprimer = canPerform('planning', 'delete');
@@ -326,25 +326,14 @@ export default function Planning({
   const evenementsChantier = useMemo(() => chantiers.filter((ch) => ch.date_debut).map((ch) => ({
     id: `ch_${ch.id}`, title: ch.nom, date: ch.date_debut, dateEnd: ch.date_fin, type: 'chantier', chantierId: ch.id, statut: ch.statut, isChantier: true, description: ch.adresse || '',
   })), [chantiers]);
-  const evenementsTaches = useMemo(() => memos.filter((m) => m.due_date && !m.is_done).map((m) => ({
-    id: `memo_${m.id}`, memoId: m.id, title: m.text?.substring(0, 50) || 'Tâche', date: m.due_date, time: m.due_time || '', type: 'memo', isMemo: true, description: m.notes || '',
-    priority: m.priority || '', category: m.category || '', subtasks: m.subtasks || [], chantier_id: m.chantier_id || '', is_done: m.is_done || false, fullText: m.text || '',
-  })), [memos]);
-  // Échéances de documents : le devis à valider, la facture à encaisser (rouge seulement si l'échéance est passée)
-  const evenementsDocuments = useMemo(() => {
-    const liste = [];
-    const nomClient = (d) => { const c = clients.find((x) => x.id === d.client_id); return c ? `${c.prenom || ''} ${c.nom || ''}`.trim() : ''; };
-    devis.forEach((d) => {
-      if (d.type === 'devis' && d.date_validite && ['envoye', 'vu'].includes(d.statut)) {
-        liste.push({ id: `devis_${d.id}`, title: `Devis ${d.numero || ''} ${nomClient(d)}`.trim(), date: d.date_validite, type: 'deadline', isDeadline: true, ton: 'neutre', description: `Échéance devis — ${d.total_ttc ? d.total_ttc.toLocaleString('fr-FR') + ' €' : ''}`, devisId: d.id });
-      }
-      if (d.type === 'facture' && d.date_echeance && d.statut === 'envoye') {
-        const enRetard = String(d.date_echeance).slice(0, 10) < jourLocal(); // échéance du jour : pas en retard
-        liste.push({ id: `facture_${d.id}`, title: `Facture ${d.numero || ''} ${nomClient(d)}`.trim(), date: d.date_echeance, type: 'deadline', isDeadline: true, ton: enRetard ? 'danger' : 'neutre', description: `Échéance facture — ${d.total_ttc ? d.total_ttc.toLocaleString('fr-FR') + ' €' : ''}`, devisId: d.id });
-      }
-    });
-    return liste;
-  }, [devis, clients]);
+  const evenementsTaches = useMemo(() => evenementsDesTaches(memos), [memos]);
+  // Échéances de documents : le devis à valider, la facture à encaisser (rouge seulement si elle est en retard, règle de ventes.js).
+  // Sans accès aux devis, aucune échéance n'est construite ; sans le droit de voir les prix, aucun montant n'y est écrit.
+  const voitDevis = canAccess('devis');
+  const evenementsDocuments = useMemo(
+    () => (voitDevis ? evenementsDesDocuments(devis, { paiements, voitMontants: canViewPrices && !modeDiscret }) : []),
+    [voitDevis, devis, paiements, canViewPrices, modeDiscret],
+  );
   const allEvents = useMemo(() => [...developperRecurrences(events), ...evenementsTaches, ...evenementsDocuments], [events, evenementsTaches, evenementsDocuments]);
 
   const passeFiltres = (e) => {
@@ -952,10 +941,10 @@ export default function Planning({
                             <label key={st.id} className="flex items-center gap-2 min-h-[36px] cursor-pointer">
                               <input
                                 type="checkbox" checked={!!st.done} disabled={!peutTerminer}
-                                onChange={() => {
+                                onChange={async () => {
                                   if (!updateMemo || !showDetail.memoId) return;
                                   const suivantes = showDetail.subtasks.map((s) => (s.id === st.id ? { ...s, done: !s.done } : s));
-                                  updateMemo(showDetail.memoId, { subtasks: suivantes });
+                                  if (!(await updateMemo(showDetail.memoId, { subtasks: suivantes }))) return;
                                   setShowDetail((prev) => (prev ? { ...prev, subtasks: suivantes } : null));
                                 }}
                                 className="w-4 h-4 rounded accent-[rgb(var(--accent))]"
@@ -988,11 +977,11 @@ export default function Planning({
               ) : showDetail.isMemo ? (
                 <>
                   <Bouton variante="secondaire" icone={ClipboardList} onClick={() => { setPage?.('tasks'); fermerDetail(); }}>Voir dans Tâches</Bouton>
-                  {peutTerminer && <Bouton variante="principal" icone={CheckCircle2} onClick={() => { if (toggleMemo && showDetail.memoId) { toggleMemo(showDetail.memoId); fermerDetail(); } }}>Terminer</Bouton>}
+                  {peutTerminer && <Bouton variante="principal" icone={CheckCircle2} onClick={async () => { if (toggleMemo && showDetail.memoId && (await toggleMemo(showDetail.memoId))) fermerDetail(); }}>Terminer</Bouton>}
                 </>
               ) : showDetail.isDeadline ? (
                 // Échéance calculée depuis un devis ou une facture : elle se change dans le document.
-                <Bouton variante="principal" onClick={() => { setPage?.('devis'); fermerDetail(); }}>Voir dans Devis &amp; Factures</Bouton>
+                <Bouton variante="principal" onClick={() => { if (ouvrirDevis && showDetail.devisId) ouvrirDevis({ ouvrir: showDetail.devisId }); else setPage?.('devis'); fermerDetail(); }}>Voir dans Devis &amp; Factures</Bouton>
               ) : editMode ? (
                 <>
                   <Bouton variante="secondaire" onClick={() => { setEditMode(false); setForm(FORMULAIRE_VIDE); }} disabled={enregistrement}>Annuler</Bouton>

@@ -105,7 +105,8 @@ import Modal, { ModalHeader, ModalTitle, ModalDescription, ModalBody, ModalFoote
 import EtatVide from './components/ui/EtatVide';
 import { Bouton } from './components/ui/Bouton';
 import { messageEcritureRefusee } from './lib/erreursEcriture';
-import { jourLocal } from './lib/dates';
+import { jourLocal, dateLue } from './lib/dates';
+import { joursAvantFin, chantierEnRetard } from './lib/echeanceChantier';
 import { mentionsFacture } from './lib/mentionsFacture';
 import PortailIndisponible from './components/portal/PortailIndisponible';
 
@@ -420,25 +421,27 @@ export default function App() {
       }
     });
 
-    // 4. Chantiers en retard (date fin dépassée, pas terminé)
+    // 4. Chantiers en retard : LA règle de la liste et de la fiche (src/lib/echeanceChantier.js). Seul un chantier en cours
+    //    dont la fin prévue est passée est en retard (rouge) ; le jour même, c'est « à surveiller » (ambre), jamais un retard.
     (chantiers || []).forEach(ch => {
-      if (ch.dateFin && ch.statut === 'en_cours') {
-        const fin = new Date(ch.dateFin);
-        if (fin < now) {
-          const jours = Math.floor((now - fin) / 86400000);
-          items.push({
-            id: `chantier-retard-${ch.id}`,
-            message: `Chantier "${ch.nom || 'Sans nom'}" en retard de ${jours} jour${jours > 1 ? 's' : ''}`,
-            date: relDate(ch.dateFin),
-            type: 'alert',
-            link: 'chantiers',
-            itemId: ch.id,
-            itemType: 'chantier',
-            sortDate: fin,
-            priority: 1,
-          });
-        }
-      }
+      if (ch.statut !== 'en_cours') return;
+      const jours = joursAvantFin(ch, now);
+      if (jours === null || jours > 0) return;
+      const finPrevue = ch.date_fin || ch.dateFin;
+      const retard = chantierEnRetard(ch, now);
+      items.push({
+        id: retard ? `chantier-retard-${ch.id}` : `chantier-echeance-${ch.id}`,
+        message: retard
+          ? `Chantier "${ch.nom || 'Sans nom'}" en retard de ${-jours} jour${-jours > 1 ? 's' : ''}`
+          : `Chantier "${ch.nom || 'Sans nom'}" : fin prévue aujourd'hui`,
+        date: relDate(finPrevue),
+        type: retard ? 'alert' : 'warning',
+        link: 'chantiers',
+        itemId: ch.id,
+        itemType: 'chantier',
+        sortDate: dateLue(String(finPrevue).slice(0, 10)),
+        priority: retard ? 1 : 2,
+      });
     });
 
     // 5. Chantiers avec marge négative
@@ -1943,8 +1946,8 @@ export default function App() {
                 <TasksAndPlanning
                   memos={memos} addMemo={addMemo} updateMemo={updateMemo} deleteMemo={deleteMemo} toggleMemo={toggleMemo}
                   events={planningEvents} setEvents={setPlanningEvents} addEvent={addEvent} updateEvent={updateEvent} deleteEvent={deleteEvent}
-                  chantiers={chantiers} clients={clients} equipe={equipe} devis={devis}
-                  setPage={setPage} setSelectedChantier={setSelectedChantier} updateChantier={updateChantier}
+                  chantiers={chantiers} clients={clients} equipe={equipe} devis={devis} paiements={paiements} modeDiscret={modeDiscret}
+                  setPage={setPage} setSelectedChantier={setSelectedChantier} updateChantier={updateChantier} ouvrirDevis={ouvrirDevis}
                   isDark={isDark} couleur={couleur} showToast={showToast}
                   prefill={planningPrefill} clearPrefill={() => setPlanningPrefill(null)}
                   initialView={page === 'planning' ? 'calendar' : page === 'memos' ? 'list' : undefined}
@@ -2186,7 +2189,7 @@ export default function App() {
                             if (found) setSelectedDevis(found);
                           } else if (n.itemType === 'chantier') {
                             const found = chantiers.find(c => c.id === n.itemId);
-                            if (found) setSelectedChantier(found);
+                            if (found) setSelectedChantier(found.id);
                           }
                           setShowNotifs(false);
                         }

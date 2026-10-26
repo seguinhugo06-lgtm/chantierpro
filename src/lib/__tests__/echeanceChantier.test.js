@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { joursAvantFin, estEnRetard, joursSansActivite } from '../echeanceChantier';
+import { joursAvantFin, chantierEnRetard, joursSansActivite } from '../echeanceChantier';
 import { avancementChantier } from '../avancementChantier';
 
 const AUJOURDHUI = new Date(2026, 9, 25, 10, 30); // 25 oct. 2026, 10 h 30
@@ -17,23 +17,29 @@ describe('échéance d’un chantier : une règle pour la liste, la fiche et l�
   });
 
   it('le jour de la fin n’est pas un retard : seule une fin passée l’est', () => {
-    expect(estEnRetard({ statut: 'en_cours', date_fin: '2026-10-25' }, AUJOURDHUI)).toBe(false);
-    expect(estEnRetard({ statut: 'en_cours', date_fin: '2026-10-24' }, AUJOURDHUI)).toBe(true);
+    expect(chantierEnRetard({ statut: 'en_cours', date_fin: '2026-10-25' }, AUJOURDHUI)).toBe(false);
+    expect(chantierEnRetard({ statut: 'en_cours', date_fin: '2026-10-24' }, AUJOURDHUI)).toBe(true);
     // minuit et demi : le jour est celui de l’appareil, pas celui de l’UTC
-    expect(estEnRetard({ statut: 'en_cours', date_fin: '2026-10-25' }, new Date(2026, 9, 25, 0, 30))).toBe(false);
+    expect(chantierEnRetard({ statut: 'en_cours', date_fin: '2026-10-25' }, new Date(2026, 9, 25, 0, 30))).toBe(false);
+  });
+
+  it('seul un chantier en cours peut être en retard : un prospect dont la date est passée ne l’est pas', () => {
+    expect(joursAvantFin({ statut: 'prospect', date_fin: '2026-10-20' }, AUJOURDHUI)).toBe(-5);
+    expect(chantierEnRetard({ statut: 'prospect', date_fin: '2026-10-20' }, AUJOURDHUI)).toBe(false);
+    expect(chantierEnRetard({ statut: 'en_cours', date_fin: '2026-10-20' }, AUJOURDHUI)).toBe(true);
   });
 
   it('un chantier terminé, archivé ou abandonné n’a ni échéance ni retard', () => {
     for (const statut of ['termine', 'archive', 'abandonne']) {
       expect(joursAvantFin({ statut, date_fin: '2026-01-01' }, AUJOURDHUI)).toBeNull();
-      expect(estEnRetard({ statut, date_fin: '2026-01-01' }, AUJOURDHUI)).toBe(false);
+      expect(chantierEnRetard({ statut, date_fin: '2026-01-01' }, AUJOURDHUI)).toBe(false);
     }
   });
 
   it('sans date de fin lisible : rien à dire', () => {
     expect(joursAvantFin({ statut: 'en_cours' }, AUJOURDHUI)).toBeNull();
     expect(joursAvantFin({ statut: 'en_cours', date_fin: 'bientôt' }, AUJOURDHUI)).toBeNull();
-    expect(estEnRetard({ statut: 'en_cours', date_fin: '' }, AUJOURDHUI)).toBe(false);
+    expect(chantierEnRetard({ statut: 'en_cours', date_fin: '' }, AUJOURDHUI)).toBe(false);
   });
 
   it('sans activité : à partir de 7 jours, pour un chantier en cours seulement', () => {

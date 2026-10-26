@@ -30,22 +30,24 @@ const typeDuDocument = (d) => {
  * qui ne montrait que les plans et les permis), puis les fichiers déposés (plans, permis, attestations) et les rapports.
  */
 export default function OngletDocuments({
-  chantier: ch, documents = [], paiements = [], entreprise, franchiseTva, modeDiscret, formatMoney, peutModifier, peutDevis,
+  chantier: ch, documents = [], paiements = [], entreprise, franchiseTva, modeDiscret, formatMoney, voitPrix = true, peutModifier, peutDevis,
   equipe, isDark, couleur, onOuvrirDocument, onCreerDevis, onAjouterFichier, onSupprimerFichier,
 }) {
   const [nom, setNom] = useState('');
   const [categorie, setCategorie] = useState('Plan');
   const [fichier, setFichier] = useState(null);
   const [erreur, setErreur] = useState('');
+  const [erreurFichier, setErreurFichier] = useState('');
   const fichiers = ch.documents || [];
   const tries = [...documents].sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
 
   const ajouter = async () => {
     if (!nom.trim()) { setErreur('Donnez un nom au document.'); return; }
-    if (fichier && fichier.size > TAILLE_MAX) { setErreur('Fichier trop volumineux (5 Mo au plus).'); return; }
+    if (fichier && fichier.size > TAILLE_MAX) { setErreurFichier('Fichier trop volumineux (5 Mo au plus).'); return; }
     setErreur('');
+    setErreurFichier('');
     const ok = await onAjouterFichier({ nom: nom.trim(), categorie, fichier });
-    if (ok) { setNom(''); setFichier(null); setCategorie('Plan'); }
+    if (ok) { setNom(''); setFichier(null); setCategorie('Plan'); setErreur(''); setErreurFichier(''); }
   };
 
   return (
@@ -73,7 +75,7 @@ export default function OngletDocuments({
                   aria-label={`Ouvrir ${d.numero || (d.type === 'facture' ? 'la facture' : 'le devis')}`}
                   titre={typeDuDocument(d)}
                   meta={[formatDevisNumber(d), jour, d.objet].filter(Boolean).join(' · ')}
-                  montant={modeDiscret ? '···' : `${d.facture_type === 'avoir' ? '-' : ''}${formatMoney(Math.abs(Number(d.total_ht) || 0))}${franchiseTva ? '' : ' HT'}`}
+                  montant={!voitPrix ? undefined : modeDiscret ? '···' : `${d.facture_type === 'avoir' ? '-' : ''}${formatMoney(Math.abs(Number(d.total_ht) || 0))}${franchiseTva ? '' : ' HT'}`}
                   pastille={<PastilleStatut genre={facture ? 'facture' : 'devis'} statut={statut} />}
                 />
               );
@@ -125,9 +127,11 @@ export default function OngletDocuments({
               <label htmlFor="fichier-chantier" className="block mb-1.5 text-sm font-medium text-encre-2">Fichier <span className="font-normal text-encre-3">(facultatif)</span></label>
               <input
                 id="fichier-chantier" type="file" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"
-                onChange={(e) => setFichier(e.target.files?.[0] || null)}
+                onChange={(e) => { setFichier(e.target.files?.[0] || null); setErreurFichier(''); }}
+                aria-invalid={erreurFichier ? 'true' : undefined} aria-describedby={erreurFichier ? 'fichier-chantier-erreur' : undefined}
                 className="block w-full text-sm text-encre-2 file:mr-3 file:h-11 file:px-4 file:rounded-full file:border-0 file:bg-surface-2 file:text-encre file:font-semibold file:cursor-pointer"
               />
+              {erreurFichier && <p id="fichier-chantier-erreur" role="alert" className="mt-1.5 text-sm font-medium text-danger-texte">{erreurFichier}</p>}
             </div>
             <Bouton variante="secondaire" icone={Plus} className="mt-4" onClick={ajouter}>Ajouter</Bouton>
           </Carte>

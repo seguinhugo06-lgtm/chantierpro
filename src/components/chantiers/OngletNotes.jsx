@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Plus, CheckCircle2, ClipboardList, MessageSquare, X } from 'lucide-react';
 import Carte from '../ui/Carte';
 import EtatVide from '../ui/EtatVide';
@@ -21,19 +21,50 @@ const TON_ECHANGE = { email: 'info', sms: 'succes', appel: 'neutre', note: 'neut
  * Onglet « Notes » de la fiche chantier : les notes libres (accès, contacts sur site), les mémos du chantier et le
  * journal des échanges avec le client. Trois onglets avant (Notes, Mémos, Messages) ; un mot de moins sur la barre.
  */
-export default function OngletNotes({ chantier: ch, memos = [], peutModifier, peutMemo, onNotes, onAjouterMemo, onBasculerMemo, onAjouterEchange, onSupprimerEchange }) {
+// Les notes s'écrivent après une pause de frappe (avant : une écriture en base à chaque touche)
+const PAUSE_NOTES_MS = 800;
+
+export default function OngletNotes({ chantier: ch, memos = [], peutModifier, peutMemo, peutMemoModifier = peutMemo, onNotes, onAjouterMemo, onBasculerMemo, onAjouterEchange, onSupprimerEchange }) {
   const [memo, setMemo] = useState('');
   const [type, setType] = useState('email');
   const [contenu, setContenu] = useState('');
+  const [enCours, setEnCours] = useState(false);
+  const [notes, setNotes] = useState(ch.notes || '');
+  const enAttente = useRef(null); // texte tapé, pas encore envoyé
+  const minuteur = useRef(null);
+  const onNotesRef = useRef(onNotes);
+  onNotesRef.current = onNotes;
+  const envoyerNotes = useCallback(() => {
+    clearTimeout(minuteur.current);
+    if (enAttente.current === null) return;
+    const texte = enAttente.current;
+    enAttente.current = null;
+    onNotesRef.current(texte);
+  }, []);
+  // Rien ne se perd en changeant d'onglet ou de chantier : ce qui attend part au démontage
+  useEffect(() => envoyerNotes, [envoyerNotes]);
+  // Une valeur revenue de la base (écriture refusée, autre appareil) remplace l'affichage quand rien n'attend d'être envoyé
+  useEffect(() => { if (enAttente.current === null) setNotes(ch.notes || ''); }, [ch.notes]);
+  const saisirNotes = (texte) => {
+    setNotes(texte);
+    enAttente.current = texte;
+    clearTimeout(minuteur.current);
+    minuteur.current = setTimeout(envoyerNotes, PAUSE_NOTES_MS);
+  };
   const actifs = memos.filter((m) => !m.is_done);
   const faits = memos.filter((m) => m.is_done);
   const echanges = ch.messages || [];
 
-  const ajouterMemo = () => {
+  // La saisie reste tant que l'écriture n'a pas abouti
+  const ajouterMemo = async () => {
     const texte = memo.trim();
-    if (!texte) return;
-    onAjouterMemo(texte);
-    setMemo('');
+    if (!texte || enCours) return;
+    setEnCours(true);
+    try {
+      if (await onAjouterMemo(texte)) setMemo('');
+    } finally {
+      setEnCours(false);
+    }
   };
   const ajouterEchange = async () => {
     if (!contenu.trim()) return;
@@ -45,8 +76,8 @@ export default function OngletNotes({ chantier: ch, memos = [], peutModifier, pe
       <section>
         <TitreSection titre="Notes" />
         <Champ
-          as="textarea" libelle="Notes du chantier" rows={6} value={ch.notes || ''} disabled={!peutModifier}
-          onChange={(e) => onNotes(e.target.value)} placeholder="Contraintes d'accès, contacts sur site, détails importants..."
+          as="textarea" libelle="Notes du chantier" rows={6} value={notes} disabled={!peutModifier}
+          onChange={(e) => saisirNotes(e.target.value)} onBlur={envoyerNotes} placeholder="Contraintes d'accès, contacts sur site, détails importants..."
         />
       </section>
 
@@ -60,7 +91,7 @@ export default function OngletNotes({ chantier: ch, memos = [], peutModifier, pe
                 onChange={(e) => setMemo(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') ajouterMemo(); }}
                 className="flex-1 min-w-0 h-12 px-3.5 rounded-xl border border-bord-fort bg-surface text-base text-encre placeholder:text-encre-3 focus:outline-none focus:ring-4 focus:border-accent focus:ring-accent/20"
               />
-              <BoutonIcone icone={Plus} libelle="Ajouter le mémo" variante="secondaire" onClick={ajouterMemo} disabled={!memo.trim()} />
+              <BoutonIcone icone={Plus} libelle="Ajouter le mémo" variante="secondaire" onClick={ajouterMemo} disabled={!memo.trim() || enCours} />
             </div>
           )}
           {memos.length === 0 ? (
@@ -71,8 +102,8 @@ export default function OngletNotes({ chantier: ch, memos = [], peutModifier, pe
                 {actifs.map((m) => (
                   <li key={m.id} className="flex items-start gap-3 min-h-[44px] px-1 py-1 rounded-lg hover:bg-surface-2">
                     <button
-                      type="button" onClick={() => onBasculerMemo(m.id)} aria-label={`Marquer comme fait : ${m.text}`}
-                      className="mt-1 w-8 h-8 flex-shrink-0 flex items-center justify-center -ml-1"
+                      type="button" onClick={() => onBasculerMemo(m.id)} disabled={!peutMemoModifier} aria-label={`Marquer comme fait : ${m.text}`}
+                      className="mt-1 w-8 h-8 flex-shrink-0 flex items-center justify-center -ml-1 disabled:opacity-50"
                     >
                       <span className="w-6 h-6 rounded-full border-2 border-bord-fort" />
                     </button>

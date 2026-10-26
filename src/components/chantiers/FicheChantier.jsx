@@ -32,9 +32,9 @@ import { estFranchiseTva } from '../../lib/franchiseTva';
 import { montantsDepense } from '../../lib/tvaDepenses';
 import { arrondi } from '../../lib/totauxDocument';
 import { coutHoraire } from '../../lib/tauxEquipe';
-import { resteAFacturer as resteAFacturerDevis } from '../../lib/ventes';
+import { budgetChantier, resteAFacturerChantier } from '../../lib/budgetChantier';
 import { avancementChantier } from '../../lib/avancementChantier';
-import { joursAvantFin, joursSansActivite } from '../../lib/echeanceChantier';
+import { joursAvantFin, chantierEnRetard, joursSansActivite } from '../../lib/echeanceChantier';
 import { jourLocal } from '../../lib/dates';
 import { generateSmartTasks } from '../../lib/templates/task-templates-v2';
 import { FONCTIONS } from '../../lib/fonctions';
@@ -48,7 +48,7 @@ const TON_STATUT = {
   alerte: 'bg-alerte-fond text-alerte-texte', danger: 'bg-danger-fond text-danger-texte',
 };
 const DEPENSE_VIDE = { description: '', montant: '', categorie: 'Matériaux', catalogueId: '', quantite: 1, prixUnitaire: '', tauxTva: '', montantTva: '' };
-const BILAN_VIDE = { totalDepenses: 0, revenuPrevu: 0, margeBrute: 0, tauxMarge: 0, adjRevenus: 0, adjDepenses: 0, mainOeuvre: 0 };
+const BILAN_VIDE = { totalDepenses: 0, revenuPrevu: 0, revenuTotal: 0, margeBrute: 0, tauxMarge: 0, adjRevenus: 0, adjDepenses: 0, mainOeuvre: 0 };
 
 /**
  * La fiche d'un chantier — sortie de Chantiers.jsx le 25 oct. 2026 (passe « ancien code », audit UX du 20 oct.).
@@ -67,7 +67,7 @@ export default function FicheChantier({
   const { confirm } = useConfirm();
   const { showToast } = useToast();
   const { addDepense: ctxAddDepense, updateDepense: ctxUpdateDepense, deleteDepense: ctxDeleteDepense, addPointage: ctxAddPointage, updatePointage: ctxUpdatePointage, deletePointage: ctxDeletePointage } = useData();
-  const { canPerform } = usePermissions();
+  const { canPerform, canViewPrices: voitPrix } = usePermissions();
   const franchiseTva = estFranchiseTva(entreprise);
 
   const [onglet, setOnglet] = useState('apercu');
@@ -76,6 +76,7 @@ export default function FicheChantier({
   const [depenseEnCours, setDepenseEnCours] = useState(false);
   const [feuilleAjustement, setFeuilleAjustement] = useState(null); // 'REVENU' | 'DEPENSE'
   const [ajustement, setAjustement] = useState({ libelle: '', montant_ht: '' });
+  const [ajustementEnCours, setAjustementEnCours] = useState(false);
   const [detailHeures, setDetailHeures] = useState(false);
   const [feuilleHeures, setFeuilleHeures] = useState(false);
   const [heuresEnCours, setHeuresEnCours] = useState(false);
@@ -154,10 +155,15 @@ export default function FicheChantier({
   const peutModifier = canPerform('chantier', 'edit');
   const peutCreer = canPerform('chantier', 'create');
   const peutDepense = canPerform('depense', 'create');
+  const peutDepenseModifier = canPerform('depense', 'edit');
+  const peutDepenseSupprimer = canPerform('depense', 'delete');
   const peutPointer = canPerform('pointage', 'create');
+  const peutPointageModifier = canPerform('pointage', 'edit');
+  const peutPointageSupprimer = canPerform('pointage', 'delete');
   const peutDevis = canPerform('devis', 'create');
   const peutPlanifier = canPerform('planning', 'create') && !!onPlanEvent;
   const peutMemo = canPerform('memo', 'create');
+  const peutMemoModifier = canPerform('memo', 'edit');
 
   // ── Chiffres ──
   const client = clients.find((c) => c.id === ch.client_id);
@@ -170,10 +176,11 @@ export default function FicheChantier({
   const tasksTotal = taches.length;
   const devisLie = mesDevis.find((d) => d.type === 'devis');
   const avancement = avancementChantier(ch, bilan, tasksDone, tasksTotal);
-  const revenuTotal = bilan.revenuPrevu + (bilan.adjRevenus || 0);
+  // Budget et reste à facturer : la même définition que la liste, son sous-titre et le bouton « Facturer le solde »
+  const revenuTotal = budgetChantier(ch, bilan);
   // Facturé : les factures émises du chantier (avoirs déduits), pas le devis qu'elles facturent (compté deux fois)
   const totalFacture = mesDevis.filter((d) => d.type === 'facture' && d.statut !== 'brouillon').reduce((s, d) => s + (d.total_ht || 0), 0);
-  const resteAFacturer = revenuTotal - totalFacture;
+  const { ht: resteAFacturer, devis: devisASolder } = resteAFacturerChantier(ch, devis);
   const depensesFinales = avancement > 0 ? bilan.totalDepenses / (avancement / 100) : bilan.totalDepenses * 2;
   const benefice = bilan.revenuPrevu - depensesFinales;
   const prevision = avancement > 0 && avancement < 100 && revenuTotal > 0
@@ -181,7 +188,7 @@ export default function FicheChantier({
     : null;
   const mesPhotos = ch.photos || [];
   const totalPhotos = chantiers.reduce((s, c) => s + (c.photos?.length || 0), 0);
-  const sousTraitants = (equipe || []).filter((m) => m.type === 'sous_traitant');
+  const sousTraitants = FONCTIONS.sousTraitantsChantier ? (equipe || []).filter((m) => m.type === 'sous_traitant') : [];
   const echeance = joursAvantFin(ch);
   const inactif = joursSansActivite(ch);
   const prioritaires = taches.filter((t) => t.critical && !t.done).length;
@@ -190,24 +197,31 @@ export default function FicheChantier({
     ...(prioritaires > 0 ? [{ cle: 'taches', libelle: `${prioritaires} tâche${prioritaires > 1 ? 's' : ''} prioritaire${prioritaires > 1 ? 's' : ''} à faire` }] : []),
   ];
   const modeSituation = ch.situations_data?.mode === 'situation';
-  const devisASolder = mesDevis.find((d) => d.type === 'devis' && resteAFacturerDevis(d, devis) > 0.005);
 
   // ── Écritures : un message par geste, jamais de succès sans écriture ──
+  // Les situations de travaux disent elles-mêmes ce qu'elles ont fait : l'écriture ne doit pas ajouter « Chantier mis à jour »
+  const updateSilencieux = (chantierId, donnees) => updateChantier(chantierId, donnees, { silencieux: true });
   const modifier = async (donnees, message) => {
     const ok = await updateChantier(ch.id, donnees, { silencieux: true });
     if (ok && message) showToast(message, 'success');
     return ok;
   };
-  const changerStatut = async (statut) => {
-    const ok = await modifier({ statut });
-    if (!ok) return;
-    if (statut === 'termine') triggerPostChantierSequence(ch);
-    showToast(`Statut : ${CHANTIER_STATUS_LABELS[statut]}`, 'success');
-  };
+  // « Terminé » et « Abandonné » ferment le chantier : confirmation, et la date de fin est celle d'aujourd'hui
   const terminer = async () => {
     const confirme = await confirm({ title: 'Terminer le chantier', message: `Marquer « ${ch.nom} » comme terminé ? La date de fin sera celle d'aujourd'hui.` });
     if (!confirme) return;
-    if (await modifier({ statut: 'termine', date_fin: jourLocal() }, 'Chantier marqué comme terminé')) triggerPostChantierSequence(ch);
+    if (await modifier({ statut: 'termine', date_fin: jourLocal(), dateFin: jourLocal() }, 'Chantier marqué comme terminé')) triggerPostChantierSequence(ch);
+  };
+  const abandonner = async () => {
+    const confirme = await confirm({ title: 'Abandonner le chantier', message: `Marquer « ${ch.nom} » comme abandonné ? La date de fin sera celle d'aujourd'hui.` });
+    if (!confirme) return;
+    await modifier({ statut: 'abandonne', date_fin: jourLocal(), dateFin: jourLocal() }, 'Chantier marqué comme abandonné');
+  };
+  const changerStatut = async (statut) => {
+    if (statut === 'termine') { await terminer(); return; }
+    if (statut === 'abandonne') { await abandonner(); return; }
+    const ok = await modifier({ statut });
+    if (ok) showToast(`Statut : ${CHANTIER_STATUS_LABELS[statut]}`, 'success');
   };
   const archiver = async () => {
     const confirme = await confirm({ title: 'Archiver', message: `Archiver le chantier « ${ch.nom} » ? Il ne sera plus visible dans la liste active.` });
@@ -277,7 +291,9 @@ export default function FicheChantier({
   const modifierTache = (tacheId, changements) => modifier({ taches: taches.map((t) => (t.id === tacheId ? { ...t, ...changements } : t)) });
   const supprimerTache = (tacheId) => modifier({ taches: taches.filter((t) => t.id !== tacheId) });
   const ajouterTaches = async (nouvelles) => {
-    if (await modifier({ taches: [...taches, ...nouvelles] })) showToast(`${nouvelles.length} tâche${nouvelles.length > 1 ? 's' : ''} ajoutée${nouvelles.length > 1 ? 's' : ''}`, 'success');
+    const ok = await modifier({ taches: [...taches, ...nouvelles] });
+    if (ok) showToast(`${nouvelles.length} tâche${nouvelles.length > 1 ? 's' : ''} ajoutée${nouvelles.length > 1 ? 's' : ''}`, 'success');
+    return ok;
   };
   const listeType = async (cle) => {
     const generees = generateSmartTasks(ch.metier || entreprise?.metier || 'general', cle);
@@ -328,10 +344,10 @@ export default function FicheChantier({
       });
       if (!ok) return;
     }
-    ctxUpdateDepense(dep.id, { tauxTva: taux, tvaRate: undefined, tva_rate: undefined, montantTva: nouvelle });
+    await ctxUpdateDepense(dep.id, { tauxTva: taux, tvaRate: undefined, tva_rate: undefined, montantTva: nouvelle });
   };
   const supprimerDepense = async (dep) => {
-    if (await confirm({ title: 'Supprimer', message: `Supprimer la dépense « ${dep.description} » ?` })) ctxDeleteDepense(dep.id);
+    if (await confirm({ title: 'Supprimer', message: `Supprimer la dépense « ${dep.description} » ?` })) await ctxDeleteDepense(dep.id);
   };
   // Fournitures du devis seulement : les lignes venues du catalogue avec un prix d'achat (et au prix d'achat, pas de vente)
   const fournituresManquantes = (() => {
@@ -343,14 +359,23 @@ export default function FicheChantier({
   })();
 
   // Ajustements, heures
-  const validerAjustement = () => {
-    if (!ajustement.libelle || !ajustement.montant_ht) return;
-    addAjustement({ chantierId: ch.id, type: feuilleAjustement, libelle: ajustement.libelle, montant_ht: parseFloat(ajustement.montant_ht) });
-    setAjustement({ libelle: '', montant_ht: '' });
-    setFeuilleAjustement(null);
+  // Attendre l'écriture : refusée par la base, la saisie et la fenêtre restent (le message d'échec vient de DataContext)
+  const validerAjustement = async () => {
+    if (ajustementEnCours || !ajustement.libelle || !ajustement.montant_ht) return;
+    const montant = parseFloat(String(ajustement.montant_ht).replace(',', '.'));
+    if (!Number.isFinite(montant)) { showToast('Le montant n’est pas un nombre', 'error'); return; }
+    setAjustementEnCours(true);
+    try {
+      const cree = await addAjustement({ chantierId: ch.id, type: feuilleAjustement, libelle: ajustement.libelle, montant_ht: montant });
+      if (!cree) return;
+      setAjustement({ libelle: '', montant_ht: '' });
+      setFeuilleAjustement(null);
+    } finally {
+      setAjustementEnCours(false);
+    }
   };
   const supprimerAjustement = async (ajustementId) => {
-    if (await confirm({ title: 'Supprimer', message: 'Supprimer cet ajustement ?' })) deleteAjustement(ajustementId);
+    if (await confirm({ title: 'Supprimer', message: 'Supprimer cet ajustement ?' })) await deleteAjustement(ajustementId);
   };
   const validerHeures = async () => {
     if (heuresEnCours) return;
@@ -453,7 +478,7 @@ export default function FicheChantier({
     { id: 'taches', libelle: 'Tâches', compte: tasksTotal - tasksDone },
     { id: 'photos', libelle: 'Photos', compte: mesPhotos.length },
     { id: 'documents', libelle: 'Documents', compte: mesDevis.length + (ch.documents || []).length },
-    { id: 'finances', libelle: 'Finances' },
+    ...(voitPrix ? [{ id: 'finances', libelle: 'Finances' }] : []),
     { id: 'notes', libelle: 'Notes', compte: (ch.messages || []).filter((m) => !m.read).length },
     { id: 'journal', libelle: 'Journal' },
     ...(sousTraitants.length > 0 ? [{ id: 'soustraitants', libelle: 'Sous-traitants', compte: sousTraitants.length }] : []),
@@ -479,7 +504,7 @@ export default function FicheChantier({
         </div>
       )}
       {echeance !== null && echeance <= 14 && (
-        <div className={`flex items-center gap-3 rounded-2xl px-4 py-3 ${echeance < 0 ? 'bg-danger-fond text-danger-texte' : echeance <= 3 ? 'bg-alerte-fond text-alerte-texte' : 'bg-surface-2 text-encre-2'}`}>
+        <div className={`flex items-center gap-3 rounded-2xl px-4 py-3 ${chantierEnRetard(ch) ? 'bg-danger-fond text-danger-texte' : echeance <= 3 ? 'bg-alerte-fond text-alerte-texte' : 'bg-surface-2 text-encre-2'}`}>
           <AlertTriangle size={20} aria-hidden="true" className="flex-shrink-0" />
           <div className="flex-1 min-w-0">
             <p className="font-semibold text-sm">
@@ -497,7 +522,7 @@ export default function FicheChantier({
           <OngletApercu
             chantier={ch} client={client} bilan={bilan} revenuTotal={revenuTotal} totalFacture={totalFacture} resteAFacturer={resteAFacturer}
             avancement={avancement} tasksDone={tasksDone} tasksTotal={tasksTotal} franchiseTva={franchiseTva} modeDiscret={modeDiscret}
-            formatMoney={formatMoney} formatPct={formatPct} weather={weather} alertes={alertes}
+            formatMoney={formatMoney} formatPct={formatPct} weather={weather} alertes={alertes} voitPrix={voitPrix}
             peutPointer={peutPointer} onPointer={() => setFeuilleHeures(true)} notifierClient={prevenirClient}
             onTaches={() => setOnglet('taches')} onFinances={() => setOnglet('finances')}
           />
@@ -515,7 +540,7 @@ export default function FicheChantier({
         {ongletActif === 'documents' && (
           <OngletDocuments
             chantier={ch} documents={mesDevis} paiements={paiements} entreprise={entreprise} franchiseTva={franchiseTva} modeDiscret={modeDiscret}
-            formatMoney={formatMoney} peutModifier={peutModifier} peutDevis={peutDevis} equipe={equipe} isDark={isDark} couleur={couleur}
+            formatMoney={formatMoney} voitPrix={voitPrix} peutModifier={peutModifier} peutDevis={peutDevis} equipe={equipe} isDark={isDark} couleur={couleur}
             onOuvrirDocument={(docId) => ouvrirDevis?.({ ouvrir: docId })}
             onCreerDevis={() => (nouveauDevisPour ? nouveauDevisPour(ch.client_id, ch.id) : setPage?.('devis'))}
             onAjouterFichier={ajouterFichier} onSupprimerFichier={(fichierId) => modifier({ documents: (ch.documents || []).filter((d) => d.id !== fichierId) })}
@@ -526,13 +551,13 @@ export default function FicheChantier({
             chantier={ch} bilan={bilan} revenuTotal={revenuTotal} avancement={avancement} resteAFacturer={resteAFacturer}
             franchiseTva={franchiseTva} modeDiscret={modeDiscret} formatMoney={formatMoney} formatPct={formatPct}
             depensesChantier={mesDepenses} ajustementsRevenus={mesAjustements.filter((a) => a.type === 'REVENU')} ajustementsDepenses={mesAjustements.filter((a) => a.type === 'DEPENSE')}
-            depensePrevision={prevision} peutDepense={peutDepense} peutModifier={peutModifier}
+            depensePrevision={prevision} peutDepense={peutDepense} peutDepenseModifier={peutDepenseModifier} peutDepenseSupprimer={peutDepenseSupprimer} peutModifier={peutModifier}
             onAjouterRevenu={() => setFeuilleAjustement('REVENU')} onAjouterDepense={() => setFeuilleDepense(true)} onVoirHeures={() => setDetailHeures(true)}
             onDepenseAutres={() => setFeuilleAjustement('DEPENSE')}
             onSupprimerAjustement={supprimerAjustement} onChangerTaux={changerTauxDepense} onSupprimerDepense={supprimerDepense}
             situations={(
               <SituationsTravaux
-                chantier={ch} devis={mesDevis} updateChantier={updateChantier} addDevis={addDevis} generateNextNumero={generateNextNumero}
+                chantier={ch} devis={mesDevis} updateChantier={updateSilencieux} addDevis={addDevis} generateNextNumero={generateNextNumero}
                 clients={clients} entreprise={entreprise} modeDiscret={modeDiscret} isDark={isDark} couleur={couleur} setPage={setPage}
               />
             )}
@@ -540,7 +565,7 @@ export default function FicheChantier({
         )}
         {ongletActif === 'notes' && (
           <OngletNotes
-            chantier={ch} memos={memos.filter((m) => m.chantier_id === ch.id)} peutModifier={peutModifier} peutMemo={peutMemo}
+            chantier={ch} memos={memos.filter((m) => m.chantier_id === ch.id)} peutModifier={peutModifier} peutMemo={peutMemo} peutMemoModifier={peutMemoModifier}
             onNotes={(texte) => updateChantier(ch.id, { notes: texte }, { silencieux: true })}
             onAjouterMemo={(texte) => addMemo?.({ text: texte, chantier_id: ch.id, client_id: ch.client_id || null })}
             onBasculerMemo={(memoId) => toggleMemo?.(memoId)}
@@ -595,7 +620,7 @@ export default function FicheChantier({
 
       <FeuilleDepense
         ouvert={feuilleDepense} onFermer={fermerFeuilleDepense} onValider={enregistrerDepense} depense={nouvelleDepense} setDepense={setNouvelleDepense}
-        franchiseTva={franchiseTva} catalogue={catalogue || []} fournituresManquantes={fournituresManquantes} enCours={depenseEnCours}
+        franchiseTva={franchiseTva} catalogue={catalogue || []} fournituresManquantes={voitPrix ? fournituresManquantes : []} voitPrix={voitPrix} enCours={depenseEnCours}
       />
       <FeuilleHeures
         ouvert={feuilleHeures} onFermer={() => setFeuilleHeures(false)} onValider={validerHeures} heures={saisieHeures} setHeures={setSaisieHeures}
@@ -603,12 +628,13 @@ export default function FicheChantier({
       />
       <DetailHeures
         ouvert={detailHeures} onFermer={() => setDetailHeures(false)} pointages={mesPointages} equipe={equipe} coutHoraireDe={coutHoraire}
-        formatMoney={formatMoney} coutTotal={bilan.coutMO} onModifier={modifierPointage} onSupprimer={supprimerPointage}
+        formatMoney={formatMoney} voitPrix={voitPrix} coutTotal={bilan.coutMO}
+        onModifier={peutPointageModifier ? modifierPointage : undefined} onSupprimer={peutPointageSupprimer ? supprimerPointage : undefined}
         onAjouter={peutPointer ? () => { setDetailHeures(false); setFeuilleHeures(true); } : undefined}
       />
       <FeuilleAjustement
         type={feuilleAjustement} onFermer={() => { setFeuilleAjustement(null); setAjustement({ libelle: '', montant_ht: '' }); }}
-        onValider={validerAjustement} valeur={ajustement} setValeur={setAjustement}
+        onValider={validerAjustement} valeur={ajustement} setValeur={setAjustement} enCours={ajustementEnCours}
       />
       <VisionneusePhoto photo={photoOuverte} chantier={ch} onFermer={() => setPhotoOuverte(null)} />
 
@@ -624,7 +650,7 @@ export default function FicheChantier({
             try {
               await createReception(null, { ...data, chantierId: ch.id, userId: null, orgId: null });
               if (ch.statut === 'en_cours') {
-                updateChantier(ch.id, { statut: 'termine', date_fin: data.dateReception }, { silencieux: true });
+                updateChantier(ch.id, { statut: 'termine', date_fin: data.dateReception, dateFin: data.dateReception }, { silencieux: true });
                 triggerPostChantierSequence(ch);
               }
               const [r, g, i] = await Promise.all([getReception(ch.id), getGarantiesByChantier(ch.id), getInterventionsByChantier(ch.id)]);
@@ -654,7 +680,7 @@ export default function FicheChantier({
 
       <QuickChantierModal
         isOpen={!!enEdition} onClose={() => setEnEdition(null)} onSubmit={modifierFiche}
-        clients={clients} devis={devis} isDark={isDark} couleur={couleur} editChantier={enEdition}
+        clients={clients} devis={devis} isDark={isDark} couleur={couleur} editChantier={enEdition} voitPrix={voitPrix}
       />
     </div>
   );

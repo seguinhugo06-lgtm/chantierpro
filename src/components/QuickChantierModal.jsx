@@ -17,6 +17,7 @@ export default function QuickChantierModal({
   couleur = '#f97316',
   editChantier = null, // Pass a chantier object to edit instead of create
   clientInitial = null, // id du client choisi d'avance (création depuis sa fiche)
+  voitPrix = true, // faux (chef de chantier, ouvrier) : ni budget ni objectif de coûts ; les valeurs déjà saisies sont conservées
 }) {
   const isEditMode = !!editChantier;
 
@@ -370,7 +371,8 @@ export default function QuickChantierModal({
             )}
           </div>
 
-          {/* Budget - Always visible */}
+          {/* Budget - Always visible (réservé à qui voit les prix) */}
+          {voitPrix && (
           <div className={`p-4 rounded-xl border-2 ${isDark ? 'bg-slate-700/30 border-slate-600' : 'bg-emerald-50/50 border-emerald-200'}`}>
             <label htmlFor="chantier-budget" className={`block text-sm font-bold mb-2 ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>
               <Euro size={16} className="inline mr-1.5" />
@@ -422,6 +424,7 @@ export default function QuickChantierModal({
               </p>
             )}
           </div>
+          )}
 
           {/* Expandable Details */}
           <button
@@ -541,9 +544,10 @@ export default function QuickChantierModal({
               {/* Budget Coûts */}
               <div className={`p-3 rounded-xl ${isDark ? 'bg-slate-700/50' : 'bg-amber-50'}`}>
                 <p className={`text-xs font-medium mb-3 ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>
-                  Objectif de coûts (optionnel)
+                  {voitPrix ? 'Objectif de coûts (optionnel)' : 'Objectif (optionnel)'}
                 </p>
                 <div className="grid grid-cols-2 gap-3">
+                  {voitPrix && (
                   <div>
                     <label htmlFor="chantier-budget-materiaux" className={`block text-xs mb-1 ${textMuted}`}>
                       <Package size={12} className="inline mr-1" />
@@ -561,6 +565,7 @@ export default function QuickChantierModal({
                       <span className={`absolute right-3 top-1/2 -translate-y-1/2 text-xs ${textMuted}`}>€</span>
                     </div>
                   </div>
+                  )}
                   <div>
                     <label htmlFor="chantier-heures" className={`block text-xs mb-1 ${textMuted}`}>
                       <Clock size={12} className="inline mr-1" />

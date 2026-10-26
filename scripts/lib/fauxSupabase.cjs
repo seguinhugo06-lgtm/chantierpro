@@ -8,8 +8,9 @@ const json = (corps, status = 200) => ({ status, body: JSON.stringify(corps) });
 /**
  * @param {Object} initial  lignes de départ par table ({ clients: [...] })
  * @param {Function} [refuser]  (methode, table, requete) => réponse à renvoyer à la place de l'écriture, ou null
+ * @param {string} [role]  rôle de l'utilisateur dans l'organisation (owner par défaut ; chef_chantier, ouvrier, readonly…)
  */
-function creerBase(initial = {}, { refuser = null } = {}) {
+function creerBase(initial = {}, { refuser = null, role = 'owner' } = {}) {
   const tables = { ...initial };
   const journal = []; // { m, table, q, corps }
   const reponse = (req, u) => {
@@ -19,7 +20,7 @@ function creerBase(initial = {}, { refuser = null } = {}) {
     if (p === '/auth/v1/user') return json({ id: UID, aud: 'authenticated', role: 'authenticated', email: 'test@exemple.fr' });
     if (p === '/rest/v1/organization_members') {
       const un = /pgrst\.object/.test(req.headers().accept || '');
-      const membre = { id: 'm-1', user_id: UID, organization_id: ORG, role: 'owner', joined_at: '2026-01-01T00:00:00Z', equipe_member_id: null };
+      const membre = { id: 'm-1', user_id: UID, organization_id: ORG, role, joined_at: '2026-01-01T00:00:00Z', equipe_member_id: null };
       return un ? json(membre) : json([membre]);
     }
     if (!p.startsWith('/rest/v1/') || p.includes('/rpc/')) return json([]);

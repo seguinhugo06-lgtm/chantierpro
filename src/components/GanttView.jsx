@@ -1,6 +1,10 @@
 import { useState, useMemo, useRef } from 'react';
-import { ChevronLeft, ChevronRight, Plus, Trash2, X, Check, Users, Building2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Trash2, Users, Building2 } from 'lucide-react';
 import { useConfirm } from '../context/AppContext';
+import Modal, { ModalHeader, ModalTitle, ModalBody, ModalFooter } from './ui/Modal';
+import Champ from './ui/Champ';
+import { Segmente } from './ui/Onglets';
+import { Bouton } from './ui/Bouton';
 import { generateId } from '../lib/utils';
 import { jourLocal } from '../lib/dates';
 
@@ -41,7 +45,6 @@ export default function GanttView({
   const textPrimary = 'text-encre';
   const textSecondary = 'text-encre-2';
   const textMuted = 'text-encre-2';
-  const inputBg = 'bg-surface border-bord-fort';
   const hoverBg = 'hover:bg-surface-2';
   const gridBg = 'bg-fond';
   const todayBg = 'bg-accent/10';
@@ -185,6 +188,7 @@ export default function GanttView({
     const confirmed = await confirm({ title: 'Supprimer', message: 'Supprimer cette tâche ?' });
     if (confirmed) {
       setTaches(prev => prev.filter(t => t.id !== taskId));
+      resetForm();
     }
   };
 
@@ -232,25 +236,11 @@ export default function GanttView({
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <h2 className={`text-xl font-bold ${textPrimary}`}>Planning Gantt</h2>
+        <h2 className={`text-xl font-bold ${textPrimary}`}>Frise du planning</h2>
         <div className="flex items-center gap-3">
           {/* View mode toggle */}
-          <div className={`flex rounded-lg overflow-hidden border border-bord`}>
-            {['week', 'month'].map(mode => (
-              <button
-                key={mode}
-                onClick={() => setViewMode(mode)}
-                aria-pressed={viewMode === mode}
-                className={`px-3 py-1.5 min-h-[44px] sm:min-h-0 text-sm font-medium ${
-                  viewMode === mode
-                    ? 'bg-accent text-sur-accent'
-                    : 'bg-surface text-encre-2'
-                }`}
-              >
-                {mode === 'week' ? 'Semaine' : 'Mois'}
-              </button>
-            ))}
-          </div>
+          {/* Un choix de période n'est pas une action : le composant commun, pas un bouton plein de plus */}
+          <Segmente ariaLabel="Période de la frise" valeur={viewMode} onChange={setViewMode} options={[{ valeur: 'week', libelle: 'Semaine' }, { valeur: 'month', libelle: 'Mois' }]} />
 
           {/* Navigation */}
           <div className="flex items-center gap-1">
@@ -269,13 +259,7 @@ export default function GanttView({
           </div>
 
           {/* Add task */}
-          <button
-            onClick={() => setShowAddTask(true)}
-            className="px-4 py-2 rounded-xl font-medium flex items-center gap-2 bg-accent text-sur-accent"
-          >
-            <Plus size={18} />
-            Tâche
-          </button>
+          <Bouton variante="secondaire" icone={Plus} onClick={() => setShowAddTask(true)}>Tâche</Bouton>
         </div>
       </div>
 
@@ -424,150 +408,70 @@ export default function GanttView({
         ))}
       </div>
 
-      {/* Add/Edit Task Modal */}
-      {showAddTask && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className={`bg-surface rounded-2xl w-full max-w-lg p-6`}>
-            <div className="flex items-center justify-between mb-6">
-              <h2 className={`text-lg font-bold ${textPrimary}`}>
-                {editingTask ? 'Modifier la tâche' : 'Nouvelle tâche'}
-              </h2>
-              <button onClick={resetForm} className={`p-2 rounded-lg ${hoverBg}`}>
-                <X size={20} className={textSecondary} />
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Nom de la tâche *</label>
-                <input
-                  type="text"
-                  value={form.nom}
-                  onChange={e => setForm(p => ({ ...p, nom: e.target.value }))}
-                  className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`}
-                  placeholder="Ex: Pose carrelage salle de bain"
-                />
-              </div>
-
-              <div>
-                <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Chantier *</label>
-                <select
-                  value={form.chantierId}
-                  onChange={e => setForm(p => ({ ...p, chantierId: e.target.value }))}
-                  className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`}
-                >
-                  <option value="">Sélectionner un chantier</option>
-                  {chantiers.filter(c => c.statut === 'en_cours' || c.statut === 'planifie').map(c => (
-                    <option key={c.id} value={c.id}>{c.nom}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Date de début</label>
-                  <input
-                    type="date"
-                    value={form.debut}
-                    onChange={e => setForm(p => ({ ...p, debut: e.target.value }))}
-                    className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`}
-                  />
-                </div>
-                <div>
-                  <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Durée (jours)</label>
-                  <input
-                    type="number"
-                    min="1"
-                    value={form.duree}
-                    onChange={e => setForm(p => ({ ...p, duree: parseInt(e.target.value) || 1 }))}
-                    className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Statut</label>
-                <select
-                  value={form.statut}
-                  onChange={e => setForm(p => ({ ...p, statut: e.target.value }))}
-                  className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`}
-                >
-                  <option value="planifie">Planifié</option>
-                  <option value="en_cours">En cours</option>
-                  <option value="termine">Terminé</option>
-                </select>
-              </div>
-
-
-              {equipe.length > 0 && (
-                <div>
-                  <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Assigner à</label>
-                  <div className="flex flex-wrap gap-2">
-                    {equipe.map(e => (
-                      <button
-                        key={e.id}
-                        onClick={() => {
-                          setForm(p => ({
-                            ...p,
-                            assignes: p.assignes.includes(e.id)
-                              ? p.assignes.filter(id => id !== e.id)
-                              : [...p.assignes, e.id]
-                          }));
-                        }}
-                        aria-pressed={form.assignes.includes(e.id)}
-                        className={`px-3 py-1.5 min-h-[44px] rounded-full text-sm flex items-center gap-2 ${
-                          form.assignes.includes(e.id)
-                            ? 'bg-accent text-sur-accent'
-                            : 'bg-surface-2 text-encre-2'
-                        }`}
-                      >
-                        <Users size={14} />
-                        {e.prenom}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <div>
-                <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Notes</label>
-                <textarea
-                  value={form.notes}
-                  onChange={e => setForm(p => ({ ...p, notes: e.target.value }))}
-                  className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`}
-                  rows={2}
-                  placeholder="Notes supplémentaires..."
-                />
-              </div>
-            </div>
-
-            <div className="flex gap-3 mt-6">
-              {editingTask && (
-                <button
-                  onClick={() => handleDelete(editingTask.id)}
-                  aria-label="Supprimer la tâche"
-                  className="px-4 py-2.5 rounded-xl bg-danger-fond text-danger-texte"
-                >
-                  <Trash2 size={18} />
-                </button>
-              )}
-              <button
-                onClick={resetForm}
-                className={`flex-1 py-2.5 rounded-xl bg-surface-2 text-encre-2`}
-              >
-                Annuler
-              </button>
-              <button
-                onClick={handleSubmit}
-                className="flex-1 py-2.5 rounded-xl font-medium flex items-center justify-center gap-2 bg-accent text-sur-accent"
-              >
-                <Check size={18} />
-                {editingTask ? 'Enregistrer' : 'Créer'}
-              </button>
-            </div>
+      {/* Ajouter / modifier une tâche de la frise : ui/Modal (portail, focus, Échap, feuille du bas au téléphone) */}
+      <Modal isOpen={showAddTask} onClose={resetForm} size="md">
+        <ModalHeader>
+          <ModalTitle>{editingTask ? 'Modifier la tâche' : 'Nouvelle tâche'}</ModalTitle>
+        </ModalHeader>
+        <ModalBody className="space-y-4">
+          <Champ libelle="Nom de la tâche" placeholder="Ex: Pose carrelage salle de bain" value={form.nom} onChange={e => setForm(p => ({ ...p, nom: e.target.value }))} />
+          <Champ as="select" libelle="Chantier" value={form.chantierId} onChange={e => setForm(p => ({ ...p, chantierId: e.target.value }))}>
+            <option value="">Sélectionner un chantier</option>
+            {chantiers.filter(c => c.statut === 'en_cours' || c.statut === 'planifie').map(c => (
+              <option key={c.id} value={c.id}>{c.nom}</option>
+            ))}
+          </Champ>
+          <div className="grid grid-cols-2 gap-3">
+            <Champ libelle="Date de début" type="date" value={form.debut} onChange={e => setForm(p => ({ ...p, debut: e.target.value }))} />
+            <Champ libelle="Durée (jours)" type="number" min="1" value={form.duree} onChange={e => setForm(p => ({ ...p, duree: parseInt(e.target.value) || 1 }))} />
           </div>
-        </div>
-      )}
+          <Champ as="select" libelle="Statut" value={form.statut} onChange={e => setForm(p => ({ ...p, statut: e.target.value }))}>
+            <option value="planifie">Planifié</option>
+            <option value="en_cours">En cours</option>
+            <option value="termine">Terminé</option>
+          </Champ>
+          {equipe.length > 0 && (
+            <div>
+              <p className="mb-1.5 text-sm font-medium text-encre-2">Assigner à</p>
+              <div className="flex flex-wrap gap-2" role="group" aria-label="Personnes assignées">
+                {equipe.map(e => (
+                  <button
+                    key={e.id}
+                    type="button"
+                    onClick={() => {
+                      setForm(p => ({
+                        ...p,
+                        assignes: p.assignes.includes(e.id)
+                          ? p.assignes.filter(id => id !== e.id)
+                          : [...p.assignes, e.id]
+                      }));
+                    }}
+                    aria-pressed={form.assignes.includes(e.id)}
+                    className={`px-3 py-1.5 min-h-[44px] rounded-full text-sm flex items-center gap-2 ${
+                      form.assignes.includes(e.id)
+                        ? 'bg-accent text-sur-accent'
+                        : 'bg-surface-2 text-encre-2'
+                    }`}
+                  >
+                    <Users size={14} aria-hidden="true" />
+                    {e.prenom}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          <Champ as="textarea" libelle="Notes" facultatif rows={2} placeholder="Notes supplémentaires..." value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} />
+        </ModalBody>
+        <ModalFooter className={editingTask ? 'justify-between' : undefined}>
+          {editingTask && (
+            <Bouton variante="discret" icone={Trash2} className="text-danger-texte" onClick={() => handleDelete(editingTask.id)}>Supprimer</Bouton>
+          )}
+          <div className="flex gap-2">
+            <Bouton variante="secondaire" onClick={resetForm}>Annuler</Bouton>
+            <Bouton variante="principal" onClick={handleSubmit} disabled={!form.nom || !form.chantierId}>{editingTask ? 'Enregistrer' : 'Créer'}</Bouton>
+          </div>
+        </ModalFooter>
+      </Modal>
     </div>
   );
 }

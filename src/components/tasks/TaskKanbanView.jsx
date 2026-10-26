@@ -49,7 +49,7 @@ function KanbanCard({ memo, chantier, onSelect, onDragStart, isTermine }) {
 
   return (
     <div
-      draggable
+      draggable={!!onDragStart}
       onDragStart={(e) => {
         e.dataTransfer.setData('memoId', memo.id);
         e.dataTransfer.setData('fromStatus', memo.status || 'a_faire');
@@ -57,7 +57,7 @@ function KanbanCard({ memo, chantier, onSelect, onDragStart, isTermine }) {
         onDragStart?.(memo.id);
       }}
       onClick={() => onSelect?.(memo.id)}
-      className={`group cursor-grab active:cursor-grabbing rounded-lg border p-3 transition-all hover:shadow-md ${
+      className={`group ${onDragStart ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'} rounded-lg border p-3 transition-all hover:shadow-md ${
         isTermine
           ? 'bg-fond border-bord opacity-60'
           : 'bg-surface border-bord hover:border-bord-fort'
@@ -76,10 +76,12 @@ function KanbanCard({ memo, chantier, onSelect, onDragStart, isTermine }) {
             {memo.title || memo.text || 'Sans titre'}
           </p>
         </div>
-        <GripVertical
-          size={14}
-          className="text-encre-3 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 ml-1"
-        />
+        {onDragStart && (
+          <GripVertical
+            size={14}
+            className="text-encre-3 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 ml-1"
+          />
+        )}
       </div>
 
       {/* Badges row */}
@@ -233,16 +235,18 @@ function KanbanColumn({
         )}
       </div>
 
-      {/* Add button */}
-      <div className={`p-2 border-t border-bord`}>
-        <button
-          onClick={() => onAddMemo?.(column.id)}
-          className={`w-full flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-colors text-encre-3 hover:bg-surface-2 hover:text-encre-2`}
-        >
-          <Plus size={14} />
-          Ajouter
-        </button>
-      </div>
+      {/* Add button : seulement pour qui peut créer des tâches */}
+      {onAddMemo && (
+        <div className={`p-2 border-t border-bord`}>
+          <button
+            onClick={() => onAddMemo(column.id)}
+            className={`w-full flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-colors text-encre-3 hover:bg-surface-2 hover:text-encre-2`}
+          >
+            <Plus size={14} />
+            Ajouter
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -262,6 +266,9 @@ export default function TaskKanbanView({
   filters = {},
   selectedMemoId,
   onSelectMemo,
+  peutCreer = true,
+  peutModifier = true,
+  peutSupprimer = true,
 }) {
   const [dragId, setDragId] = useState(null);
 
@@ -337,23 +344,23 @@ export default function TaskKanbanView({
 
   // Handle drop: update memo status
   const handleDrop = useCallback((memoId, newStatus) => {
-    if (!updateMemo) return;
+    if (!updateMemo || !peutModifier) return;
     updateMemo(memoId, {
       status: newStatus,
       is_done: newStatus === 'termine',
       done_at: newStatus === 'termine' ? new Date().toISOString() : null,
     });
     setDragId(null);
-  }, [updateMemo]);
+  }, [updateMemo, peutModifier]);
 
   // Handle add memo in specific column
   const handleAddMemo = useCallback((status) => {
-    if (!addMemo) return;
+    if (!addMemo || !peutCreer) return;
     addMemo({
       status,
       is_done: status === 'termine',
     });
-  }, [addMemo]);
+  }, [addMemo, peutCreer]);
 
   // Handle select memo
   const handleSelectMemo = useCallback((memoId) => {
@@ -377,9 +384,9 @@ export default function TaskKanbanView({
             isDark={isDark}
             couleur={couleur}
             onSelect={handleSelectMemo}
-            onDragStart={setDragId}
+            onDragStart={peutModifier ? setDragId : undefined}
             onDrop={handleDrop}
-            onAddMemo={handleAddMemo}
+            onAddMemo={peutCreer ? handleAddMemo : undefined}
           />
         ))}
       </div>
@@ -390,6 +397,8 @@ export default function TaskKanbanView({
           memo={selectedMemo}
           onUpdate={updateMemo}
           onDelete={deleteMemo}
+          peutModifier={peutModifier}
+          peutSupprimer={peutSupprimer}
           onClose={() => onSelectMemo(null)}
           chantiers={chantiers}
           clients={clients}

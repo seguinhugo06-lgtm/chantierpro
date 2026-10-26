@@ -8,7 +8,7 @@ import Planning from '../Planning';
 export default function TaskCalendarView({
   events, setEvents, addEvent, updateEvent, deleteEvent,
   memos, toggleMemo, updateMemo,
-  chantiers, clients, equipe, devis,
+  chantiers, clients, equipe, devis, paiements, ouvrirDevis, modeDiscret,
   setPage, setSelectedChantier, updateChantier,
   couleur, isDark,
   prefill, clearPrefill, demandeAjout,
@@ -34,6 +34,9 @@ export default function TaskCalendarView({
       prefill={prefill}
       clearPrefill={clearPrefill}
       devis={devis}
+      paiements={paiements}
+      ouvrirDevis={ouvrirDevis}
+      modeDiscret={modeDiscret}
       demandeAjout={demandeAjout}
     />
   );

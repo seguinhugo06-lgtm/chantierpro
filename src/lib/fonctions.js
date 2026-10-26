@@ -27,6 +27,10 @@
  * automatiques). Éteint en v1 (décision D-21 : jamais essayé de bout en bout, règle des 7 jours hors
  * établissement, « système de caisse » à voir avec le comptable) ; virement avec IBAN et « Paiement reçu »
  * suffisent. Les liens déjà envoyés restent valables (page /pay/…).
+ *
+ * sousTraitantsChantier — l'onglet « Sous-traitants » de la fiche chantier. Éteint le 26 oct. 2026 (relecture de la
+ * Task 6) : il ne fait que lister les sous-traitants de l'équipe, sans lien avec le chantier, et dit lui-même qu'on ne peut
+ * pas les y affecter. À rallumer avec l'affectation d'un sous-traitant à un chantier (décision d'Hugo).
  */
 export const FONCTIONS = Object.freeze({
   ia: false,
@@ -34,6 +38,7 @@ export const FONCTIONS = Object.freeze({
   portailClient: false,
   receptionChantier: false,
   paiementEnLigne: false,
+  sousTraitantsChantier: false,
 });
 
 export default FONCTIONS;

@@ -2,7 +2,9 @@
  * RapportChantier - Rapport de Chantier (Site Report) Component
  *
  * Allows creating, editing, viewing, and managing site reports for a given chantier.
- * Reports are stored in localStorage keyed by chantier ID.
+ * Reports are stored in localStorage keyed by chantier ID: they live on THIS device only (not synced, not backed up).
+ * The messages say so (« enregistré sur cet appareil »), and a write that the device refuses (quota) is reported, never
+ * announced as done (Task 6 review, round 1).
  *
  * Features:
  * - List of past reports with type/status badges
@@ -18,6 +20,7 @@ import {
   PenTool, Plus, Trash2, ChevronDown, ChevronUp, Eye, Edit3, Save,
   CheckCircle, ArrowLeft, X
 } from 'lucide-react';
+import { useToast } from '../../context/AppContext';
 import { generateId } from '../../lib/utils';
 import { downloadRapportPDF } from '../../lib/rapportChantierPdf';
 import { jourLocal, dateLue } from '../../lib/dates';
@@ -69,9 +72,14 @@ const loadRapports = (chantierId) => {
   }
 };
 
-/** Persist reports to localStorage for a given chantier. */
+/** Persist reports to localStorage for a given chantier. Returns false when the device refuses the write (quota, private mode). */
 const saveRapports = (chantierId, rapports) => {
-  localStorage.setItem(storageKey(chantierId), JSON.stringify(rapports));
+  try {
+    localStorage.setItem(storageKey(chantierId), JSON.stringify(rapports));
+    return true;
+  } catch {
+    return false;
+  }
 };
 
 /** Create an empty report template with sensible defaults. */
@@ -178,22 +186,21 @@ export default function RapportChantier({ chantier, equipe = [], isDark = false,
   const [rapports, setRapports] = useState(() => loadRapports(chantier?.id));
   const [selectedId, setSelectedId] = useState(null);
   const [mode, setMode] = useState('list'); // list | edit | view
-  const [toast, setToast] = useState(null);
+  const { showToast } = useToast();
 
   // Current report being edited / viewed
   const [draft, setDraft] = useState(null);
 
-  /** Show a temporary toast message. */
-  const showToast = useCallback((message, type = 'info') => {
-    setToast({ message, type });
-    setTimeout(() => setToast(null), 3000);
-  }, []);
-
-  /** Persist rapports and update state. */
+  /** Persist rapports and update state; false (and a message) when the device refused the write. */
   const persist = useCallback((updated) => {
+    const ok = saveRapports(chantier?.id, updated);
+    if (!ok) {
+      showToast('Rapport non enregistré : la mémoire de cet appareil est pleine', 'error');
+      return false;
+    }
     setRapports(updated);
-    saveRapports(chantier?.id, updated);
-  }, [chantier?.id]);
+    return true;
+  }, [chantier?.id, showToast]);
 
   // Next report number (auto-increment)
   const nextNumero = useMemo(() => {
@@ -233,9 +240,9 @@ export default function RapportChantier({ chantier, equipe = [], isDark = false,
     const updated = { ...draft, statut: 'brouillon', updatedAt: new Date().toISOString() };
     const exists = rapports.find((r) => r.id === updated.id);
     const next = exists ? rapports.map((r) => (r.id === updated.id ? updated : r)) : [...rapports, updated];
-    persist(next);
+    if (!persist(next)) return;
     setDraft(updated);
-    showToast('Brouillon enregistré', 'success');
+    showToast('Brouillon enregistré sur cet appareil', 'success');
   }, [draft, rapports, persist, showToast]);
 
   /** Validate the report (mark as validated). */
@@ -253,22 +260,22 @@ export default function RapportChantier({ chantier, equipe = [], isDark = false,
     };
     const exists = rapports.find((r) => r.id === updated.id);
     const next = exists ? rapports.map((r) => (r.id === updated.id ? updated : r)) : [...rapports, updated];
-    persist(next);
+    if (!persist(next)) return;
     setDraft(updated);
     setMode('view');
-    showToast('Rapport validé avec succès', 'success');
+    showToast('Rapport validé et enregistré sur cet appareil', 'success');
   }, [draft, rapports, persist, showToast]);
 
   /** Delete a report. */
   const handleDelete = useCallback((id) => {
     const next = rapports.filter((r) => r.id !== id);
-    persist(next);
+    if (!persist(next)) return;
     if (selectedId === id) {
       setMode('list');
       setDraft(null);
       setSelectedId(null);
     }
-    showToast('Rapport supprimé', 'info');
+    showToast('Rapport supprimé de cet appareil', 'info');
   }, [rapports, persist, selectedId, showToast]);
 
   /** Return to report list. */
@@ -1048,20 +1055,6 @@ export default function RapportChantier({ chantier, equipe = [], isDark = false,
   // ---------------------------------------------------------------------------
   return (
     <div className={`min-h-0 text-encre`}>
-      {/* Toast notification */}
-      {toast && (
-        <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-top">
-          <div className={`flex items-center gap-2 px-4 py-2.5 rounded-lg shadow-lg text-sm font-medium text-white ${
-            toast.type === 'success' ? 'bg-green-600' : toast.type === 'error' ? 'bg-red-600' : 'bg-slate-700'
-          }`}>
-            {toast.type === 'success' && <CheckCircle size={16} />}
-            {toast.type === 'error' && <AlertTriangle size={16} />}
-            {toast.type === 'info' && <FileText size={16} />}
-            {toast.message}
-          </div>
-        </div>
-      )}
-
       {/* Route between list, editor, and view */}
       {mode === 'list' && renderList()}
       {mode === 'edit' && renderEditor()}

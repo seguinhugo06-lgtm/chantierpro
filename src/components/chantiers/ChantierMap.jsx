@@ -72,7 +72,7 @@ function FitBounds({ positions }) {
 /**
  * ChantierMap - Interactive map displaying all chantiers
  */
-export default function ChantierMap({ chantiers, clients, onSelectChantier, isDark, couleur: _couleur, formatMoney, modeDiscret: _modeDiscret }) {
+export default function ChantierMap({ chantiers, clients, onSelectChantier, isDark, couleur: _couleur, formatMoney, modeDiscret: _modeDiscret, voitPrix = true, budgetDe }) {
   const [positions, setPositions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [userPos, setUserPos] = useState(null);
@@ -430,10 +430,11 @@ export default function ChantierMap({ chantiers, clients, onSelectChantier, isDa
             )}
 
             {/* Budget */}
-            {(sch.budget_estime || sch.budgetPrevu) ? (
+            {/* Budget : seulement pour un rôle qui voit les prix, et la même définition que la liste et la fiche */}
+            {voitPrix && (budgetDe ? budgetDe(sch) : (sch.budget_estime || sch.budgetPrevu)) > 0 ? (
               <div className={`mt-3 text-sm ${textPrimary}`}>
                 <span className={textMuted}>Budget : </span>
-                <span className="font-semibold">{formatMoney?.(sch.budget_estime || sch.budgetPrevu) || `${(sch.budget_estime || sch.budgetPrevu).toLocaleString('fr-FR')} €`}</span>
+                <span className="font-semibold">{(() => { const budget = budgetDe ? budgetDe(sch) : (sch.budget_estime || sch.budgetPrevu); return formatMoney?.(budget) || `${budget.toLocaleString('fr-FR')} €`; })()}</span>
               </div>
             ) : null}
 

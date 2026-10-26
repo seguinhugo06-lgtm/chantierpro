@@ -71,7 +71,7 @@ function MiniTaskCard({ memo, isDark, couleur, onSelect, onDragStart }) {
 
   return (
     <div
-      draggable
+      draggable={!!onDragStart}
       onDragStart={(e) => {
         e.dataTransfer.setData('memoId', memo.id);
         e.dataTransfer.setData('sourceAssignee', memo.assigned_to || '');
@@ -83,7 +83,7 @@ function MiniTaskCard({ memo, isDark, couleur, onSelect, onDragStart }) {
         e.stopPropagation();
         onSelect?.(memo.id);
       }}
-      className={`group cursor-grab active:cursor-grabbing rounded-md border px-2 py-1.5 text-xs transition-all hover:shadow-sm mb-1 bg-surface border-bord hover:border-bord-fort`}
+      className={`group ${onDragStart ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'} rounded-md border px-2 py-1.5 text-xs transition-all hover:shadow-sm mb-1 bg-surface border-bord hover:border-bord-fort`}
     >
       <div className="flex items-center gap-1.5 min-w-0">
         <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${classesTon(priorite.ton).point}`} />
@@ -177,7 +177,7 @@ function MemberRow({ membre, weekDays, memosByDay, totalHours, isDark, couleur, 
   const todayStr = toDateStr(new Date());
   const displayName = membre
     ? `${membre.prenom || ''} ${(membre.nom || '').charAt(0)}.`.trim()
-    : 'Non assigne';
+    : 'Non assigné';
 
   const weekCapacity = weekDays.length * DEFAULT_CAPACITY;
 
@@ -243,7 +243,7 @@ function MemberAccordion({ membre, weekDays, memosByDay, totalHours, isDark, cou
   const todayStr = toDateStr(new Date());
   const displayName = membre
     ? `${membre.prenom || ''} ${(membre.nom || '').charAt(0)}.`.trim()
-    : 'Non assigne';
+    : 'Non assigné';
 
   const allMemos = weekDays.flatMap(d => memosByDay[toDateStr(d)] || []);
   const weekCapacity = weekDays.length * DEFAULT_CAPACITY;
@@ -272,7 +272,7 @@ function MemberAccordion({ membre, weekDays, memosByDay, totalHours, isDark, cou
           <div className="flex items-center gap-2">
             <LoadIndicator hours={totalHours} capacity={weekCapacity} isDark={isDark} />
             <span className="text-xs text-encre-3">
-              {allMemos.length} tache{allMemos.length !== 1 ? 's' : ''}
+              {allMemos.length} tâche{allMemos.length !== 1 ? 's' : ''}
             </span>
           </div>
         </div>
@@ -309,7 +309,7 @@ function MemberAccordion({ membre, weekDays, memosByDay, totalHours, isDark, cou
           })}
           {allMemos.length === 0 && (
             <p className={`text-xs text-center py-3 text-encre-3`}>
-              Aucune tache cette semaine
+              Aucune tâche cette semaine
             </p>
           )}
         </div>
@@ -334,6 +334,8 @@ export default function TaskTeamView({
   clients = [],
   deleteMemo,
   selectedMemoId,
+  peutModifier = true,
+  peutSupprimer = true,
 }) {
   const [currentDate, setCurrentDate] = useState(() => getMonday(new Date()));
   const [rangeMode, setRangeMode] = useState('week'); // 'week' | 'day'
@@ -447,7 +449,7 @@ export default function TaskTeamView({
 
   // Handle drop on cell — reassign + redate
   const handleDropToCell = useCallback((memoId, newAssigneeId, newDate) => {
-    if (!updateMemo) return;
+    if (!updateMemo || !peutModifier) return;
     const updates = {};
     const memo = memos.find(m => m.id === memoId);
     if (!memo) return;
@@ -464,7 +466,7 @@ export default function TaskTeamView({
       updateMemo(memoId, updates);
     }
     setDragId(null);
-  }, [updateMemo, memos]);
+  }, [updateMemo, memos, peutModifier]);
 
   const selectedMemo = memos.find(m => m.id === selectedMemoId);
   const todayStr = toDateStr(new Date());
@@ -480,7 +482,7 @@ export default function TaskTeamView({
           <button
             onClick={goBack}
             className={`p-1.5 rounded-lg transition-colors hover:bg-surface-2 text-encre-3`}
-            aria-label="Precedent"
+            aria-label="Précédent"
           >
             <ChevronLeft size={18} />
           </button>
@@ -582,7 +584,7 @@ export default function TaskTeamView({
             isDark={isDark}
             couleur={couleur}
             onSelect={onSelectMemo}
-            onDragStart={setDragId}
+            onDragStart={peutModifier ? setDragId : undefined}
             onDropToCell={handleDropToCell}
           />
         ))}
@@ -598,7 +600,7 @@ export default function TaskTeamView({
             isDark={isDark}
             couleur={couleur}
             onSelect={onSelectMemo}
-            onDragStart={setDragId}
+            onDragStart={peutModifier ? setDragId : undefined}
             onDropToCell={handleDropToCell}
           />
         )}
@@ -625,7 +627,7 @@ export default function TaskTeamView({
             isDark={isDark}
             couleur={couleur}
             onSelect={onSelectMemo}
-            onDragStart={setDragId}
+            onDragStart={peutModifier ? setDragId : undefined}
             onDropToCell={handleDropToCell}
           />
         ))}
@@ -640,7 +642,7 @@ export default function TaskTeamView({
             isDark={isDark}
             couleur={couleur}
             onSelect={onSelectMemo}
-            onDragStart={setDragId}
+            onDragStart={peutModifier ? setDragId : undefined}
             onDropToCell={handleDropToCell}
           />
         )}
@@ -660,6 +662,8 @@ export default function TaskTeamView({
           memo={selectedMemo}
           onUpdate={updateMemo}
           onDelete={deleteMemo}
+          peutModifier={peutModifier}
+          peutSupprimer={peutSupprimer}
           onClose={() => onSelectMemo(null)}
           chantiers={chantiers}
           clients={clients}

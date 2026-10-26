@@ -6,6 +6,7 @@ import { Bouton } from '../ui/Bouton';
 import { Segmente } from '../ui/Onglets';
 import { BoutonVolet, Volet, ListeChoix } from '../ui/Filtres';
 import { usePermissions } from '../../hooks/usePermissions';
+import { useToast } from '../../context/AppContext';
 import { evenementsDuJour } from '../../lib/evenementsPlanning';
 import { jourLocal } from '../../lib/dates';
 
@@ -35,13 +36,13 @@ const pluriel = (n, mot) => `${n} ${mot}${n > 1 ? 's' : ''}`;
 
 export default function TasksAndPlanning({
   // Mémos (les tâches)
-  memos, addMemo, updateMemo, deleteMemo, toggleMemo,
+  memos, addMemo: addMemoBrut, updateMemo: updateMemoBrut, deleteMemo: deleteMemoBrut, toggleMemo: toggleMemoBrut,
   // Événements du planning
   events, setEvents, addEvent, updateEvent, deleteEvent,
   // Données partagées
-  chantiers, clients, equipe, devis,
+  chantiers, clients, equipe, devis, paiements, modeDiscret,
   // Navigation
-  setPage, setSelectedChantier, updateChantier,
+  setPage, setSelectedChantier, updateChantier, ouvrirDevis,
   // Interface
   isDark, couleur, showToast: _showToast,
   // Planning
@@ -50,6 +51,17 @@ export default function TasksAndPlanning({
   initialView,
 }) {
   const { canPerform } = usePermissions();
+  const { showToast } = useToast();
+  // Droits sur les tâches (canPerform « memo ») : les vues cachent ce qu'elles ne permettent pas, et ces garde-fous refusent
+  // en le disant, jamais en silence, une écriture qui passerait par un autre chemin (relecture de la Task 6, tour 1)
+  const peutCreerTache = canPerform('memo', 'create');
+  const peutModifierTache = canPerform('memo', 'edit');
+  const peutSupprimerTache = canPerform('memo', 'delete');
+  const refuser = (verbe) => async () => { showToast(`Votre rôle ne permet pas de ${verbe} des tâches`, 'warning'); return false; };
+  const addMemo = peutCreerTache ? addMemoBrut : refuser('créer');
+  const updateMemo = peutModifierTache ? updateMemoBrut : refuser('modifier');
+  const toggleMemo = peutModifierTache ? toggleMemoBrut : refuser('modifier');
+  const deleteMemo = peutSupprimerTache ? deleteMemoBrut : refuser('supprimer');
   const [viewMode, setViewMode] = useState(() => {
     const raw = initialView || localStorage.getItem('cp_tasks_view') || 'list';
     // L'ancienne vue « agenda » est devenue une vue du planning
@@ -141,6 +153,7 @@ export default function TasksAndPlanning({
             memos={memos} addMemo={addMemo} updateMemo={updateMemo} deleteMemo={deleteMemo} toggleMemo={toggleMemo}
             chantiers={chantiers} clients={clients} isDark={isDark} couleur={couleur} filters={filters}
             selectedMemoId={selectedMemoId} onSelectMemo={setSelectedMemoId} setPage={setPage}
+            peutCreer={peutCreerTache} peutModifier={peutModifierTache} peutSupprimer={peutSupprimerTache}
           />
         )}
         {viewMode === 'kanban' && (
@@ -148,6 +161,7 @@ export default function TasksAndPlanning({
             memos={memos} updateMemo={updateMemo} addMemo={addMemo} deleteMemo={deleteMemo} toggleMemo={toggleMemo}
             chantiers={chantiers} clients={clients} isDark={isDark} couleur={couleur} filters={filters}
             selectedMemoId={selectedMemoId} onSelectMemo={setSelectedMemoId}
+            peutCreer={peutCreerTache} peutModifier={peutModifierTache} peutSupprimer={peutSupprimerTache}
           />
         )}
         {viewMode === 'gantt' && (
@@ -160,12 +174,13 @@ export default function TasksAndPlanning({
           <TaskTeamView
             memos={memos} updateMemo={updateMemo} deleteMemo={deleteMemo} equipe={equipe} chantiers={chantiers} clients={clients}
             isDark={isDark} couleur={couleur} filters={filters} selectedMemoId={selectedMemoId} onSelectMemo={setSelectedMemoId}
+            peutModifier={peutModifierTache} peutSupprimer={peutSupprimerTache}
           />
         )}
         {viewMode === 'calendar' && (
           <TaskCalendarView
             events={events} setEvents={setEvents} addEvent={addEvent} updateEvent={updateEvent} deleteEvent={deleteEvent}
-            memos={memos} toggleMemo={toggleMemo} updateMemo={updateMemo} chantiers={chantiers} clients={clients} equipe={equipe} devis={devis}
+            memos={memos} toggleMemo={toggleMemo} updateMemo={updateMemo} chantiers={chantiers} clients={clients} equipe={equipe} devis={devis} paiements={paiements} ouvrirDevis={ouvrirDevis} modeDiscret={modeDiscret}
             setPage={setPage} setSelectedChantier={setSelectedChantier} updateChantier={updateChantier}
             couleur={couleur} isDark={isDark} prefill={prefill} clearPrefill={clearPrefill} demandeAjout={demandeAjout}
           />

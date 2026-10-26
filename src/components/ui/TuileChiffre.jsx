@@ -10,11 +10,15 @@ import { AlertTriangle } from 'lucide-react';
  * @param {string|number} valeur déjà formatée (src/lib/formatters.js)
  * @param {string} [contexte] ligne sous la valeur
  * @param {string} [alerte] remplace le contexte, en rouge avec une icône
+ * @param {'danger'|'alerte'} [tonAlerte] rouge par défaut (« en retard ») ; 'alerte' : ambre, pour ce qui est « à surveiller »
+ *   (une marge négative, un budget dépassé)
  * @param {boolean} [heros] une par écran au plus : fond glacier, valeur plus grande
  * @param {Function} [onClick] la tuile filtre ou ouvre quelque chose
  * @param {boolean} [actif] état pressé quand la tuile filtre une liste
  */
-export default function TuileChiffre({ libelle, valeur, contexte, alerte, heros = false, onClick, actif, className = '' }) {
+const TONS_ALERTE = { danger: 'text-danger-texte', alerte: 'text-alerte-texte' };
+
+export default function TuileChiffre({ libelle, valeur, contexte, alerte, tonAlerte = 'danger', heros = false, onClick, actif, className = '' }) {
   const Element = onClick ? 'button' : 'div';
   return (
     <Element
@@ -35,9 +39,9 @@ export default function TuileChiffre({ libelle, valeur, contexte, alerte, heros 
         {valeur}
       </span>
       {alerte ? (
-        <span className="mt-auto flex items-center gap-1.5 text-sm font-semibold text-danger-texte">
+        <span className={`mt-auto flex items-center gap-1.5 text-sm font-semibold ${TONS_ALERTE[tonAlerte] || TONS_ALERTE.danger}`}>
           <AlertTriangle size={16} aria-hidden="true" className="flex-shrink-0" />
-          <span className="line-clamp-2">{alerte}</span>
+          <span className="line-clamp-3">{alerte}</span>
         </span>
       ) : contexte ? (
         <span className={`mt-auto text-sm line-clamp-2 ${heros ? 'text-vedette-contexte' : 'text-encre-3'}`}>{contexte}</span>

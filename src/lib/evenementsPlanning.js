@@ -4,6 +4,9 @@
  * le lire : l'en-tête disait « 0 tâches », le compteur « 38 évén. » et la tuile « 4 » (audit UX du 20 oct. 2026).
  */
 import { jourLocal } from './dates';
+import { formatMoney } from './formatters';
+import { estFacture, estOuverte, estEnRetard } from './ventes';
+import { echeance, resteAPayer } from './paiementsFacture';
 
 const TROIS_MOIS_MAX = 3;
 
@@ -63,4 +66,47 @@ export function evenementsDuJour(evenements = [], jour = jourLocal()) {
     if (e.dateEnd) return jour >= e.date && jour <= e.dateEnd;
     return e.date === jour;
   });
+}
+
+/**
+ * Les tâches datées (non faites) vues comme des événements du planning. `employeId` vient de `assigned_to` : sans lui, le filtre
+ * « Moi » ne retrouvait aucune tâche (il garde les événements sans personne), et le filtre d'une personne non plus (relecture
+ * de la Task 6, tour 1).
+ */
+export function evenementsDesTaches(memos = []) {
+  return memos.filter((m) => m.due_date && !m.is_done).map((m) => ({
+    id: `memo_${m.id}`, memoId: m.id, title: m.text?.substring(0, 50) || 'Tâche', date: m.due_date, time: m.due_time || '', type: 'memo', isMemo: true,
+    description: m.notes || '', priority: m.priority || '', category: m.category || '', subtasks: m.subtasks || [], chantier_id: m.chantier_id || '',
+    is_done: m.is_done || false, fullText: m.text || '', employeId: m.assigned_to || '',
+  }));
+}
+
+/**
+ * Les échéances de documents : le devis envoyé dont la validité se termine, la facture à encaisser. Le titre porte le type et le
+ * numéro (le client est dans `clientId`, affiché dessous) ; la facture est « en retard » (rouge) selon la règle de ventes.js, et son
+ * montant est le reste dû. Sans le droit de voir les prix (`voitMontants` faux), aucun montant n'est écrit ; sans accès aux devis,
+ * appeler avec une liste vide.
+ * @param {Array} documents  devis et factures
+ * @param {{ paiements?: Array, maintenant?: Date, voitMontants?: boolean }} [options]
+ */
+export function evenementsDesDocuments(documents = [], { paiements = [], maintenant = new Date(), voitMontants = true } = {}) {
+  const liste = [];
+  for (const d of documents) {
+    if (d.type === 'devis' && d.date_validite && ['envoye', 'vu'].includes(d.statut)) {
+      liste.push({
+        id: `devis_${d.id}`, title: `Devis ${d.numero || ''}`.trim(), date: d.date_validite, type: 'deadline', isDeadline: true, ton: 'neutre', clientId: d.client_id || '',
+        description: voitMontants && d.total_ttc ? `Échéance devis — ${formatMoney(d.total_ttc)}` : 'Échéance devis', devisId: d.id,
+      });
+    }
+    if (estFacture(d) && estOuverte(d, paiements, maintenant)) {
+      const ech = echeance(d);
+      if (!ech) continue;
+      liste.push({
+        id: `facture_${d.id}`, title: `Facture ${d.numero || ''}`.trim(), date: jourLocal(ech), type: 'deadline', isDeadline: true, clientId: d.client_id || '',
+        ton: estEnRetard(d, paiements, maintenant) ? 'danger' : 'neutre',
+        description: voitMontants ? `Échéance facture — reste dû ${formatMoney(resteAPayer(d, paiements))}` : 'Échéance facture', devisId: d.id,
+      });
+    }
+  }
+  return liste;
 }

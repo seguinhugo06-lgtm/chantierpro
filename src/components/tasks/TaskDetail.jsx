@@ -108,7 +108,7 @@ function SubtaskList({ subtasks = [], onUpdate, couleur: _couleur, isDark: _isDa
 // ════════════════════════════════════════════════════════
 // TaskDetail — Slide-in detail panel
 // ════════════════════════════════════════════════════════
-export default function TaskDetail({ memo, onUpdate, onDelete, onClose, chantiers, clients, equipe, couleur, isDark }) {
+export default function TaskDetail({ memo, onUpdate, onDelete, onClose, chantiers, clients, equipe, couleur, isDark, peutModifier = true, peutSupprimer = true }) {
   const [text, setText] = useState(memo.text || '');
   const [notes, setNotes] = useState(memo.notes || '');
   const debouncedText = useDebounce(text, 800);
@@ -159,38 +159,33 @@ export default function TaskDetail({ memo, onUpdate, onDelete, onClose, chantier
     }
   }, [text, notes]);
 
+  // « Sauvegardé » seulement une fois l'écriture faite : onUpdate rend false quand la base refuse (relecture de la Task 6, tour 1)
+  const sauver = async (updates) => {
+    try {
+      if ((await onUpdate(memo.id, updates)) === false) { setSaveStatus('error'); return false; }
+    } catch {
+      setSaveStatus('error');
+      return false;
+    }
+    setSaveStatus('saved');
+    setLastSavedAt(Date.now());
+    clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => setSaveStatus('idle'), 2000);
+    return true;
+  };
+
   // Auto-save text
   useEffect(() => {
     if (isFirstRender.current) {
       isFirstRender.current = false;
       return;
     }
-    if (debouncedText !== memo.text) {
-      try {
-        onUpdate(memo.id, { text: debouncedText });
-        setSaveStatus('saved');
-        setLastSavedAt(Date.now());
-        clearTimeout(saveTimerRef.current);
-        saveTimerRef.current = setTimeout(() => setSaveStatus('idle'), 2000);
-      } catch {
-        setSaveStatus('error');
-      }
-    }
+    if (debouncedText !== memo.text) sauver({ text: debouncedText });
   }, [debouncedText]);
 
   // Auto-save notes
   useEffect(() => {
-    if (debouncedNotes !== (memo.notes || '')) {
-      try {
-        onUpdate(memo.id, { notes: debouncedNotes });
-        setSaveStatus('saved');
-        setLastSavedAt(Date.now());
-        clearTimeout(saveTimerRef.current);
-        saveTimerRef.current = setTimeout(() => setSaveStatus('idle'), 2000);
-      } catch {
-        setSaveStatus('error');
-      }
-    }
+    if (debouncedNotes !== (memo.notes || '')) sauver({ notes: debouncedNotes });
   }, [debouncedNotes]);
 
   // Saisie en attente enregistrée à la fermeture du panneau : avant (recette du 9 oct. 2026), une note tapée
@@ -207,17 +202,13 @@ export default function TaskDetail({ memo, onUpdate, onDelete, onClose, chantier
   }, []);
 
   // Retry save on error
-  const retrySave = () => {
+  const retrySave = async () => {
     setSaveStatus('saving');
-    try {
-      if (text !== memo.text) onUpdate(memo.id, { text });
-      if (notes !== (memo.notes || '')) onUpdate(memo.id, { notes });
-      setSaveStatus('saved');
-      clearTimeout(saveTimerRef.current);
-      saveTimerRef.current = setTimeout(() => setSaveStatus('idle'), 2000);
-    } catch {
-      setSaveStatus('error');
-    }
+    const updates = {};
+    if (text !== memo.text) updates.text = text;
+    if (notes !== (memo.notes || '')) updates.notes = notes;
+    if (Object.keys(updates).length === 0) { setSaveStatus('idle'); return; }
+    await sauver(updates);
   };
 
   // Cleanup timer
@@ -261,8 +252,8 @@ export default function TaskDetail({ memo, onUpdate, onDelete, onClose, chantier
       confirmText: 'Supprimer',
       variant: 'danger',
     });
-    if (ok) {
-      onDelete(memo.id);
+    // Supprimée, fermée et annoncée seulement si la base a pris la suppression
+    if (ok && (await onDelete(memo.id)) !== false) {
       onClose();
       showToast('Tâche supprimée', 'success');
     }
@@ -395,18 +386,21 @@ export default function TaskDetail({ memo, onUpdate, onDelete, onClose, chantier
                 </>
               )}
             </div>
-            <button
-              onClick={handleDelete}
-              className="p-1.5 rounded-lg text-danger-texte hover:bg-danger-fond"
-              aria-label="Supprimer cette tâche définitivement"
-            >
-              <Trash2 size={18} />
-            </button>
+            {peutSupprimer && (
+              <button
+                onClick={handleDelete}
+                className="p-1.5 rounded-lg text-danger-texte hover:bg-danger-fond"
+                aria-label="Supprimer cette tâche définitivement"
+              >
+                <Trash2 size={18} />
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {/* Content : sans le droit de modifier, tout est en lecture seule (fieldset désactivé) */}
+        <div className="flex-1 overflow-y-auto p-4">
+          <fieldset disabled={!peutModifier} className="min-w-0 m-0 p-0 border-0 space-y-4">
           {/* Status dropdown — prominent at top */}
           <div>
             <label className={`block text-xs font-medium mb-1 ${tc.muted}`}>Statut</label>
@@ -626,6 +620,7 @@ export default function TaskDetail({ memo, onUpdate, onDelete, onClose, chantier
             <p>Créé le {memo.created_at ? dateLue(memo.created_at).toLocaleDateString('fr-FR') : '—'}</p>
             {memo.done_at && <p>Terminé le {dateLue(memo.done_at).toLocaleDateString('fr-FR')}</p>}
           </div>
+          </fieldset>
         </div>
       </div>
     </>

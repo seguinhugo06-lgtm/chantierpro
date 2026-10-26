@@ -16,7 +16,7 @@ const LIBELLES_MARGE = (taux) => (taux < 0 ? 'Négative' : taux < 15 ? 'Faible' 
  */
 export default function OngletApercu({
   chantier: ch, client, bilan, revenuTotal, totalFacture, resteAFacturer, avancement, tasksDone, tasksTotal, franchiseTva,
-  modeDiscret, formatMoney, formatPct, weather, alertes = [], peutPointer, onPointer, onTaches, onFinances, notifierClient,
+  modeDiscret, formatMoney, formatPct, weather, alertes = [], voitPrix = true, peutPointer, onPointer, onTaches, onFinances, notifierClient,
 }) {
   const adresseComplete = [ch.adresse, [ch.codePostal, ch.ville].filter(Boolean).join(' ')].filter(Boolean).join(', ');
   const tel = client?.telephone || client?.tel;
@@ -106,7 +106,8 @@ export default function OngletApercu({
         )}
       </Carte>
 
-      {/* === RÉSUMÉ CHIFFRÉ : quatre chiffres, une seule alerte (la marge) === */}
+      {/* === RÉSUMÉ CHIFFRÉ : quatre chiffres, une seule alerte (la marge) — réservé aux rôles qui voient les prix === */}
+      {voitPrix && (
       <section aria-label="Résumé chiffré">
         <TitreSection titre="En chiffres" action="Voir les finances" onAction={onFinances} />
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -124,11 +125,12 @@ export default function OngletApercu({
           />
           <TuileChiffre
             libelle="Marge brute" valeur={masque(bilan.hasDepenses ? formatPct(bilan.tauxMarge) : '—')}
-            alerte={margeNegative && !modeDiscret ? (revenuTotal > 0 && bilan.totalDepenses > revenuTotal ? `Budget dépassé de ${pctBudget - 100} %` : 'Marge négative') : undefined}
+            alerte={margeNegative && !modeDiscret ? (revenuTotal > 0 && bilan.totalDepenses > revenuTotal ? `Budget dépassé de ${pctBudget - 100}\u00a0%` : 'Marge négative') : undefined} tonAlerte="alerte"
             contexte={bilan.hasDepenses && !margeNegative ? LIBELLES_MARGE(bilan.tauxMarge) : bilan.hasDepenses ? undefined : 'Pas encore de dépense'}
           />
         </div>
       </section>
+      )}
 
       {/* === AVANCEMENT === */}
       <Carte>
@@ -163,7 +165,7 @@ export default function OngletApercu({
             <div className="h-2.5 rounded-full overflow-hidden bg-bord">
               <div className={`h-full rounded-full transition-all duration-500 ${global >= 100 ? 'bg-succes-point' : 'bg-accent'}`} style={{ width: `${Math.min(global, 100)}%` }} />
             </div>
-            {!modeDiscret && facture.totalFactureHT > 0 && (
+            {voitPrix && !modeDiscret && facture.totalFactureHT > 0 && (
               <p className="text-sm text-encre-2 mt-1.5">
                 Facturé : {formatMoney(facture.totalFactureHT)} HT
                 {facture.retenueRetenue > 0 && <> · Retenue : {formatMoney(facture.retenueRetenue)}</>}

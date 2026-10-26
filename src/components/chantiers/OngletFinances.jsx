@@ -7,7 +7,8 @@ import { TitreSection } from '../ui/EnTete';
 import { montantsDepense, TAUX_DEPENSE } from '../../lib/tvaDepenses';
 import { dateLue } from '../../lib/dates';
 
-const couleurMarge = (taux) => (taux < 0 ? 'text-danger-texte' : taux < 15 ? 'text-alerte-texte' : 'text-succes-texte');
+// Une marge négative est « à surveiller » (ambre) : le rouge est réservé à ce qui est en retard
+const couleurMarge = (taux) => (taux < 15 ? 'text-alerte-texte' : 'text-succes-texte');
 
 /**
  * Onglet « Finances » de la fiche chantier : avancement et budget consommé, revenus et dépenses, situations de travaux.
@@ -18,7 +19,7 @@ const couleurMarge = (taux) => (taux < 0 ? 'text-danger-texte' : taux < 15 ? 'te
 export default function OngletFinances({
   chantier: ch, bilan, revenuTotal, avancement, resteAFacturer, franchiseTva, modeDiscret, formatMoney, formatPct,
   depensesChantier = [], ajustementsRevenus = [], ajustementsDepenses = [], depensePrevision,
-  peutDepense, peutModifier, onAjouterRevenu, onAjouterDepense, onVoirHeures, onSupprimerAjustement, onChangerTaux, onSupprimerDepense, onDepenseAutres,
+  peutDepense, peutDepenseModifier = peutDepense, peutDepenseSupprimer = false, peutModifier, onAjouterRevenu, onAjouterDepense, onVoirHeures, onSupprimerAjustement, onChangerTaux, onSupprimerDepense, onDepenseAutres,
   situations,
 }) {
   const [ouverts, setOuverts] = useState({});
@@ -203,13 +204,13 @@ export default function OngletFinances({
                           <span className="text-sm px-2 py-1 rounded bg-bord text-encre-2">{d.categorie}</span>
                           {!franchiseTva && (
                             <select
-                              value={valeur} disabled={!peutDepense} onChange={(e) => onChangerTaux(d, e.target.value)}
+                              value={valeur} disabled={!peutDepenseModifier} onChange={(e) => onChangerTaux(d, e.target.value)}
                               className="px-2 border border-bord-fort rounded-lg text-sm h-11 bg-surface text-encre" aria-label={`TVA de la facture : ${d.description}`}
                             >
                               {options.map((t) => <option key={t.valeur} value={t.valeur}>{t.libelle}</option>)}
                             </select>
                           )}
-                          {peutDepense && <BoutonIcone icone={Trash2} libelle={`Supprimer la dépense ${d.description}`} taille={16} onClick={() => onSupprimerDepense(d)} className="ml-auto sm:ml-0" />}
+                          {peutDepenseSupprimer && <BoutonIcone icone={Trash2} libelle={`Supprimer la dépense ${d.description}`} taille={16} onClick={() => onSupprimerDepense(d)} className="ml-auto sm:ml-0" />}
                         </div>
                       </div>
                     );
