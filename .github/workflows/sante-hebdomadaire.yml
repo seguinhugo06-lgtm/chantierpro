@@ -37,7 +37,7 @@ jobs:
         run: npm audit --omit=dev --audit-level=high 2>&1 | tee npm-audit.txt
       - name: Rapports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: sante-hebdomadaire
           path: |
