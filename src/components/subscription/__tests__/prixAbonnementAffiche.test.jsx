@@ -11,6 +11,12 @@ vi.mock('../../../stores/subscriptionStore', async (importOriginal) => {
   return { ...reel, useSubscriptionStore: (selecteur) => selecteur(etat) };
 });
 
+// La fenêtre passe par ui/Modal, rendue dans <body> par un portail, que le rendu serveur ne sait pas faire : on la
+// remplace par son contenu (titre, description, corps, pied), qui est ce que ce test lit.
+vi.mock('../../ui/Modal', () => ({
+  default: ({ isOpen, title, description, footer, children }) => (isOpen ? <div role="dialog">{title}{description}{children}{footer}</div> : null),
+}));
+
 // La fenêtre d'abonnement s'ouvre sur une limite ou une fonction réservée : elle dit les prix en franchise de TVA
 // (D-19), jamais « HT ». (Le parcours `abonnements` couvre « Mon plan » dans le navigateur ; cette fenêtre n'a pas
 // de chemin court en démo : il faudrait créer quatre clients pour atteindre la limite du plan Gratuit.)

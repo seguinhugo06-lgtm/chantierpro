@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { toast } from '../../stores/toastStore';
 import {
   Download,
@@ -10,9 +10,6 @@ import {
   Eye,
   FileSpreadsheet,
   ArrowUpDown,
-  Receipt,
-  ShoppingCart,
-  Euro,
   Info,
   Filter,
   ChevronLeft,
@@ -26,6 +23,12 @@ import { montantsDepense } from '../../lib/tvaDepenses';
 import { ecrituresDepense } from '../../lib/ecrituresAchat';
 import { ecrituresPaiement } from '../../lib/ecrituresBanque';
 import { dateLue } from '../../lib/dates';
+import { captureException } from '../../lib/sentry';
+import Carte from '../ui/Carte';
+import TuileChiffre from '../ui/TuileChiffre';
+import Pastille from '../ui/Pastille';
+import EtatVide from '../ui/EtatVide';
+import { Bouton, BoutonIcone } from '../ui/Bouton';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -289,11 +292,11 @@ const FORMATS = [
 ];
 
 const JOURNALS = [
-  { key: 'all', label: 'Tous les journaux', color: '#64748b' },
-  { key: 'VE', label: 'Ventes (VE)', color: '#f97316' },
-  { key: 'AC', label: 'Achats (AC)', color: '#8b5cf6' },
-  { key: 'BQ', label: 'Banque (BQ)', color: '#3b82f6' },
-  { key: 'OD', label: 'Opérations diverses (OD)', color: '#10b981' },
+  { key: 'all', label: 'Tous les journaux' },
+  { key: 'VE', label: 'Ventes (VE)' },
+  { key: 'AC', label: 'Achats (AC)' },
+  { key: 'BQ', label: 'Banque (BQ)' },
+  { key: 'OD', label: 'Opérations diverses (OD)' },
 ];
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -301,15 +304,15 @@ const JOURNALS = [
 export default function ExportComptable({
   devis = [],
   depenses = [],
-  chantiers = [],
+  chantiers: _chantiers = [],
   clients = [],
   paiements = [],
   entreprise = {},
-  isDark = false,
-  couleur = '#f97316',
-  setPage,
+  // isDark et couleur restent acceptés : jetons du thème ; setPage aussi (plus de lien vers les Paramètres)
+  isDark: _isDark = false,
+  couleur: _couleur,
+  setPage: _setPage,
 }) {
-  const now = new Date();
   const defaultRange = getPresetRange('ce-mois');
 
   const [dateFrom, setDateFrom] = useState(toInputDate(defaultRange.from));
@@ -317,23 +320,13 @@ export default function ExportComptable({
   const [activePreset, setActivePreset] = useState('ce-mois');
   const [format, setFormat] = useState('csv');
   const [showPreview, setShowPreview] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
-  const [presetsOpen, setPresetsOpen] = useState(false);
   const [journalFilter, setJournalFilter] = useState('all');
   const [previewPage, setPreviewPage] = useState(0);
   const PREVIEW_PAGE_SIZE = 50;
 
   // ─── Styles ──────────────────────────────────────────────────────────────
 
-  const cardCls = 'bg-surface border-bord';
-
-  const inputCls = isDark
-    ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400'
-    : 'bg-white border-slate-300 text-slate-900';
-
-  const textCls = 'text-encre';
-  const mutedCls = 'text-encre-2';
-  const bgPage = 'bg-fond';
+  const inputCls = 'bg-surface border-bord-fort text-encre';
   const hoverRow = 'hover:bg-surface-2';
   const borderCls = 'border-bord';
 
@@ -415,12 +408,9 @@ export default function ExportComptable({
   // ─── Summaries ──────────────────────────────────────────────────────────
 
   const totalHTFactures = factures.reduce((s, f) => s + (f.total_ht || 0), 0);
-  const totalTTCFactures = factures.reduce((s, f) => s + (f.total_ttc || 0), 0);
   const franchise = estFranchiseTva(entreprise);
   const totalDepenses = filteredDepenses.reduce((s, d) => s + montantsDepense(d, { franchise }).ht, 0);
   const depensesSansTva = franchise ? 0 : filteredDepenses.filter((d) => !montantsDepense(d).connue).length;
-  const totalDebit = entries.reduce((s, e) => s + e.debit, 0);
-  const totalCredit = entries.reduce((s, e) => s + e.credit, 0);
 
   // ─── Preset handler ─────────────────────────────────────────────────────
 
@@ -429,31 +419,38 @@ export default function ExportComptable({
     const range = getPresetRange(key);
     setDateFrom(toInputDate(range.from));
     setDateTo(toInputDate(range.to));
-    setPresetsOpen(false);
   };
 
   // ─── Export handler ─────────────────────────────────────────────────────
 
-  const handleExport = () => {
+  // Téléchargement : dit seulement quand le fichier est remis (avant : « Export téléchargé » s'affichait avant même la
+  // fenêtre d'enregistrement, et après une annulation)
+  const [exportEnCours, setExportEnCours] = useState(false);
+  const handleExport = async () => {
     const exportEntries = filteredEntries;
-    if (exportEntries.length === 0) return;
+    if (exportEntries.length === 0 || exportEnCours) return;
+    setExportEnCours(true);
+    try {
+      const resultat = await ecrireExport(exportEntries);
+      if (resultat !== 'annule') toast.success('Export téléchargé', getFilenamePreview());
+    } catch (e) {
+      captureException(e, { context: 'export comptable' });
+      toast.error('Export non téléchargé', 'Le fichier n’a pas pu être créé. Réessayez.');
+    } finally {
+      setExportEnCours(false);
+    }
+  };
+  const ecrireExport = (exportEntries) => {
 
     const monthStr = `${from.getFullYear()}-${pad(from.getMonth() + 1)}`;
     const journalSuffix = journalFilter !== 'all' ? `_${journalFilter}` : '';
 
-    if (format === 'csv') {
-      const csv = generateCSV(exportEntries);
-      downloadFile(csv, `export_comptable_${monthStr}${journalSuffix}.csv`, 'text/csv');
-    } else if (format === 'fec') {
+    if (format === 'fec') {
       const { content, filename } = generateFEC(exportEntries, entreprise, to);
-      downloadFile(content, filename, 'text/plain');
-    } else if (format === 'excel') {
-      const excel = generateExcel(exportEntries);
-      downloadFile(excel, `export_comptable_${monthStr}${journalSuffix}.csv`, 'text/csv');
+      return downloadFile(content, filename, 'text/plain');
     }
-
-    setShowSuccess(true);
-    setTimeout(() => setShowSuccess(false), 3000);
+    if (format === 'excel') return downloadFile(generateExcel(exportEntries), `export_comptable_${monthStr}${journalSuffix}.csv`, 'text/csv');
+    return downloadFile(generateCSV(exportEntries), `export_comptable_${monthStr}${journalSuffix}.csv`, 'text/csv');
   };
 
   // ─── Export filename preview ────────────────────────────────────────────
@@ -492,544 +489,322 @@ export default function ExportComptable({
   const totalPaiements = filteredPaiements.reduce((s, p) => s + (Number(p.amount || p.montant) || 0), 0);
 
   const stats = [
-    {
-      label: 'Factures émises',
-      value: factures.length,
-      icon: Receipt,
-      color: couleur,
-    },
-    {
-      label: 'Dépenses / achats',
-      value: filteredDepenses.length,
-      icon: ShoppingCart,
-      color: isDark ? '#94a3b8' : '#64748b',
-    },
-    {
-      label: 'Paiements reçus',
-      // Les corrections d'encaissement (montants négatifs, 098) ne sont pas des paiements reçus ; « Total encaissé » les déduit
-      value: filteredPaiements.filter((p) => (Number(p.amount ?? p.montant) || 0) > 0).length,
-      icon: Euro,
-      color: couleur,
-    },
-    {
-      label: 'Total HT factures',
-      value: fmtEUR.format(totalHTFactures),
-      icon: Euro,
-      color: couleur,
-    },
-    {
-      label: 'Total encaissé',
-      value: fmtEUR.format(totalPaiements),
-      icon: Euro,
-      color: couleur,
-    },
-    {
-      label: franchise ? 'Total dépenses' : 'Total dépenses HT',
-      value: fmtEUR.format(totalDepenses),
-      icon: Euro,
-      color: isDark ? '#94a3b8' : '#64748b',
-    },
+    { label: 'Factures émises', value: factures.length },
+    { label: 'Dépenses et achats', value: filteredDepenses.length },
+    // Les corrections d'encaissement (montants négatifs, 098) ne sont pas des paiements reçus ; « Total encaissé » les déduit
+    { label: 'Paiements reçus', value: filteredPaiements.filter((p) => (Number(p.amount ?? p.montant) || 0) > 0).length },
+    { label: 'Total HT des factures', value: fmtEUR.format(totalHTFactures) },
+    { label: 'Total encaissé', value: fmtEUR.format(totalPaiements) },
+    { label: franchise ? 'Total des dépenses' : 'Total HT des dépenses', value: fmtEUR.format(totalDepenses) },
   ];
 
   // ─── Render ─────────────────────────────────────────────────────────────
+  // Jetons du thème (avant : la couleur brute de l'entreprise en style et des gris écrits à la main). Le titre de la page
+  // est celui de Finances : l'onglet « Export comptable » ne le répète plus.
+  const choisi = 'bg-encre text-surface border-encre';
+  const libre = 'bg-surface text-encre-2 border-bord hover:bg-surface-2';
 
   return (
-    <div className={`min-h-screen ${bgPage} p-4 sm:p-6 lg:p-8`}>
-      <div className="max-w-6xl mx-auto space-y-6">
+    <div className="space-y-6">
+      <p className="text-sm text-encre-3">Vos écritures pour votre comptable ou votre logiciel de comptabilité.</p>
 
-        {/* ── Header ─────────────────────────────────────────────────────── */}
-        <div className="flex items-center justify-between flex-wrap gap-4">
-          <div className="flex items-center gap-3">
-            <div
-              className="w-10 h-10 rounded-xl flex items-center justify-center"
-              style={{ backgroundColor: `${couleur}20` }}
+      {/* ── Période ────────────────────────────────────────────── */}
+      <Carte>
+        <h2 className="text-base font-semibold mb-4 text-encre flex items-center gap-2">
+          <Calendar className="w-4 h-4 text-encre-3" aria-hidden="true" />
+          Période
+        </h2>
+        <div className="flex flex-wrap gap-2 mb-4" role="group" aria-label="Période">
+          {PRESETS.map((p) => (
+            <button
+              key={p.key}
+              type="button"
+              aria-pressed={activePreset === p.key}
+              onClick={() => applyPreset(p.key)}
+              className={`h-11 px-4 rounded-full border text-sm font-medium transition-colors ${activePreset === p.key ? choisi : libre}`}
             >
-              <Download className="w-5 h-5 text-accent-texte" />
-            </div>
-            <div>
-              <h1 className={`text-2xl font-bold ${textCls}`}>Export Comptable</h1>
-              <p className={`text-sm ${mutedCls}`}>
-                Générez vos exports pour votre logiciel de comptabilité
-              </p>
-            </div>
+              {p.label}
+            </button>
+          ))}
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2">
+            <label htmlFor="export-du" className="text-sm text-encre-2">Du</label>
+            <input
+              id="export-du"
+              type="date"
+              value={dateFrom}
+              onChange={(e) => { setDateFrom(e.target.value); setActivePreset(''); }}
+              className={`h-11 border rounded-xl px-3 text-base sm:text-sm ${inputCls} focus:outline-none focus:border-accent focus:ring-4 focus:ring-accent/20`}
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <label htmlFor="export-au" className="text-sm text-encre-2">Au</label>
+            <input
+              id="export-au"
+              type="date"
+              value={dateTo}
+              onChange={(e) => { setDateTo(e.target.value); setActivePreset(''); }}
+              className={`h-11 border rounded-xl px-3 text-base sm:text-sm ${inputCls} focus:outline-none focus:border-accent focus:ring-4 focus:ring-accent/20`}
+            />
           </div>
         </div>
+      </Carte>
 
-        {/* ── Period selector ────────────────────────────────────────────── */}
-        <div className={`border rounded-xl p-5 ${cardCls}`}>
-          <h2 className={`text-sm font-semibold mb-4 ${textCls} flex items-center gap-2`}>
-            <Calendar className="w-4 h-4 text-accent-texte" />
-            Période
-          </h2>
+      {/* ── Chiffres de la période ─────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        {stats.map((s) => (
+          <TuileChiffre key={s.label} libelle={s.label} valeur={s.value} />
+        ))}
+      </div>
 
-          {/* Presets */}
-          <div className="flex flex-wrap gap-2 mb-4">
-            {PRESETS.map((p) => (
-              <button
-                key={p.key}
-                onClick={() => applyPreset(p.key)}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                  activePreset === p.key
-                    ? 'text-white shadow-sm'
-                    : isDark
-                      ? 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                }`}
-                style={activePreset === p.key ? { backgroundColor: couleur } : {}}
-              >
-                {p.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Date inputs */}
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-2">
-              <label className={`text-sm ${mutedCls}`}>Du</label>
-              <input
-                type="date"
-                value={dateFrom}
-                onChange={(e) => {
-                  setDateFrom(e.target.value);
-                  setActivePreset('');
-                }}
-                className={`border rounded-lg px-3 py-2 text-sm ${inputCls} focus:outline-none focus:ring-2`}
-                style={{ focusRingColor: couleur }}
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <label className={`text-sm ${mutedCls}`}>Au</label>
-              <input
-                type="date"
-                value={dateTo}
-                onChange={(e) => {
-                  setDateTo(e.target.value);
-                  setActivePreset('');
-                }}
-                className={`border rounded-lg px-3 py-2 text-sm ${inputCls} focus:outline-none focus:ring-2`}
-                style={{ focusRingColor: couleur }}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* ── Summary cards ──────────────────────────────────────────────── */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-          {stats.map((s, i) => {
-            const Icon = s.icon;
+      {/* ── Format ────────────────────────────────────────────── */}
+      <Carte>
+        <h2 className="text-base font-semibold mb-4 text-encre flex items-center gap-2">
+          <FileText className="w-4 h-4 text-encre-3" aria-hidden="true" />
+          Format d’export
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3" role="radiogroup" aria-label="Format d’export">
+          {FORMATS.map((f) => {
+            const Icon = f.icon;
+            const isActive = format === f.key;
             return (
-              <div key={i} className={`border rounded-xl p-4 ${cardCls}`}>
-                <div className="flex items-center gap-2 mb-2">
-                  <Icon className="w-4 h-4" style={{ color: s.color }} />
-                  <span className={`text-xs font-medium ${mutedCls}`}>{s.label}</span>
-                </div>
-                <p className={`text-lg font-bold ${textCls}`}>{s.value}</p>
-              </div>
+              <button
+                key={f.key}
+                type="button"
+                role="radio"
+                aria-checked={isActive}
+                onClick={() => setFormat(f.key)}
+                title={f.tooltip || ''}
+                className={`border rounded-xl p-4 text-left transition-colors bg-surface ${isActive ? 'border-accent ring-2 ring-accent' : 'border-bord hover:border-bord-fort'}`}
+              >
+                <span className="flex items-center gap-3">
+                  <span className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${isActive ? 'bg-accent/10 text-accent-texte' : 'bg-surface-2 text-encre-3'}`}>
+                    <Icon className="w-4 h-4" aria-hidden="true" />
+                  </span>
+                  <span>
+                    <span className="block text-sm font-semibold text-encre">{f.label}</span>
+                    <span className="block text-sm text-encre-3">{f.desc}</span>
+                  </span>
+                </span>
+              </button>
             );
           })}
         </div>
 
-        {/* ── Format selector ────────────────────────────────────────────── */}
-        <div className={`border rounded-xl p-5 ${cardCls}`}>
-          <h2 className={`text-sm font-semibold mb-4 ${textCls} flex items-center gap-2`}>
-            <FileText className="w-4 h-4 text-accent-texte" />
-            Format d'export
-          </h2>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {FORMATS.map((f) => {
-              const Icon = f.icon;
-              const isActive = format === f.key;
-              return (
-                <button
-                  key={f.key}
-                  onClick={() => setFormat(f.key)}
-                  title={f.tooltip || ''}
-                  className={`border rounded-xl p-4 text-left transition-all ${
-                    isActive
-                      ? 'ring-2 shadow-sm'
-                      : 'border-bord hover:border-bord-fort'
-                  } ${cardCls}`}
-                  style={
-                    isActive
-                      ? { borderColor: couleur, ringColor: couleur, boxShadow: `0 0 0 2px ${couleur}40` }
-                      : {}
-                  }
-                >
-                  <div className="flex items-center gap-3 mb-2">
-                    <div
-                      className="w-8 h-8 rounded-lg flex items-center justify-center"
-                      style={{
-                        backgroundColor: isActive ? `${couleur}20` : isDark ? '#334155' : '#f1f5f9',
-                      }}
-                    >
-                      <Icon
-                        className="w-4 h-4"
-                        style={{ color: isActive ? couleur : isDark ? '#94a3b8' : '#64748b' }}
-                      />
-                    </div>
-                    <div>
-                      <p className={`text-sm font-semibold ${textCls}`}>{f.label}</p>
-                      <p className={`text-xs ${mutedCls}`}>{f.desc}</p>
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Dépenses sans TVA saisie : passées HT, sans TVA déductible */}
-          {depensesSansTva > 0 && (
-            <div role="status" className="mt-4 rounded-lg p-3 flex items-start gap-2 text-sm bg-alerte-fond text-alerte-texte">
-              <Info className="w-4 h-4 mt-0.5 flex-shrink-0" aria-hidden="true" />
-              <span>
-                {depensesSansTva === 1 ? '1 dépense de la période n’a pas sa TVA saisie : elle est exportée hors taxes, sans TVA déductible, avec la mention « TVA non saisie ».' : `${depensesSansTva} dépenses de la période n’ont pas leur TVA saisie : elles sont exportées hors taxes, sans TVA déductible, avec la mention « TVA non saisie ».`}
-                {' '}Choisissez le taux de leur facture dans la fiche du chantier (onglet Finances), ou transmettez la facture à votre comptable.
-              </span>
-            </div>
-          )}
-
-          {/* FEC info banner */}
-          {format === 'fec' && (
-            <div
-              className="mt-4 rounded-lg p-3 flex items-start gap-2 text-sm text-accent-texte"
-              style={{ backgroundColor: `${couleur}10` }}
-            >
-              <Info className="w-4 h-4 mt-0.5 flex-shrink-0" />
-              <span>
-                Écritures au format FEC (art. A.47 A-1 du Livre des procédures fiscales), à importer dans la
-                comptabilité tenue par votre comptable. Ce fichier ne remplace pas le FEC de votre exercice.
-              </span>
-            </div>
-          )}
-        </div>
-
-        {/* ── Journal filter ────────────────────────────────────────────── */}
-        <div className={`border rounded-xl p-5 ${cardCls}`}>
-          <h2 className={`text-sm font-semibold mb-4 ${textCls} flex items-center gap-2`}>
-            <Filter className="w-4 h-4 text-accent-texte" />
-            Filtre par journal
-          </h2>
-          <div className="flex flex-wrap gap-2">
-            {JOURNALS.map((j) => {
-              const isActive = journalFilter === j.key;
-              const count = j.key === 'all'
-                ? entries.length
-                : entries.filter((e) => e.journal === j.key).length;
-              const isEmpty = count === 0 && j.key !== 'all';
-              return (
-                <button
-                  key={j.key}
-                  onClick={() => { if (!isEmpty) { setJournalFilter(j.key); setPreviewPage(0); } }}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                    isEmpty
-                      ? 'opacity-40 cursor-not-allowed'
-                      : isActive
-                        ? 'text-white shadow-sm'
-                        : isDark
-                          ? 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                  }`}
-                  style={isActive && !isEmpty ? { backgroundColor: j.color } : {}}
-                  title={isEmpty ? 'Aucune écriture pour ce journal' : ''}
-                >
-                  {j.label}
-                  <span
-                    className={`px-1.5 py-0.5 rounded text-xs font-bold ${
-                      isActive && !isEmpty
-                        ? 'bg-white/20 text-white'
-                        : isDark ? 'bg-slate-600 text-slate-300' : 'bg-slate-200 text-slate-500'
-                    }`}
-                  >
-                    {count}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* ── Preview toggle ─────────────────────────────────────────────── */}
-        <div className={`border rounded-xl ${cardCls}`}>
-          <button
-            onClick={() => setShowPreview((v) => !v)}
-            className={`w-full flex items-center justify-between p-5 ${textCls}`}
-          >
-            <div className="flex items-center gap-2">
-              <Eye className="w-4 h-4 text-accent-texte" />
-              <span className="text-sm font-semibold">
-                Aperçu des écritures ({filteredEntries.length} lignes{journalFilter !== 'all' ? ` — ${JOURNALS.find(j => j.key === journalFilter)?.label}` : ''})
-              </span>
-            </div>
-            <ChevronDown
-              className={`w-4 h-4 transition-transform ${showPreview ? 'rotate-180' : ''} text-accent-texte`}
-            />
-          </button>
-
-          {showPreview && (
-            <div className="px-5 pb-5">
-              {filteredEntries.length === 0 ? (
-                <div className={`text-center py-8 ${mutedCls}`}>
-                  <FileText className="w-10 h-10 mx-auto mb-3 opacity-40" />
-                  <p className="text-sm">Aucune écriture pour la période sélectionnée</p>
-                </div>
-              ) : (
-                <>
-                <div className="overflow-x-auto rounded-lg border" style={{ borderColor: isDark ? '#334155' : '#e2e8f0' }}>
-                  <table className="w-full text-sm" aria-label="Écritures comptables">
-                    <thead>
-                      <tr className="bg-fond">
-                        <th scope="col" className={`text-left px-3 py-2.5 font-semibold ${mutedCls} text-xs`}>
-                          Date
-                        </th>
-                        <th scope="col" className={`text-left px-3 py-2.5 font-semibold ${mutedCls} text-xs`}>
-                          Réf
-                        </th>
-                        <th scope="col" className={`text-left px-3 py-2.5 font-semibold ${mutedCls} text-xs`}>
-                          Libellé
-                        </th>
-                        <th scope="col" className={`text-right px-3 py-2.5 font-semibold ${mutedCls} text-xs`}>
-                          Débit
-                        </th>
-                        <th scope="col" className={`text-right px-3 py-2.5 font-semibold ${mutedCls} text-xs`}>
-                          Crédit
-                        </th>
-                        <th scope="col" className={`text-left px-3 py-2.5 font-semibold ${mutedCls} text-xs`}>
-                          Compte
-                        </th>
-                        <th scope="col" className={`text-left px-3 py-2.5 font-semibold ${mutedCls} text-xs`}>
-                          Journal
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {previewEntries.map((e, i) => (
-                        <tr
-                          key={i}
-                          className={`border-t ${borderCls} ${hoverRow} transition-colors`}
-                        >
-                          <td className={`px-3 py-2 ${mutedCls} whitespace-nowrap`}>
-                            {fmtDate(e.date)}
-                          </td>
-                          <td className={`px-3 py-2 ${textCls} font-mono text-xs whitespace-nowrap`}>
-                            {e.ref}
-                          </td>
-                          <td className={`px-3 py-2 ${textCls} max-w-[220px] truncate`}>
-                            {e.libelle}
-                          </td>
-                          <td className="px-3 py-2 text-right whitespace-nowrap">
-                            {e.debit > 0 ? (
-                              <span className="text-red-500 font-medium">
-                                {fmtEUR.format(e.debit)}
-                              </span>
-                            ) : (
-                              <span className={mutedCls}>-</span>
-                            )}
-                          </td>
-                          <td className="px-3 py-2 text-right whitespace-nowrap">
-                            {e.credit > 0 ? (
-                              <span className="text-emerald-500 font-medium">
-                                {fmtEUR.format(e.credit)}
-                              </span>
-                            ) : (
-                              <span className={mutedCls}>-</span>
-                            )}
-                          </td>
-                          <td className={`px-3 py-2 font-mono text-xs ${mutedCls}`}>{e.compte}</td>
-                          <td className="px-3 py-2">
-                            <span
-                              className="inline-block px-2 py-0.5 rounded text-xs font-semibold"
-                              style={{
-                                backgroundColor:
-                                  e.journal === 'VE' ? `${couleur}20`
-                                  : e.journal === 'BQ' ? (isDark ? '#1e3a5f' : '#dbeafe')
-                                  : isDark ? '#4c1d95' : '#ede9fe',
-                                color:
-                                  e.journal === 'VE' ? couleur
-                                  : e.journal === 'BQ' ? (isDark ? '#93c5fd' : '#2563eb')
-                                  : isDark ? '#c4b5fd' : '#7c3aed',
-                              }}
-                            >
-                              {e.journal}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-
-                      {/* Total row */}
-                      <tr
-                        className={`border-t-2 font-semibold border-bord-fort bg-fond`}
-                      >
-                        <td className={`px-3 py-2.5 ${textCls}`} colSpan={3}>
-                          Total ({filteredEntries.length} écritures{journalFilter !== 'all' ? ` — ${journalFilter}` : ''})
-                        </td>
-                        <td className="px-3 py-2.5 text-right text-red-500 whitespace-nowrap">
-                          {fmtEUR.format(totalFilteredDebit)}
-                        </td>
-                        <td className="px-3 py-2.5 text-right text-emerald-500 whitespace-nowrap">
-                          {fmtEUR.format(totalFilteredCredit)}
-                        </td>
-                        <td colSpan={2} />
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Pagination */}
-                {totalPreviewPages > 1 && (
-                  <div className="flex items-center justify-between mt-4">
-                    <span className={`text-xs ${mutedCls}`}>
-                      Page {previewPage + 1} / {totalPreviewPages} — {filteredEntries.length} écritures
-                    </span>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => setPreviewPage((p) => Math.max(0, p - 1))}
-                        disabled={previewPage === 0}
-                        className={`p-2 rounded-lg transition-colors disabled:opacity-30 hover:bg-surface-2 text-encre-2`}
-                      >
-                        <ChevronLeft className="w-4 h-4" />
-                      </button>
-                      {Array.from({ length: Math.min(5, totalPreviewPages) }, (_, i) => {
-                        let pageNum;
-                        if (totalPreviewPages <= 5) {
-                          pageNum = i;
-                        } else if (previewPage < 3) {
-                          pageNum = i;
-                        } else if (previewPage > totalPreviewPages - 4) {
-                          pageNum = totalPreviewPages - 5 + i;
-                        } else {
-                          pageNum = previewPage - 2 + i;
-                        }
-                        return (
-                          <button
-                            key={pageNum}
-                            onClick={() => setPreviewPage(pageNum)}
-                            className={`w-8 h-8 rounded-lg text-xs font-medium transition-all ${
-                              previewPage === pageNum
-                                ? 'text-white shadow-sm'
-                                : isDark
-                                  ? 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                            }`}
-                            style={previewPage === pageNum ? { backgroundColor: couleur } : {}}
-                          >
-                            {pageNum + 1}
-                          </button>
-                        );
-                      })}
-                      <button
-                        onClick={() => setPreviewPage((p) => Math.min(totalPreviewPages - 1, p + 1))}
-                        disabled={previewPage >= totalPreviewPages - 1}
-                        className={`p-2 rounded-lg transition-colors disabled:opacity-30 hover:bg-surface-2 text-encre-2`}
-                      >
-                        <ChevronRight className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                )}
-                </>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* ── Export action ───────────────────────────────────────────────── */}
-        <div className={`border rounded-xl p-5 ${cardCls}`}>
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div>
-              <p className={`text-sm font-semibold ${textCls} mb-1`}>Fichier de sortie</p>
-              <p className={`text-xs font-mono ${mutedCls} px-2 py-1 rounded bg-surface-2`}>
-                {getFilenamePreview()}
-              </p>
-              <p className={`text-xs mt-2 ${mutedCls}`}>
-                {filteredEntries.length} écritures comptables seront exportées
-                {journalFilter !== 'all' && ` (journal ${journalFilter})`}
-              </p>
-            </div>
-
-            <div className="flex flex-col items-end gap-1">
-              <button
-                onClick={handleExport}
-                disabled={filteredEntries.length === 0}
-                className="flex items-center gap-2 px-6 py-3 rounded-xl text-white font-semibold text-sm transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
-                style={{
-                  backgroundColor: filteredEntries.length === 0 ? (isDark ? '#475569' : '#94a3b8') : couleur,
-                }}
-              >
-                <Download className="w-4 h-4" />
-                Télécharger l'export
-              </button>
-              {entreprise?.emailComptable ? (
-                <button
-                  onClick={() => {
-                    // La période affichée vient des dates réellement sélectionnées :
-                    // le libellé du préréglage devient faux dès qu'on ajuste une date.
-                    const periode = [dateFrom, dateTo].filter(Boolean)
-                      .map((d) => dateLue(d).toLocaleDateString('fr-FR'))
-                      .join(' au ');
-                    const subject = encodeURIComponent(`Export comptable ${periode} — ${entreprise?.nom || 'Mallettico'}`);
-                    const body = encodeURIComponent(`Bonjour,\n\nVeuillez trouver ci-joint l'export comptable pour la période du ${periode}.\n\nCordialement,\n${entreprise?.nom || ''}`);
-                    window.open(`mailto:${entreprise.emailComptable}?subject=${subject}&body=${body}`, '_blank');
-                    toast.info('Export prêt', 'Joignez le fichier téléchargé à votre email.');
-                  }}
-                  disabled={filteredEntries.length === 0}
-                  className={`flex items-center gap-2 px-5 py-3 rounded-xl font-medium text-sm transition-all disabled:opacity-50 ${isDark ? 'bg-slate-700 text-slate-200 hover:bg-slate-600' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
-                >
-                  <Mail className="w-4 h-4" />
-                  Envoyer à mon comptable
-                </button>
-              ) : (
-                <button
-                  onClick={() => { try { localStorage.setItem('cp_settings_tab', 'comptabilite'); } catch { /* préférence non enregistrée : quota plein ou navigation privée */ } setPage?.('settings'); }}
-                  className={`flex items-center gap-2 px-4 py-3 rounded-xl text-xs font-medium transition-all text-encre-3 hover:text-encre-2`}
-                >
-                  <Mail className="w-4 h-4" />
-                  Configurer l'email comptable →
-                </button>
-              )}
-              {filteredEntries.length === 0 && (
-                <p className={`text-xs ${mutedCls}`}>Aucune écriture pour la période sélectionnée</p>
-              )}
-            </div>
-          </div>
-
-          {/* Equilibre check */}
-          {filteredEntries.length > 0 && (
-            <div className={`mt-4 pt-4 border-t ${borderCls}`}>
-              <div className="flex items-center gap-2">
-                <ArrowUpDown className="w-4 h-4 text-accent-texte" />
-                <span className={`text-xs font-medium ${mutedCls}`}>
-                  Équilibre des écritures{journalFilter !== 'all' ? ` (${journalFilter})` : ''} :
-                </span>
-                {Math.abs(totalFilteredDebit - totalFilteredCredit) < 0.01 ? (
-                  <span className="text-xs font-semibold text-emerald-500 flex items-center gap-1">
-                    <CheckCircle className="w-3.5 h-3.5" />
-                    Équilibré
-                  </span>
-                ) : (
-                  <span className="text-xs font-semibold text-amber-500">
-                    Écart de {fmtEUR.format(Math.abs(totalFilteredDebit - totalFilteredCredit))}
-                  </span>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* ── Success toast ──────────────────────────────────────────────── */}
-        {showSuccess && (
-          <div
-            className="fixed bottom-6 right-6 flex items-center gap-3 px-5 py-3 rounded-xl text-white shadow-2xl animate-fade-in z-50"
-            style={{ backgroundColor: '#10b981' }}
-          >
-            <CheckCircle className="w-5 h-5" />
-            <div>
-              <p className="text-sm font-semibold">Export téléchargé</p>
-              <p className="text-xs opacity-90">{getFilenamePreview()}</p>
-            </div>
+        {/* Dépenses sans TVA saisie : passées HT, sans TVA déductible */}
+        {depensesSansTva > 0 && (
+          <div role="status" className="mt-4 rounded-xl p-3 flex items-start gap-2 text-sm bg-alerte-fond text-alerte-texte">
+            <Info className="w-4 h-4 mt-0.5 flex-shrink-0" aria-hidden="true" />
+            <span>
+              {depensesSansTva === 1 ? '1 dépense de la période n’a pas sa TVA saisie : elle est exportée hors taxes, sans TVA déductible, avec la mention « TVA non saisie ».' : `${depensesSansTva} dépenses de la période n’ont pas leur TVA saisie : elles sont exportées hors taxes, sans TVA déductible, avec la mention « TVA non saisie ».`}
+              {' '}Choisissez le taux de leur facture dans la fiche du chantier (onglet Finances), ou transmettez la facture à votre comptable.
+            </span>
           </div>
         )}
-      </div>
+
+        {format === 'fec' && (
+          <div className="mt-4 rounded-xl p-3 flex items-start gap-2 text-sm bg-info-fond text-info-texte">
+            <Info className="w-4 h-4 mt-0.5 flex-shrink-0" aria-hidden="true" />
+            <span>
+              Écritures au format FEC (art. A.47 A-1 du Livre des procédures fiscales), à importer dans la
+              comptabilité tenue par votre comptable. Ce fichier ne remplace pas le FEC de votre exercice.
+            </span>
+          </div>
+        )}
+      </Carte>
+
+      {/* ── Journal ────────────────────────────────────────────── */}
+      <Carte>
+        <h2 className="text-base font-semibold mb-4 text-encre flex items-center gap-2">
+          <Filter className="w-4 h-4 text-encre-3" aria-hidden="true" />
+          Filtre par journal
+        </h2>
+        <div className="flex flex-wrap gap-2" role="group" aria-label="Journal">
+          {JOURNALS.map((j) => {
+            const isActive = journalFilter === j.key;
+            const count = j.key === 'all'
+              ? entries.length
+              : entries.filter((e) => e.journal === j.key).length;
+            const isEmpty = count === 0 && j.key !== 'all';
+            return (
+              <button
+                key={j.key}
+                type="button"
+                aria-pressed={isActive}
+                disabled={isEmpty}
+                onClick={() => { setJournalFilter(j.key); setPreviewPage(0); }}
+                className={`h-11 flex items-center gap-2 px-4 rounded-full border text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${isActive && !isEmpty ? choisi : libre}`}
+                title={isEmpty ? 'Aucune écriture pour ce journal' : ''}
+              >
+                {j.label}
+                <span className="text-sm tabular-nums opacity-70">{count}</span>
+              </button>
+            );
+          })}
+        </div>
+      </Carte>
+
+      {/* ── Aperçu ─────────────────────────────────────────────── */}
+      <Carte marge="aucun">
+        <button
+          type="button"
+          aria-expanded={showPreview}
+          onClick={() => setShowPreview((v) => !v)}
+          className="w-full min-h-[56px] flex items-center justify-between gap-3 px-4 sm:px-5 py-3 text-left text-encre"
+        >
+          <span className="flex items-center gap-2 min-w-0">
+            <Eye className="w-4 h-4 flex-shrink-0 text-encre-3" aria-hidden="true" />
+            <span className="text-sm font-semibold">
+              Aperçu des écritures ({filteredEntries.length} ligne{filteredEntries.length > 1 ? 's' : ''}{journalFilter !== 'all' ? ` — ${JOURNALS.find(j => j.key === journalFilter)?.label}` : ''})
+            </span>
+          </span>
+          <ChevronDown className={`w-4 h-4 flex-shrink-0 transition-transform text-encre-3 ${showPreview ? 'rotate-180' : ''}`} aria-hidden="true" />
+        </button>
+
+        {showPreview && (
+          <div className="px-4 sm:px-5 pb-5">
+            {filteredEntries.length === 0 ? (
+              <EtatVide icone={FileText} titre="Aucune écriture" texte="Aucune écriture pour la période choisie." />
+            ) : (
+              <>
+              <div className="overflow-x-auto rounded-xl border border-bord">
+                <table className="w-full text-sm" aria-label="Écritures comptables">
+                  <thead>
+                    <tr className="bg-surface-2">
+                      {['Date', 'Réf.', 'Libellé'].map((t) => <th key={t} scope="col" className="text-left px-3 py-2.5 font-semibold text-encre-2 text-sm">{t}</th>)}
+                      <th scope="col" className="text-right px-3 py-2.5 font-semibold text-encre-2 text-sm">Débit</th>
+                      <th scope="col" className="text-right px-3 py-2.5 font-semibold text-encre-2 text-sm">Crédit</th>
+                      <th scope="col" className="text-left px-3 py-2.5 font-semibold text-encre-2 text-sm">Compte</th>
+                      <th scope="col" className="text-left px-3 py-2.5 font-semibold text-encre-2 text-sm">Journal</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {previewEntries.map((e, i) => (
+                      <tr key={i} className={`border-t ${borderCls} ${hoverRow} transition-colors`}>
+                        <td className="px-3 py-2 text-encre-2 whitespace-nowrap">{fmtDate(e.date)}</td>
+                        <td className="px-3 py-2 text-encre font-mono text-sm whitespace-nowrap">{e.ref}</td>
+                        <td className="px-3 py-2 text-encre max-w-[220px] truncate">{e.libelle}</td>
+                        <td className="px-3 py-2 text-right whitespace-nowrap tabular-nums text-encre">
+                          {e.debit > 0 ? fmtEUR.format(e.debit) : <span className="text-encre-3">-</span>}
+                        </td>
+                        <td className="px-3 py-2 text-right whitespace-nowrap tabular-nums text-encre">
+                          {e.credit > 0 ? fmtEUR.format(e.credit) : <span className="text-encre-3">-</span>}
+                        </td>
+                        <td className="px-3 py-2 font-mono text-sm text-encre-2">{e.compte}</td>
+                        <td className="px-3 py-2"><Pastille>{e.journal}</Pastille></td>
+                      </tr>
+                    ))}
+                    <tr className="border-t-2 font-semibold border-bord-fort bg-surface-2">
+                      <td className="px-3 py-2.5 text-encre" colSpan={3}>
+                        Total ({filteredEntries.length} écriture{filteredEntries.length > 1 ? 's' : ''}{journalFilter !== 'all' ? ` — ${journalFilter}` : ''})
+                      </td>
+                      <td className="px-3 py-2.5 text-right whitespace-nowrap tabular-nums text-encre">{fmtEUR.format(totalFilteredDebit)}</td>
+                      <td className="px-3 py-2.5 text-right whitespace-nowrap tabular-nums text-encre">{fmtEUR.format(totalFilteredCredit)}</td>
+                      <td colSpan={2} />
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              {totalPreviewPages > 1 && (
+                <div className="flex flex-wrap items-center justify-between gap-2 mt-4">
+                  <span className="text-sm text-encre-3">
+                    Page {previewPage + 1} sur {totalPreviewPages} · {filteredEntries.length} écritures
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <BoutonIcone icone={ChevronLeft} libelle="Page précédente" taille={18} disabled={previewPage === 0}
+                      onClick={() => setPreviewPage((p) => Math.max(0, p - 1))} />
+                    {Array.from({ length: Math.min(5, totalPreviewPages) }, (_, i) => {
+                      let pageNum;
+                      if (totalPreviewPages <= 5) pageNum = i;
+                      else if (previewPage < 3) pageNum = i;
+                      else if (previewPage > totalPreviewPages - 4) pageNum = totalPreviewPages - 5 + i;
+                      else pageNum = previewPage - 2 + i;
+                      return (
+                        <button
+                          key={pageNum}
+                          type="button"
+                          aria-current={previewPage === pageNum ? 'page' : undefined}
+                          onClick={() => setPreviewPage(pageNum)}
+                          className={`w-11 h-11 rounded-xl text-sm font-semibold tabular-nums transition-colors ${previewPage === pageNum ? 'bg-encre text-surface' : 'text-encre-2 hover:bg-surface-2'}`}
+                        >
+                          {pageNum + 1}
+                        </button>
+                      );
+                    })}
+                    <BoutonIcone icone={ChevronRight} libelle="Page suivante" taille={18} disabled={previewPage >= totalPreviewPages - 1}
+                      onClick={() => setPreviewPage((p) => Math.min(totalPreviewPages - 1, p + 1))} />
+                  </div>
+                </div>
+              )}
+              </>
+            )}
+          </div>
+        )}
+      </Carte>
+
+      {/* ── Télécharger ─────────────────────────────────────────────── */}
+      <Carte>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-encre mb-1">Fichier de sortie</p>
+            <p className="text-sm font-mono text-encre-2 px-2 py-1 rounded-lg bg-surface-2 break-all">{getFilenamePreview()}</p>
+            <p className="text-sm mt-2 text-encre-3">
+              {filteredEntries.length} écriture{filteredEntries.length > 1 ? 's' : ''} comptable{filteredEntries.length > 1 ? 's' : ''} {filteredEntries.length > 1 ? 'seront exportées' : 'sera exportée'}
+              {journalFilter !== 'all' && ` (journal ${journalFilter})`}
+            </p>
+          </div>
+
+          <div className="flex flex-col items-stretch sm:items-end gap-2 w-full sm:w-auto">
+            <Bouton variante="principal" icone={Download} chargement={exportEnCours} disabled={filteredEntries.length === 0} onClick={handleExport}>
+              Télécharger l’export
+            </Bouton>
+            {/* L'e-mail du comptable n'a pas de champ dans Paramètres : le lien « Configurer l'email comptable », qui menait
+                aux Paramètres sans ce champ, est retiré (relecture de la Task 8, 26 oct. 2026). */}
+            {entreprise?.emailComptable ? (
+              <Bouton icone={Mail} disabled={filteredEntries.length === 0}
+                onClick={() => {
+                  // La période affichée vient des dates réellement sélectionnées :
+                  // le libellé du préréglage devient faux dès qu'on ajuste une date.
+                  const periode = [dateFrom, dateTo].filter(Boolean)
+                    .map((d) => dateLue(d).toLocaleDateString('fr-FR'))
+                    .join(' au ');
+                  const subject = encodeURIComponent(`Export comptable ${periode} — ${entreprise?.nom || 'Mallettico'}`);
+                  const body = encodeURIComponent(`Bonjour,\n\nVeuillez trouver ci-joint l'export comptable pour la période du ${periode}.\n\nCordialement,\n${entreprise?.nom || ''}`);
+                  window.open(`mailto:${entreprise.emailComptable}?subject=${subject}&body=${body}`, '_blank');
+                  toast.info('Export prêt', 'Joignez le fichier téléchargé à votre e-mail.');
+                }}>
+                Envoyer à mon comptable
+              </Bouton>
+            ) : null}
+            {filteredEntries.length === 0 && (
+              <p className="text-sm text-encre-3">Aucune écriture pour la période choisie</p>
+            )}
+          </div>
+        </div>
+
+        {filteredEntries.length > 0 && (
+          <div className={`mt-4 pt-4 border-t ${borderCls}`}>
+            <p className="flex flex-wrap items-center gap-2 text-sm">
+              <ArrowUpDown className="w-4 h-4 text-encre-3" aria-hidden="true" />
+              <span className="font-medium text-encre-2">
+                Équilibre des écritures{journalFilter !== 'all' ? ` (${journalFilter})` : ''} :
+              </span>
+              {Math.abs(totalFilteredDebit - totalFilteredCredit) < 0.01 ? (
+                <span className="font-semibold text-succes-texte flex items-center gap-1">
+                  <CheckCircle className="w-4 h-4" aria-hidden="true" />
+                  équilibré
+                </span>
+              ) : (
+                <span className="font-semibold text-alerte-texte">
+                  écart de {fmtEUR.format(Math.abs(totalFilteredDebit - totalFilteredCredit))}
+                </span>
+              )}
+            </p>
+          </div>
+        )}
+      </Carte>
     </div>
   );
 }

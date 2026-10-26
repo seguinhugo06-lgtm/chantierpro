@@ -6,6 +6,7 @@ import {
 import { supabase, isDemo } from '../../supabaseClient';
 import BandeauDonneesFictives from '../ui/BandeauDonneesFictives';
 import { estDonneesFictives } from '../../lib/donneesFictives';
+import { adresseComplete } from '../../lib/adresseEntreprise';
 
 /**
  * Page publique de paiement de facture — /pay/:token
@@ -262,7 +263,7 @@ export default function PublicPaymentPage({ payToken }) {
           <div className="min-w-0">
             <h1 className="font-bold text-slate-900 truncate">{entreprise?.nom || 'Votre artisan'}</h1>
             <p className="text-xs text-slate-500 truncate">
-              {[entreprise?.adresse, entreprise?.code_postal, entreprise?.ville].filter(Boolean).join(', ')}
+              {adresseComplete(entreprise).split('\n').join(', ')}
             </p>
           </div>
         </div>

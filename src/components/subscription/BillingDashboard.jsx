@@ -10,12 +10,12 @@
 
 import { useState, useCallback } from 'react';
 import {
-  ArrowUpRight, ExternalLink, AlertTriangle,
+  ArrowRight, ExternalLink, AlertTriangle,
   Zap, Crown, FileText, Users, HardHat, Camera, HardDrive,
   RefreshCw, Package
 } from 'lucide-react';
 import { useSubscriptionStore, PLANS, PLAN_ORDER } from '../../stores/subscriptionStore';
-import { MENTION_TVA_ABONNEMENT, prixAbonnement, moisOffertsCommuns } from '../../stores/prixAbonnement';
+import { MENTION_TVA_ABONNEMENT, prixAbonnement, prixAbonne, moisOffertsCommuns } from '../../stores/prixAbonnement';
 import {
   createCheckoutSession,
   createPortalSession
@@ -24,6 +24,10 @@ import { toast } from '../../stores/toastStore';
 import { isDemo } from '../../supabaseClient';
 import { ouvrirLienExterne } from '../../lib/natif';
 import { dateLue } from '../../lib/dates';
+import { Bouton } from '../ui/Bouton';
+import Pastille from '../ui/Pastille';
+import { EnTetePage } from '../ui/EnTete';
+import { Segmente } from '../ui/Onglets';
 
 const PLAN_ICONS = {
   gratuit: Zap,
@@ -43,16 +47,16 @@ const RESOURCE_ICONS = {
 };
 
 const RESOURCE_LABELS = {
-  devis: 'Devis / mois',
+  devis: 'Devis ce mois',
   clients: 'Clients',
   chantiers: 'Chantiers',
-  catalogue: 'Articles catalogue',
+  catalogue: 'Articles du catalogue',
   photos: 'Photos',
   storage_mb: 'Stockage (Mo)',
-  equipe: 'Membres équipe'
+  equipe: 'Collaborateurs'
 };
 
-export default function BillingDashboard({ isDark, couleur }) {
+export default function BillingDashboard({ isDark: _isDark, couleur: _couleur }) {
   const planId = useSubscriptionStore((s) => s.planId);
   const usage = useSubscriptionStore((s) => s.usage);
   const sub = useSubscriptionStore((s) => s.subscription);
@@ -67,9 +71,6 @@ export default function BillingDashboard({ isDark, couleur }) {
   const PlanIcon = PLAN_ICONS[planId] || Zap;
   const isFree = planId === 'gratuit';
 
-  const cardBg = 'bg-surface border-bord';
-  const textPrimary = 'text-encre';
-  const textSecondary = 'text-encre-3';
 
   // Stripe portal
   const handleOpenPortal = useCallback(async () => {
@@ -141,65 +142,47 @@ export default function BillingDashboard({ isDark, couleur }) {
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className={`text-2xl font-bold ${textPrimary}`}>Abonnement & Facturation</h1>
-          <p className={`text-sm mt-1 ${textSecondary}`}>Gérez votre plan, vos limites et votre facturation</p>
-        </div>
-      </div>
+      <EnTetePage titre="Abonnement et facturation" sousTitre="Votre plan, vos limites et vos factures" />
 
-      {/* Current Plan Card */}
-      <div className={`rounded-2xl border ${cardBg} p-6`}>
-        <div className="flex items-start justify-between">
-          <div className="flex items-center gap-4">
-            <div
-              className="w-14 h-14 rounded-2xl flex items-center justify-center"
-              style={{ backgroundColor: plan.color + '20', color: plan.color }}
-            >
-              <PlanIcon size={24} />
+      {/* Le plan en cours */}
+      <div className="rounded-2xl border border-bord bg-surface shadow-e1 p-5 sm:p-6">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+          <div className="flex items-center gap-4 min-w-0">
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-surface-2 text-encre-2 flex-shrink-0">
+              <PlanIcon size={22} aria-hidden="true" />
             </div>
-            <div>
-              <h2 className={`text-xl font-bold ${textPrimary}`}>Plan {plan.name}</h2>
-              <p className={`text-sm ${textSecondary}`}>
-                {/* Prix et mention de franchise de TVA (D-19) par l'outil commun, comme « Mon plan » */}
-                {isFree ? 'Gratuit' : `${prixAbonnement(plan)} par mois, ${MENTION_TVA_ABONNEMENT}`}
-                {sub?.cancel_at_period_end && (
-                  <span className="ml-2 text-red-500 font-medium">• Annulation prévue</span>
-                )}
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-lg font-bold text-encre">Plan {plan.name}</h2>
+                {sub?.cancel_at_period_end && <Pastille ton="alerte">Résiliation prévue</Pastille>}
+              </div>
+              {/* Prix et mention de franchise de TVA (D-19) par l'outil commun, comme « Mon plan » ; un abonné
+                  annuel lit son prix annuel (prixAbonne), jamais « par mois ». */}
+              <p className="text-sm text-encre-2">
+                {isFree ? 'Gratuit' : `${prixAbonne(plan, sub)}, ${MENTION_TVA_ABONNEMENT}`}
               </p>
               {sub?.current_period_end && (
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Prochain renouvellement : {dateLue(sub.current_period_end).toLocaleDateString('fr-FR')}
+                <p className="text-sm text-encre-3 mt-0.5">
+                  {sub?.cancel_at_period_end ? 'Accès jusqu\'au' : 'Prochain renouvellement :'} {dateLue(sub.current_period_end).toLocaleDateString('fr-FR')}
                 </p>
               )}
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-shrink-0">
             {!isFree && (
-              <button
-                onClick={handleOpenPortal}
-                disabled={loadingAction === 'portal'}
-                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm border border-bord text-encre-2 hover:bg-surface-2 transition-colors`}
-              >
-                <ExternalLink size={14} />
-                Stripe
-              </button>
+              <Bouton icone={ExternalLink} onClick={handleOpenPortal} chargement={loadingAction === 'portal'} disabled={loadingAction === 'portal'}>
+                Mes factures et paiement
+              </Bouton>
             )}
             {isFree && (
-              <button
-                onClick={() => openUpgradeModal()}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium text-white transition-all hover:shadow-md"
-                style={{ backgroundColor: couleur || '#f97316' }}
-              >
-                <ArrowUpRight size={14} />
-                Changer de plan
-              </button>
+              <Bouton iconeFin={ArrowRight} onClick={() => openUpgradeModal()}>
+                Voir les offres
+              </Bouton>
             )}
           </div>
         </div>
 
-        {/* Usage summary */}
+        {/* Usage : une limite atteinte se dit en toutes lettres, en ton alerte */}
         <div className="mt-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
           {Object.entries(plan.limits)
             .filter(([key]) => ['devis', 'clients', 'chantiers', 'catalogue', 'equipe', 'storage_mb'].includes(key))
@@ -208,25 +191,26 @@ export default function BillingDashboard({ isDark, couleur }) {
               const current = usage[key] ?? 0;
               const isUnlimited = limit === -1;
               const percent = isUnlimited ? 0 : (limit > 0 ? Math.min(100, Math.round((current / limit) * 100)) : 100);
-              const isDanger = !isUnlimited && percent >= 100;
-              const isWarning = !isUnlimited && percent >= 80;
+              const atteinte = !isUnlimited && current >= limit;
+              const proche = !isUnlimited && !atteinte && percent >= 80;
 
               return (
                 <div
                   key={key}
-                  className={`rounded-xl p-3 border ${isDanger ? (isDark ? 'border-red-500/30 bg-red-900/10' : 'border-red-200 bg-red-50/50') : isWarning ? 'border-amber-200 bg-amber-50/50' : 'border-bord bg-fond'}`}
+                  className={`rounded-xl p-3 border ${atteinte || proche ? 'border-bord bg-alerte-fond' : 'border-bord bg-fond'}`}
                 >
-                  <div className="flex items-center gap-1.5 mb-1">
-                    <Icon size={12} className={textSecondary} />
-                    <span className={`text-[10px] ${textSecondary}`}>{RESOURCE_LABELS[key]}</span>
+                  <div className="flex items-center gap-1.5 mb-1 text-encre-3">
+                    <Icon size={14} aria-hidden="true" />
+                    <span className="text-sm">{RESOURCE_LABELS[key]}</span>
                   </div>
-                  <div className={`text-lg font-bold ${isDanger ? 'text-red-600' : textPrimary}`}>
-                    {isUnlimited ? '∞' : `${current}/${limit}`}
+                  <div className={`text-base font-bold tabular-nums ${atteinte || proche ? 'text-alerte-texte' : 'text-encre'}`}>
+                    {isUnlimited ? 'Illimité' : atteinte ? 'Limite atteinte' : `${Math.round(current * 10) / 10} sur ${limit}`}
                   </div>
+                  {atteinte && <p className="text-sm text-alerte-texte tabular-nums">{limit} au plus</p>}
                   {!isUnlimited && limit > 0 && (
-                    <div className="mt-1.5 h-1 bg-slate-200 rounded-full overflow-hidden">
+                    <div className="mt-1.5 h-1 bg-surface-2 rounded-full overflow-hidden" aria-hidden="true">
                       <div
-                        className={`h-full rounded-full ${isDanger ? 'bg-red-500' : isWarning ? 'bg-amber-500' : 'bg-emerald-500'}`}
+                        className={`h-full rounded-full ${atteinte || proche ? 'bg-alerte-point' : 'bg-neutre-point'}`}
                         style={{ width: `${Math.min(100, percent)}%` }}
                       />
                     </div>
@@ -237,144 +221,125 @@ export default function BillingDashboard({ isDark, couleur }) {
         </div>
       </div>
 
-      {/* Plans Comparison */}
-      <div className={`rounded-2xl border ${cardBg} p-6`}>
-        <div className="flex items-center justify-between mb-4">
-          <h3 className={`text-lg font-bold ${textPrimary}`}>Comparer les plans</h3>
-          <div className="flex items-center gap-2 text-sm">
-            <span className={billing === 'monthly' ? textPrimary : textSecondary}>Mensuel</span>
-            <button
-              onClick={() => setBilling(b => b === 'monthly' ? 'yearly' : 'monthly')}
-              className={`relative w-10 h-5 rounded-full transition-colors ${billing === 'yearly' ? 'bg-accent' : 'bg-slate-300'}`}
-            >
-              <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${billing === 'yearly' ? 'translate-x-5' : 'translate-x-0.5'}`} />
-            </button>
-            <span className={billing === 'yearly' ? textPrimary : textSecondary}>
-              Annuel {moisOffertsCommuns(PLANS) > 0 && <span className="text-green-500 text-xs font-medium">{moisOffertsCommuns(PLANS)} mois offerts</span>}
-            </span>
-          </div>
+      {/* Comparer les plans */}
+      <div className="rounded-2xl border border-bord bg-surface p-5 sm:p-6">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <h3 className="text-lg font-bold text-encre">Comparer les plans</h3>
+          <Segmente
+            ariaLabel="Facturation"
+            valeur={billing}
+            onChange={setBilling}
+            options={[
+              { valeur: 'monthly', libelle: 'Mensuel' },
+              { valeur: 'yearly', libelle: moisOffertsCommuns(PLANS) > 0 ? `Annuel · ${moisOffertsCommuns(PLANS)} mois offerts` : 'Annuel' },
+            ]}
+          />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {PLAN_ORDER.map((pid) => {
             const p = PLANS[pid];
-            const Icon = PLAN_ICONS[pid];
+            const Icon = PLAN_ICONS[pid] || Zap;
             const isCurrent = pid === planId;
-            // Comme « Mon plan » (profil/PlanPage.jsx) : à l'année, l'équivalent mensuel ; au mois, prixAbonnement
-            const price = billing === 'yearly' && p.priceYearly
-              ? `${(p.priceYearly / 12).toFixed(2).replace('.', ',')} €`
-              : p.priceMonthly === 0 ? null : prixAbonnement(p);
+            const isHigher = PLAN_ORDER.indexOf(pid) > PLAN_ORDER.indexOf(planId);
+            // Comme « Mon plan » : à l'année, l'équivalent mensuel par prixAbonnement, et le prix facturé dessous
+            const price = p.priceMonthly === 0 ? null
+              : billing === 'yearly' && p.priceYearly ? prixAbonnement(p, 'mois-a-l-annee')
+              : prixAbonnement(p);
 
             return (
               <div
                 key={pid}
-                className={`rounded-xl border p-5 transition-all ${
-                  isCurrent
-                    ? 'border-2 border-orange-500 shadow-sm'
-                    : 'border-bord hover:border-bord-fort'
-                }`}
+                className={`rounded-xl border p-5 ${isCurrent ? 'border-accent ring-1 ring-accent order-first md:order-none' : 'border-bord'}`}
               >
-                <div className="flex items-center gap-2 mb-2">
-                  <Icon size={16} style={{ color: p.color }} />
-                  <span className={`font-semibold text-sm ${textPrimary}`}>{p.name}</span>
-                  {isCurrent && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-accent/10 text-accent-texte font-medium">Actuel</span>}
-                  {p.badge && !isCurrent && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-accent text-sur-accent font-bold">{p.badge}</span>}
+                <div className="flex flex-wrap items-center gap-2 mb-2">
+                  <Icon size={16} aria-hidden="true" className="text-encre-2" />
+                  <span className="font-semibold text-sm text-encre">{p.name}</span>
+                  {isCurrent && <Pastille ton="succes">Votre plan</Pastille>}
+                  {p.badge && !isCurrent && <span className="text-sm text-encre-3">{p.badge}</span>}
                 </div>
-                <div className={`text-2xl font-bold ${textPrimary}`}>
-                  {price ? `${price} par mois` : 'Gratuit'}
+                <div className="text-2xl font-bold text-encre tabular-nums">
+                  {price ? <>{price}<span className="text-sm font-normal text-encre-3"> par mois</span></> : 'Gratuit'}
                 </div>
-                {price && <p className={`text-xs mt-0.5 ${textSecondary}`}>{MENTION_TVA_ABONNEMENT}</p>}
-                <p className={`text-xs mt-1 ${textSecondary}`}>{p.description}</p>
-                <button
-                  onClick={() => handleSelectPlan(pid)}
-                  disabled={isCurrent || loadingAction === pid || pid === 'gratuit'}
-                  className={`w-full mt-3 py-2 rounded-lg text-xs font-medium transition-all ${
-                    isCurrent
-                      ? 'bg-slate-100 text-slate-400 cursor-default'
-                      : pid === 'gratuit'
-                        ? 'bg-slate-100 text-slate-400 cursor-default'
-                        : 'text-white hover:opacity-90'
-                  }`}
-                  style={(!isCurrent && pid !== 'gratuit') ? { backgroundColor: couleur || '#f97316' } : {}}
-                >
-                  {loadingAction === pid ? 'Chargement...' : isCurrent ? 'Plan actuel' : `Passer au ${p.name}`}
-                </button>
+                {price && billing === 'yearly' && p.priceYearly > 0 && (
+                  <p className="text-sm mt-0.5 text-encre-3 tabular-nums">Facturé {prixAbonnement(p, 'an')}/an</p>
+                )}
+                {price && <p className="text-sm mt-0.5 text-encre-3">{MENTION_TVA_ABONNEMENT}</p>}
+                <p className="text-sm mt-1 text-encre-3">{p.description}</p>
+                {isCurrent ? (
+                  <p className="mt-3 min-h-[44px] flex items-center justify-center text-sm font-medium text-encre-3">C'est votre plan</p>
+                ) : isHigher ? (
+                  <Bouton
+                    className="mt-3"
+                    pleineLargeur
+                    variante={PLAN_ORDER.indexOf(pid) === PLAN_ORDER.indexOf(planId) + 1 && !sub?.cancel_at_period_end ? 'principal' : 'secondaire'}
+                    onClick={() => handleSelectPlan(pid)}
+                    chargement={loadingAction === pid}
+                    disabled={loadingAction === pid}
+                  >
+                    Passer au plan {p.name}
+                  </Bouton>
+                ) : (
+                  <p className="mt-3 min-h-[44px] flex items-center justify-center text-sm text-encre-3">Inclus dans votre plan</p>
+                )}
               </div>
             );
           })}
         </div>
       </div>
 
-      {/* Cancel / Reactivate */}
+      {/* Gérer ou résilier, réactiver */}
       {!isFree && (
-        <div className={`rounded-2xl border ${cardBg} p-6`}>
-          <h3 className={`text-lg font-bold ${textPrimary} mb-3`}>Gestion de l'abonnement</h3>
+        <div className="rounded-2xl border border-bord bg-surface p-5 sm:p-6">
+          <h3 className="text-lg font-bold text-encre mb-3">Gestion de l'abonnement</h3>
 
           {sub?.cancel_at_period_end ? (
-            <div className="flex items-center justify-between p-4 rounded-xl bg-amber-50 border border-amber-200">
-              <div className="flex items-center gap-3">
-                <AlertTriangle className="text-amber-500" size={20} />
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 rounded-xl bg-alerte-fond">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="text-alerte-texte flex-shrink-0 mt-0.5" size={20} aria-hidden="true" />
                 <div>
-                  <p className="text-sm font-medium text-amber-700">
-                    Annulation programmée
-                  </p>
-                  <p className="text-xs text-amber-600">
-                    Votre plan restera actif jusqu'à la fin de la période de facturation.
-                  </p>
+                  <p className="text-sm font-medium text-alerte-texte">Résiliation programmée</p>
+                  <p className="text-sm text-encre-2">Votre plan reste actif jusqu'à la fin de la période payée.</p>
                 </div>
               </div>
-              <button
-                onClick={handleReactivate}
-                disabled={loadingAction === 'reactivate'}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium bg-amber-500 text-white hover:bg-amber-600 transition-colors"
-              >
-                <RefreshCw size={14} />
+              <Bouton variante="principal" icone={RefreshCw} onClick={handleReactivate} chargement={loadingAction === 'reactivate'} disabled={loadingAction === 'reactivate'}>
                 Réactiver
-              </button>
+              </Bouton>
             </div>
           ) : showCancelConfirm ? (
-            <div className="p-4 rounded-xl bg-red-50 border border-red-200">
-              <p className="text-sm font-medium text-red-700 mb-3">
-                Êtes-vous sûr de vouloir annuler votre abonnement ?
+            <div className="p-4 rounded-xl bg-surface-2">
+              <p className="text-sm font-medium text-encre mb-1">Gérer ou résilier votre abonnement</p>
+              <p className="text-sm text-encre-2 mb-4">
+                La page sécurisée de Stripe va s'ouvrir : vous pouvez y changer de carte, retrouver vos factures ou résilier. Si vous résiliez, vous gardez l'accès jusqu'à la fin de la période payée et vos données sont conservées.
               </p>
-              <p className="text-xs text-red-600 mb-4">
-                Vous perdrez l'accès aux fonctionnalités Pro à la fin de la période.
-              </p>
-              <div className="flex gap-2">
-                <button
-                  onClick={handleCancel}
-                  disabled={loadingAction === 'cancel'}
-                  className="px-4 py-2 rounded-xl text-sm font-medium bg-red-500 text-white hover:bg-red-600 transition-colors"
-                >
-                  {loadingAction === 'cancel' ? 'Annulation...' : 'Confirmer l\'annulation'}
-                </button>
-                <button
-                  onClick={() => setShowCancelConfirm(false)}
-                  className={`px-4 py-2 rounded-xl text-sm text-encre-2 hover:bg-surface-2 transition-colors`}
-                >
-                  Garder mon plan
-                </button>
+              <div className="flex flex-wrap gap-2">
+                <Bouton onClick={handleCancel} chargement={loadingAction === 'cancel'} disabled={loadingAction === 'cancel'}>
+                  Continuer vers Stripe
+                </Bouton>
+                <Bouton variante="discret" onClick={() => setShowCancelConfirm(false)}>
+                  Rester ici
+                </Bouton>
               </div>
             </div>
           ) : (
-            <div className="flex items-center justify-between">
-              <p className={`text-sm ${textSecondary}`}>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-sm text-encre-3">
                 Votre abonnement se renouvelle automatiquement.
               </p>
               <button
+                type="button"
                 onClick={() => setShowCancelConfirm(true)}
-                className="text-sm text-red-500 hover:text-red-600 font-medium transition-colors"
+                className="min-h-[44px] px-2 text-sm font-medium text-encre-2 underline underline-offset-2 hover:text-encre"
               >
-                Annuler l'abonnement
+                Gérer ou résilier mon abonnement
               </button>
             </div>
           )}
         </div>
       )}
 
-      {/* Demo notice */}
       {isDemo && (
-        <p className="text-center text-xs text-slate-400">
+        <p className="text-center text-sm text-encre-3">
           Mode démo — les changements de plan sont simulés localement
         </p>
       )}

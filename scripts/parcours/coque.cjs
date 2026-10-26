@@ -450,13 +450,15 @@ module.exports = [
         avantChargement: () => { try { localStorage.setItem('pwa-install-dismissed', String(Date.now())); } catch { /* */ } },
       });
       await attendre(1500);
-      await page.evaluate(() => [...document.querySelectorAll('button')].find((b) => b.innerText.trim() === 'Documents')?.click());
-      await attendre(300);
-      await page.evaluate(() => [...document.querySelectorAll('button')].find((b) => b.innerText.trim() === 'Ramonage')?.click());
+      // Paramètres au téléphone : la liste des rubriques (Task 8, 26 oct. 2026), « Ramonage » sous « Documents »
+      await cliquer(page, 'Ramonage');
       await attendre(600);
       verifier(!!(await page.$('#ramonage-envoi-auto')), 'l’interrupteur « Envoyer les rappels automatiquement par e-mail »');
       const ecritures = () => base.journal.filter((j) => j.m !== 'GET' && j.table === 'entreprise').length;
       const avant = ecritures();
+      // Au milieu de l'écran : en bas, la barre d'onglets fixe recouvre l'interrupteur et recevrait le clic
+      await page.evaluate(() => document.getElementById('ramonage-envoi-auto').scrollIntoView({ block: 'center', behavior: 'instant' }));
+      await attendre(300);
       await page.click('#ramonage-envoi-auto');
       await attendre(900);
       const fenetre = await page.evaluate(() => [...document.querySelectorAll('[role="dialog"]')].map((d) => d.innerText).find((t) => /Conditions générales d'utilisation/.test(t)) || null);

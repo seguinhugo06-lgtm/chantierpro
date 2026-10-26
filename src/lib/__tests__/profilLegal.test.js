@@ -101,13 +101,25 @@ const lire = (fichier) => fs.readFileSync(path.join(racine, fichier), 'utf8');
 // Cliquet : avant, six écrans tenaient chacun leur liste et se contredisaient.
 // Les écrans qui annoncent ou appliquent le blocage d'envoi lisent lib/profilLegal, rien d'autre.
 describe('aucun écran ne retient sa propre liste', () => {
-  const ECRANS = ['src/components/DevisPage.jsx', 'src/components/DevisComposer.jsx', 'src/components/Settings.jsx', 'src/components/Dashboard.jsx'];
+  // L'assistant de démarrage est sorti de Settings.jsx (Task 8, 26 oct. 2026) : c'est lui qui liste ce qui bloque l'envoi.
+  const ECRANS = ['src/components/DevisPage.jsx', 'src/components/DevisComposer.jsx', 'src/components/settings/AssistantProfil.jsx', 'src/components/Dashboard.jsx'];
   const CONTROLE_EN_DUR = /!\s*\(?\s*(?:String\()?\s*entreprise\??\.(siret|adresse|nom|nomEntrepreneur|formeJuridique|forme_juridique|decennaleAssureur|decennale_assureur|decennaleNumero|decennale_numero|decennaleNonSoumis|tel|telephone|email)\b/g;
 
   it.each(ECRANS)('%s', (fichier) => {
     const source = lire(fichier);
     expect(source).toContain('lib/profilLegal');
     expect(source.match(CONTROLE_EN_DUR) || []).toEqual([]);
+  });
+
+  // Paramètres lit la jauge du profil (lib/jaugeProfil, bâtie sur la liste de lib/profilLegal) et ne contrôle aucun
+  // champ en dur ; l'état du profil s'affiche par settings/EtatProfil, sans liste à lui.
+  it.each(['src/components/Settings.jsx', 'src/components/settings/EtatProfil.jsx'])('%s', (fichier) => {
+    const source = lire(fichier);
+    expect(source.match(CONTROLE_EN_DUR) || []).toEqual([]);
+  });
+  it('Paramètres et la jauge lisent la liste commune', () => {
+    expect(lire('src/components/Settings.jsx')).toContain('lib/jaugeProfil');
+    expect(lire('src/lib/jaugeProfil.js')).toContain("from './profilLegal'");
   });
 });
 

@@ -12,13 +12,14 @@ import {
   Zap, Hammer, ExternalLink, Clock,
 } from 'lucide-react';
 import { useSubscriptionStore, PLANS, PLAN_ORDER } from '../../stores/subscriptionStore';
-import { MENTION_TVA_ABONNEMENT, prixAbonnement, economieAnnuelle, moisOffertsCommuns } from '../../stores/prixAbonnement';
+import { MENTION_TVA_ABONNEMENT, prixAbonnement, prixAbonne, economieAnnuelle, moisOffertsCommuns } from '../../stores/prixAbonnement';
 import { createCheckoutSession, createPortalSession, utiliserCodeTesteur } from '../../services/subscriptionsApi';
 import { toast } from '../../stores/toastStore';
 import { auth, isDemo } from '../../supabaseClient';
 import { useConfirm } from '../../context/AppContext';
 import { ouvrirLienExterne } from '../../lib/natif';
 import { Segmente } from '../ui/Onglets';
+import { EnTetePage } from '../ui/EnTete';
 import Pastille from '../ui/Pastille';
 import { Bouton } from '../ui/Bouton';
 import { dateLue } from '../../lib/dates';
@@ -30,13 +31,8 @@ const PLAN_ICONS = { gratuit: Zap, artisan: Hammer, equipe: Users };
 
 // ─── Main Component ─────────────────────────────────────────────────────────
 
-export default function PlanPage({ isDark, couleur = '#f97316', setPage }) {
+export default function PlanPage({ isDark: _isDark, couleur: _couleur, setPage }) {
   const { confirm } = useConfirm();
-
-  // Theme
-  const cardBg = 'bg-surface border-bord';
-  const textPrimary = 'text-encre';
-  const textMuted = 'text-encre-3';
 
   // Subscription store
   const planId = useSubscriptionStore(s => s.planId);
@@ -53,6 +49,7 @@ export default function PlanPage({ isDark, couleur = '#f97316', setPage }) {
   const [codeTesteur, setCodeTesteur] = useState('');
   const [codeEnCours, setCodeEnCours] = useState(false);
   const [codeErreur, setCodeErreur] = useState('');
+  const [codeOuvert, setCodeOuvert] = useState(false);
 
   // Derived
   const isPaid = planId !== 'gratuit';
@@ -127,23 +124,22 @@ export default function PlanPage({ isDark, couleur = '#f97316', setPage }) {
     const finPeriode = sub?.current_period_end
       ? dateLue(sub.current_period_end).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
       : 'la fin de votre période';
-    const ok = await confirm({
-      title: 'Annuler votre abonnement ?',
-      message: `Vous gardez l'accès à toutes les fonctionnalités jusqu'au ${finPeriode}, et vos données sont conservées. L'annulation se fait sur la page sécurisée de Stripe, qui va s'ouvrir dans un nouvel onglet.`,
-      confirmText: 'Continuer vers Stripe',
-      cancelText: 'Garder mon plan',
-    });
-    if (!ok) return;
-
     if (isDemo) {
-      setSubscription({ ...sub, cancel_at_period_end: true });
-      toast.info('Mode démo', 'Annulation simulée — aucun abonnement réel n\'est modifié.');
+      toast.info('Mode démo', 'La page Stripe n\'est pas disponible en mode démo.');
       return;
     }
+    const ok = await confirm({
+      title: 'Gérer ou résilier votre abonnement',
+      message: `La page sécurisée de Stripe va s'ouvrir : vous pouvez y changer de carte, retrouver vos factures ou résilier. Si vous résiliez, vous gardez l'accès jusqu'au ${finPeriode} et vos données sont conservées.`,
+      confirmText: 'Continuer vers Stripe',
+      cancelText: 'Rester ici',
+      variant: 'info',
+    });
+    if (!ok) return;
     setCancelling(true);
     try { await ouvrirPortail('Annulation impossible'); }
     finally { setCancelling(false); }
-  }, [sub, setSubscription, confirm, ouvrirPortail]);
+  }, [sub, confirm, ouvrirPortail]);
 
   const handleReactivate = useCallback(async () => {
     if (isDemo) {
@@ -168,51 +164,85 @@ export default function PlanPage({ isDark, couleur = '#f97316', setPage }) {
 
   // ─── RENDER ───────────────────────────────────────────────────────────────
 
-  return (
-    <div className={`min-h-screen pb-24 bg-surface-2`}>
-      <section className="px-4 sm:px-6 py-6 sm:py-10 max-w-4xl mx-auto">
-        <h2 className={`text-xl font-bold mb-6 ${textPrimary}`}>Mon plan</h2>
+  const formulaireCode = (
+    <form
+      onSubmit={async (e) => {
+        e.preventDefault();
+        setCodeErreur('');
+        setCodeEnCours(true);
+        const { data, error } = await utiliserCodeTesteur(codeTesteur);
+        setCodeEnCours(false);
+        if (error) { setCodeErreur(error); return; }
+        setSubscription({ ...(sub || {}), plan: data.plan, status: 'active', current_period_end: data.fin, cancel_at_period_end: true, stripe_subscription_id: null });
+        setCodeTesteur('');
+        toast.success('Code activé', `Plan ${PLANS[data.plan]?.name || data.plan} offert pendant ${data.duree_mois} mois.`);
+      }}
+      className="mt-3 rounded-2xl border border-bord bg-surface p-4 sm:p-5 text-left"
+    >
+      <label htmlFor="code-testeur" className="block text-sm font-semibold mb-1 text-encre">Votre code testeur</label>
+      <p className="text-sm mb-3 text-encre-3">Il débloque un plan payant pendant la durée prévue, sans carte bancaire.</p>
+      <div className="flex flex-col sm:flex-row gap-2">
+        <input
+          id="code-testeur"
+          value={codeTesteur}
+          onChange={(e) => setCodeTesteur(e.target.value.toUpperCase())}
+          placeholder="EX. AMIS-ARTISANS-7K3PX9"
+          autoComplete="off"
+          autoCapitalize="characters"
+          spellCheck={false}
+          aria-invalid={codeErreur ? true : undefined}
+          aria-describedby={codeErreur ? 'code-testeur-erreur' : undefined}
+          className="flex-1 h-11 px-3 rounded-xl border text-base sm:text-sm tracking-wide bg-surface text-encre border-bord-fort"
+        />
+        <Bouton type="submit" chargement={codeEnCours} disabled={codeEnCours || codeTesteur.trim().length < 8}>
+          {codeEnCours ? 'Vérification…' : 'Activer'}
+        </Bouton>
+      </div>
+      {codeErreur && <p id="code-testeur-erreur" role="alert" className="text-sm text-danger-texte mt-2">{codeErreur}</p>}
+    </form>
+  );
 
-        {/* Current plan card */}
-        <div className={`rounded-xl border p-5 sm:p-6 mb-6 animate-fade-slide-up ${cardBg}`}>
+  return (
+    <div className="min-h-screen pb-24 bg-fond">
+      <section className="px-4 sm:px-6 py-6 sm:py-10 max-w-4xl mx-auto">
+        <EnTetePage titre="Mon plan" />
+
+        {/* Le plan en cours */}
+        <div className="rounded-2xl border border-bord bg-surface shadow-e1 p-5 sm:p-6 mb-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-surface-2 text-encre-2">
-                {React.createElement(PLAN_ICONS[planId] || Zap, { size: 22 })}
+            <div className="flex items-center gap-4 min-w-0">
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-surface-2 text-encre-2 flex-shrink-0">
+                {React.createElement(PLAN_ICONS[planId] || Zap, { size: 22, 'aria-hidden': true })}
               </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className={`text-lg font-bold ${textPrimary}`}>Plan {plan.name}</h3>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h2 className="text-lg font-bold text-encre">Plan {plan.name}</h2>
                   {offreTesteur ? (
                     <Pastille ton="succes">Offert</Pastille>
                   ) : sub?.cancel_at_period_end ? (
-                    <Pastille ton="alerte">Annulation prévue</Pastille>
+                    <Pastille ton="alerte">Résiliation prévue</Pastille>
                   ) : (
                     <Pastille ton="succes">Actif</Pastille>
                   )}
                 </div>
-                {/* Prix formaté à la française : `${plan.priceMonthly}€` affichait
-                    « 9.9€ ». Et la période de facturation n'est PAS affichée ici :
-                    elle se lisait dans `sub.billing_interval`, colonne qui n'existe
-                    pas dans `subscriptions` — un abonné à l'année aurait donc lu
-                    « Mensuel ». Mieux vaut ne rien dire que dire faux ; la période
-                    exacte figure sur la page Stripe (« Mes factures et paiement »). */}
-                <p className={`text-sm font-medium text-encre-2`}>
+                {/* Le prix que paie l'abonné, avec SA période (`billing_interval`, écrit par le webhook depuis la
+                    migration 071) : un abonné annuel lit « 99 € par an », jamais un prix « par mois » qu'il ne paie pas. */}
+                <p className="text-sm font-medium text-encre-2">
                   {offreTesteur
                     ? `Offert jusqu'au ${nextBilling} — aucun prélèvement`
                     : isPaid
-                    ? `${prixAbonnement(plan)} par mois, ${MENTION_TVA_ABONNEMENT}${plan.offreLancement ? ` · ${plan.offreLancement}` : ''}`
-                    : 'Gratuit — Découverte'
+                    ? `${prixAbonne(plan, sub)}, ${MENTION_TVA_ABONNEMENT}${plan.offreLancement ? ` · ${plan.offreLancement}` : ''}`
+                    : 'Gratuit'
                   }
                 </p>
                 {offreTesteur && (
-                  <p className={`text-xs mt-0.5 text-encre-2`}>
+                  <p className="text-sm mt-0.5 text-encre-3">
                     Ensuite, vous repassez au plan Gratuit sans rien perdre, sauf si vous choisissez de vous abonner.
                   </p>
                 )}
                 {nextBilling && !sub?.cancel_at_period_end && (
-                  <p className={`text-xs mt-0.5 text-encre-2`}>
-                    <Clock size={11} className="inline mr-1" />
+                  <p className="text-sm mt-0.5 text-encre-3">
+                    <Clock size={14} className="inline mr-1 -mt-0.5" aria-hidden="true" />
                     Prochaine facturation : {nextBilling}
                   </p>
                 )}
@@ -224,30 +254,11 @@ export default function PlanPage({ isDark, couleur = '#f97316', setPage }) {
               </div>
             </div>
 
-            {/* Actions */}
             <div className="flex items-center gap-2 flex-wrap">
               {isPaid && !isDemo && !offreTesteur && (
-                <button
-                  onClick={handlePortal}
-                  disabled={portalLoading}
-                  className="px-4 min-h-[44px] rounded-xl text-sm font-semibold flex items-center gap-1.5 border transition-colors disabled:opacity-50 border-bord-fort text-encre hover:bg-surface-2"
-                >
-                  {portalLoading ? (
-                    <><span className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" /> Chargement...</>
-                  ) : (
-                    <><CreditCard size={14} /> Mes factures et paiement <ExternalLink size={11} /></>
-                  )}
-                </button>
-              )}
-              {isPaid && !sub?.cancel_at_period_end && !offreTesteur && (
-                <button
-                  onClick={handleCancel}
-                  disabled={cancelling}
-                  aria-label={`Annuler mon abonnement ${plan.name}`}
-                  className="px-4 min-h-[44px] rounded-xl text-sm font-semibold transition-colors text-danger-texte hover:bg-danger-fond"
-                >
-                  {cancelling ? 'Annulation…' : 'Annuler l\'abonnement'}
-                </button>
+                <Bouton icone={CreditCard} iconeFin={ExternalLink} onClick={handlePortal} chargement={portalLoading} disabled={portalLoading}>
+                  Mes factures et paiement
+                </Bouton>
               )}
               {sub?.cancel_at_period_end && !offreTesteur && (
                 <Bouton variante="principal" onClick={handleReactivate}>Réactiver</Bouton>
@@ -256,49 +267,8 @@ export default function PlanPage({ isDark, couleur = '#f97316', setPage }) {
           </div>
         </div>
 
-        {/* Code testeur */}
-        {!isPaid && (
-          <form
-            onSubmit={async (e) => {
-              e.preventDefault();
-              setCodeErreur('');
-              setCodeEnCours(true);
-              const { data, error } = await utiliserCodeTesteur(codeTesteur);
-              setCodeEnCours(false);
-              if (error) { setCodeErreur(error); return; }
-              setSubscription({ ...(sub || {}), plan: data.plan, status: 'active', current_period_end: data.fin, cancel_at_period_end: true, stripe_subscription_id: null });
-              setCodeTesteur('');
-              toast.success('Code activé', `Plan ${PLANS[data.plan]?.name || data.plan} offert pendant ${data.duree_mois} mois.`);
-            }}
-            className={`rounded-xl border p-4 sm:p-5 mb-6 ${cardBg}`}
-          >
-            <label htmlFor="code-testeur" className={`block text-sm font-semibold mb-1 ${textPrimary}`}>Vous avez un code testeur ?</label>
-            <p className={`text-xs mb-3 ${textMuted}`}>Il débloque un plan payant pendant la durée prévue, sans carte bancaire.</p>
-            <div className="flex flex-col sm:flex-row gap-2">
-              <input
-                id="code-testeur"
-                value={codeTesteur}
-                onChange={(e) => setCodeTesteur(e.target.value.toUpperCase())}
-                placeholder="EX. AMIS-ARTISANS-7K3PX9"
-                autoComplete="off"
-                autoCapitalize="characters"
-                spellCheck={false}
-                className={`flex-1 px-3 py-2.5 rounded-xl border text-sm tracking-wide bg-surface border-bord-fort`}
-              />
-              <button
-                type="submit"
-                disabled={codeEnCours || codeTesteur.trim().length < 8}
-                className="h-11 px-4 rounded-xl text-sm font-semibold disabled:opacity-50 bg-surface text-encre border border-bord-fort hover:bg-surface-2"
-              >
-                {codeEnCours ? 'Vérification…' : 'Activer'}
-              </button>
-            </div>
-            {codeErreur && <p role="alert" className="text-sm text-danger-texte mt-2">{codeErreur}</p>}
-          </form>
-        )}
-
-        {/* Plans comparison */}
-        <div className="animate-fade-slide-up" style={{ animationDelay: '100ms' }}>
+        {/* Les offres */}
+        <div>
           {/* Mensuel / Annuel : un segment (l'interrupteur de 44×24 était déformé en disque par la règle
               globale des 44 px — revue du 9 oct. 2026). */}
           <div className="flex justify-center mb-5">
@@ -313,7 +283,6 @@ export default function PlanPage({ isDark, couleur = '#f97316', setPage }) {
             />
           </div>
 
-          {/* Plan cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
             {PLAN_ORDER.map((pid) => {
               const p = PLANS[pid];
@@ -321,23 +290,26 @@ export default function PlanPage({ isDark, couleur = '#f97316', setPage }) {
               const Icon = PLAN_ICONS[pid] || Zap;
               const isCurrent = pid === planId;
               const isHigher = PLAN_ORDER.indexOf(pid) > PLAN_ORDER.indexOf(planId);
-              // Un seul bouton plein : l'offre juste au-dessus de la vôtre ; les autres en secondaire.
-              const estOffreSuivante = PLAN_ORDER.indexOf(pid) === PLAN_ORDER.indexOf(planId) + 1;
+              // Un seul bouton plein : l'offre juste au-dessus de la vôtre, sauf si « Réactiver » l'est déjà.
+              const estOffreSuivante = PLAN_ORDER.indexOf(pid) === PLAN_ORDER.indexOf(planId) + 1 && !(sub?.cancel_at_period_end && !offreTesteur);
+              // À l'année : l'équivalent mensuel, par l'outil commun (prixAbonnement), et le prix facturé dessous.
               const price = billing === 'yearly' && p.priceYearly
-                ? `${(p.priceYearly / 12).toFixed(2).replace('.', ',')} €`
+                ? prixAbonnement(p, 'mois-a-l-annee')
                 : prixAbonnement(p);
 
               return (
                 <div
                   key={pid}
-                  className={`rounded-2xl border p-4 sm:p-5 relative bg-surface shadow-e1 ${isCurrent ? 'border-accent ring-1 ring-accent' : 'border-bord'}`}
+                  data-plan={pid}
+                  // Au téléphone, l'offre en cours en premier.
+                  className={`rounded-2xl border p-4 sm:p-5 relative bg-surface shadow-e1 ${isCurrent ? 'border-accent ring-1 ring-accent order-first md:order-none' : 'border-bord'}`}
                 >
                   <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5 mb-3">
                     <div className="flex items-center gap-2 min-w-0 flex-shrink-0">
                       <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-surface-2 text-encre-2 flex-shrink-0">
                         <Icon size={18} aria-hidden="true" />
                       </div>
-                      <span className="text-base font-bold text-encre">{p.name}</span>
+                      <h3 className="text-base font-bold text-encre">{p.name}</h3>
                     </div>
                     {isCurrent ? <Pastille ton="succes">Votre plan</Pastille> : p.badge ? <span className="text-sm text-encre-3">{p.badge}</span> : null}
                   </div>
@@ -359,7 +331,7 @@ export default function PlanPage({ isDark, couleur = '#f97316', setPage }) {
                     )}
                     {billing === 'yearly' && p.priceYearly > 0 && (
                       <>
-                        <p className="text-sm mt-0.5 text-encre-3 tabular-nums">Facturé {String(p.priceYearly).replace('.', ',')} €/an</p>
+                        <p className="text-sm mt-0.5 text-encre-3 tabular-nums">Facturé {prixAbonnement(p, 'an')}/an</p>
                         <p className="text-sm mt-0.5 text-succes-texte font-medium tabular-nums">
                           Économisez {economieAnnuelle(p)} par an
                         </p>
@@ -367,7 +339,6 @@ export default function PlanPage({ isDark, couleur = '#f97316', setPage }) {
                     )}
                   </div>
 
-                  {/* Features */}
                   <ul className="space-y-1.5 mb-4">
                     {(p.featureLabels || []).filter(f => f.included).slice(0, 5).map((f, i) => (
                       <li key={i} className="flex items-start gap-2 text-sm text-encre-2">
@@ -377,26 +348,19 @@ export default function PlanPage({ isDark, couleur = '#f97316', setPage }) {
                     ))}
                   </ul>
 
-                  {/* CTA */}
                   {isCurrent ? (
                     <p className="w-full min-h-[44px] flex items-center justify-center text-sm font-medium text-encre-3">C'est votre plan</p>
                   ) : isHigher ? (
-                    <button
+                    <Bouton
+                      variante={estOffreSuivante ? 'principal' : 'secondaire'}
+                      pleineLargeur
+                      iconeFin={ArrowRight}
                       onClick={() => handleSelectPlan(pid)}
+                      chargement={loadingPlan === pid}
                       disabled={loadingPlan === pid}
-                      className={`w-full min-h-[44px] rounded-xl text-sm font-semibold flex items-center justify-center gap-1.5 transition-colors disabled:opacity-60 ${
-                        estOffreSuivante ? 'bg-accent text-sur-accent shadow-e1 hover:brightness-95' : 'bg-surface text-encre border border-bord-fort hover:bg-surface-2'
-                      }`}
                     >
-                      {loadingPlan === pid ? (
-                        <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                        </svg>
-                      ) : (
-                        <>Passer au {p.name} <ArrowRight size={16} aria-hidden="true" /></>
-                      )}
-                    </button>
+                      Passer au plan {p.name}
+                    </Bouton>
                   ) : (
                     <p className="w-full min-h-[44px] flex items-center justify-center text-sm text-encre-3">Inclus dans votre plan</p>
                   )}
@@ -406,51 +370,61 @@ export default function PlanPage({ isDark, couleur = '#f97316', setPage }) {
           </div>
         </div>
 
-        {/* Trust elements */}
-        <div className={`mt-8 text-center text-xs ${textMuted} space-y-1`}>
+        {/* Gérer ou résilier : un lien discret sous les offres (la page Stripe fait les deux) */}
+        {isPaid && !offreTesteur && !sub?.cancel_at_period_end && (
+          <div className="mt-6 text-center">
+            <button
+              type="button"
+              onClick={handleCancel}
+              disabled={cancelling}
+              className="min-h-[44px] px-3 text-sm font-medium text-encre-2 underline underline-offset-2 hover:text-encre disabled:opacity-50"
+            >
+              Gérer ou résilier mon abonnement
+            </button>
+          </div>
+        )}
+
+        {/* Code testeur : replié en bas */}
+        {!isPaid && (
+          <div className="mt-6 text-center">
+            <button
+              type="button"
+              onClick={() => setCodeOuvert(o => !o)}
+              aria-expanded={codeOuvert}
+              aria-controls="bloc-code-testeur"
+              className="min-h-[44px] px-3 text-sm font-medium text-encre-2 underline underline-offset-2 hover:text-encre"
+            >
+              J'ai un code
+            </button>
+            <div id="bloc-code-testeur" hidden={!codeOuvert}>
+              {codeOuvert && formulaireCode}
+            </div>
+          </div>
+        )}
+
+        <div className="mt-8 text-center text-sm text-encre-3 space-y-1">
           <p>Au mois, sans engagement · À l'année, payé pour 12 mois · Paiement sécurisé par Stripe</p>
-          <p>
-            <button onClick={() => setPage?.('cgu')} className="underline hover:opacity-80">CGU</button>
-            {' · '}
-            <button onClick={() => setPage?.('cgv')} className="underline hover:opacity-80">CGV</button>
-            {' · '}
-            <button onClick={() => setPage?.('confidentialite')} className="underline hover:opacity-80">Confidentialité</button>
-            {' · '}
-            <button onClick={() => setPage?.('mentions-legales')} className="underline hover:opacity-80">Mentions légales</button>
-            {' · '}
-            <button onClick={() => setPage?.('accessibilite')} className="underline hover:opacity-80">Accessibilité</button>
+          <p className="flex flex-wrap justify-center gap-x-1">
+            {/* Le point suit son lien : au retour à la ligne, il ne commence jamais une ligne */}
+            {[['cgu', 'CGU'], ['cgv', 'CGV'], ['confidentialite', 'Confidentialité'], ['mentions-legales', 'Mentions légales'], ['accessibilite', 'Accessibilité']].map(([cle, libelle], i, liste) => (
+              <span key={cle} className="inline-flex items-center">
+                <button type="button" onClick={() => setPage?.(cle)} className="min-h-[44px] px-1 underline hover:text-encre">{libelle}</button>
+                {i < liste.length - 1 && <span aria-hidden="true">·</span>}
+              </span>
+            ))}
           </p>
         </div>
 
-        {/* Logout */}
-        <div className="mt-6 text-center animate-fade-slide-up" style={{ animationDelay: '200ms' }}>
-          <button
-            onClick={handleLogout}
-            className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-              isDark ? 'text-red-400 hover:bg-red-500/10' : 'text-red-500 hover:bg-red-50'
-            }`}
-          >
-            <LogOut size={16} />
+        <div className="mt-6 text-center">
+          <Bouton variante="discret" icone={LogOut} onClick={handleLogout}>
             Se déconnecter
-          </button>
+          </Bouton>
 
           {isDemo && (
-            <p className={`text-xs mt-3 ${textMuted}`}>Mode démo — données de simulation</p>
+            <p className="text-sm mt-3 text-encre-3">Mode démo — données de simulation</p>
           )}
         </div>
       </section>
-
-      {/* Animations */}
-      <style>{`
-        @keyframes fadeSlideUp {
-          from { opacity: 0; transform: translateY(16px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        .animate-fade-slide-up {
-          animation: fadeSlideUp 0.5s ease-out forwards;
-          opacity: 0;
-        }
-      `}</style>
     </div>
   );
 }

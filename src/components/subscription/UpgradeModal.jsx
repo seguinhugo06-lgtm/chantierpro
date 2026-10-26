@@ -1,16 +1,16 @@
 /**
  * UpgradeModal — Contextual upgrade modal (Gratuit → Artisan / Équipe)
  *
- * Shows a bottom-sheet style modal with:
+ * Shows a bottom-sheet style modal (ui/Modal) with:
  * - Contextual title/subtitle based on the blocked feature
  * - Recommended plan based on the feature that triggered the modal
  * - Monthly/yearly toggle
  * - Stripe checkout integration
  */
 
-import React, { useState, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import {
-  X, Check, Lock, ArrowRight, Zap, Hammer, Users
+  Check, Lock, ArrowRight, Zap, Hammer, Users
 } from 'lucide-react';
 import {
   useSubscriptionStore, PLANS, PLAN_ORDER,
@@ -21,6 +21,10 @@ import { createCheckoutSession } from '../../services/subscriptionsApi';
 import { toast } from '../../stores/toastStore';
 import { isDemo } from '../../supabaseClient';
 import { ouvrirLienExterne } from '../../lib/natif';
+import Modal from '../ui/Modal';
+import { Bouton } from '../ui/Bouton';
+import Pastille from '../ui/Pastille';
+import { Segmente } from '../ui/Onglets';
 
 const PLAN_ICONS = { gratuit: Zap, artisan: Hammer, equipe: Users };
 
@@ -64,7 +68,6 @@ export default function UpgradeModal() {
   // Derived state (only computed when modal is open)
   const context = UPGRADE_CONTEXTS[blockedFeature] || UPGRADE_CONTEXTS.generic;
   const currentPlan = PLANS[currentPlanId] || PLANS.gratuit;
-  const CurIcon = PLAN_ICONS[currentPlanId] || Zap;
 
   // Determine which plans to show as upgrade options
   const upgradePlans = PLAN_ORDER
@@ -73,201 +76,123 @@ export default function UpgradeModal() {
     .filter(Boolean);
 
   const recommendedPlanId = context.recommendedPlan || 'artisan';
+  // Un seul bouton plein : l'offre qui débloque la fonction demandée, sinon la première offre.
+  const planPrincipal = upgradePlans.some(p => p.id === recommendedPlanId) ? recommendedPlanId : upgradePlans[0]?.id;
 
+  // Rendue par ui/Modal : portail vers <body>, role="dialog", nom sur la croix, focus gardé, thème clair et sombre.
   return (
-    <div className="fixed inset-0 z-[1050] flex items-end sm:items-center justify-center">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-        onClick={closeUpgradeModal}
-      />
-
-      {/* Modal — slides up on mobile */}
-      <div className="relative w-full max-w-3xl bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto animate-[slideUp_300ms_ease-out]">
-        {/* Header */}
-        <div className="px-6 pt-6 pb-4 border-b border-slate-200">
-          <div className="flex items-start justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
-                <Lock size={20} className="text-orange-500" />
-              </div>
-              <div>
-                <h2 className="text-xl font-bold text-slate-900">
-                  {context.title}
-                </h2>
-                <p className="text-sm text-slate-500 mt-0.5">
-                  {context.subtitle}
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={closeUpgradeModal}
-              className="p-2 rounded-lg hover:bg-slate-100 text-slate-400 transition-colors"
-            >
-              <X size={18} />
-            </button>
-          </div>
+    <Modal
+      isOpen={isOpen}
+      onClose={closeUpgradeModal}
+      size="xl"
+      title={context.title}
+      description={context.subtitle}
+      footer={(
+        <div className="w-full flex flex-col items-center gap-1">
+          <Bouton variante="discret" onClick={closeUpgradeModal}>Plus tard</Bouton>
+          {isDemo && <p className="text-center text-sm text-encre-3">Mode démo — simulation</p>}
         </div>
+      )}
+    >
+      {currentPlanId === 'gratuit' && (
+        <p className="flex items-center gap-2 text-sm text-encre-3 mb-3">
+          <Lock size={14} aria-hidden="true" />
+          <span>Plan actuel : <strong className="text-encre-2">{currentPlan.name}</strong></span>
+        </p>
+      )}
 
-        {/* Plan cards */}
-        <div className={`p-6 grid grid-cols-1 ${upgradePlans.length > 1 ? 'sm:grid-cols-2' : ''} gap-4`}>
-          {/* Current plan indicator */}
-          {currentPlanId === 'gratuit' && (
-            <div className="sm:col-span-full mb-2">
-              <div className="flex items-center gap-2 text-xs text-slate-500">
-                <CurIcon size={14} style={{ color: currentPlan.color }} />
-                <span>Plan actuel : <strong className="text-slate-700">{currentPlan.name}</strong></span>
-                {currentPlan.priceMonthly === 0 && <span>— Gratuit</span>}
-              </div>
-            </div>
-          )}
-
-          {/* Upgrade plan columns */}
-          {upgradePlans.map((plan) => {
-            const Icon = PLAN_ICONS[plan.id] || Zap;
-            // « Recommandé » seulement quand une fonction précise est bloquée (l'offre qui la débloque) ; pas en contexte générique.
-            const isRecommended = context !== UPGRADE_CONTEXTS.generic && plan.id === recommendedPlanId;
-            const price = billing === 'yearly' && plan.priceYearly
-              ? `${(plan.priceYearly / 12).toFixed(2).replace('.', ',')} €`
-              : prixAbonnement(plan);
-
-            return (
-              <div
-                key={plan.id}
-                className={`rounded-xl border-2 p-5 relative transition-all ${
-                  isRecommended
-                    ? 'border-orange-300 shadow-sm'
-                    : 'border-slate-200'
-                }`}
-              >
-                {isRecommended && (
-                  <span className="absolute -top-3 right-4 px-3 py-0.5 text-[10px] font-bold rounded-full bg-accent text-sur-accent">
-                    RECOMMANDÉ
-                  </span>
-                )}
-                <p className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-3">
-                  {isRecommended ? 'Plan recommandé' : 'Plan supérieur'}
-                </p>
-                <div className="flex items-center gap-2 mb-3">
-                  <span
-                    className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border"
-                    style={{
-                      backgroundColor: plan.bgColor,
-                      color: plan.color,
-                      borderColor: plan.borderColor
-                    }}
-                  >
-                    <Icon size={12} className="mr-1" />
-                    {plan.name}
-                  </span>
-                </div>
-                <div className="mb-4">
-                  <div className="flex items-baseline gap-2 flex-wrap">
-                    <span className="text-2xl font-bold" style={{ color: plan.color }}>
-                      {price}
-                    </span>
-                    <span className="text-sm text-slate-500">par mois</span>
-                  </div>
-                  <p className="text-xs text-slate-500 mt-0.5">{MENTION_TVA_ABONNEMENT}</p>
-                  {plan.offreLancement && (
-                    <span className="inline-block mt-1 px-2 py-0.5 text-[10px] font-bold rounded-full bg-accent/10 text-accent-texte">
-                      {plan.offreLancement} — prix gardé tant que vous restez abonné
-                    </span>
-                  )}
-                  {billing === 'yearly' && (
-                    <p className="text-xs text-slate-400 mt-0.5">
-                      Facturé {prixAbonnement(plan, 'an')} par an
-                    </p>
-                  )}
-                  {billing === 'yearly' && (
-                    <span className="inline-block mt-1 px-2 py-0.5 text-[10px] font-bold rounded-full bg-green-50 text-green-700">
-                      Économisez {economieAnnuelle(plan)} par an
-                    </span>
-                  )}
-                </div>
-                <ul className="space-y-2">
-                  {(plan.featureLabels || []).filter(f => f.included).slice(0, 8).map((f, i) => (
-                    <li key={i} className="flex items-center gap-2 text-xs">
-                      <Check size={14} className="text-green-500 flex-shrink-0" />
-                      <span
-                        className={`text-slate-600 ${
-                          context.highlight && f.name.toLowerCase().includes(context.highlight.replace('_', ' '))
-                            ? 'font-semibold text-orange-600'
-                            : ''
-                        }`}
-                      >
-                        {f.name}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-
-                {/* Plan CTA */}
-                <button
-                  onClick={() => handleSelectPlan(plan.id)}
-                  disabled={loadingPlan === plan.id}
-                  className={`w-full mt-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${
-                    isRecommended
-                      ? 'bg-accent text-sur-accent hover:opacity-90 hover:shadow-lg hover:shadow-accent/25'
-                      : 'text-white hover:opacity-90'
-                  }`}
-                  style={!isRecommended ? { backgroundColor: plan.color } : {}}
-                >
-                  {loadingPlan === plan.id ? (
-                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                    </svg>
-                  ) : (
-                    <>
-                      Passer au {plan.name}
-                      <ArrowRight size={16} />
-                    </>
-                  )}
-                </button>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Billing toggle */}
-        <div className="flex items-center justify-center gap-3 px-6 py-2">
-          <span className={`text-xs font-medium ${billing === 'monthly' ? 'text-slate-900' : 'text-slate-400'}`}>
-            Mensuel
-          </span>
-          <button
-            onClick={() => setBilling(b => b === 'monthly' ? 'yearly' : 'monthly')}
-            className={`relative w-10 h-5 rounded-full transition-colors ${billing === 'yearly' ? 'bg-accent' : 'bg-slate-300'}`}
-          >
-            <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${billing === 'yearly' ? 'translate-x-5' : 'translate-x-0.5'}`} />
-          </button>
-          <span className={`text-xs font-medium ${billing === 'yearly' ? 'text-slate-900' : 'text-slate-400'}`}>
-            Annuel
-          </span>
-        </div>
-
-        {/* Close */}
-        <div className="px-6 pb-6 mt-2">
-          <button
-            onClick={closeUpgradeModal}
-            className="w-full py-2 text-sm text-slate-400 hover:text-slate-600 underline transition-colors"
-          >
-            Plus tard
-          </button>
-        </div>
-
-        {isDemo && (
-          <p className="text-center text-[10px] text-slate-400 pb-4">Mode démo — simulation</p>
-        )}
+      <div className="flex justify-center mb-4">
+        <Segmente
+          ariaLabel="Facturation"
+          valeur={billing}
+          onChange={setBilling}
+          options={[
+            { valeur: 'monthly', libelle: 'Mensuel' },
+            { valeur: 'yearly', libelle: 'Annuel' },
+          ]}
+        />
       </div>
 
-      {/* Slide-up animation */}
-      <style>{`
-        @keyframes slideUp {
-          from { transform: translateY(100%); opacity: 0; }
-          to { transform: translateY(0); opacity: 1; }
-        }
-      `}</style>
-    </div>
+      <div className={`grid grid-cols-1 ${upgradePlans.length > 1 ? 'sm:grid-cols-2' : ''} gap-4`}>
+        {upgradePlans.map((plan) => {
+          const Icon = PLAN_ICONS[plan.id] || Zap;
+          // « Pour cette fonction » seulement quand une fonction précise est bloquée (l'offre qui la débloque) ; pas en contexte générique.
+          const isRecommended = context !== UPGRADE_CONTEXTS.generic && plan.id === recommendedPlanId;
+          // À l'année : l'équivalent mensuel par l'outil commun (prixAbonnement), et le prix facturé dessous.
+          const price = billing === 'yearly' && plan.priceYearly
+            ? prixAbonnement(plan, 'mois-a-l-annee')
+            : prixAbonnement(plan);
+
+          return (
+            <div
+              key={plan.id}
+              className={`rounded-2xl border p-5 bg-surface ${isRecommended ? 'border-accent ring-1 ring-accent' : 'border-bord'}`}
+            >
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-surface-2 text-encre-2 flex-shrink-0">
+                    <Icon size={18} aria-hidden="true" />
+                  </div>
+                  <h3 className="text-base font-bold text-encre">{plan.name}</h3>
+                </div>
+                {isRecommended && <Pastille ton="info">Débloque cette fonction</Pastille>}
+              </div>
+              <div className="mb-4">
+                <div className="flex items-baseline gap-2 flex-wrap">
+                  <span className="text-2xl font-bold text-encre tabular-nums">
+                    {price}
+                  </span>
+                  <span className="text-sm text-encre-3">par mois</span>
+                </div>
+                <p className="text-sm text-encre-3 mt-0.5">{MENTION_TVA_ABONNEMENT}</p>
+                {plan.offreLancement && (
+                  <p className="text-sm mt-1 font-medium text-encre-2">
+                    {plan.offreLancement} : prix gardé tant que vous restez abonné
+                  </p>
+                )}
+                {billing === 'yearly' && (
+                  <p className="text-sm text-encre-3 mt-0.5 tabular-nums">
+                    Facturé {prixAbonnement(plan, 'an')} par an
+                  </p>
+                )}
+                {billing === 'yearly' && (
+                  <p className="text-sm mt-0.5 font-medium text-succes-texte tabular-nums">
+                    Économisez {economieAnnuelle(plan)} par an
+                  </p>
+                )}
+              </div>
+              <ul className="space-y-2">
+                {(plan.featureLabels || []).filter(f => f.included).slice(0, 8).map((f, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm">
+                    <Check size={16} aria-hidden="true" className="text-succes-point flex-shrink-0 mt-0.5" />
+                    <span
+                      className={
+                        context.highlight && f.name.toLowerCase().includes(context.highlight.replace('_', ' '))
+                          ? 'font-semibold text-encre'
+                          : 'text-encre-2'
+                      }
+                    >
+                      {f.name}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+
+              <Bouton
+                className="mt-4"
+                pleineLargeur
+                variante={plan.id === planPrincipal ? 'principal' : 'secondaire'}
+                iconeFin={ArrowRight}
+                onClick={() => handleSelectPlan(plan.id)}
+                chargement={loadingPlan === plan.id}
+                disabled={loadingPlan === plan.id}
+              >
+                Passer au plan {plan.name}
+              </Bouton>
+            </div>
+          );
+        })}
+      </div>
+    </Modal>
   );
 }

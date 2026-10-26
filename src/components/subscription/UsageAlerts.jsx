@@ -1,60 +1,55 @@
 /**
- * UsageAlerts — Dashboard widget showing plan usage and limits
+ * UsageAlerts — la carte d'usage du plan sur l'accueil.
  *
- * Displays progress bars for each resource (devis, clients, chantiers, etc.)
- * with color-coded warnings when approaching or exceeding limits.
+ * Une jauge par ressource limitée (devis, clients, chantiers…). Une limite atteinte se lit
+ * « Limite atteinte : 2 chantiers », en ton alerte (à surveiller) ; jamais une fraction impossible
+ * comme « 10 / 2 ». Les chiffres viennent de `PLANS` (subscriptionStore) et de l'usage mesuré.
  */
 
-import React from 'react';
-import { useSubscriptionStore, PLANS } from '../../stores/subscriptionStore';
-import { ArrowUpRight, FileText, Users, Building2, Camera, HardDrive, HardHat } from 'lucide-react';
+import { useSubscriptionStore, PLANS, PLAN_ORDER } from '../../stores/subscriptionStore';
+import { ArrowRight, FileText, Users, Building2, Camera, HardDrive, HardHat } from 'lucide-react';
+import { Bouton } from '../ui/Bouton';
 
+const pluriel = (n, un, plusieurs) => `${n} ${n > 1 ? plusieurs : un}`;
+
+// `limite(n)` : la phrase de la limite, pour « Limite atteinte : … ».
 const RESOURCE_CONFIG = {
-  devis: { label: 'Devis ce mois', icon: FileText, unit: '' },
-  clients: { label: 'Clients', icon: Users, unit: '' },
-  chantiers: { label: 'Chantiers', icon: Building2, unit: '' },
-  photos: { label: 'Photos', icon: Camera, unit: '' },
-  storage_mb: { label: 'Stockage', icon: HardDrive, unit: 'Mo' },
-  equipe: { label: 'Équipe', icon: HardHat, unit: '' }
+  devis: { label: 'Devis ce mois', icon: FileText, unit: '', limite: (n) => `${pluriel(n, 'devis', 'devis')} ce mois` },
+  clients: { label: 'Clients', icon: Users, unit: '', limite: (n) => pluriel(n, 'client', 'clients') },
+  chantiers: { label: 'Chantiers', icon: Building2, unit: '', limite: (n) => pluriel(n, 'chantier', 'chantiers') },
+  photos: { label: 'Photos', icon: Camera, unit: '', limite: (n) => pluriel(n, 'photo', 'photos') },
+  storage_mb: { label: 'Stockage', icon: HardDrive, unit: 'Mo', limite: (n) => `${n} Mo de stockage` },
+  equipe: { label: 'Équipe', icon: HardHat, unit: '', limite: (n) => pluriel(n, 'collaborateur', 'collaborateurs') }
 };
 
 /**
- * UsageBar — Single resource progress bar
+ * UsageBar — la jauge d'une ressource.
  */
 function UsageBar({ resource, current, limit, icon: Icon, label, unit }) {
-  if (limit === -1) return null; // Unlimited → don't show bar
-  if (limit === 0 && current === 0) return null; // Unused resource
+  if (limit === -1) return null; // Illimité : pas de jauge
+  if (limit === 0 && current === 0) return null; // Ressource non utilisée
 
   const percent = limit > 0 ? Math.min(100, Math.round((current / limit) * 100)) : 100;
-  const isWarning = percent >= 80;
-  const isDanger = percent >= 100;
-
-  const barColor = isDanger
-    ? 'bg-red-500'
-    : isWarning
-      ? 'bg-amber-500'
-      : 'bg-emerald-500';
-
-  const textColor = isDanger
-    ? 'text-red-600'
-    : isWarning
-      ? 'text-amber-600'
-      : 'text-slate-600';
+  const atteinte = current >= limit;
+  const proche = !atteinte && percent >= 80;
+  const unite = unit ? ` ${unit}` : '';
 
   return (
-    <div className="space-y-1">
-      <div className="flex items-center justify-between text-xs">
-        <div className="flex items-center gap-1.5 text-slate-600">
-          <Icon size={12} />
-          <span>{label}</span>
+    <div className="space-y-1" data-jauge={resource} data-etat={atteinte ? 'atteinte' : proche ? 'proche' : 'normal'}>
+      <div className="flex items-center justify-between gap-2 text-sm">
+        <div className="flex items-center gap-1.5 text-encre-2 min-w-0">
+          <Icon size={14} aria-hidden="true" className="flex-shrink-0" />
+          <span className="truncate">{label}</span>
         </div>
-        <span className={`font-medium ${textColor}`}>
-          {current}{unit ? ` ${unit}` : ''} / {limit}{unit ? ` ${unit}` : ''}
+        <span className={`font-medium tabular-nums flex-shrink-0 ${atteinte || proche ? 'text-alerte-texte' : 'text-encre-2'}`}>
+          {atteinte
+            ? `Limite atteinte : ${RESOURCE_CONFIG[resource]?.limite(limit) ?? `${limit}${unite}`}`
+            : `${Math.round(current * 10) / 10}${unite} sur ${limit}${unite}`}
         </span>
       </div>
-      <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+      <div className="h-1.5 bg-surface-2 rounded-full overflow-hidden" aria-hidden="true">
         <div
-          className={`h-full rounded-full transition-all duration-500 ${barColor}`}
+          className={`h-full rounded-full transition-all duration-500 ${atteinte || proche ? 'bg-alerte-point' : 'bg-neutre-point'}`}
           style={{ width: `${Math.min(100, percent)}%` }}
         />
       </div>
@@ -63,9 +58,9 @@ function UsageBar({ resource, current, limit, icon: Icon, label, unit }) {
 }
 
 /**
- * UsageAlerts widget — renders inside Dashboard
+ * UsageAlerts widget — rendu sur l'accueil
  */
-export default function UsageAlerts({ isDark, couleur }) {
+export default function UsageAlerts({ isDark: _isDark, couleur: _couleur }) {
   const planId = useSubscriptionStore((s) => s.planId);
   const usage = useSubscriptionStore((s) => s.usage);
   const openUpgradeModal = useSubscriptionStore((s) => s.openUpgradeModal);
@@ -73,15 +68,15 @@ export default function UsageAlerts({ isDark, couleur }) {
 
   const plan = PLANS[planId] || PLANS.gratuit;
   const isFree = planId === 'gratuit';
+  const planSuivant = PLANS[PLAN_ORDER[PLAN_ORDER.indexOf(planId) + 1]];
 
-  // Calculate how many resources are near or at limit
+  // Ressources proches de leur limite (80 %) ou au-delà
   const warnings = Object.entries(plan.limits).filter(([key, limit]) => {
     if (limit === -1 || limit === 0) return false;
     const current = usage[key] ?? 0;
     return current >= limit * 0.8;
   });
 
-  // Trial banner
   const isTrial = subscription?.status === 'trialing';
   const trialEnd = subscription?.trial_end;
   const trialDays = trialEnd
@@ -97,72 +92,57 @@ export default function UsageAlerts({ isDark, couleur }) {
   if (warnings.length === 0 && !isTrial && !isFree) return null;
 
   return (
-    <div className={`rounded-2xl border p-4 bg-surface border-bord`}>
-      {/* Header */}
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <div
-            className="w-8 h-8 rounded-lg flex items-center justify-center"
-            style={{ backgroundColor: plan.color + '20', color: plan.color }}
-          >
-            <FileText size={16} />
+    <div className="rounded-2xl border p-4 bg-surface border-bord" data-carte="usage-plan">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-surface-2 text-encre-2 flex-shrink-0">
+            <FileText size={16} aria-hidden="true" />
           </div>
-          <div>
-            <h3 className={`text-sm font-semibold text-encre`}>
+          <div className="min-w-0">
+            <h3 className="text-sm font-semibold text-encre">
               Plan {plan.name}
             </h3>
-            <p className="text-[10px] text-slate-500">
-              {isTrial ? `Essai — ${trialDays}j restants` : plan.description}
+            <p className="text-sm text-encre-3">
+              {isTrial ? `Essai : ${pluriel(trialDays, 'jour restant', 'jours restants')}` : plan.description}
             </p>
           </div>
         </div>
-        {isFree && (
-          <button
-            onClick={() => openUpgradeModal()}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium text-white transition-all hover:shadow-md"
-            style={{ backgroundColor: couleur || '#f97316' }}
-          >
-            <ArrowUpRight size={12} />
-            Upgrade
-          </button>
+        {isFree && planSuivant && (
+          <Bouton variante="secondaire" taille="compacte" iconeFin={ArrowRight} onClick={() => openUpgradeModal()}>
+            Passer au plan {planSuivant.name}
+          </Bouton>
         )}
       </div>
 
-      {/* Trial warning */}
       {isTrial && trialDays <= 3 && (
-        <div className="mb-3 p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-700">
-          ⏰ Votre essai se termine dans {trialDays} jour{trialDays > 1 ? 's' : ''}. Choisissez un plan pour continuer.
-        </div>
+        <p className="mb-3 p-2.5 rounded-xl bg-alerte-fond text-sm text-alerte-texte">
+          Votre essai se termine dans {pluriel(trialDays, 'jour', 'jours')}. Choisissez un plan pour continuer.
+        </p>
       )}
 
-      {/* Usage bars */}
       <div className="space-y-2.5">
-        {Object.entries(RESOURCE_CONFIG).map(([key, config]) => {
-          const limit = plan.limits[key] ?? 0;
-          const current = usage[key] ?? 0;
-
-          return (
-            <UsageBar
-              key={key}
-              resource={key}
-              current={current}
-              limit={limit}
-              icon={config.icon}
-              label={config.label}
-              unit={config.unit}
-            />
-          );
-        })}
+        {Object.entries(RESOURCE_CONFIG).map(([key, config]) => (
+          <UsageBar
+            key={key}
+            resource={key}
+            current={usage[key] ?? 0}
+            limit={plan.limits[key] ?? 0}
+            icon={config.icon}
+            label={config.label}
+            unit={config.unit}
+          />
+        ))}
       </div>
 
-      {/* Upgrade nudge when close to limits */}
-      {warnings.length > 0 && !isTrial && (
-        <div className="mt-3 pt-3 border-t border-slate-100">
+      {/* Sur un plan payant proche d'une limite : un lien vers les offres (le plan Gratuit a déjà son bouton) */}
+      {warnings.length > 0 && !isTrial && !isFree && (
+        <div className="mt-3 pt-3 border-t border-bord">
           <button
+            type="button"
             onClick={() => openUpgradeModal()}
-            className="w-full text-center text-xs text-alerte-texte hover:underline font-medium transition-colors"
+            className="w-full min-h-[44px] text-center text-sm text-alerte-texte hover:underline font-medium transition-colors"
           >
-            Vous approchez de vos limites — Voir les plans →
+            Vous approchez de vos limites : voir les offres
           </button>
         </div>
       )}
@@ -178,7 +158,6 @@ export function UsageBadge() {
   const usage = useSubscriptionStore((s) => s.usage);
   const plan = PLANS[planId] || PLANS.gratuit;
 
-  // Count resources at or near limit
   const atLimit = Object.entries(plan.limits).filter(([key, limit]) => {
     if (limit === -1 || limit === 0) return false;
     return (usage[key] ?? 0) >= limit;
@@ -187,7 +166,7 @@ export function UsageBadge() {
   if (atLimit === 0) return null;
 
   return (
-    <span className="inline-flex items-center px-1.5 py-0.5 text-[10px] font-medium rounded-full bg-red-100 text-red-700">
+    <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-alerte-fond text-alerte-texte">
       {atLimit} limite{atLimit > 1 ? 's' : ''} atteinte{atLimit > 1 ? 's' : ''}
     </span>
   );

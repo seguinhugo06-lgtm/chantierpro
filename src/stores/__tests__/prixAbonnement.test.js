@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { PLANS, PLAN_ORDER } from '../subscriptionStore';
-import { MENTION_TVA_ABONNEMENT, prixAbonnement, economieAnnuelle, economieAnnuelleCentimes, moisOfferts, moisOffertsCommuns } from '../prixAbonnement';
+import { MENTION_TVA_ABONNEMENT, prixAbonnement, economieAnnuelle, economieAnnuelleCentimes, moisOfferts, moisOffertsCommuns, periodeAbonne, prixAbonne } from '../prixAbonnement';
 
 // Les espaces de `Intl` (insécable avant « € », fine insécable des milliers) : on compare après normalisation.
 const lu = (texte) => texte.replace(/[\s  ]+/g, ' ');
@@ -74,5 +74,25 @@ describe('économie de l\'abonnement annuel : calculée, jamais arrondie', () =>
     for (const id of ['artisan', 'equipe']) {
       expect(economieAnnuelleCentimes(PLANS[id])).toBe(moisOfferts(PLANS[id]) * Math.round(PLANS[id].priceMonthly * 100));
     }
+  });
+});
+
+// « Mon plan » et l'écran d'abonnement (Task 8, 26 oct. 2026) : l'équivalent mensuel de l'offre annuelle passe par
+// prixAbonnement, et un abonné annuel lit son prix annuel, jamais « par mois ».
+describe('équivalent mensuel et prix d\'un abonné', () => {
+  it('l\'équivalent mensuel de l\'offre annuelle est le prix annuel divisé par 12, au centime', () => {
+    expect(lu(prixAbonnement(PLANS.artisan, 'mois-a-l-annee'))).toBe('8,25 €');
+    expect(lu(prixAbonnement(PLANS.equipe, 'mois-a-l-annee'))).toBe('16,58 €');
+    expect(lu(prixAbonnement(PLANS.gratuit, 'mois-a-l-annee'))).toBe('0 €');
+    expect(lu(prixAbonnement({ priceMonthly: 5 }, 'mois-a-l-annee'))).toBe('0 €');
+  });
+
+  it('un abonné annuel lit son prix annuel, un abonné mensuel son prix mensuel', () => {
+    expect(periodeAbonne({ billing_interval: 'yearly' })).toBe('an');
+    expect(periodeAbonne({ billing_interval: 'monthly' })).toBe('mois');
+    expect(periodeAbonne(null)).toBe('mois');
+    expect(lu(prixAbonne(PLANS.artisan, { billing_interval: 'yearly' }))).toBe('99 € par an');
+    expect(lu(prixAbonne(PLANS.artisan, { billing_interval: 'monthly' }))).toBe('9,90 € par mois');
+    expect(prixAbonne(PLANS.equipe, { billing_interval: 'yearly' })).not.toMatch(/par mois/);
   });
 });

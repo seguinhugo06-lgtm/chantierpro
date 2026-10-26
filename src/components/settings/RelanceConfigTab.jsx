@@ -36,6 +36,7 @@ import { EXCLUSION_REASONS, DEFAULT_PENALTY_RATE } from '../../lib/relanceUtils'
 import { formatMoney } from '../../lib/formatters';
 import { DEFAULT_DEVIS_STEPS, DEFAULT_FACTURE_STEPS } from '../../lib/scenariosRelance';
 import { cn } from '../../lib/utils';
+import Pastille from '../ui/Pastille';
 
 // ============ DEFAULT SCENARIOS ============
 // Dans src/lib/scenariosRelance.js (lus aussi par le site public sans charger cet écran) ; réexportés ici.
@@ -71,33 +72,23 @@ const AVAILABLE_VARIABLES = [
 /**
  * Toggle switch component
  */
-function Toggle({ enabled, onToggle, size = 'md', couleur }) {
-  const sizeClasses = size === 'sm' ? 'w-9 h-5' : 'w-11 h-6';
-  const dotSize = size === 'sm' ? 'w-3.5 h-3.5' : 'w-4 h-4';
-  const dotTranslate = size === 'sm' ? 'translate-x-4' : 'translate-x-5';
-
+function Toggle({ enabled, onToggle, size = 'md', libelle }) {
+  // Interrupteur aux jetons du thème (avant : la couleur brute de l'entreprise) ; zone de toucher de 44 px
+  const piste = size === 'sm' ? 'w-9 h-5' : 'w-11 h-6';
+  const point = size === 'sm' ? 'w-3.5 h-3.5' : 'w-4 h-4';
+  const decale = size === 'sm' ? 'translate-x-4' : 'translate-x-5';
   return (
     <button
       type="button"
       role="switch"
       aria-checked={enabled}
+      aria-label={libelle}
       onClick={onToggle}
-      className={cn(
-        'relative inline-flex shrink-0 cursor-pointer rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2',
-        sizeClasses
-      )}
-      style={{
-        backgroundColor: enabled ? couleur : '#94a3b8',
-      }}
+      className="flex-shrink-0 h-11 w-14 flex items-center justify-center rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
     >
-      <span
-        className={cn(
-          'pointer-events-none inline-block rounded-full bg-white shadow-sm transform transition-transform duration-200 ease-in-out',
-          dotSize,
-          enabled ? dotTranslate : 'translate-x-0.5',
-          size === 'sm' ? 'mt-[3px]' : 'mt-[4px]'
-        )}
-      />
+      <span aria-hidden="true" className={cn('relative inline-flex rounded-full transition-colors duration-200', piste, enabled ? 'bg-accent' : 'bg-bord-fort')}>
+        <span className={cn('inline-block rounded-full bg-surface shadow-e1 transform transition-transform duration-200', point, enabled ? decale : 'translate-x-0.5', size === 'sm' ? 'mt-[3px]' : 'mt-[4px]')} />
+      </span>
     </button>
   );
 }
@@ -105,7 +96,7 @@ function Toggle({ enabled, onToggle, size = 'md', couleur }) {
 /**
  * Channel badge display
  */
-function ChannelBadge({ channel, isDark }) {
+function ChannelBadge({ channel }) {
   // Une étape réglée autrefois sur un autre canal part quand même par e-mail : on l'affiche ainsi
   const option = CHANNEL_OPTIONS.find(o => o.value === channel) || CHANNEL_OPTIONS[0];
   const Icon = option.icon;
@@ -128,10 +119,7 @@ function ChannelBadge({ channel, isDark }) {
  */
 function ScenarioStep({
   step,
-  index,
   isLast,
-  isDark,
-  couleur,
   onUpdate,
   onToggle,
   onRemove,
@@ -156,17 +144,11 @@ function ScenarioStep({
         <div
           className={cn(
             'w-3.5 h-3.5 rounded-full border-2 flex-shrink-0 mt-1.5 z-10',
-            step.enabled ? 'border-transparent' : 'border-slate-400 bg-transparent'
+            step.enabled ? 'bg-accent border-accent' : 'border-bord-fort bg-transparent'
           )}
-          style={step.enabled ? { backgroundColor: couleur, borderColor: couleur } : undefined}
         />
         {!isLast && (
-          <div
-            className={cn(
-              'w-0.5 flex-1 min-h-[2rem]',
-              isDark ? 'bg-slate-700' : 'bg-slate-200'
-            )}
-          />
+          <div className="w-0.5 flex-1 min-h-[2rem] bg-bord" />
         )}
       </div>
 
@@ -185,22 +167,16 @@ function ScenarioStep({
             >
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span
-                    className={cn('text-xs font-semibold uppercase tracking-wide')}
-                    style={{ color: step.enabled ? couleur : undefined }}
-                  >
+                  <span className={cn('text-sm font-semibold tabular-nums', step.enabled ? 'text-accent-texte' : 'text-encre-3')}>
                     J+{step.delay}
                   </span>
                   <span className={cn('text-sm font-medium', textPrimary)}>
                     {step.name}
                   </span>
                   {step.name?.toLowerCase().includes('contentieux') && (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
-                      <AlertTriangle className="w-3 h-3" />
-                      Pré-contentieux
-                    </span>
+                    <Pastille ton="alerte" icone={AlertTriangle}>Pré-contentieux</Pastille>
                   )}
-                  <ChannelBadge channel={step.channel} isDark={isDark} />
+                  <ChannelBadge channel={step.channel} />
                 </div>
               </div>
               {expanded ? (
@@ -216,7 +192,7 @@ function ScenarioStep({
               enabled={step.enabled}
               onToggle={() => onToggle(step.id)}
               size="sm"
-              couleur={couleur}
+              libelle={`Étape ${step.name} (J+${step.delay})`}
             />
           </div>
         </div>
@@ -232,7 +208,7 @@ function ScenarioStep({
             {/* Name and delay row */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
-                <label className={cn('block text-xs font-medium mb-1', textMuted)}>
+                <label className={cn('block text-sm font-medium mb-1', textMuted)}>
                   Nom de l'étape
                 </label>
                 <input
@@ -240,14 +216,13 @@ function ScenarioStep({
                   value={step.name}
                   onChange={e => handleFieldChange('name', e.target.value)}
                   className={cn(
-                    'w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2',
+                    'w-full h-11 px-3 rounded-lg border text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent',
                     inputBg
                   )}
-                  style={{ '--tw-ring-color': couleur }}
                 />
               </div>
               <div>
-                <label className={cn('block text-xs font-medium mb-1', textMuted)}>
+                <label className={cn('block text-sm font-medium mb-1', textMuted)}>
                   Délai (jours)
                 </label>
                 <div className="flex items-center gap-2">
@@ -261,15 +236,14 @@ function ScenarioStep({
                       handleFieldChange('delay', Math.max(1, parseInt(e.target.value, 10) || 1))
                     }
                     className={cn(
-                      'w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2',
+                      'w-full h-11 px-3 rounded-lg border text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent',
                       inputBg
                     )}
-                    style={{ '--tw-ring-color': couleur }}
                   />
                 </div>
               </div>
               <div>
-                <label className={cn('block text-xs font-medium mb-1', textMuted)}>
+                <label className={cn('block text-sm font-medium mb-1', textMuted)}>
                   Canal
                 </label>
                 <p className={cn('w-full px-3 py-2 rounded-lg border text-sm', inputBg)}>E-mail</p>
@@ -278,7 +252,7 @@ function ScenarioStep({
 
             {/* Template textarea */}
             <div>
-              <label className={cn('block text-xs font-medium mb-1', textMuted)}>
+              <label className={cn('block text-sm font-medium mb-1', textMuted)}>
                 Modèle de message
               </label>
               <textarea
@@ -286,10 +260,9 @@ function ScenarioStep({
                 onChange={e => handleFieldChange('template', e.target.value)}
                 rows={6}
                 className={cn(
-                  'w-full px-3 py-2 rounded-lg border text-sm font-mono leading-relaxed focus:outline-none focus:ring-2 resize-y',
+                  'w-full px-3 py-2 rounded-lg border text-base sm:text-sm font-mono leading-relaxed focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent resize-y',
                   inputBg
                 )}
-                style={{ '--tw-ring-color': couleur }}
               />
               {/* Variable hints */}
               <div className="mt-2 flex flex-wrap gap-1.5">
@@ -307,12 +280,7 @@ function ScenarioStep({
                         handleFieldChange('template', step.template + v.key)
                       }
                       title={v.description}
-                      className={cn(
-                        'px-2 py-0.5 rounded text-xs font-mono transition-colors',
-                        isDark
-                          ? 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                          : 'bg-slate-200 text-slate-600 hover:bg-slate-300'
-                      )}
+                      className="min-h-[36px] px-2 py-1 rounded-lg text-xs font-mono transition-colors bg-surface-2 text-encre-2 hover:bg-bord"
                     >
                       {v.key}
                     </button>
@@ -325,7 +293,7 @@ function ScenarioStep({
               <button
                 type="button"
                 onClick={() => onRemove(step.id)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-red-400 hover:bg-red-500/10 transition-colors"
+                className="flex items-center gap-1.5 h-11 px-3 rounded-lg text-sm font-semibold text-danger-texte hover:bg-danger-fond transition-colors"
               >
                 <Trash2 className="w-3.5 h-3.5" />
                 Supprimer cette étape
@@ -341,7 +309,7 @@ function ScenarioStep({
 /**
  * Template preview modal (inline)
  */
-function TemplatePreview({ template, isDark, onClose }) {
+function TemplatePreview({ template, onClose }) {
   const sampleData = {
     '{{client_nom}}': 'M. Dupont',
     '{{client_prenom}}': 'Jean',
@@ -361,22 +329,16 @@ function TemplatePreview({ template, isDark, onClose }) {
 
   return (
     <div
-      className={cn(
-        'mt-3 p-4 rounded-xl border',
-        isDark ? 'bg-slate-900 border-slate-600' : 'bg-amber-50 border-amber-200'
-      )}
+      className="mt-3 p-4 rounded-xl border bg-surface-2 border-bord"
     >
       <div className="flex items-center justify-between mb-2">
-        <span className={cn('text-xs font-semibold uppercase tracking-wide', isDark ? 'text-amber-400' : 'text-amber-700')}>
-          Aperçu avec données d'exemple
+        <span className="text-sm font-semibold text-encre-2">
+          Aperçu avec des données d'exemple
         </span>
         <button
           type="button"
           onClick={onClose}
-          className={cn(
-            'text-xs px-2 py-1 rounded hover:bg-black/10 transition-colors',
-            'text-encre-3'
-          )}
+          className="h-11 px-3 rounded-lg text-sm font-medium text-encre-2 hover:bg-surface transition-colors"
         >
           Fermer
         </button>
@@ -457,15 +419,12 @@ function ScenarioCard({
       {/* Card header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
-          <div
-            className="w-10 h-10 rounded-xl flex items-center justify-center"
-            style={{ backgroundColor: `${couleur}20` }}
-          >
-            <Icon className="w-5 h-5" style={{ color: couleur }} />
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-surface-2 text-encre-2">
+            <Icon className="w-5 h-5" aria-hidden="true" />
           </div>
           <div>
             <h3 className={cn('text-base font-semibold', textPrimary)}>{title}</h3>
-            <p className={cn('text-xs', textMuted)}>
+            <p className={cn('text-sm', textMuted)}>
               {activeCount} étape{activeCount !== 1 ? 's' : ''} active{activeCount !== 1 ? 's' : ''}
             </p>
           </div>
@@ -502,12 +461,12 @@ function ScenarioCard({
       </div>
 
       {/* Actions row */}
-      <div className="flex items-center justify-between mt-2 pt-3 border-t border-dashed" style={{ borderColor: isDark ? '#334155' : '#e2e8f0' }}>
+      <div className="flex items-center justify-between mt-2 pt-3 border-t border-dashed border-bord">
         <button
           type="button"
           onClick={handleAddStep}
           className={cn(
-            'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors',
+            'flex items-center gap-1.5 h-11 px-3 rounded-lg text-sm font-semibold transition-colors',
             'text-encre-2 hover:bg-surface-2'
           )}
         >
@@ -526,7 +485,7 @@ function ScenarioCard({
               }
             }}
             className={cn(
-              'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors',
+              'flex items-center gap-1.5 h-11 px-3 rounded-lg text-sm font-semibold transition-colors',
               'text-encre-2 hover:bg-surface-2'
             )}
           >
@@ -542,7 +501,7 @@ function ScenarioCard({
 /**
  * Variables reference card
  */
-function VariablesCard({ isDark, couleur }) {
+function VariablesCard() {
   const [expanded, setExpanded] = useState(true);
   const textPrimary = 'text-encre';
   const textMuted = 'text-encre-3';
@@ -553,19 +512,17 @@ function VariablesCard({ isDark, couleur }) {
     <div className={cn('rounded-2xl border p-5', cardBg, borderColor)}>
       <button
         type="button"
+        aria-expanded={expanded}
         onClick={() => setExpanded(!expanded)}
-        className="flex items-center justify-between w-full"
+        className="flex items-center justify-between w-full min-h-[44px]"
       >
         <div className="flex items-center gap-3">
-          <div
-            className="w-10 h-10 rounded-xl flex items-center justify-center"
-            style={{ backgroundColor: `${couleur}20` }}
-          >
-            <Settings className="w-5 h-5 text-accent-texte" />
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-surface-2 text-encre-2">
+            <Settings className="w-5 h-5" aria-hidden="true" />
           </div>
           <div className="text-left">
             <h3 className={cn('text-base font-semibold', textPrimary)}>Variables disponibles</h3>
-            <p className={cn('text-xs', textMuted)}>
+            <p className={cn('text-sm', textMuted)}>
               Variables dynamiques pour personnaliser vos modèles
             </p>
           </div>
@@ -587,15 +544,10 @@ function VariablesCard({ isDark, couleur }) {
                 'bg-fond'
               )}
             >
-              <code
-                className={cn(
-                  'text-xs font-mono font-medium',
-                  isDark ? 'text-amber-400' : 'text-amber-700'
-                )}
-              >
+              <code className="text-xs font-mono font-semibold text-encre">
                 {v.key}
               </code>
-              <span className={cn('text-xs', textMuted)}>{v.description}</span>
+              <span className={cn('text-sm text-right', textMuted)}>{v.description}</span>
             </div>
           ))}
         </div>
@@ -607,7 +559,7 @@ function VariablesCard({ isDark, couleur }) {
 /**
  * Statistics card (read-only)
  */
-function StatsCard({ isDark, couleur, stats: realStats, modeDiscret }) {
+function StatsCard({ stats: realStats, modeDiscret }) {
   const textPrimary = 'text-encre';
   const textMuted = 'text-encre-3';
   const cardBg = 'bg-surface';
@@ -620,34 +572,28 @@ function StatsCard({ isDark, couleur, stats: realStats, modeDiscret }) {
       label: 'Taux de conversion après relance',
       value: hasData && realStats.conversionRate != null ? `${realStats.conversionRate}%` : '--%',
       icon: TrendingUp,
-      color: '#22c55e',
     },
     {
       label: 'Délai moyen de paiement',
       value: hasData && realStats.averagePaymentDelay != null ? `${realStats.averagePaymentDelay} jours` : '-- jours',
       icon: CalendarClock,
-      color: '#3b82f6',
     },
     {
       label: 'Montant récupéré grâce aux relances',
       value: hasData ? (modeDiscret ? '***' : formatMoney(realStats.amountRecovered)) : '--\u00A0\u20AC',
       icon: Euro,
-      color: '#f59e0b',
     },
   ];
 
   return (
     <div className={cn('rounded-2xl border p-5', cardBg, borderColor)}>
       <div className="flex items-center gap-3 mb-4">
-        <div
-          className="w-10 h-10 rounded-xl flex items-center justify-center"
-          style={{ backgroundColor: `${couleur}20` }}
-        >
-          <TrendingUp className="w-5 h-5 text-accent-texte" />
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-surface-2 text-encre-2">
+          <TrendingUp className="w-5 h-5" aria-hidden="true" />
         </div>
         <div>
           <h3 className={cn('text-base font-semibold', textPrimary)}>Statistiques</h3>
-          <p className={cn('text-xs', textMuted)}>
+          <p className={cn('text-sm', textMuted)}>
             Les données seront calculées à partir de votre historique
           </p>
         </div>
@@ -664,9 +610,9 @@ function StatsCard({ isDark, couleur, stats: realStats, modeDiscret }) {
                 'bg-fond'
               )}
             >
-              <StatIcon className="w-5 h-5 mb-2" style={{ color: stat.color }} />
-              <span className={cn('text-xl font-bold', textPrimary)}>{stat.value}</span>
-              <span className={cn('text-xs mt-1', textMuted)}>{stat.label}</span>
+              <StatIcon className="w-5 h-5 mb-2 text-encre-3" aria-hidden="true" />
+              <span className={cn('text-xl font-bold tabular-nums', textPrimary)}>{stat.value}</span>
+              <span className={cn('text-sm mt-1', textMuted)}>{stat.label}</span>
             </div>
           );
         })}
@@ -678,7 +624,7 @@ function StatsCard({ isDark, couleur, stats: realStats, modeDiscret }) {
 /**
  * Exclusions management card
  */
-function ExclusionsCard({ exclusions = [], onRemove, clients = [], devis = [], isDark, couleur }) {
+function ExclusionsCard({ exclusions = [], onRemove, clients = [], devis = [] }) {
   const textPrimary = 'text-encre';
   const textMuted = 'text-encre-3';
   const cardBg = 'bg-surface';
@@ -699,17 +645,14 @@ function ExclusionsCard({ exclusions = [], onRemove, clients = [], devis = [], i
   return (
     <div className={cn('rounded-2xl border p-5', cardBg, borderColor)}>
       <div className="flex items-center gap-3 mb-4">
-        <div
-          className="w-10 h-10 rounded-xl flex items-center justify-center"
-          style={{ backgroundColor: `${couleur}20` }}
-        >
-          <Shield className="w-5 h-5 text-accent-texte" />
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-surface-2 text-encre-2">
+          <Shield className="w-5 h-5" aria-hidden="true" />
         </div>
         <div>
           <h3 className={cn('text-base font-semibold', textPrimary)}>
             Exclusions actives ({exclusions.length})
           </h3>
-          <p className={cn('text-xs', textMuted)}>
+          <p className={cn('text-sm', textMuted)}>
             Documents ou clients exclus des relances automatiques
           </p>
         </div>
@@ -737,15 +680,8 @@ function ExclusionsCard({ exclusions = [], onRemove, clients = [], devis = [], i
                     : getDocNumero(ex.document_id)
                   }
                 </div>
-                <div className={cn('text-xs', textMuted)}>
-                  <span className={cn(
-                    'inline-flex px-1.5 py-0.5 rounded text-xs font-medium mr-1',
-                    ex.scope === 'client'
-                      ? 'bg-purple-100 text-purple-700'
-                      : 'bg-blue-100 text-blue-700'
-                  )}>
-                    {ex.scope === 'client' ? 'Client' : 'Document'}
-                  </span>
+                <div className={cn('text-sm', textMuted)}>
+                  <Pastille className="mr-1">{ex.scope === 'client' ? 'Client' : 'Document'}</Pastille>
                   {EXCLUSION_REASONS[ex.reason] || ex.reason || 'Exclusion manuelle'}
                 </div>
               </div>
@@ -754,10 +690,11 @@ function ExclusionsCard({ exclusions = [], onRemove, clients = [], devis = [], i
               <button
                 type="button"
                 onClick={() => onRemove(ex.id)}
-                className="flex-shrink-0 p-1.5 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors"
+                className="flex-shrink-0 w-11 h-11 flex items-center justify-center rounded-lg text-danger-texte hover:bg-danger-fond transition-colors"
                 title="Supprimer l'exclusion"
+                aria-label="Supprimer l'exclusion"
               >
-                <X className="w-3.5 h-3.5" />
+                <X className="w-4 h-4" aria-hidden="true" />
               </button>
             )}
           </div>
@@ -779,7 +716,7 @@ function ExclusionsCard({ exclusions = [], onRemove, clients = [], devis = [], i
  * @param {string} props.couleur - Accent color hex
  */
 export default function RelanceConfigTab({
-  entreprise, setEntreprise, isDark, couleur = '#f97316',
+  entreprise, setEntreprise, isDark, couleur,
   stats, exclusions, onRemoveExclusion,
   clients, devis, modeDiscret,
 }) {
@@ -843,46 +780,30 @@ export default function RelanceConfigTab({
         </div>
         <div className="flex items-center gap-3">
           <span className={cn('text-sm font-medium', textMuted)}>
-            {relanceConfig.enabled ? 'Active' : 'Désactivé'}
+            {relanceConfig.enabled ? 'Activées' : 'Désactivées'}
           </span>
           <Toggle
             enabled={relanceConfig.enabled}
             onToggle={handleGlobalToggle}
-            couleur={couleur}
+            libelle="Relances automatiques"
           />
         </div>
       </div>
 
       {/* Global toggle description banner */}
       {!relanceConfig.enabled && (
-        <div
-          className={cn(
-            'flex items-center gap-3 p-4 rounded-xl border',
-            isDark ? 'bg-amber-900/20 border-amber-800/50' : 'bg-amber-50 border-amber-200'
-          )}
-        >
-          <AlertTriangle
-            className="w-5 h-5 flex-shrink-0"
-            style={{ color: '#f59e0b' }}
-          />
-          <p className={cn('text-sm', isDark ? 'text-amber-300' : 'text-amber-800')}>
+        <div className="flex items-center gap-3 p-4 rounded-xl bg-alerte-fond text-alerte-texte">
+          <AlertTriangle className="w-5 h-5 flex-shrink-0" aria-hidden="true" />
+          <p className="text-sm">
             Les relances automatiques sont désactivées. Activez-les pour automatiser le suivi de vos devis et factures.
           </p>
         </div>
       )}
 
       {relanceConfig.enabled && (
-        <div
-          className={cn(
-            'flex items-center gap-3 p-4 rounded-xl border',
-            isDark ? 'bg-green-900/20 border-green-800/50' : 'bg-green-50 border-green-200'
-          )}
-        >
-          <CheckCircle
-            className="w-5 h-5 flex-shrink-0"
-            style={{ color: '#22c55e' }}
-          />
-          <p className={cn('text-sm', isDark ? 'text-green-300' : 'text-green-800')}>
+        <div className="flex items-center gap-3 p-4 rounded-xl bg-succes-fond text-succes-texte">
+          <CheckCircle className="w-5 h-5 flex-shrink-0" aria-hidden="true" />
+          <p className="text-sm">
             Les relances automatiques sont actives. Vos clients seront relancés selon les scénarios ci-dessous.
           </p>
         </div>
@@ -899,10 +820,10 @@ export default function RelanceConfigTab({
           )}
         >
           <div className="flex items-start gap-3 min-w-0">
-            <Zap className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: relanceConfig.autoSend ? couleur : '#94a3b8' }} />
+            <Zap className={cn('w-5 h-5 flex-shrink-0 mt-0.5', relanceConfig.autoSend ? 'text-accent-texte' : 'text-encre-3')} aria-hidden="true" />
             <div className="min-w-0">
               <p className={cn('text-sm font-semibold', textPrimary)}>Envoi 100&nbsp;% automatique</p>
-              <p className={cn('text-xs mt-1', textMuted)}>
+              <p className={cn('text-sm mt-1', textMuted)}>
                 {relanceConfig.autoSend
                   ? 'Chaque jour, les relances dues sont envoyées automatiquement par email — vous n\'avez rien à faire.'
                   : 'Activez pour que les relances dues partent seules chaque jour. Sinon, vous les envoyez en un clic depuis le tableau de bord.'}
@@ -912,7 +833,7 @@ export default function RelanceConfigTab({
           <Toggle
             enabled={!!relanceConfig.autoSend}
             onToggle={handleAutoSendToggle}
-            couleur={couleur}
+            libelle="Envoi 100 % automatique"
           />
         </div>
       )}
@@ -944,30 +865,30 @@ export default function RelanceConfigTab({
         />
       </div>
 
-      {/* Penalties info */}
-      <div className={cn('rounded-2xl border p-5', 'bg-surface border-bord')}>
+      {/* Pénalités de retard : le taux réglé dans Paramètres › Documents, sinon celui de la loi (relanceUtils) */}
+      <div className="rounded-2xl border p-5 bg-surface border-bord">
         <div className="flex items-center gap-3 mb-3">
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: '#ef444420' }}>
-            <AlertTriangle className="w-5 h-5 text-red-500" />
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-surface-2 text-encre-2">
+            <AlertTriangle className="w-5 h-5" aria-hidden="true" />
           </div>
           <div>
-            <h3 className={cn('text-base font-semibold', 'text-encre')}>Pénalités de retard</h3>
-            <p className={cn('text-xs', 'text-encre-3')}>Calcul automatique selon la loi française</p>
+            <h3 className="text-base font-semibold text-encre">Pénalités de retard</h3>
+            <p className="text-sm text-encre-3">Calculées selon la loi française</p>
           </div>
         </div>
-        <div className={cn('grid grid-cols-1 sm:grid-cols-2 gap-3')}>
-          <div className={cn('rounded-xl p-3', isDark ? 'bg-slate-700/50' : 'bg-red-50')}>
-            <p className={cn('text-xs font-medium mb-1', isDark ? 'text-slate-300' : 'text-red-800')}>Taux de pénalités</p>
-            <p className={cn('text-lg font-bold', isDark ? 'text-white' : 'text-red-900')}>{String(DEFAULT_PENALTY_RATE).replace('.', ',')} %</p>
-            <p className={cn('text-xs', isDark ? 'text-slate-400' : 'text-red-700')}>Art. L441-10 — taux BCE + 10 points</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="rounded-xl p-3 bg-surface-2">
+            <p className="text-sm font-medium mb-1 text-encre-2">Taux des pénalités</p>
+            <p className="text-lg font-bold tabular-nums text-encre">{String(Number(entreprise?.tauxPenalites) || DEFAULT_PENALTY_RATE).replace('.', ',')} %</p>
+            <p className="text-sm text-encre-3">{Number(entreprise?.tauxPenalites) ? 'Votre taux (Paramètres › Documents)' : 'Art. L441-10 : taux de la BCE + 10 points'}</p>
           </div>
-          <div className={cn('rounded-xl p-3', isDark ? 'bg-slate-700/50' : 'bg-amber-50')}>
-            <p className={cn('text-xs font-medium mb-1', isDark ? 'text-slate-300' : 'text-amber-800')}>Indemnité forfaitaire</p>
-            <p className={cn('text-lg font-bold', isDark ? 'text-white' : 'text-amber-900')}>40,00 €</p>
-            <p className={cn('text-[11px]', isDark ? 'text-slate-400' : 'text-amber-600')}>Art. D441-5 — par facture impayée</p>
+          <div className="rounded-xl p-3 bg-surface-2">
+            <p className="text-sm font-medium mb-1 text-encre-2">Indemnité forfaitaire</p>
+            <p className="text-lg font-bold tabular-nums text-encre">40 €</p>
+            <p className="text-sm text-encre-3">Art. D441-5 : par facture impayée</p>
           </div>
         </div>
-        <p className={cn('text-[11px] mt-3', 'text-encre-3')}>
+        <p className="text-sm mt-3 text-encre-3">
           Pénalités et indemnité de 40 € : clients professionnels seulement (art. L441-10 et D441-5 C. com.) ; zéro pour un
           particulier. Variables : {'{{penalites}}'}, {'{{total_du}}'} et {'{{mention_retard}}'} (texte adapté au client).
         </p>

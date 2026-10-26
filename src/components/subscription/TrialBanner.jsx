@@ -2,11 +2,10 @@
  * TrialBanner — Sticky top banner for trial/downgrade messaging
  *
  * States:
- *  - Trial 5+ days: blue "Essai gratuit · X jours restants"
- *  - Trial 2-4 days: orange "Plus que X jours d'essai"
- *  - Trial 1 day: red "Dernier jour d'essai"
- *  - Trial expired: red "Votre essai est terminé"
- *  - Downgrade (free, not trial): gray "Plan Découverte actif"
+ *  - Trial 5+ days: info "Essai gratuit · X jours restants"
+ *  - Trial 2-4 days, last day, expired: alerte (à surveiller)
+ *  - Downgrade (free, not trial): neutre "Plan Gratuit actif"
+ *  - Jamais sur Mon plan ni sur les pages d'abonnement (prop `page`).
  *
  * Dismissable:
  *  - Trial banners: 7-day localStorage dismiss
@@ -14,12 +13,11 @@
  *  - Forced re-show on state change (day thresholds)
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { X, Clock, AlertTriangle, ArrowRight } from 'lucide-react';
 import { useSubscriptionStore } from '../../stores/subscriptionStore';
 
 const DISMISS_KEY = 'cp_trial_banner_dismissed';
-const DISMISS_STATE_KEY = 'cp_trial_banner_state';
 
 function getDismissData() {
   try {
@@ -66,60 +64,44 @@ function getBannerState(daysLeft, isTrial, isFree) {
   return null; // Don't show for paid plans
 }
 
+// Tons : l'essai qui court est une information ; la fin d'essai est « à surveiller » (ambre), jamais une erreur.
 const BANNER_CONFIG = {
   info: {
-    bg: 'bg-blue-50',
-    border: 'border-blue-200',
-    text: 'text-blue-700',
+    ton: 'bg-info-fond text-info-texte',
     icon: Clock,
-    iconColor: 'text-blue-500',
     getMessage: (days) => `Essai gratuit · ${days} jours restants`,
-    cta: 'Choisir un plan',
-    ctaColor: 'text-blue-600 hover:text-blue-700'
+    cta: 'Choisir un plan'
   },
   warning: {
-    bg: 'bg-orange-50',
-    border: 'border-orange-200',
-    text: 'text-orange-700',
+    ton: 'bg-alerte-fond text-alerte-texte',
     icon: AlertTriangle,
-    iconColor: 'text-orange-500',
     getMessage: (days) => `Plus que ${days} jour${days > 1 ? 's' : ''} d'essai gratuit`,
-    cta: 'Activer mon plan',
-    ctaColor: 'text-orange-600 hover:text-orange-700 font-bold'
+    cta: 'Activer mon plan'
   },
   last_day: {
-    bg: 'bg-red-50',
-    border: 'border-red-200',
-    text: 'text-red-700',
+    ton: 'bg-alerte-fond text-alerte-texte',
     icon: AlertTriangle,
-    iconColor: 'text-red-500',
     getMessage: () => 'Dernier jour d\'essai',
-    cta: 'Activez maintenant pour ne rien perdre',
-    ctaColor: 'text-red-600 hover:text-red-700 font-bold'
+    cta: 'Activez maintenant pour ne rien perdre'
   },
   expired: {
-    bg: 'bg-red-100',
-    border: 'border-red-300',
-    text: 'text-red-800',
+    ton: 'bg-alerte-fond text-alerte-texte',
     icon: AlertTriangle,
-    iconColor: 'text-red-600',
     getMessage: () => 'Votre essai est terminé',
-    cta: 'Choisir un plan pour continuer',
-    ctaColor: 'text-red-700 hover:text-red-800 font-bold underline'
+    cta: 'Choisir un plan pour continuer'
   },
   downgrade: {
-    bg: 'bg-slate-50/50',
-    border: 'border-slate-200',
-    text: 'text-slate-600',
+    ton: 'bg-surface text-encre-2',
     icon: null,
-    iconColor: '',
     getMessage: () => 'Plan Gratuit actif',
-    cta: 'En savoir plus',
-    ctaColor: 'text-slate-700 hover:text-slate-900'
+    cta: 'En savoir plus'
   }
 };
 
-export default function TrialBanner() {
+// Pages où le bandeau n'a rien à dire : on y est déjà, devant les offres (audit du 20 oct. 2026).
+const PAGES_SANS_BANDEAU = new Set(['plan', 'billing', 'pricing', 'checkout-success']);
+
+export default function TrialBanner({ page }) {
   const planId = useSubscriptionStore((s) => s.planId);
   const sub = useSubscriptionStore((s) => s.subscription);
   const openUpgradeModal = useSubscriptionStore((s) => s.openUpgradeModal);
@@ -150,7 +132,7 @@ export default function TrialBanner() {
   }, [bannerState]);
 
   // Don't render for paid plans or null state
-  if (!bannerState) return null;
+  if (!bannerState || PAGES_SANS_BANDEAU.has(page)) return null;
 
   // Downgrade: dismissed for session only
   if (bannerState === 'downgrade' && sessionDismissed) return null;
@@ -171,28 +153,27 @@ export default function TrialBanner() {
   };
 
   return (
-    <div className={`sticky top-0 z-40 ${config.bg} border-b ${config.border} transition-all`}>
-      <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2 flex-1 min-w-0">
-          {Icon && <Icon size={16} className={`${config.iconColor} flex-shrink-0`} />}
-          <span className={`text-sm ${config.text} truncate`}>
-            {config.getMessage(daysLeft)}
-            {' · '}
-            <button
-              onClick={() => openUpgradeModal()}
-              className={`${config.ctaColor} transition-colors inline-flex items-center gap-1`}
-            >
-              {config.cta}
-              <ArrowRight size={14} />
-            </button>
-          </span>
+    <div className={`sticky top-0 z-40 border-b border-bord ${config.ton}`} data-bandeau="plan">
+      <div className="max-w-7xl mx-auto pl-4 pr-1 py-0.5 flex items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-x-2 flex-1 min-w-0 text-sm">
+          {Icon && <Icon size={16} aria-hidden="true" className="flex-shrink-0" />}
+          <span>{config.getMessage(daysLeft)}</span>
+          <button
+            type="button"
+            onClick={() => openUpgradeModal()}
+            className="min-h-[44px] inline-flex items-center gap-1 font-semibold underline underline-offset-2"
+          >
+            {config.cta}
+            <ArrowRight size={14} aria-hidden="true" />
+          </button>
         </div>
         <button
+          type="button"
           onClick={handleDismiss}
-          className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-white/50/50 transition-all flex-shrink-0"
-          aria-label="Fermer la bannière"
+          className="w-11 h-11 flex items-center justify-center rounded-xl flex-shrink-0 opacity-80 hover:opacity-100 hover:bg-surface-2/60 transition-colors"
+          aria-label="Fermer le bandeau"
         >
-          <X size={16} />
+          <X size={18} aria-hidden="true" />
         </button>
       </div>
     </div>

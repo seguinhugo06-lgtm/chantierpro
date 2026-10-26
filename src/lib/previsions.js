@@ -28,3 +28,16 @@ export function normaliserPrevision(prevision) {
   const statut = statutPrevision(prevision?.statut);
   return prevision?.statut === statut ? prevision : { ...prevision, statut };
 }
+
+/**
+ * Seuil d'alerte de la trésorerie réglé par l'artisan, ou `null` s'il ne l'a jamais réglé (audit UX du 20 oct. 2026, P1 :
+ * « en dessous du seuil d'alerte (5 000 €) », un seuil que l'artisan n'avait jamais choisi). 5 000 € est la valeur par
+ * défaut enregistrée (useTresorerie, colonne de la base) : elle compte comme « non réglé », sans migration. 0 ou vide : pas
+ * de seuil.
+ */
+export const SEUIL_PAR_DEFAUT = 5000;
+export function seuilAlerteRegle(reglages) {
+  const n = Number(reglages?.seuilAlerte);
+  if (!Number.isFinite(n) || n <= 0 || n === SEUIL_PAR_DEFAUT) return null;
+  return n;
+}

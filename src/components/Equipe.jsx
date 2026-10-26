@@ -1,29 +1,27 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Plus, ArrowLeft, Edit3, Trash2, Check, X, User, Phone, Mail,
-  Clock, Timer, Play, Square, ChevronRight, Euro, Users, CheckSquare,
-  History, Download, MapPin, UserPlus, AlertCircle, TrendingUp, Zap,
-  HardHat, Wrench, Plug, Paintbrush, Building2, UserCheck, PhoneCall,
-  Pause, RotateCcw, ChevronDown, Sparkles, Target, Calendar, Search,
-  ChevronLeft, Coffee, Wifi, WifiOff, Filter, Navigation, Smartphone,
-  CalendarDays, Award, BarChart3, FileSpreadsheet, Shield, Star, ArrowUpRight, ArrowDownRight, Percent,
-  PenTool, CalendarOff, Briefcase, CalendarPlus, Eye, ThumbsUp, ThumbsDown, Undo2,
-  MessageSquare, Send, Paperclip, Image, Hash, AtSign, Pin, ChevronUp, Activity, FileText, Cake
+  Plus, ArrowLeft, Edit3, Trash2, Check, X, User, Phone, Mail, Clock, Timer, Play, Square, ChevronRight, Euro, Users,
+  CheckSquare, History, Download, MapPin, UserPlus, AlertCircle, TrendingUp, Zap, HardHat, Wrench, Plug, Paintbrush,
+  Building2, UserCheck, PhoneCall, Pause, Sparkles, Calendar, Search, ChevronLeft, Coffee, WifiOff, Filter,
+  CalendarDays, Award, BarChart3, FileSpreadsheet, Shield, PenTool, CalendarOff, Briefcase, CalendarPlus, ThumbsUp,
+  ThumbsDown, Undo2, MessageSquare, Hash, Cake
 } from 'lucide-react';
 import { useConfirm, useToast } from '../context/AppContext';
 import { useData } from '../context/DataContext';
 import { generateId } from '../lib/utils';
 import { useFormValidation, employeeSchema, email as emailValidator, phone as phoneValidator } from '../lib/validation';
 import { usePermissions } from '../hooks/usePermissions';
-import { ReadOnlyBanner } from './ui/PermissionGate';
-import PageHeader from './ui/PageHeader';
 import TabBar from './ui/TabBar';
+import { EnTetePage } from './ui/EnTete';
+import EtatVide from './ui/EtatVide';
+import MenuActions from './ui/MenuActions';
+import ChampChoix from './ui/ChampChoix';
+import { ChampRecherche } from './ui/Filtres';
 import { Bouton, BoutonIcone } from './ui/Bouton';
 import Carte from './ui/Carte';
 import TuileChiffre from './ui/TuileChiffre';
 import Pastille from './ui/Pastille';
-import { Segmente } from './ui/Onglets';
 import { Avatar } from './ui/LigneListe';
 import { remettreFichier } from '../lib/natif';
 import { tauxFacture, coutHoraire, coutDesPointages } from '../lib/tauxEquipe';
@@ -85,9 +83,18 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
   const { showToast } = useToast();
 
   // RBAC permissions
-  const { canPerform, canEditData, getPermission } = usePermissions();
+  const { canPerform, canEditData, getPermission, canViewPrices } = usePermissions();
   const equipePerm = getPermission('equipe');
   const isViewOnly = equipePerm === 'view';
+  // Une seule règle de prix (Task 6) : sans ce droit (chef de chantier, ouvrier), aucun montant — coût horaire, taux facturé,
+  // marge, coût de la semaine, coûts des sous-traitants, productivité chiffrée
+  const voitPrix = canViewPrices;
+  const peutAjouter = canPerform('equipe', 'create');
+  const peutModifier = canPerform('equipe', 'edit');
+  const peutSupprimer = canPerform('equipe', 'delete');
+  const peutPointer = canPerform('pointage', 'create');
+  const peutValider = canPerform('pointage', 'edit');
+  const peutRejeter = canPerform('pointage', 'delete');
 
   // Form validation
   const employeeFullSchema = {
@@ -99,7 +106,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
 
   // Theme classes
   const cardBg = "bg-surface border-bord";
-  const inputBg = isDark ? "bg-slate-700 border-slate-600 text-white placeholder-slate-400" : "bg-white border-slate-300";
+  const inputBg = 'bg-surface border-bord-fort';
   const textPrimary = "text-encre";
   const textSecondary = "text-encre-2";
   const textMuted = "text-encre-2";
@@ -192,19 +199,19 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
 
   // Role configuration with icons and colors
   const roleConfig = {
-    'Chef de chantier': { icon: HardHat, color: '#f59e0b', emoji: '👷' },
-    'Ouvrier qualifié': { icon: Wrench, color: '#6366f1', emoji: '🔧' },
-    'Ouvrier qualifie': { icon: Wrench, color: '#6366f1', emoji: '🔧' },
-    'Électricien': { icon: Plug, color: '#eab308', emoji: '⚡' },
-    'Electricien': { icon: Plug, color: '#eab308', emoji: '⚡' },
-    'Plombier': { icon: Wrench, color: '#3b82f6', emoji: '🔧' },
-    'Peintre': { icon: Paintbrush, color: '#8b5cf6', emoji: '🎨' },
-    'Maçon': { icon: Building2, color: '#a16207', emoji: '🧱' },
-    'Macon': { icon: Building2, color: '#a16207', emoji: '🧱' },
-    'Carreleur': { icon: Building2, color: '#78716c', emoji: '🔲' },
-    'Menuisier': { icon: Wrench, color: '#92400e', emoji: '🪵' },
-    'Apprenti': { icon: UserPlus, color: '#10b981', emoji: '📚' },
-    'default': { icon: User, color: '#64748b', emoji: '👤' }
+    'Chef de chantier': { icon: HardHat },
+    'Ouvrier qualifié': { icon: Wrench },
+    'Ouvrier qualifie': { icon: Wrench },
+    'Électricien': { icon: Plug },
+    'Electricien': { icon: Plug },
+    'Plombier': { icon: Wrench },
+    'Peintre': { icon: Paintbrush },
+    'Maçon': { icon: Building2 },
+    'Macon': { icon: Building2 },
+    'Carreleur': { icon: Building2 },
+    'Menuisier': { icon: Wrench },
+    'Apprenti': { icon: UserPlus },
+    'default': { icon: User }
   };
 
   const getRoleConfig = (role) => roleConfig[role] || roleConfig['default'];
@@ -340,25 +347,19 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
   const totalWeekHours = weekPointages.reduce((s, p) => s + (p.heures || 0), 0);
   const approvedWeekHours = weekPointages.filter(p => p.approuve).reduce((s, p) => s + (p.heures || 0), 0);
   const pointagesEnAttente = pointages.filter(p => !p.approuve && !p.verrouille);
+  const weekEnAttente = weekPointages.filter(p => !p.approuve && !p.verrouille);
+  const weekHeuresEnAttente = weekEnAttente.reduce((s, p) => s + (p.heures || 0), 0);
+  // Heures à valider d'une personne sur le mois (la carte ne montrait que les validées : « 0 h ce mois »)
+  const getHeuresMoisEnAttente = (empId) => {
+    const now = new Date();
+    return pointages.filter(p => p.employeId === empId && !p.approuve && !p.verrouille && new Date(p.date).getMonth() === now.getMonth()).reduce((s, p) => s + (p.heures || 0), 0);
+  };
 
   // #1 Fix: heuresCible = nombre d'employés actifs × heures contractuelles hebdo (35h par défaut)
   const activeEmployeeCount = equipe.filter(e => e.actif !== false && e.contrat !== 'sous_traitant').length;
   const heuresCible = activeEmployeeCount * 35;
   const progressPercent = heuresCible > 0 ? Math.min((totalWeekHours / heuresCible) * 100, 100) : 0;
-  const approvedPercent = heuresCible > 0 ? Math.min((approvedWeekHours / heuresCible) * 100, 100) : 0;
-  // Progressive color: <50% red, 50-80% orange, >80% green
-  const progressColor = progressPercent === 0 ? '#94a3b8' : progressPercent < 50 ? '#ef4444' : progressPercent < 80 ? '#f59e0b' : '#22c55e';
 
-  // #2 Fix: Conditional banner color based on week state
-  const getBannerGradient = () => {
-    const now = new Date();
-    const dayOfWeek = now.getDay(); // 0=Sun, 1=Mon
-    const allValidated = totalWeekHours > 0 && approvedWeekHours >= totalWeekHours;
-    if (weekOffset !== 0) return 'linear-gradient(135deg, #64748b, #475569)'; // past weeks: neutral
-    if (allValidated && totalWeekHours > 0) return 'linear-gradient(135deg, #059669, #047857)'; // all validated: green
-    if (dayOfWeek >= 1 && dayOfWeek <= 2 && totalWeekHours === 0) return 'linear-gradient(135deg, #3b82f6, #2563eb)'; // Mon-Tue at 0h: blue
-    return 'linear-gradient(135deg, #ea580c, #c2410c)'; // mid-week default: orange
-  };
 
   // Today's activity
   const today = formatLocalDate(new Date());
@@ -754,7 +755,8 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
     if (!canvas) return;
     signatureCanvasRef.current = canvas;
     const ctx = canvas.getContext('2d');
-    ctx.strokeStyle = isDark ? '#e2e8f0' : '#1e293b';
+    // Encre du thème (clair ou sombre), lue sur <html>
+    try { ctx.strokeStyle = `rgb(${getComputedStyle(document.documentElement).getPropertyValue('--encre').trim()})`; } catch { ctx.strokeStyle = '#0f172a'; }
     ctx.lineWidth = 2.5;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
@@ -1013,13 +1015,13 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
             <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Nom *</label>
             <input
               className={`w-full px-4 py-2.5 border rounded-xl min-h-[44px] ${inputBg}`}
-              style={formErrors.nom ? { borderColor: '#ef4444' } : {}}
+
               value={form.nom}
               onChange={e => setForm(p => ({...p, nom: e.target.value}))}
               placeholder="Dupont"
             />
             {formErrors.nom && (
-              <p className="text-xs mt-1" style={{ color: '#ef4444' }}>{formErrors.nom}</p>
+              <p className="text-sm mt-1 text-danger-texte">{formErrors.nom}</p>
             )}
           </div>
           <div><label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Prénom</label><input className={`w-full px-4 py-2.5 border rounded-xl min-h-[44px] ${inputBg}`} value={form.prenom} onChange={e => setForm(p => ({...p, prenom: e.target.value}))} placeholder="Marie" /></div>
@@ -1053,13 +1055,13 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
           </div>
           <div>
             <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Téléphone</label>
-            <input type="tel" className={`w-full px-4 py-2.5 border rounded-xl min-h-[44px] ${inputBg} ${formErrors.telephone ? 'border-red-400' : ''}`} value={form.telephone} onChange={e => setForm(p => ({...p, telephone: e.target.value}))} placeholder="06 12 34 56 78" />
-            {formErrors.telephone && <p className="text-red-500 text-xs mt-1">{formErrors.telephone}</p>}
+            <input type="tel" className={`w-full px-4 py-2.5 border rounded-xl min-h-[44px] ${inputBg} ${formErrors.telephone ? '!border-red-500' : ''}`} value={form.telephone} onChange={e => setForm(p => ({...p, telephone: e.target.value}))} placeholder="06 12 34 56 78" />
+            {formErrors.telephone && <p className="text-alerte-texte text-xs mt-1">{formErrors.telephone}</p>}
           </div>
           <div>
             <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Email</label>
-            <input type="email" className={`w-full px-4 py-2.5 border rounded-xl min-h-[44px] ${inputBg} ${formErrors.email ? 'border-red-400' : ''}`} value={form.email} onChange={e => setForm(p => ({...p, email: e.target.value}))} placeholder="email@example.com" />
-            {formErrors.email && <p className="text-red-500 text-xs mt-1">{formErrors.email}</p>}
+            <input type="email" className={`w-full px-4 py-2.5 border rounded-xl min-h-[44px] ${inputBg} ${formErrors.email ? '!border-red-500' : ''}`} value={form.email} onChange={e => setForm(p => ({...p, email: e.target.value}))} placeholder="email@example.com" />
+            {formErrors.email && <p className="text-alerte-texte text-xs mt-1">{formErrors.email}</p>}
           </div>
           <div>
             <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Date d'embauche</label>
@@ -1109,7 +1111,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
         {/* Sous-traitant specific fields */}
         {isSousTraitants && (
           <div className={`mt-6 pt-6 border-t border-bord`}>
-            <h4 className={`font-medium mb-4 flex items-center gap-2 ${textPrimary}`}><Shield size={16} style={{ color: '#7c3aed' }} /> Informations légales</h4>
+            <h4 className={`font-medium mb-4 flex items-center gap-2 ${textPrimary}`}><Shield size={16} className="text-encre-3" aria-hidden="true" /> Informations légales</h4>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>SIRET</label>
@@ -1144,10 +1146,10 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                 <button
                   key={t}
                   onClick={() => setForm(p => ({...p, tarif_type: t}))}
-                  className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-                    form.tarif_type === t ? 'text-white' : 'bg-surface-2 text-encre-2'
+                  aria-pressed={form.tarif_type === t}
+                  className={`h-11 px-4 rounded-xl text-sm font-medium transition-colors ${
+                    form.tarif_type === t ? 'bg-encre text-surface' : 'bg-surface-2 text-encre-2'
                   }`}
-                  style={form.tarif_type === t ? { background: '#7c3aed' } : {}}
                 >
                   {t === 'horaire' ? 'Taux horaire' : 'Forfait'}
                 </button>
@@ -1220,12 +1222,12 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                   <button
                     key={h}
                     onClick={() => setBulkForm(p => ({ ...p, heures: h.toString() }))}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-medium min-h-[44px] transition-all ${
+                    aria-pressed={bulkForm.heures === h.toString()}
+                    className={`px-3 rounded-lg text-sm font-medium min-h-[44px] transition-colors ${
                       bulkForm.heures === h.toString()
-                        ? 'text-white'
+                        ? 'bg-encre text-surface'
                         : 'bg-surface-2 text-encre-2'
                     }`}
-                    style={bulkForm.heures === h.toString() ? { background: couleur } : {}}
                   >
                     {h}h
                   </button>
@@ -1244,25 +1246,19 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
             {equipe.map(e => {
-              const config = getRoleConfig(e.role);
               return (
                 <button
                   key={e.id}
                   onClick={() => toggleBulkEmployee(e.id)}
-                  className={`p-3 rounded-xl border-2 text-left transition-all ${
+                  aria-pressed={bulkForm.selectedEmployees.includes(e.id)}
+                  className={`p-3 rounded-xl border-2 text-left transition-colors ${
                     bulkForm.selectedEmployees.includes(e.id)
-                      ? 'shadow-lg scale-[1.02]'
+                      ? 'border-accent bg-accent/10'
                       : 'border-bord hover:border-bord-fort'
                   }`}
-                  style={bulkForm.selectedEmployees.includes(e.id) ? { borderColor: couleur, background: `${couleur}10` } : {}}
                 >
                   <div className="flex items-center gap-2">
-                    <div
-                      className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold text-white"
-                      style={{ background: bulkForm.selectedEmployees.includes(e.id) ? couleur : config.color }}
-                    >
-                      {e.nom?.[0]}{e.prenom?.[0]}
-                    </div>
+                    <Avatar nom={`${e.prenom || ''} ${e.nom || ''}`} taille={32} />
                     <div className="min-w-0">
                       <p className={`text-sm font-medium truncate ${textPrimary}`}>{e.nom}</p>
                       {e.role && <p className={`text-xs truncate ${textMuted}`}>{e.role}</p>}
@@ -1296,86 +1292,16 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
     </div>
   );
 
-  // Empty state
+  // Premier usage : un titre, une phrase, une action (audit UX § 2.7 ; avant : un grand encart orange et une liste d'arguments)
   if (equipe.length === 0) return (
     <div className="space-y-6">
-      <PageHeader
-        icon={HardHat}
-        title="Équipe"
-        subtitle="Gestion de votre équipe et sous-traitants"
-        isDark={isDark}
-        color={couleur}
-        action={
-        <div className={`flex p-1 rounded-xl bg-surface-2`}>
-          <button
-            onClick={() => { setViewMode('employes'); setTab('overview'); }}
-            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm transition-all ${!isSousTraitants ? 'text-white shadow-md' : 'text-encre-3 hover:text-encre'}`}
-            style={!isSousTraitants ? { background: couleur } : {}}
-          >
-            <Users size={16} /> Équipe
-            <span className={`min-w-[20px] h-5 px-1.5 rounded-full text-xs font-bold flex items-center justify-center ${!isSousTraitants ? 'bg-white/20 text-white' : 'bg-bord text-encre-2'}`}>{employesList.length}</span>
-          </button>
-          <button
-            onClick={() => { setViewMode('sous_traitants'); setTab('overview'); }}
-            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm transition-all ${isSousTraitants ? 'text-white shadow-md' : 'text-encre-3 hover:text-encre'}`}
-            style={isSousTraitants ? { background: '#7c3aed' } : {}}
-          >
-            <UserCheck size={16} /> Sous-traitants
-            <span className={`min-w-[20px] h-5 px-1.5 rounded-full text-xs font-bold flex items-center justify-center ${isSousTraitants ? 'bg-white/20 text-white' : 'bg-bord text-encre-2'}`}>{sousTraitantsList.length}</span>
-          </button>
-        </div>
-        }
+      <EnTetePage titre="Équipe" sousTitre="Aucun membre pour l’instant" />
+      <EtatVide
+        icone={Users}
+        titre="Ajoutez votre premier employé"
+        texte="Suivez ses heures sur vos chantiers, validez ses pointages et exportez-les pour la paie."
+        action={peutAjouter ? <Bouton variante="principal" icone={UserPlus} onClick={() => setShowAdd(true)}>Ajouter un employé</Bouton> : null}
       />
-
-      <div className={`${cardBg} rounded-2xl border overflow-hidden`}>
-        <div className="p-8 sm:p-12 text-center relative" style={{ background: `linear-gradient(135deg, ${couleur}15, ${couleur}05)` }}>
-          <div className="w-20 h-20 sm:w-24 sm:h-24 mx-auto mb-6 rounded-2xl flex items-center justify-center shadow-lg" style={{ background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)` }}>
-            <Users size={40} className="text-white" />
-          </div>
-          <h2 className={`text-xl sm:text-2xl font-bold mb-2 ${textPrimary}`}>{isSousTraitants ? 'Gérez vos sous-traitants' : 'Gérez votre équipe'}</h2>
-          <p className={`text-sm sm:text-base ${textMuted} max-w-md mx-auto`}>
-            {isSousTraitants ? 'Ajoutez vos sous-traitants, vérifiez leur conformité et suivez les coûts.' : 'Ajoutez vos employés, suivez leurs heures et calculez la rentabilité de vos chantiers.'}
-          </p>
-        </div>
-
-        <div className={`p-6 sm:p-8 border-t border-bord bg-fond/50`}>
-          <p className={`text-xs font-medium uppercase tracking-wider mb-4 ${textMuted}`}>Fonctionnalités</p>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-            <div className={`flex items-start gap-3 p-3 rounded-xl bg-surface`}>
-              <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${couleur}20` }}>
-                <Timer size={18} className="text-accent-texte" />
-              </div>
-              <div>
-                <p className={`font-medium text-sm ${textPrimary}`}>Chronomètre</p>
-                <p className={`text-xs ${textMuted}`}>Pointage en temps réel</p>
-              </div>
-            </div>
-            <div className={`flex items-start gap-3 p-3 rounded-xl bg-surface`}>
-              <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${couleur}20` }}>
-                <TrendingUp size={18} className="text-accent-texte" />
-              </div>
-              <div>
-                <p className={`font-medium text-sm ${textPrimary}`}>Coût de revient</p>
-                <p className={`text-xs ${textMuted}`}>Rentabilité par chantier</p>
-              </div>
-            </div>
-            <div className={`flex items-start gap-3 p-3 rounded-xl bg-surface`}>
-              <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${couleur}20` }}>
-                <Download size={18} className="text-accent-texte" />
-              </div>
-              <div>
-                <p className={`font-medium text-sm ${textPrimary}`}>Export CSV</p>
-                <p className={`text-xs ${textMuted}`}>Pour votre comptable</p>
-              </div>
-            </div>
-          </div>
-
-          <button onClick={() => setShowAdd(true)} className="w-full sm:w-auto px-6 py-3 rounded-xl flex items-center justify-center gap-2 mx-auto hover:shadow-lg transition-all font-medium bg-accent text-sur-accent">
-            <UserPlus size={18} />
-            Ajouter mon premier employé
-          </button>
-        </div>
-      </div>
     </div>
   );
 
@@ -1401,55 +1327,34 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
         </div>
       )}
 
-      {/* Header */}
-      <PageHeader
-        icon={HardHat}
-        title="Équipe"
-        subtitle="Gestion de votre équipe et sous-traitants"
-        isDark={isDark}
-        color={couleur}
-        action={
-        <div className="flex gap-2 items-center">
-          {/* Offline indicator — only shown when disconnected */}
-          {!isOnline && (
-            <span
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium animate-pulse ${
-                'bg-danger-fond text-danger-texte'
-              }`}
-              title="Mode hors ligne — les pointages seront synchronisés à la reconnexion"
-              role="status"
-              aria-label="Hors ligne : synchronisation en attente"
-            >
-              <WifiOff size={12} />
-              Hors ligne
-            </span>
-          )}
-          {!isSousTraitants && (
-            <BoutonIcone icone={Zap} libelle="Saisie groupée" variante="secondaire" onClick={() => setShowBulkEntry(true)} />
-          )}
-          {canPerform('equipe', 'create') && (
-            <BoutonIcone icone={Plus} libelle={isSousTraitants ? 'Ajouter un sous-traitant' : 'Ajouter un employé'} variante="secondaire" onClick={() => setShowAdd(true)} />
-          )}
-          {!isSousTraitants && (
-            <Bouton variante="principal" icone={HardHat}
-              onClick={() => { setPointerForm({ employeId: equipe.length === 1 ? equipe[0].id : '', chantierId: '', date: formatLocalDate(new Date()), heures: '8' }); setShowPointerModal(true); }}>
-              Pointer
-            </Bouton>
-          )}
-        </div>
-        }
-      />
-
-      <Segmente
-        ariaLabel="Équipe ou sous-traitants"
-        pleineLargeur
-        className="sm:w-auto sm:inline-flex"
-        valeur={isSousTraitants ? 'sous_traitants' : 'employes'}
-        onChange={(v) => { setViewMode(v); setTab('overview'); }}
-        options={[
-          { valeur: 'employes', libelle: `Équipe${employesList.length ? ` · ${employesList.length}` : ''}` },
-          { valeur: 'sous_traitants', libelle: `Sous-traitants${sousTraitantsList.length ? ` · ${sousTraitantsList.length}` : ''}` },
-        ]}
+      {/* En-tête : un fait vivant, « Ajouter » libellé (avant : un « + » sans nom), la saisie groupée dans « ⋯ » */}
+      <EnTetePage
+        titre="Équipe"
+        sousTitre={isSousTraitants
+          ? `${sousTraitantsList.length} sous-traitant${sousTraitantsList.length > 1 ? 's' : ''}`
+          : `${employesList.length} personne${employesList.length > 1 ? 's' : ''}${pointagesEnAttente.length ? ` · ${pointagesEnAttente.length} pointage${pointagesEnAttente.length > 1 ? 's' : ''} à valider` : ''}`}
+        actions={(
+          <>
+            {!isOnline && (
+              <span role="status" aria-label="Hors ligne : synchronisation en attente" title="Mode hors ligne : les pointages seront synchronisés à la reconnexion"
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-sm font-medium bg-alerte-fond text-alerte-texte">
+                <WifiOff size={14} aria-hidden="true" /> Hors ligne
+              </span>
+            )}
+            {peutAjouter && (
+              <Bouton icone={Plus} onClick={() => setShowAdd(true)}>Ajouter</Bouton>
+            )}
+            <MenuActions titre="Équipe" libelle="Plus d’actions pour l’équipe" actions={[
+              { libelle: 'Saisie groupée des heures', icone: Zap, onClick: () => setShowBulkEntry(true), masque: isSousTraitants || !peutPointer },
+            ]} />
+            {!isSousTraitants && peutPointer && (
+              <Bouton variante="principal" icone={HardHat}
+                onClick={() => { setPointerForm({ employeId: equipe.length === 1 ? equipe[0].id : '', chantierId: '', date: formatLocalDate(new Date()), heures: '8' }); setShowPointerModal(true); }}>
+                Pointer
+              </Bouton>
+            )}
+          </>
+        )}
       />
 
       {/* Visual Stats Dashboard — only for employes mode */}
@@ -1461,14 +1366,14 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
               <p className="text-sm font-semibold text-encre-2">{weekOffset === 0 ? 'Cette semaine' : `Du ${weekStart.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} au ${weekEnd.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}`}</p>
               <BoutonIcone icone={ChevronRight} libelle="Semaine suivante" disabled={weekOffset >= 0} onClick={() => setWeekOffset(o => Math.min(o + 1, 0))} />
             </div>
-            <div className="mt-1 flex items-end justify-between gap-3">
-              <p className="text-4xl font-bold text-encre tabular-nums leading-none">
-                {totalWeekHours.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} h <span className="text-base font-medium text-encre-3">pointées</span>
-              </p>
-              <p className="text-sm text-encre-2 text-right" title="Heures validées par un responsable cette semaine">
-                Validées<br /><strong className="text-lg text-encre tabular-nums">{approvedWeekHours.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} h</strong>
-              </p>
-            </div>
+            <p className="mt-1 text-4xl font-bold text-encre tabular-nums leading-none">
+              {totalWeekHours.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} h <span className="text-base font-medium text-encre-3">pointées</span>
+            </p>
+            {/* Les heures non validées comptent ici, pas encore dans la paie : on dit combien attendent */}
+            <p data-equipe="semaine-validation" className="mt-2 text-sm text-encre-2 tabular-nums">
+              <strong className="text-encre">{approvedWeekHours.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} h validées</strong>
+              {weekEnAttente.length > 0 && <> · {weekEnAttente.length} pointage{weekEnAttente.length > 1 ? 's' : ''} ({weekHeuresEnAttente.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} h) à valider</>}
+            </p>
             {heuresCible > 0 && (
               <div className="mt-3">
                 <div className="h-2 rounded-full overflow-hidden bg-surface-2">
@@ -1480,10 +1385,14 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
           </Carte>
           <TuileChiffre libelle="Aujourd'hui" valeur={`${todayHours.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} h`}
             contexte={`${activeEmployeesToday.length} personne${activeEmployeesToday.length > 1 ? 's' : ''} sur chantier`} />
-          <TuileChiffre libelle="Coût de la semaine"
-            valeur={modeDiscret ? '***' : `${weekCost.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} €`}
-            contexte={weekCost === 0 ? 'Aucun coût cette semaine' : 'Charges comprises'}
-            alerte={weekHeuresSansCout > 0 ? `${weekHeuresSansCout.toLocaleString('fr-FR')} h sans coût horaire saisi` : null} />
+          {voitPrix ? (
+            <TuileChiffre libelle="Coût de la semaine"
+              valeur={modeDiscret ? '***' : `${weekCost.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} €`}
+              contexte={weekCost === 0 ? 'Aucun coût cette semaine' : 'Charges comprises'}
+              alerte={weekHeuresSansCout > 0 ? `${weekHeuresSansCout.toLocaleString('fr-FR')} h sans coût horaire saisi` : null} tonAlerte="alerte" />
+          ) : (
+            <TuileChiffre libelle="À valider" valeur={`${weekEnAttente.length}`} contexte={`pointage${weekEnAttente.length > 1 ? 's' : ''} de la semaine`} />
+          )}
         </div>
       )}
 
@@ -1491,8 +1400,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
       <AnimatePresence>
         {chrono.running && (
           <motion.div
-            className="rounded-2xl p-4 text-white relative overflow-hidden"
-            style={{ background: chrono.paused ? '#64748b' : `linear-gradient(135deg, ${couleur}, ${couleur}cc)` }}
+            className={`rounded-2xl p-4 relative overflow-hidden ${chrono.paused ? 'bg-surface-2 text-encre' : 'bg-accent text-sur-accent'}`}
             initial={{ opacity: 0, height: 0, marginTop: 0 }}
             animate={{ opacity: 1, height: 'auto', marginTop: 24 }}
             exit={{ opacity: 0, height: 0, marginTop: 0 }}
@@ -1500,18 +1408,18 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
             <div className="flex items-center justify-between flex-wrap gap-3">
               <div className="flex items-center gap-4">
                 <div className="relative">
-                  <div className={`w-14 h-14 rounded-xl flex items-center justify-center ${chrono.paused ? 'bg-white/10' : 'bg-white/20'}`}>
-                    <Timer size={24} />
+                  <div className="w-14 h-14 rounded-xl flex items-center justify-center bg-black/10">
+                    <Timer size={24} aria-hidden="true" />
                   </div>
                   {!chrono.paused && (
-                    <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-pulse" />
+                    <span aria-hidden="true" className="absolute -top-1 -right-1 w-3 h-3 bg-signature rounded-full animate-pulse" />
                   )}
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
                     <p className="text-3xl sm:text-4xl font-mono font-bold">{formatTime(elapsed)}</p>
                     {chrono.paused && (
-                      <span className="px-2 py-0.5 bg-white/20 rounded-full text-xs font-medium">PAUSE</span>
+                      <span className="px-2 py-0.5 bg-black/10 rounded-full text-sm font-medium">En pause</span>
                     )}
                   </div>
                   <p className="text-sm opacity-80">
@@ -1521,24 +1429,23 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                 </div>
               </div>
               <div className="flex gap-2">
-                <motion.button
+                <button
+                  type="button"
                   onClick={togglePause}
-                  className={`p-3 rounded-xl ${chrono.paused ? 'bg-emerald-500' : 'bg-white/20 hover:bg-white/30'} transition-colors`}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
+                  className="w-12 h-12 flex items-center justify-center rounded-xl bg-black/10 hover:bg-black/20 transition-colors"
                   title={chrono.paused ? 'Reprendre' : 'Pause'}
+                  aria-label={chrono.paused ? 'Reprendre' : 'Pause'}
                 >
-                  {chrono.paused ? <Play size={20} fill="white" /> : <Pause size={20} />}
-                </motion.button>
-                <motion.button
+                  {chrono.paused ? <Play size={20} aria-hidden="true" /> : <Pause size={20} aria-hidden="true" />}
+                </button>
+                <button
+                  type="button"
                   onClick={handleStopChrono}
-                  className="px-5 py-3 bg-red-500 rounded-xl font-medium flex items-center gap-2 shadow-lg"
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
+                  className="h-12 px-5 rounded-xl font-semibold flex items-center gap-2 bg-surface text-encre shadow-e1"
                 >
-                  <Square size={18} fill="white" />
+                  <Square size={18} aria-hidden="true" />
                   Arrêter
-                </motion.button>
+                </button>
               </div>
             </div>
           </motion.div>
@@ -1556,57 +1463,41 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
           >
             <div className="flex items-center justify-between mb-4">
               <h3 className={`text-sm font-semibold flex items-center gap-2 ${textPrimary}`}>
-                <div className={`w-7 h-7 rounded-lg flex items-center justify-center bg-succes-fond`}>
-                  <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                </div>
+                <span className="w-7 h-7 rounded-lg flex items-center justify-center bg-succes-fond" aria-hidden="true">
+                  <span className="w-2 h-2 rounded-full bg-succes-point animate-pulse" />
+                </span>
                 Équipe active maintenant
               </h3>
-              <span className={`text-xs px-2 py-1 rounded-full bg-succes-fond text-succes-texte`}>
-                {activeEmployeesToday.length} sur le terrain
-              </span>
+              <Pastille ton="succes">{activeEmployeesToday.length} sur le terrain</Pastille>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 animate-stagger">
               {equipe.filter(e => activeEmployeesToday.includes(e.id)).map((e, index) => {
                 const currentCh = getEmployeeCurrentChantier(e.id);
                 const todayH = getEmployeeTodayHours(e.id);
-                const config = getRoleConfig(e.role);
-                const RoleIcon = config.icon;
                 return (
                   <motion.div
                     key={e.id}
-                    className={`flex items-center gap-3 p-3 rounded-xl border transition-all hover:shadow-md ${isDark ? 'bg-slate-700/50 border-slate-600' : 'bg-gradient-to-r from-slate-50 to-white border-slate-200'}`}
+                    className="flex items-center gap-3 p-3 rounded-xl border bg-surface-2 border-bord"
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.05 }}
                   >
                     <div className="relative">
-                      <div
-                        className="w-10 h-10 rounded-xl flex items-center justify-center text-white text-sm font-bold"
-                        style={{ background: config.color }}
-                      >
-                        {e.nom?.[0]}{e.prenom?.[0] || ''}
-                      </div>
-                      <span className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full border-2 flex items-center justify-center" style={{ borderColor: isDark ? '#1e293b' : '#fff' }}>
-                        <Check size={10} className="text-white" />
-                      </span>
+                      <Avatar nom={`${e.prenom || ''} ${e.nom || ''}`} taille={40} />
+                      <span aria-hidden="true" className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-succes-point rounded-full border-2 border-surface" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className={`text-sm font-semibold truncate ${textPrimary}`}>{e.nom} {e.prenom}</p>
                       <div className="flex items-center gap-2">
-                        <span className={`text-xs ${textMuted} truncate`}>
-                          <MapPin size={10} className="inline mr-1" />
+                        <span className={`text-sm ${textMuted} truncate`}>
+                          <MapPin size={12} aria-hidden="true" className="inline mr-1" />
                           {currentCh?.nom || 'Sans chantier'}
                         </span>
-                        <span className="text-xs font-bold text-accent-texte">{todayH.toFixed(1)}h</span>
+                        <span className="text-sm font-bold tabular-nums text-encre">{todayH.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} h</span>
                       </div>
                     </div>
                     {e.telephone && (
-                      <button
-                        onClick={() => callPhone(e.telephone)}
-                        className={`p-2 rounded-xl transition-all ${isDark ? 'hover:bg-emerald-900/50 text-emerald-400' : 'hover:bg-emerald-100 text-emerald-600'}`}
-                      >
-                        <PhoneCall size={16} />
-                      </button>
+                      <BoutonIcone icone={PhoneCall} taille={18} libelle={`Appeler ${e.prenom || ''} ${e.nom || ''}`.trim()} onClick={() => callPhone(e.telephone)} />
                     )}
                   </motion.div>
                 );
@@ -1626,29 +1517,34 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
               <p className="text-sm">À valider avant l'export</p>
             </div>
           </div>
-          <Bouton taille="compacte" icone={Check} onClick={() => setTab('validation')}>Valider</Bouton>
+          {peutValider && <Bouton taille="compacte" icone={Check} onClick={() => setTab('validation')}>Valider</Bouton>}
         </div>
       )}
 
-      {/* Tab Navigation */}
+      {/* Une seule rangée d'onglets (audit UX, Équipe P2 ; avant : « Équipe · 6 / Sous-traitants », puis neuf onglets) :
+          Équipe, Pointage, Congés, Sous-traitants en vue ; le reste dans « … ». Les coûts des sous-traitants : avec le droit
+          de voir les prix seulement. */}
       <TabBar
-        tabs={isSousTraitants ? [
-          { key: 'overview', label: 'Sous-traitants', icon: UserCheck, badge: sousTraitantsList.length },
-          { key: 'couts', label: 'Coûts', icon: Euro },
-        ] : [
+        tabs={[
           { key: 'overview', label: 'Équipe', icon: Users, badge: employesList.length },
-          { key: 'planning', label: 'Planning', icon: CalendarDays },
           { key: 'pointage', label: 'Pointage', icon: Timer },
           { key: 'conges', label: 'Congés', icon: CalendarOff },
+          { key: 'st', label: 'Sous-traitants', icon: UserCheck, badge: sousTraitantsList.length },
+          ...(isSousTraitants && voitPrix ? [{ key: 'couts', label: 'Coûts', icon: Euro }] : []),
           { key: 'validation', label: 'Validation', icon: CheckSquare, badge: pointagesEnAttente?.length || 0, alert: true },
-          { key: 'chat', label: 'Chat', icon: Phone },
-          { key: 'competences', label: 'Compétences', icon: Award },
-          { key: 'productivite', label: 'Productivité', icon: BarChart3 },
+          { key: 'planning', label: 'Planning', icon: CalendarDays },
           { key: 'historique', label: 'Historique', icon: FileSpreadsheet },
+          { key: 'productivite', label: 'Productivité', icon: BarChart3 },
+          { key: 'competences', label: 'Compétences', icon: Award },
+          { key: 'chat', label: 'Contacter', icon: Phone },
         ]}
-        activeTab={tab}
-        onTabChange={setTab}
-        maxVisible={5}
+        activeTab={isSousTraitants && tab === 'overview' ? 'st' : tab}
+        onTabChange={(k) => {
+          if (k === 'st') { setViewMode('sous_traitants'); setTab('overview'); return; }
+          if (k !== 'couts') setViewMode('employes');
+          setTab(k);
+        }}
+        maxVisible={isSousTraitants && voitPrix ? 5 : 4}
         isDark={isDark}
         couleur={couleur}
       />
@@ -1663,154 +1559,90 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.2 }}
           >
-            {/* Search and Filter Bar */}
-            <div className={`flex flex-col sm:flex-row items-stretch sm:items-center gap-3 p-3 rounded-xl bg-surface-2`}>
-              {/* Search */}
-              <div className="relative flex-1">
-                <Search size={16} className={`absolute left-3 top-1/2 -translate-y-1/2 ${textMuted}`} />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
-                  placeholder={isSousTraitants ? "Rechercher par nom, métier, SIRET..." : "Rechercher par nom, métier, compétence..."}
-                  aria-label={isSousTraitants ? "Rechercher un sous-traitant" : "Rechercher un employé"}
-                  className={`w-full pl-10 pr-4 py-2.5 border rounded-xl text-sm ${inputBg}`}
-                />
-              </div>
-
-              {/* Filter toggle */}
-              <button
-                onClick={() => setShowFilters(!showFilters)}
-                title="Filtrer par métier"
-                className={`px-3 py-2.5 rounded-xl text-sm flex items-center gap-2 min-h-[44px] transition-all ${
-                  showFilters || filterRole
-                    ? 'text-white'
-                    : 'bg-surface text-encre-2 border border-bord'
-                }`}
-                style={showFilters || filterRole ? { background: couleur } : {}}
-              >
-                <Filter size={16} />
-                Filtrer
-                {filterRole && <span className="w-2 h-2 bg-white rounded-full" />}
-              </button>
-
-              {/* Sort controls */}
-              <select
-                value={sortBy}
-                onChange={e => setSortBy(e.target.value)}
-                className={`px-3 py-2 rounded-xl text-sm border min-h-[40px] cursor-pointer bg-surface border-bord text-encre-2`}
-                aria-label="Trier par"
-              >
-                <option value="name">Nom A-Z</option>
-                <option value="active">Plus actif</option>
-                <option value="hours">Plus d'heures</option>
-              </select>
+            {/* Recherche ; filtre de métier et tri seulement au-delà de 9 personnes (audit UX, Équipe P3 : trois rangées de
+                filtres pour 6 personnes au téléphone) */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+              <ChampRecherche
+                valeur={searchQuery}
+                onChange={setSearchQuery}
+                placeholder={isSousTraitants ? 'Rechercher par nom, métier, SIRET…' : 'Rechercher par nom, métier…'}
+                ariaLabel={isSousTraitants ? 'Rechercher un sous-traitant' : 'Rechercher un employé'}
+                className="flex-1"
+              />
+              {currentList.length >= 10 && (
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowFilters(!showFilters)}
+                    aria-expanded={showFilters}
+                    className={`h-11 px-3.5 rounded-xl border text-sm font-medium flex items-center gap-2 transition-colors ${showFilters || filterRole ? 'bg-encre text-surface border-encre' : 'bg-surface text-encre border-bord hover:bg-surface-2'}`}
+                  >
+                    <Filter size={16} aria-hidden="true" />
+                    Métier
+                    {filterRole && <span className="w-2 h-2 rounded-full bg-surface" aria-hidden="true" />}
+                  </button>
+                  <div className="w-44">
+                    <ChampChoix id="equipe-tri" titre="Trier" className="!h-11"
+                      options={[{ valeur: 'name', libelle: 'Nom de A à Z' }, { valeur: 'active', libelle: 'Actifs aujourd’hui' }, { valeur: 'hours', libelle: 'Plus d’heures' }]}
+                      valeur={sortBy} onChange={setSortBy} />
+                  </div>
+                </div>
+              )}
             </div>
 
-            {/* Role Filter Pills */}
-            <AnimatePresence>
-              {showFilters && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="overflow-hidden"
-                >
-                  <div className="flex flex-wrap gap-2 p-3 rounded-xl bg-opacity-50" style={{ background: `${couleur}10` }}>
-                    <button
-                      onClick={() => setFilterRole('')}
-                      className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                        !filterRole
-                          ? 'text-white'
-                          : 'bg-surface text-encre-2'
-                      }`}
-                      style={!filterRole ? { background: couleur } : {}}
-                    >
-                      Tous
-                    </button>
-                    {uniqueRoles.map(role => {
-                      const config = getRoleConfig(role);
-                      return (
-                        <button
-                          key={role}
-                          onClick={() => setFilterRole(role)}
-                          className={`px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1.5 transition-all ${
-                            filterRole === role
-                              ? 'text-white'
-                              : 'bg-surface text-encre-2'
-                          }`}
-                          style={filterRole === role ? { background: config.color } : {}}
-                        >
-                          <span>{config.emoji}</span>
-                          {role}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+            {/* Métiers */}
+            {showFilters && currentList.length >= 10 && (
+              <div className="flex flex-wrap gap-2" role="group" aria-label="Métier">
+                {[{ cle: '', libelle: 'Tous' }, ...uniqueRoles.map((r) => ({ cle: r, libelle: r }))].map((r) => (
+                  <button
+                    key={r.cle || 'tous'}
+                    type="button"
+                    aria-pressed={filterRole === r.cle}
+                    onClick={() => setFilterRole(r.cle)}
+                    className={`h-11 px-4 rounded-full border text-sm font-medium transition-colors ${filterRole === r.cle ? 'bg-encre text-surface border-encre' : 'bg-surface text-encre-2 border-bord hover:bg-surface-2'}`}
+                  >
+                    {r.libelle}
+                  </button>
+                ))}
+              </div>
+            )}
 
             {/* Results count */}
-            <div className="flex items-center justify-between px-1">
-              <span className={`text-sm ${textMuted}`}>
-                {getFilteredEquipe.length} {isSousTraitants ? 'sous-traitant' : 'employé'}{getFilteredEquipe.length > 1 ? 's' : ''}
-                {searchQuery && ` pour "${searchQuery}"`}
-                {filterRole && ` • ${filterRole}`}
-              </span>
-              {(searchQuery || filterRole) && (
+            {(searchQuery || filterRole) && (
+              <div className="flex items-center justify-between px-1">
+                <span className={`text-sm ${textMuted}`}>
+                  {getFilteredEquipe.length} {isSousTraitants ? 'sous-traitant' : 'employé'}{getFilteredEquipe.length > 1 ? 's' : ''}
+                  {searchQuery && ` pour « ${searchQuery} »`}
+                  {filterRole && ` · ${filterRole}`}
+                </span>
                 <button
+                  type="button"
                   onClick={() => { setSearchQuery(''); setFilterRole(''); }}
-                  className={`text-sm flex items-center gap-1 text-encre-3 hover:text-encre`}
+                  className="h-11 px-2 text-sm flex items-center gap-1 text-encre-3 hover:text-encre"
                 >
-                  <X size={14} /> Effacer filtres
+                  <X size={14} aria-hidden="true" /> Effacer les filtres
                 </button>
-              )}
-            </div>
+              </div>
+            )}
 
             {/* Employee Cards Grid */}
             {getFilteredEquipe.length === 0 ? (
-              <motion.div
-                className={`${cardBg} rounded-2xl border p-12 text-center`}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-              >
-                {(searchQuery || filterRole) ? (
-                  <>
-                    <Search size={48} className={`mx-auto mb-4 ${textMuted} opacity-50`} />
-                    <p className={`font-medium ${textPrimary}`}>Aucun résultat</p>
-                    <p className={`text-sm ${textMuted} mt-1`}>Essayez avec d'autres critères de recherche</p>
-                    <button
-                      onClick={() => { setSearchQuery(''); setFilterRole(''); }}
-                      className="mt-4 px-4 py-2.5 rounded-xl text-sm font-medium min-h-[44px] inline-flex items-center gap-2 transition-all hover:opacity-90 bg-accent text-sur-accent"
-                    >
-                      <X size={16} /> Effacer les filtres
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <div className="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center" style={{ background: `${couleur}15` }}>
-                      {isSousTraitants ? <UserCheck size={32} className="text-accent-texte" /> : <Users size={32} className="text-accent-texte" />}
-                    </div>
-                    <p className={`font-medium ${textPrimary}`}>{isSousTraitants ? 'Aucun sous-traitant' : 'Aucun employé'}</p>
-                    <p className={`text-sm ${textMuted} mt-1`}>{isSousTraitants ? 'Ajoutez votre premier sous-traitant pour gérer vos partenaires' : 'Ajoutez votre premier employé pour commencer'}</p>
-                    <button
-                      onClick={() => setShowAdd(true)}
-                      className="mt-4 px-5 py-2.5 rounded-xl text-sm font-medium min-h-[44px] inline-flex items-center gap-2 transition-all hover:opacity-90 shadow-lg bg-accent text-sur-accent"
-                    >
-                      <UserPlus size={16} /> {isSousTraitants ? 'Ajouter un sous-traitant' : 'Ajouter un employé'}
-                    </button>
-                  </>
-                )}
-              </motion.div>
+              (searchQuery || filterRole) ? (
+                <EtatVide icone={Search} titre="Aucun résultat" texte="Essayez avec d’autres critères de recherche."
+                  action={<Bouton icone={X} onClick={() => { setSearchQuery(''); setFilterRole(''); }}>Effacer les filtres</Bouton>} />
+              ) : (
+                <EtatVide icone={isSousTraitants ? UserCheck : Users}
+                  titre={isSousTraitants ? 'Aucun sous-traitant' : 'Aucun employé'}
+                  texte={isSousTraitants ? 'Ajoutez votre premier sous-traitant pour suivre ses documents et ses coûts.' : 'Ajoutez votre premier employé pour commencer.'}
+                  action={peutAjouter ? <Bouton icone={UserPlus} onClick={() => setShowAdd(true)}>{isSousTraitants ? 'Ajouter un sous-traitant' : 'Ajouter un employé'}</Bouton> : null} />
+              )
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {getFilteredEquipe.map((e, index) => {
-                  const config = getRoleConfig(e.role);
-                  const RoleIcon = config.icon;
+                {getFilteredEquipe.map((e) => {
                   const isActiveToday = activeEmployeesToday.includes(e.id);
                   const currentCh = isActiveToday ? getEmployeeCurrentChantier(e.id) : null;
                   const monthHours = getHeuresMois(e.id);
+                  const monthEnAttente = getHeuresMoisEnAttente(e.id);
                   // Taux et coût : jamais de valeur par défaut affichée (avant : 45 € et 28 € inventés quand rien n'était saisi).
                   const aTaux = Number(e.tauxHoraire) > 0;
                   const aCout = Number(e.coutHoraireCharge) > 0;
@@ -1826,7 +1658,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                     : (Date.now() - new Date(e.urssaf_date).getTime()) > 180 * 24 * 3600 * 1000 ? { ton: 'alerte', texte: 'Attestation URSSAF de plus de 6 mois' }
                     : { ton: 'succes', texte: 'URSSAF à jour' };
                   return (
-                    <div key={e.id} data-ui="Carte"
+                    <div key={e.id} data-ui="Carte" data-equipe="membre"
                       className={`bg-surface border rounded-2xl shadow-e1 overflow-hidden ${isCurrentlyTiming ? 'border-accent' : 'border-bord'}`}>
                       <div className="flex items-center gap-3 px-4 pt-4 pb-3">
                         <button type="button" onClick={() => setSelectedEmployee(e.id)} aria-label={`Fiche de ${nomComplet}`}
@@ -1838,9 +1670,10 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                           </span>
                         </button>
                         {!isSousTraitants && (
-                          <span className="text-right flex-shrink-0">
-                            <span className="block text-base font-bold text-encre tabular-nums">{monthHours.toFixed(0)} h</span>
-                            <span className="block text-sm text-encre-3">ce mois</span>
+                          <span className="text-right flex-shrink-0" data-equipe="heures-mois">
+                            <span className="block text-base font-bold text-encre tabular-nums">{monthHours.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} h</span>
+                            <span className="block text-sm text-encre-3">validées ce mois</span>
+                            {monthEnAttente > 0 && <span className="block text-sm text-alerte-texte tabular-nums">{monthEnAttente.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} h à valider</span>}
                           </span>
                         )}
                       </div>
@@ -1850,272 +1683,49 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                           {isCurrentlyTiming ? <Timer size={16} aria-hidden="true" /> : <MapPin size={16} aria-hidden="true" />}
                           {isCurrentlyTiming
                             ? `Chrono en cours : ${formatTime(elapsed)}${chrono.paused ? ' (pause)' : ''}`
-                            : `${currentCh.nom} · ${getEmployeeTodayHours(e.id).toFixed(1)} h aujourd'hui`}
+                            : `${currentCh.nom} · ${getEmployeeTodayHours(e.id).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} h aujourd'hui`}
                         </p>
                       )}
 
                       {isSousTraitants ? (
                         <div className="px-4 pb-3 space-y-2">
                           <p className="text-sm text-encre-2">
-                            Tarif <strong className="text-encre tabular-nums">{modeDiscret ? '**' : e.tarif_type === 'forfait' && e.tarif_forfait ? `${parseFloat(e.tarif_forfait).toLocaleString('fr-FR')} € au forfait` : e.tauxHoraire ? `${e.tauxHoraire} €/h` : 'non renseigné'}</strong>
-                            {' · '}SIRET {e.siret ? <span className="tabular-nums">…{String(e.siret).slice(-5)}</span> : 'non renseigné'}
+                            {voitPrix && <>Tarif <strong className="text-encre tabular-nums">{modeDiscret ? '**' : e.tarif_type === 'forfait' && e.tarif_forfait ? `${parseFloat(e.tarif_forfait).toLocaleString('fr-FR')} € au forfait` : e.tauxHoraire ? `${e.tauxHoraire} €/h` : 'non renseigné'}</strong>{' · '}</>}
+                            SIRET {e.siret ? <span className="tabular-nums">…{String(e.siret).slice(-5)}</span> : 'non renseigné'}
                           </p>
                           <div className="flex flex-wrap gap-1.5">
                             <Pastille ton={pastilleDecennale.ton}>{pastilleDecennale.texte}</Pastille>
                             <Pastille ton={pastilleUrssaf.ton}>{pastilleUrssaf.texte}</Pastille>
                           </div>
                         </div>
-                      ) : (aTaux || aCout) && !modeDiscret ? (
+                      ) : voitPrix && (aTaux || aCout) && !modeDiscret ? (
                         <p className="px-4 pb-3 text-sm text-encre-2 tabular-nums">
                           {aTaux && <>Facturé <strong className="text-encre">{e.tauxHoraire} €/h</strong></>}
                           {aTaux && aCout && ' · '}
                           {aCout && <>coût <strong className="text-encre">{e.coutHoraireCharge} €/h</strong></>}
-                          {margin !== null && <> · marge <strong className={margin < 0 ? 'text-danger-texte' : 'text-encre'}>{margin > 0 ? '+' : ''}{margin} €/h</strong></>}
+                          {/* Marge négative : « à surveiller » (ambre), le rouge est celui du retard */}
+                          {margin !== null && <> · marge <strong className={margin < 0 ? 'text-alerte-texte' : 'text-encre'}>{margin > 0 ? '+' : ''}{margin} €/h</strong></>}
                         </p>
                       ) : null}
 
                       <div className="flex items-center gap-1 border-t border-bord px-2 py-1">
-                        {!isSousTraitants && !chrono.running && (
+                        {!isSousTraitants && !chrono.running && peutPointer && (
                           <Bouton variante="discret" taille="compacte" icone={Play} onClick={() => quickStartTimer(e.id)}>Chrono</Bouton>
                         )}
                         <span className="flex-1" />
                         {e.telephone && <BoutonIcone icone={Phone} libelle={`Appeler ${nomComplet}`} onClick={() => callPhone(e.telephone)} />}
-                        <BoutonIcone icone={Edit3} libelle={`Modifier ${nomComplet}`} onClick={() => startEdit(e)} />
-                        <BoutonIcone icone={Trash2} libelle={`Supprimer ${nomComplet}`} onClick={() => deleteEmploye(e.id)} />
+                        {/* Modifier et supprimer dans « ⋯ » (audit UX, Équipe P3 : une corbeille sur chaque carte) */}
+                        <MenuActions titre={nomComplet} libelle={`Plus d’actions pour ${nomComplet}`} actions={[
+                          { libelle: 'Voir la fiche', icone: User, onClick: () => setSelectedEmployee(e.id) },
+                          { libelle: 'Modifier', icone: Edit3, onClick: () => startEdit(e), masque: !peutModifier },
+                          { libelle: isSousTraitants ? 'Supprimer le sous-traitant' : 'Supprimer l’employé', icone: Trash2, onClick: () => deleteEmploye(e.id), danger: true, masque: !peutSupprimer },
+                        ]} />
                       </div>
                     </div>
                   );
                 })}
               </div>
             )}
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Smart Clocking / GPS Tab */}
-      <AnimatePresence mode="wait">
-        {tab === 'smart' && (
-          <motion.div
-            className="space-y-6"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.2 }}
-          >
-            {/* Smart Clocking Header */}
-            <div className={`${cardBg} rounded-2xl border overflow-hidden`}>
-              <div
-                className="p-4 text-white"
-                style={{ background: `linear-gradient(135deg, ${couleur}, ${couleur}cc)` }}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
-                      <Navigation size={20} />
-                    </div>
-                    <div>
-                      <h3 className="font-bold">Pointage Intelligent</h3>
-                      <p className="text-sm opacity-80">GPS + Detection automatique</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {smartClocking.locationPermission === 'granted' && (
-                      <span className="px-2 py-1 bg-white/20 rounded-lg text-xs flex items-center gap-1">
-                        <Navigation size={12} /> GPS Actif
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div className="p-4 sm:p-6">
-                {/* Employee Selection for Smart Clocking */}
-                {!currentEmployeForSmartClock ? (
-                  <div>
-                    <p className={`text-sm font-medium mb-4 ${textPrimary}`}>
-                      Qui utilise le pointage intelligent aujourd'hui ?
-                    </p>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                      {equipe.map(emp => {
-                        const config = getRoleConfig(emp.role);
-                        const isActive = activeEmployeesToday.includes(emp.id);
-                        return (
-                          <button
-                            key={emp.id}
-                            onClick={() => {
-                              setCurrentEmployeForSmartClock(emp);
-                              setSmartClockingMode(true);
-                            }}
-                            className={`p-4 rounded-xl border-2 text-left transition-all hover:shadow-md ${
-                              'border-bord hover:border-bord-fort'
-                            }`}
-                          >
-                            <div className="flex flex-col items-center text-center">
-                              <div className="relative">
-                                <div
-                                  className="w-12 h-12 rounded-xl flex items-center justify-center text-white text-lg font-bold mb-2"
-                                  style={{ background: config.color }}
-                                >
-                                  {emp.nom?.[0]}{emp.prenom?.[0] || ''}
-                                </div>
-                                {/* Status indicator */}
-                                <span className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 ${
-                                  isActive
-                                    ? 'bg-emerald-500'
-                                    : isDark ? 'bg-slate-600' : 'bg-slate-300'
-                                }`} style={{ borderColor: isDark ? '#1e293b' : '#fff' }} />
-                              </div>
-                              <p className={`text-sm font-medium ${textPrimary}`}>{emp.nom}</p>
-                              <p className={`text-xs ${textMuted}`}>{emp.prenom}</p>
-                              {isActive && (
-                                <span className={`mt-1 text-xs px-2 py-0.5 rounded-full bg-succes-fond text-succes-texte`}>
-                                  Sur chantier
-                                </span>
-                              )}
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-6">
-                    {/* Current Employee Header */}
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div
-                          className="w-12 h-12 rounded-xl flex items-center justify-center text-white text-lg font-bold"
-                          style={{ background: getRoleConfig(currentEmployeForSmartClock.role).color }}
-                        >
-                          {currentEmployeForSmartClock.nom?.[0]}{currentEmployeForSmartClock.prenom?.[0] || ''}
-                        </div>
-                        <div>
-                          <p className={`font-medium ${textPrimary}`}>
-                            {currentEmployeForSmartClock.nom} {currentEmployeForSmartClock.prenom}
-                          </p>
-                          <p className={`text-sm ${textMuted}`}>{currentEmployeForSmartClock.role || 'Employé'}</p>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => {
-                          setCurrentEmployeForSmartClock(null);
-                          setSmartClockingMode(false);
-                        }}
-                        className={`px-3 py-2 rounded-lg text-sm bg-surface-2 text-encre-2`}
-                      >
-                        Changer
-                      </button>
-                    </div>
-
-                    {/* Smart Clocking - Placeholder */}
-                    <div className={`p-4 rounded-xl text-center bg-surface-2`}>
-                      <p className={`text-sm font-medium ${textPrimary}`}>Pointage intelligent</p>
-                      <p className={`text-xs ${textMuted} mt-1`}>Sélectionnez un chantier pour pointer</p>
-                    </div>
-
-                    {/* Location Status */}
-                    <div className={`p-4 rounded-xl bg-surface-2`}>
-                      <div className="flex items-center justify-between mb-3">
-                        <p className={`text-sm font-medium ${textPrimary}`}>Statut GPS</p>
-                        {smartClocking.locationPermission === 'granted' ? (
-                          <span className="flex items-center gap-1 text-emerald-500 text-xs">
-                            <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-                            Actif
-                          </span>
-                        ) : (
-                          <button
-                            onClick={smartClocking.requestPermission}
-                            className="px-3 py-1 rounded-lg text-xs bg-accent text-sur-accent"
-                          >
-                            Activer GPS
-                          </button>
-                        )}
-                      </div>
-
-                      {smartClocking.nearbyChantiers.length > 0 && (
-                        <div>
-                          <p className={`text-xs ${textMuted} mb-2`}>Chantiers detectes a proximite:</p>
-                          <div className="space-y-2">
-                            {smartClocking.nearbyChantiers.map(ch => (
-                              <div
-                                key={ch.id}
-                                className={`flex items-center justify-between p-2 rounded-lg bg-surface`}
-                              >
-                                <div className="flex items-center gap-2">
-                                  <MapPin size={14} className="text-accent-texte" />
-                                  <span className={`text-sm ${textPrimary}`}>{ch.nom}</span>
-                                </div>
-                                <span className={`text-xs ${textMuted}`}>{ch.distance}m</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {smartClocking.nearbyChantiers.length === 0 && smartClocking.locationPermission === 'granted' && (
-                        <p className={`text-sm ${textMuted}`}>
-                          Aucun chantier detecte a proximite. Deplacez-vous vers un chantier pour activer le pointage automatique.
-                        </p>
-                      )}
-                    </div>
-
-                    {/* Offline Sync Status */}
-                    {(smartClocking.pendingSync.items > 0 || smartClocking.pendingSync.pointages > 0) && (
-                      <div className={`p-4 rounded-xl ${isDark ? 'bg-amber-900/30 border-amber-700' : 'bg-amber-50 border-amber-200'} border`}>
-                        <div className="flex items-center gap-3">
-                          <WifiOff size={20} className="text-amber-500" />
-                          <div>
-                            <p className={`font-medium ${isDark ? 'text-amber-300' : 'text-amber-800'}`}>
-                              Donnees en attente de sync
-                            </p>
-                            <p className={`text-sm text-alerte-texte`}>
-                              {smartClocking.pendingSync.pointages} pointage(s) seront synchronises une fois en ligne
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Quick Info Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className={`${cardBg} rounded-xl border p-4`}>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ background: `${couleur}15` }}>
-                    <Smartphone size={18} className="text-accent-texte" />
-                  </div>
-                  <div>
-                    <p className={`text-sm font-medium ${textPrimary}`}>Mode Terrain</p>
-                    <p className={`text-xs ${textMuted}`}>Grands boutons, gants OK</p>
-                  </div>
-                </div>
-              </div>
-              <div className={`${cardBg} rounded-xl border p-4`}>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ background: `${couleur}15` }}>
-                    <WifiOff size={18} className="text-accent-texte" />
-                  </div>
-                  <div>
-                    <p className={`text-sm font-medium ${textPrimary}`}>Hors ligne</p>
-                    <p className={`text-xs ${textMuted}`}>Fonctionne sans reseau</p>
-                  </div>
-                </div>
-              </div>
-              <div className={`${cardBg} rounded-xl border p-4`}>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ background: `${couleur}15` }}>
-                    <Navigation size={18} className="text-accent-texte" />
-                  </div>
-                  <div>
-                    <p className={`text-sm font-medium ${textPrimary}`}>GPS Intelligent</p>
-                    <p className={`text-xs ${textMuted}`}>Detection automatique</p>
-                  </div>
-                </div>
-              </div>
-            </div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -2134,12 +1744,11 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
             <div className={`${cardBg} rounded-2xl border overflow-hidden`}>
               {/* Timer Header */}
               <div
-                className="p-4 text-white"
-                style={{ background: chrono.running ? (chrono.paused ? '#64748b' : `linear-gradient(135deg, ${couleur}, ${couleur}cc)`) : `linear-gradient(135deg, #64748b, #475569)` }}
+                className={`p-4 ${chrono.running && !chrono.paused ? 'bg-accent text-sur-accent' : 'bg-surface-2 text-encre'}`}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${chrono.running ? 'bg-white/20' : 'bg-white/10'}`}>
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-black/10">
                       <Timer size={20} />
                     </div>
                     <div>
@@ -2151,8 +1760,8 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                   </div>
                   {chrono.running && !chrono.paused && (
                     <div className="flex items-center gap-2">
-                      <span className="w-2 h-2 bg-white rounded-full animate-pulse" />
-                      <span className="text-sm font-medium">REC</span>
+                      <span aria-hidden="true" className="w-2 h-2 bg-signature rounded-full animate-pulse" />
+                      <span className="text-sm font-medium">En cours</span>
                     </div>
                   )}
                 </div>
@@ -2170,7 +1779,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                         cy="50%"
                         r="45%"
                         fill="none"
-                        stroke={isDark ? '#334155' : '#e2e8f0'}
+                        className="stroke-bord"
                         strokeWidth="8"
                       />
                       {/* Progress circle */}
@@ -2180,7 +1789,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                           cy="50%"
                           r="45%"
                           fill="none"
-                          stroke={chrono.paused ? '#64748b' : couleur}
+                          className={chrono.paused ? 'stroke-encre-3' : 'stroke-accent'}
                           strokeWidth="8"
                           strokeLinecap="round"
                           strokeDasharray={`${2 * Math.PI * 45}%`}
@@ -2193,8 +1802,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                     {/* Time display */}
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
                       <p
-                        className="text-4xl sm:text-5xl font-mono font-bold tracking-tight"
-                        style={{ color: chrono.running ? (chrono.paused ? '#64748b' : couleur) : (isDark ? '#94a3b8' : '#64748b') }}
+                        className={`text-4xl sm:text-5xl font-mono font-bold tracking-tight tabular-nums ${chrono.running && !chrono.paused ? 'text-accent-texte' : 'text-encre-3'}`}
                       >
                         {formatTime(elapsed)}
                       </p>
@@ -2204,8 +1812,8 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                         </p>
                       )}
                       {chrono.paused && (
-                        <span className={`text-xs mt-1 px-2 py-0.5 rounded-full bg-bord ${textMuted}`}>
-                          PAUSE
+                        <span className={`text-sm mt-1 px-2 py-0.5 rounded-full bg-bord ${textMuted}`}>
+                          En pause
                         </span>
                       )}
                     </div>
@@ -2217,26 +1825,20 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                       <p className={`text-sm font-medium mb-3 ${textPrimary}`}>Sélectionner l'employé :</p>
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                         {equipe.map(emp => {
-                          const config = getRoleConfig(emp.role);
                           const isSelected = chrono.employeId === emp.id;
                           return (
                             <button
                               key={emp.id}
                               onClick={() => setChrono(p => ({ ...p, employeId: emp.id }))}
-                              className={`p-3 rounded-xl border-2 text-left transition-all ${
+                              aria-pressed={isSelected}
+                              className={`p-3 rounded-xl border-2 text-left transition-colors ${
                                 isSelected
-                                  ? 'shadow-lg scale-[1.02]'
+                                  ? 'border-accent bg-accent/10'
                                   : 'border-bord hover:border-bord-fort'
                               }`}
-                              style={isSelected ? { borderColor: couleur, background: `${couleur}10` } : {}}
                             >
                               <div className="flex items-center gap-2">
-                                <div
-                                  className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold"
-                                  style={{ background: isSelected ? couleur : config.color }}
-                                >
-                                  {emp.nom?.[0]}{emp.prenom?.[0] || ''}
-                                </div>
+                                <Avatar nom={`${emp.prenom || ''} ${emp.nom || ''}`} taille={32} />
                                 <div className="min-w-0">
                                   <p className={`text-sm font-medium truncate ${textPrimary}`}>{emp.nom}</p>
                                   <p className={`text-xs truncate ${textMuted}`}>{emp.role || 'Employé'}</p>
@@ -2269,7 +1871,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                   {/* Control Buttons */}
                   <div className="flex flex-col items-center gap-2">
                     {!chrono.employeId && !chrono.running && equipe.length > 0 && (
-                      <div className={`px-4 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2 ${isDark ? 'bg-amber-900/30 text-amber-300 border border-amber-800/50' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>
+                      <div className={`px-4 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2 ${'bg-alerte-fond text-alerte-texte border border-alerte-point/40'}`}>
                         <AlertCircle size={16} /> Sélectionnez un employé ci-dessus pour démarrer
                       </div>
                     )}
@@ -2278,13 +1880,12 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                       <motion.button
                         onClick={startChrono}
                         title="Démarrer le chronomètre"
-                        className="px-8 py-4 text-white rounded-2xl text-lg font-semibold flex items-center gap-3 shadow-lg disabled:opacity-40 disabled:cursor-not-allowed"
-                        style={{ background: chrono.employeId ? couleur : '#94a3b8' }}
+                        className="px-8 py-4 rounded-2xl text-lg font-semibold flex items-center gap-3 shadow-e2 bg-accent text-sur-accent disabled:opacity-40 disabled:cursor-not-allowed"
                         whileHover={chrono.employeId ? { scale: 1.02 } : {}}
                         whileTap={chrono.employeId ? { scale: 0.98 } : {}}
                         disabled={!chrono.employeId}
                       >
-                        <Play size={24} fill="white" />
+                        <Play size={24} aria-hidden="true" />
                         Démarrer
                       </motion.button>
                     ) : (
@@ -2294,15 +1895,15 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                           title={chrono.paused ? 'Reprendre le chronomètre' : 'Mettre en pause'}
                           className={`px-6 py-4 rounded-2xl text-lg font-semibold flex items-center gap-3 shadow-lg ${
                             chrono.paused
-                              ? 'bg-emerald-500 text-white'
-                              : 'bg-bord text-encre-2'
+                              ? 'bg-accent text-sur-accent'
+                              : 'bg-surface-2 text-encre-2'
                           }`}
                           whileHover={{ scale: 1.02 }}
                           whileTap={{ scale: 0.98 }}
                         >
                           {chrono.paused ? (
                             <>
-                              <Play size={20} fill="white" />
+                              <Play size={20} aria-hidden="true" />
                               Reprendre
                             </>
                           ) : (
@@ -2314,11 +1915,11 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                         </motion.button>
                         <motion.button
                           onClick={handleStopChrono}
-                          className="px-8 py-4 bg-red-500 text-white rounded-2xl text-lg font-semibold flex items-center gap-3 shadow-lg"
+                          className="px-8 py-4 bg-encre text-surface rounded-2xl text-lg font-semibold flex items-center gap-3 shadow-e2"
                           whileHover={{ scale: 1.02 }}
                           whileTap={{ scale: 0.98 }}
                         >
-                          <Square size={24} fill="white" />
+                          <Square size={24} aria-hidden="true" />
                           Arrêter
                         </motion.button>
                       </>
@@ -2332,7 +1933,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
             {/* Manual Entry Card */}
             <div className={`${cardBg} rounded-2xl border p-5`}>
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${couleur}15` }}>
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-accent/10">
                   <Edit3 size={18} className="text-accent-texte" />
                 </div>
                 <div>
@@ -2403,7 +2004,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
 
               if (recentPointages.length === 0) return (
                 <div className={`${cardBg} rounded-2xl border p-8 text-center`}>
-                  <div className="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center" style={{ background: `${couleur}15` }}>
+                  <div className="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center bg-accent/10">
                     <Timer size={28} className="text-accent-texte" />
                   </div>
                   <p className={`font-semibold ${textPrimary} mb-1`}>Aucun pointage cette semaine</p>
@@ -2484,11 +2085,11 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
             {/* Actions Bar */}
             <div className={`flex items-center justify-between flex-wrap gap-3 p-4 rounded-xl bg-surface-2`}>
               <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${pointagesEnAttente.length > 0 ? 'bg-amber-500/20' : 'bg-emerald-500/20'}`}>
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${pointagesEnAttente.length > 0 ? 'bg-alerte-fond' : 'bg-succes-fond'}`}>
                   {pointagesEnAttente.length > 0 ? (
-                    <AlertCircle size={20} className="text-amber-500" />
+                    <AlertCircle size={20} className="text-alerte-texte" />
                   ) : (
-                    <Check size={20} className="text-emerald-500" />
+                    <Check size={20} className="text-succes-texte" />
                   )}
                 </div>
                 <div>
@@ -2501,10 +2102,10 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                 </div>
               </div>
               <div className="flex gap-2">
-                {pointagesEnAttente.length > 0 && (
+                {pointagesEnAttente.length > 0 && peutValider && (
                   <motion.button
                     onClick={approuverTout}
-                    className="px-4 py-2.5 bg-emerald-500 text-white rounded-xl text-sm font-medium flex items-center gap-2 shadow-md"
+                    className="px-4 py-2.5 bg-succes-fond text-succes-texte rounded-xl text-sm font-medium flex items-center gap-2 shadow-md"
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                   >
@@ -2512,15 +2113,15 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                     Tout valider
                   </motion.button>
                 )}
-                <motion.button
+                {peutValider && <motion.button
                   onClick={validerSemaine}
-                  className="px-4 py-2.5 bg-blue-500 text-white rounded-xl text-sm font-medium flex items-center gap-2 shadow-md"
+                  className="px-4 py-2.5 bg-surface text-encre border border-bord-fort rounded-xl text-sm font-medium flex items-center gap-2 shadow-md"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >
                   <CheckSquare size={16} />
                   Verrouiller
-                </motion.button>
+                </motion.button>}
               </div>
             </div>
 
@@ -2531,8 +2132,8 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
               >
-                <div className="w-20 h-20 rounded-full bg-emerald-500/20 flex items-center justify-center mx-auto mb-4">
-                  <CheckSquare size={40} className="text-emerald-500" />
+                <div className="w-20 h-20 rounded-full bg-succes-fond flex items-center justify-center mx-auto mb-4">
+                  <CheckSquare size={40} className="text-succes-texte" />
                 </div>
                 <p className={`font-semibold text-lg ${textPrimary}`}>Tous les pointages sont valides</p>
                 <p className={`text-sm ${textMuted} mt-2 max-w-sm mx-auto`}>
@@ -2544,7 +2145,6 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                 {pointagesEnAttente.map((p, index) => {
                   const emp = equipe.find(e => e.id === p.employeId);
                   const ch = chantiers.find(c => c.id === p.chantierId);
-                  const config = getRoleConfig(emp?.role);
 
                   return (
                     <motion.div
@@ -2557,14 +2157,12 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                       {/* Employee Avatar */}
                       <div className="relative flex-shrink-0">
                         <div
-                          className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold"
-                          style={{ background: config.color }}
+                          className="w-12 h-12 rounded-xl flex items-center justify-center text-encre-2 bg-surface-2 font-bold"
                         >
                           {emp?.nom?.[0]}{emp?.prenom?.[0] || ''}
                         </div>
                         <span
-                          className={`absolute -top-1 -right-1 w-4 h-4 rounded-full border-2 ${p.manuel ? 'bg-blue-500' : 'bg-signature'}`}
-                          style={{ borderColor: isDark ? '#1e293b' : '#fff' }}
+                          className={`absolute -top-1 -right-1 w-4 h-4 rounded-full border-2 ${p.manuel ? 'bg-info-point' : 'bg-signature'} border-surface`}
                           title={p.manuel ? 'Saisie manuelle' : 'Chronomètre'}
                         />
                       </div>
@@ -2595,6 +2193,8 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                             step="0.5"
                             value={p.heures}
                             onChange={e => updatePointage(p.id, 'heures', e.target.value)}
+                            disabled={!peutValider}
+                            aria-label={`Heures pointées le ${dateLue(p.date).toLocaleDateString('fr-FR')}`}
                             className={`w-20 px-3 py-2 border rounded-xl text-center text-lg font-bold bg-surface border-bord-fort text-accent-texte`}
                           />
                           <span className={`absolute right-2 top-1/2 -translate-y-1/2 text-xs ${textMuted}`}>h</span>
@@ -2603,22 +2203,24 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
 
                       {/* Action Buttons */}
                       <div className="flex gap-2 flex-shrink-0">
-                        <motion.button
+                        {peutValider && <motion.button
                           onClick={() => approuverPointage(p.id)}
-                          className="p-3 bg-emerald-500 text-white rounded-xl shadow-md"
+                          aria-label="Valider ce pointage"
+                          className="p-3 bg-succes-fond text-succes-texte rounded-xl shadow-md"
                           whileHover={{ scale: 1.05 }}
                           whileTap={{ scale: 0.95 }}
                         >
-                          <Check size={20} />
-                        </motion.button>
-                        <motion.button
+                          <Check size={20} aria-hidden="true" />
+                        </motion.button>}
+                        {peutRejeter && <motion.button
                           onClick={() => rejeterPointage(p.id)}
+                          aria-label="Supprimer ce pointage"
                           className={`p-3 rounded-xl bg-danger-fond text-danger-texte`}
                           whileHover={{ scale: 1.05 }}
                           whileTap={{ scale: 0.95 }}
                         >
-                          <X size={20} />
-                        </motion.button>
+                          <X size={20} aria-hidden="true" />
+                        </motion.button>}
                       </div>
                     </motion.div>
                   );
@@ -2629,7 +2231,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
             {/* ====== SIGNATURE DIGITALE SECTION ====== */}
             <div className={`${cardBg} rounded-2xl border p-5`}>
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${couleur}15` }}>
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-accent/10">
                   <PenTool size={18} className="text-accent-texte" />
                 </div>
                 <div>
@@ -2644,12 +2246,10 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                   if (empWeekPts.length === 0) return null;
                   const empHours = empWeekPts.reduce((s, p) => s + (p.heures || 0), 0);
                   const sig = getEmployeeWeekSignature(emp.id);
-                  const config = getRoleConfig(emp.role);
-                  const allApproved = empWeekPts.every(p => p.approuve || p.verrouille);
 
                   return (
                     <div key={emp.id} className={`flex items-center gap-4 p-3 rounded-xl bg-surface-2`}>
-                      <div className="w-10 h-10 rounded-lg flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style={{ background: config.color }}>
+                      <div className="w-10 h-10 rounded-lg flex items-center justify-center text-encre-2 bg-surface-2 text-xs font-bold flex-shrink-0">
                         {emp.prenom?.[0]}{emp.nom?.[0]}
                       </div>
                       <div className="flex-1 min-w-0">
@@ -2658,14 +2258,13 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                       </div>
                       {sig ? (
                         <div className="flex items-center gap-2 flex-shrink-0">
-                          <img src={sig.data} alt="Signature" className="h-8 w-16 object-contain rounded border" style={{ borderColor: isDark ? '#475569' : '#e2e8f0' }} />
-                          <span className="text-xs text-emerald-500 font-medium flex items-center gap-1"><Check size={12} /> Signé</span>
+                          <img src={sig.data} alt="Signature" className="h-8 w-16 object-contain rounded border border-bord" />
+                          <span className="text-xs text-succes-texte font-medium flex items-center gap-1"><Check size={12} /> Signé</span>
                         </div>
                       ) : (
                         <motion.button
                           onClick={() => setSignatureModal({ open: true, pointageIds: empWeekPts.map(p => p.id), employeId: emp.id })}
-                          className="px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 flex-shrink-0 text-accent-texte"
-                          style={{ background: `${couleur}15` }}
+                          className="px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 flex-shrink-0 text-accent-texte bg-accent/10"
                           whileHover={{ scale: 1.02 }}
                           whileTap={{ scale: 0.98 }}
                         >
@@ -2701,9 +2300,10 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                         <p className={`text-sm ${textMuted}`}>
                           {equipe.find(e => e.id === signatureModal.employeId)?.prenom} {equipe.find(e => e.id === signatureModal.employeId)?.nom} — {signatureModal.pointageIds.length} pointage(s)
                         </p>
+                        <p className={`text-sm ${textMuted}`}>La signature est enregistrée sur cet appareil.</p>
                       </div>
-                      <button onClick={() => { setSignatureModal({ open: false, pointageIds: [], employeId: null }); setSignatureData(null); }} className={`p-2 rounded-lg hover:bg-surface-2`}>
-                        <X size={20} className={textMuted} />
+                      <button onClick={() => { setSignatureModal({ open: false, pointageIds: [], employeId: null }); setSignatureData(null); }} aria-label="Fermer" className={`w-11 h-11 flex items-center justify-center rounded-xl hover:bg-surface-2`}>
+                        <X size={20} aria-hidden="true" className={textMuted} />
                       </button>
                     </div>
 
@@ -2785,7 +2385,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
             {/* Header with export and week nav */}
             <div className={`flex items-center justify-between flex-wrap gap-3 p-4 rounded-xl bg-surface-2`}>
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${couleur}15` }}>
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-accent/10">
                   <History size={20} className="text-accent-texte" />
                 </div>
                 <div>
@@ -2813,8 +2413,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
               <div className="flex items-center gap-2 flex-wrap">
                 <motion.button
                   onClick={exportCSV}
-                  className="px-3 py-2 rounded-xl text-sm font-medium flex items-center gap-2 shadow-sm text-accent-texte"
-                  style={{ background: `${couleur}15` }}
+                  className="px-3 py-2 rounded-xl text-sm font-medium flex items-center gap-2 shadow-sm text-accent-texte bg-accent/10"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >
@@ -2832,7 +2431,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                 </motion.button>
                 <motion.button
                   onClick={() => exportPaieCSV('month')}
-                  className={`px-3 py-2 rounded-xl text-sm font-medium flex items-center gap-2 shadow-sm ${isDark ? 'bg-slate-700 text-slate-200 hover:bg-slate-600' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'}`}
+                  className={`px-3 py-2 rounded-xl text-sm font-medium flex items-center gap-2 shadow-sm ${'bg-bord text-encre-2 hover:bg-bord-fort'}`}
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >
@@ -2864,22 +2463,24 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                   </div>
                   <div className={`p-3 rounded-xl border bg-surface border-bord`}>
                     <p className={`text-xs font-medium ${textMuted}`}>Heures validées</p>
-                    <p className="text-xl font-bold text-emerald-500">{heuresApprouvees.toFixed(1)}h</p>
+                    <p className="text-xl font-bold text-succes-texte">{heuresApprouvees.toFixed(1)}h</p>
                     <p className={`text-xs ${textMuted}`}>sur {totalWeekHours.toFixed(1)}h total</p>
                   </div>
                   <div className={`p-3 rounded-xl border bg-surface border-bord`}>
                     <p className={`text-xs font-medium ${textMuted}`}>Statuts</p>
                     <div className="flex items-center gap-2 mt-1">
-                      <span className="text-xs font-medium text-emerald-500">✓ {approuves.length}</span>
-                      <span className="text-xs font-medium text-amber-500">⏳ {enAttente.length}</span>
-                      <span className="text-xs font-medium text-blue-500">🔒 {verrouilles.length}</span>
+                      <span className="text-xs font-medium text-succes-texte">{approuves.length} validé{approuves.length > 1 ? 's' : ''}</span>
+                      <span className="text-xs font-medium text-alerte-texte">{enAttente.length} en attente</span>
+                      <span className="text-xs font-medium text-info-texte">{verrouilles.length} verrouillé{verrouilles.length > 1 ? 's' : ''}</span>
                     </div>
                   </div>
-                  <div className={`p-3 rounded-xl border bg-surface border-bord`}>
-                    <p className={`text-xs font-medium ${textMuted}`}>Coût estimé</p>
-                    <p className="text-xl font-bold text-accent-texte">{coutEstime.toFixed(0)}€</p>
-                    <p className={`text-xs ${textMuted}`}>charges incluses</p>
-                  </div>
+                  {voitPrix && (
+                    <div className={`p-3 rounded-xl border bg-surface border-bord`}>
+                      <p className={`text-sm font-medium ${textMuted}`}>Coût estimé</p>
+                      <p className="text-xl font-bold tabular-nums text-encre">{modeDiscret ? '***' : `${Math.round(coutEstime).toLocaleString('fr-FR')} €`}</p>
+                      <p className={`text-sm ${textMuted}`}>charges incluses</p>
+                    </div>
+                  )}
                 </div>
               );
             })()}
@@ -2891,7 +2492,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
               >
-                <div className="w-20 h-20 rounded-full bg-slate-500/10 flex items-center justify-center mx-auto mb-4">
+                <div className="w-20 h-20 rounded-full bg-surface-2 flex items-center justify-center mx-auto mb-4">
                   <History size={40} className={textMuted} />
                 </div>
                 <p className={`font-semibold text-lg ${textPrimary}`}>Aucun pointage cette semaine</p>
@@ -2906,7 +2507,6 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                   .map((p, index) => {
                     const emp = equipe.find(e => e.id === p.employeId);
                     const ch = chantiers.find(c => c.id === p.chantierId);
-                    const config = getRoleConfig(emp?.role);
 
                     return (
                       <motion.div
@@ -2919,15 +2519,15 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                         {/* Status Icon */}
                         <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
                           p.verrouille
-                            ? 'bg-blue-500/20'
+                            ? 'bg-info-fond'
                             : p.approuve
-                              ? 'bg-emerald-500/20'
+                              ? 'bg-succes-fond'
                               : 'bg-surface-2'
                         }`}>
                           {p.verrouille ? (
-                            <CheckSquare size={14} className="text-blue-500" />
+                            <CheckSquare size={14} className="text-info-texte" />
                           ) : p.approuve ? (
-                            <Check size={14} className="text-emerald-500" />
+                            <Check size={14} className="text-succes-texte" />
                           ) : (
                             <Clock size={14} className={textMuted} />
                           )}
@@ -2946,8 +2546,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                         {/* Employee */}
                         <div className="flex items-center gap-2 flex-1 min-w-0">
                           <div
-                            className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
-                            style={{ background: config.color }}
+                            className="w-8 h-8 rounded-lg flex items-center justify-center text-encre-2 bg-surface-2 text-xs font-bold flex-shrink-0"
                           >
                             {emp?.nom?.[0]}{emp?.prenom?.[0] || ''}
                           </div>
@@ -2959,7 +2558,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
 
                         {/* Source indicator */}
                         <span
-                          className={`w-2 h-2 rounded-full flex-shrink-0 ${p.manuel ? 'bg-blue-500' : 'bg-signature'}`}
+                          className={`w-2 h-2 rounded-full flex-shrink-0 ${p.manuel ? 'bg-info-point' : 'bg-signature'}`}
                           title={p.manuel ? 'Saisie manuelle' : 'Chronomètre'}
                         />
 
@@ -2984,18 +2583,18 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                 <span className={textMuted}>Chrono</span>
               </span>
               <span className="inline-flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-blue-500" />
+                <span className="w-2 h-2 rounded-full bg-info-point" />
                 <span className={textMuted}>Manuel</span>
               </span>
               <span className="inline-flex items-center gap-1.5">
-                <div className="w-5 h-5 rounded bg-emerald-500/20 flex items-center justify-center">
-                  <Check size={10} className="text-emerald-500" />
+                <div className="w-5 h-5 rounded bg-succes-fond flex items-center justify-center">
+                  <Check size={10} className="text-succes-texte" />
                 </div>
                 <span className={textMuted}>Valide</span>
               </span>
               <span className="inline-flex items-center gap-1.5">
-                <div className="w-5 h-5 rounded bg-blue-500/20 flex items-center justify-center">
-                  <CheckSquare size={10} className="text-blue-500" />
+                <div className="w-5 h-5 rounded bg-info-fond flex items-center justify-center">
+                  <CheckSquare size={10} className="text-info-texte" />
                 </div>
                 <span className={textMuted}>Verrouille</span>
               </span>
@@ -3033,21 +2632,21 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                   {/* Header */}
                   <div className={`flex items-center justify-between flex-wrap gap-3 p-4 rounded-xl bg-surface-2`}>
                     <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${pendingCount > 0 ? 'bg-amber-500/20' : 'bg-emerald-500/20'}`}>
-                        {pendingCount > 0 ? <AlertCircle size={20} className="text-amber-500" /> : <Check size={20} className="text-emerald-500" />}
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${pendingCount > 0 ? 'bg-alerte-fond' : 'bg-succes-fond'}`}>
+                        {pendingCount > 0 ? <AlertCircle size={20} className="text-alerte-texte" /> : <Check size={20} className="text-succes-texte" />}
                       </div>
                       <div>
                         <p className={`font-medium ${textPrimary}`}>{pendingCount > 0 ? `${pendingCount} demande${pendingCount > 1 ? 's' : ''} en attente` : 'Aucune demande en attente'}</p>
-                        <p className={`text-sm ${textMuted}`}>{conges.filter(c => c.status === 'approved').length} congé(s) approuvé(s) ce mois</p>
+                        <p className={`text-sm ${textMuted}`}>{conges.filter(c => c.status === 'approved').length} congé(s) approuvé(s) · enregistrés sur cet appareil</p>
                       </div>
                     </div>
                     <motion.button
                       onClick={() => setShowCongeForm(true)}
-                      className="px-4 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2 shadow-md bg-accent text-sur-accent"
+                      className="h-11 px-4 rounded-full text-sm font-semibold flex items-center gap-2 bg-surface text-encre border border-bord-fort hover:bg-surface-2"
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                     >
-                      <CalendarPlus size={16} />
+                      <CalendarPlus size={16} aria-hidden="true" />
                       Nouvelle demande
                     </motion.button>
                   </div>
@@ -3056,11 +2655,10 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     {equipe.slice(0, 4).map(emp => {
                       const bal = getCongeBalance(emp.id);
-                      const config = getRoleConfig(emp.role);
                       return (
                         <div key={emp.id} className={`${cardBg} rounded-xl border p-3`}>
                           <div className="flex items-center gap-2 mb-2">
-                            <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-bold" style={{ background: config.color }}>
+                            <div className="w-7 h-7 rounded-lg flex items-center justify-center text-encre-2 bg-surface-2 text-xs font-bold">
                               {emp.prenom?.[0]}{emp.nom?.[0]}
                             </div>
                             <p className={`text-xs font-medium truncate ${textPrimary}`}>{emp.prenom}</p>
@@ -3068,17 +2666,17 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                           <div className="space-y-1">
                             <div className="flex justify-between text-xs">
                               <span className={textMuted}>CP</span>
-                              <span className={`font-semibold ${bal.cpUsed >= bal.cpTotal ? 'text-red-500' : textPrimary}`}>{bal.cpTotal - bal.cpUsed}j restants</span>
+                              <span className={`font-semibold ${bal.cpUsed >= bal.cpTotal ? 'text-alerte-texte' : textPrimary}`}>{bal.cpTotal - bal.cpUsed}j restants</span>
                             </div>
                             <div className={`w-full h-1.5 rounded-full bg-bord`}>
-                              <div className="h-full rounded-full bg-blue-500" style={{ width: `${Math.min((bal.cpUsed / bal.cpTotal) * 100, 100)}%` }} />
+                              <div className="h-full rounded-full bg-info-point" style={{ width: `${Math.min((bal.cpUsed / bal.cpTotal) * 100, 100)}%` }} />
                             </div>
                             <div className="flex justify-between text-xs">
                               <span className={textMuted}>RTT</span>
-                              <span className={`font-semibold ${bal.rttUsed >= bal.rttTotal ? 'text-red-500' : textPrimary}`}>{bal.rttTotal - bal.rttUsed}j restants</span>
+                              <span className={`font-semibold ${bal.rttUsed >= bal.rttTotal ? 'text-alerte-texte' : textPrimary}`}>{bal.rttTotal - bal.rttUsed}j restants</span>
                             </div>
                             <div className={`w-full h-1.5 rounded-full bg-bord`}>
-                              <div className="h-full rounded-full bg-purple-500" style={{ width: `${Math.min((bal.rttUsed / bal.rttTotal) * 100, 100)}%` }} />
+                              <div className="h-full rounded-full bg-neutre-point" style={{ width: `${Math.min((bal.rttUsed / bal.rttTotal) * 100, 100)}%` }} />
                             </div>
                           </div>
                         </div>
@@ -3121,7 +2719,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                       })}
                     </div>
                     {/* Legend */}
-                    <div className="flex flex-wrap gap-3 mt-3 pt-3 border-t" style={{ borderColor: isDark ? '#334155' : '#e2e8f0' }}>
+                    <div className="flex flex-wrap gap-3 mt-3 pt-3 border-t border-bord">
                       {Object.entries(CONGE_TYPES).map(([key, { label, color }]) => (
                         <div key={key} className="flex items-center gap-1.5">
                           <span className="w-2.5 h-2.5 rounded-full" style={{ background: color }} />
@@ -3142,12 +2740,12 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                       <button
                         key={f.key}
                         onClick={() => setCongeFilter(f.key)}
-                        className={`px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${
+                        aria-pressed={congeFilter === f.key}
+                        className={`h-11 px-4 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
                           congeFilter === f.key
-                            ? 'text-white shadow-md'
-                            : 'bg-surface-2 text-encre-3 hover:text-encre'
+                            ? 'bg-encre text-surface'
+                            : 'bg-surface-2 text-encre-2 hover:text-encre'
                         }`}
-                        style={congeFilter === f.key ? { background: couleur } : {}}
                       >
                         {f.label} ({f.count})
                       </button>
@@ -3157,8 +2755,8 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                   {/* Congé List */}
                   {sortedConges.length === 0 ? (
                     <div className={`${cardBg} rounded-2xl border p-12 text-center`}>
-                      <div className="w-16 h-16 rounded-full bg-blue-500/20 flex items-center justify-center mx-auto mb-3">
-                        <CalendarOff size={32} className="text-blue-500" />
+                      <div className="w-16 h-16 rounded-full bg-info-fond flex items-center justify-center mx-auto mb-3">
+                        <CalendarOff size={32} className="text-info-texte" />
                       </div>
                       <p className={`font-medium ${textPrimary}`}>Aucune demande de congé</p>
                       <p className={`text-sm ${textMuted} mt-1`}>Créez une nouvelle demande avec le bouton ci-dessus</p>
@@ -3167,9 +2765,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                     <div className="space-y-3">
                       {sortedConges.map((c, index) => {
                         const emp = equipe.find(e => e.id === c.employeId);
-                        const config = getRoleConfig(emp?.role);
                         const typeInfo = CONGE_TYPES[c.type] || CONGE_TYPES.autre;
-                        const TypeIcon = typeInfo.icon;
                         const days = getWorkingDays(c.dateDebut, c.dateFin);
 
                         return (
@@ -3181,21 +2777,19 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                             transition={{ delay: index * 0.03 }}
                           >
                             <div className="flex items-start gap-4">
-                              <div className="w-10 h-10 rounded-lg flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style={{ background: config.color }}>
+                              <div className="w-10 h-10 rounded-lg flex items-center justify-center text-encre-2 bg-surface-2 text-xs font-bold flex-shrink-0">
                                 {emp?.prenom?.[0]}{emp?.nom?.[0]}
                               </div>
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 flex-wrap">
                                   <p className={`font-semibold ${textPrimary}`}>{emp?.prenom} {emp?.nom}</p>
-                                  <span className="px-2 py-0.5 rounded-full text-xs font-medium text-white" style={{ background: typeInfo.color }}>
-                                    {typeInfo.label}
-                                  </span>
+                                  <Pastille>{typeInfo.label}</Pastille>
                                   <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                                    c.status === 'approved' ? 'bg-emerald-100 text-emerald-700' :
-                                    c.status === 'rejected' ? 'bg-red-100 text-red-700' :
-                                    'bg-amber-100 text-amber-700'
+                                    c.status === 'approved' ? 'bg-succes-fond text-succes-texte' :
+                                    c.status === 'rejected' ? 'bg-danger-fond text-danger-texte' :
+                                    'bg-alerte-fond text-alerte-texte'
                                   }`}>
-                                    {c.status === 'approved' ? '✓ Approuvé' : c.status === 'rejected' ? '✗ Refusé' : '⏳ En attente'}
+                                    {c.status === 'approved' ? 'Approuvé' : c.status === 'rejected' ? 'Refusé' : 'En attente'}
                                   </span>
                                 </div>
                                 <div className="flex items-center gap-3 mt-1">
@@ -3210,12 +2804,12 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                               </div>
                               {c.status === 'pending' && (
                                 <div className="flex gap-2 flex-shrink-0">
-                                  <motion.button onClick={() => approveConge(c.id)} className="p-2.5 bg-emerald-500 text-white rounded-xl" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                                    <ThumbsUp size={16} />
-                                  </motion.button>
-                                  <motion.button onClick={() => rejectConge(c.id)} className={`p-2.5 rounded-xl bg-danger-fond text-danger-texte`} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                                    <ThumbsDown size={16} />
-                                  </motion.button>
+                                  {peutModifier && <motion.button onClick={() => approveConge(c.id)} aria-label="Approuver la demande" className="w-11 h-11 flex items-center justify-center bg-succes-fond text-succes-texte rounded-xl" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                                    <ThumbsUp size={16} aria-hidden="true" />
+                                  </motion.button>}
+                                  {peutModifier && <motion.button onClick={() => rejectConge(c.id)} aria-label="Refuser la demande" className={`w-11 h-11 flex items-center justify-center rounded-xl bg-surface-2 text-encre-2`} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                                    <ThumbsDown size={16} aria-hidden="true" />
+                                  </motion.button>}
                                   <motion.button onClick={() => cancelConge(c.id)} className={`p-2.5 rounded-xl bg-surface-2 text-encre-3`} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                                     <Trash2 size={16} />
                                   </motion.button>
@@ -3241,7 +2835,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                         >
                           <div className="flex items-center justify-between mb-5">
                             <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${couleur}15` }}>
+                              <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-accent/10">
                                 <CalendarPlus size={20} className="text-accent-texte" />
                               </div>
                               <h3 className={`font-bold text-lg ${textPrimary}`}>Nouvelle demande</h3>
@@ -3320,7 +2914,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
               {/* Header */}
               <div className="p-5 text-white" style={{ background: 'linear-gradient(135deg, #25D366, #128C7E)' }}>
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center text-2xl">💬</div>
+                  <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center"><MessageSquare size={22} aria-hidden="true" /></div>
                   <div>
                     <h3 className="text-lg font-bold">Communication Équipe</h3>
                     <p className="text-sm text-white/70">Contactez votre équipe via WhatsApp</p>
@@ -3353,11 +2947,10 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                 <p className={`text-xs font-semibold uppercase tracking-wide mt-4 ${textMuted}`}>Contacter un membre</p>
                 <div className="space-y-2">
                   {equipe.filter(e => e.actif !== false && e.telephone).map(emp => {
-                    const config = getRoleConfig(emp.role);
                     const phone = telInternational(emp.telephone);
                     return (
                       <div key={emp.id} className={`flex items-center gap-3 p-3 rounded-xl hover:bg-surface-2`}>
-                        <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold" style={{ background: config.color }}>
+                        <div className="w-10 h-10 rounded-full flex items-center justify-center text-encre-2 bg-surface-2 text-sm font-bold">
                           {emp.prenom?.[0]}{emp.nom?.[0]}
                         </div>
                         <div className="flex-1 min-w-0">
@@ -3405,7 +2998,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
               className={`relative w-full max-w-md rounded-2xl bg-surface shadow-2xl overflow-hidden`}
               initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
             >
-              <div className="p-5 text-white" style={{ background: 'linear-gradient(135deg, #059669, #047857)' }}>
+              <div className="p-5 bg-accent text-sur-accent">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center"><HardHat size={20} /></div>
@@ -3462,12 +3055,12 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                       <button
                         key={h}
                         onClick={() => setPointerForm(p => ({ ...p, heures: h.toString(), autre: false }))}
-                        className={`px-4 py-2.5 rounded-xl text-sm font-medium min-h-[44px] transition-all ${
+                        aria-pressed={pointerForm.heures === h.toString() && !pointerForm.autre}
+                        className={`px-4 py-2.5 rounded-xl text-sm font-medium min-h-[44px] transition-colors ${
                           pointerForm.heures === h.toString() && !pointerForm.autre
-                            ? 'text-white shadow-md'
+                            ? 'bg-encre text-surface'
                             : 'bg-surface-2 text-encre-2 hover:bg-bord'
                         }`}
-                        style={pointerForm.heures === h.toString() && !pointerForm.autre ? { background: '#059669' } : {}}
                       >
                         {h}h
                       </button>
@@ -3521,8 +3114,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                       setShowPointerModal(false);
                     }}
                     disabled={!pointerForm.employeId || !pointerForm.chantierId || !pointerForm.heures}
-                    className="flex-1 px-4 py-3 rounded-xl min-h-[44px] text-white font-medium flex items-center justify-center gap-2 disabled:opacity-50 shadow-lg"
-                    style={{ background: '#059669' }}
+                    className="flex-1 px-4 py-3 rounded-xl min-h-[44px] font-semibold flex items-center justify-center gap-2 disabled:opacity-50 bg-accent text-sur-accent"
                   >
                     <Check size={18} />
                     Pointer
@@ -3546,12 +3138,12 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
               style={{ maxHeight: '100vh' }}
             >
               {/* Terrain Header */}
-              <div className="p-4 text-white flex items-center justify-between" style={{ background: 'linear-gradient(135deg, #059669, #047857)' }}>
+              <div className="p-4 bg-accent text-sur-accent flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center"><HardHat size={24} /></div>
                   <div>
                     <h2 className="text-lg font-bold">Vue Terrain</h2>
-                    <p className="text-sm text-white/70">{isOnline ? '🟢 En ligne' : '🔴 Hors ligne — sync différée'}</p>
+                    <p className="text-sm opacity-80">{isOnline ? 'En ligne' : 'Hors ligne : synchronisation à la reconnexion'}</p>
                   </div>
                 </div>
                 <button onClick={() => setShowTerrainView(false)} className="w-11 h-11 rounded-xl bg-white/20 hover:bg-white/30 flex items-center justify-center">
@@ -3566,17 +3158,18 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                 const secs = Math.max(0, elapsed);
                 const h = Math.floor(secs / 3600); const m = Math.floor((secs % 3600) / 60); const s = secs % 60;
                 return (
-                  <div className="px-4 py-3 bg-emerald-600 text-white flex items-center gap-3">
-                    <div className="w-3 h-3 rounded-full bg-white animate-pulse" />
+                  <div className="px-4 py-3 bg-accent text-sur-accent flex items-center gap-3">
+                    <div aria-hidden="true" className="w-3 h-3 rounded-full bg-signature animate-pulse" />
                     <div className="flex-1">
                       <p className="text-sm font-bold">{emp ? `${emp.prenom} ${emp.nom}` : 'Employé'} — {ch?.nom || 'Chantier'}</p>
                       <p className="text-2xl font-mono font-bold">{String(h).padStart(2, '0')}:{String(m).padStart(2, '0')}:{String(s).padStart(2, '0')}</p>
                     </div>
                     <button
                       onClick={() => { setPendingStopChrono(true); setNoteModalOpen(true); }}
-                      className="w-14 h-14 rounded-xl bg-red-500 hover:bg-red-600 flex items-center justify-center shadow-lg"
+                      aria-label="Arrêter le pointage"
+                      className="w-14 h-14 rounded-xl bg-surface text-encre flex items-center justify-center shadow-e2"
                     >
-                      <Square size={24} fill="white" className="text-white" />
+                      <Square size={24} aria-hidden="true" />
                     </button>
                   </div>
                 );
@@ -3596,9 +3189,9 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                   chantiers.filter(c => c.statut === 'en_cours').map(ch => {
                     const isThisRunning = chrono.running && chrono.chantierId === ch.id;
                     return (
-                      <div key={ch.id} className={`rounded-2xl border p-4 ${isThisRunning ? (isDark ? 'bg-emerald-900/30 border-emerald-700' : 'bg-emerald-50 border-emerald-300') : cardBg}`}>
+                      <div key={ch.id} className={`rounded-2xl border p-4 ${isThisRunning ? ('bg-succes-fond border-succes-point/40') : cardBg}`}>
                         <div className="flex items-start gap-3">
-                          <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${isThisRunning ? 'bg-emerald-500 text-white' : 'bg-surface-2 text-encre-3'}`}>
+                          <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${isThisRunning ? 'bg-succes-fond text-succes-texte' : 'bg-surface-2 text-encre-3'}`}>
                             <Building2 size={20} />
                           </div>
                           <div className="flex-1 min-w-0">
@@ -3610,8 +3203,8 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                             })()}
                             {isThisRunning && (
                               <div className="flex items-center gap-1.5 mt-1">
-                                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                                <span className="text-xs font-bold text-emerald-500">En cours</span>
+                                <span className="w-2 h-2 rounded-full bg-succes-point animate-pulse" />
+                                <span className="text-xs font-bold text-succes-texte">En cours</span>
                               </div>
                             )}
                           </div>
@@ -3619,7 +3212,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                           {isThisRunning ? (
                             <button
                               onClick={() => { setPendingStopChrono(true); setNoteModalOpen(true); }}
-                              className="w-14 h-14 rounded-xl bg-red-500 hover:bg-red-600 text-white flex items-center justify-center shadow-lg flex-shrink-0"
+                              className="w-14 h-14 rounded-xl bg-encre text-surface flex items-center justify-center shadow-lg flex-shrink-0"
                               aria-label="Arrêter le pointage"
                             >
                               <Square size={22} fill="white" />
@@ -3640,7 +3233,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                                 }
                                 setShowTerrainView(false);
                               }}
-                              className="w-14 h-14 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white flex items-center justify-center shadow-lg flex-shrink-0"
+                              className="w-14 h-14 rounded-xl bg-succes-fond text-succes-texte hover:brightness-95 flex items-center justify-center shadow-lg flex-shrink-0"
                               aria-label="Démarrer le pointage"
                             >
                               <Play size={22} fill="white" />
@@ -3655,8 +3248,8 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
 
               {/* Offline indicator footer */}
               {!isOnline && (
-                <div className="px-4 py-3 bg-amber-500/20 border-t border-amber-500/30 flex items-center gap-2">
-                  <WifiOff size={16} className="text-amber-500" />
+                <div className="px-4 py-3 bg-alerte-fond border-t border-alerte-point/40 flex items-center gap-2">
+                  <WifiOff size={16} className="text-alerte-texte" />
                   <p className={`text-xs text-alerte-texte`}>
                     Mode hors ligne — les pointages seront synchronisés à la reconnexion
                   </p>
@@ -3672,7 +3265,6 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
         {selectedEmployee && (() => {
           const emp = equipe.find(e => e.id === selectedEmployee);
           if (!emp) return null;
-          const config = getRoleConfig(emp.role);
           const stats = getEmployeeStats(emp.id);
           const bal = getCongeBalance(emp.id);
           const sig = getEmployeeWeekSignature(emp.id);
@@ -3691,19 +3283,15 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                 aria-modal="true"
               >
                 {/* Header with gradient */}
-                <div className="relative p-6 text-white" style={{ background: `linear-gradient(135deg, ${config.color}, ${config.color}cc)` }}>
-                  <button onClick={() => setSelectedEmployee(null)} className="absolute top-4 right-4 p-2 rounded-lg bg-white/20 hover:bg-white/30">
-                    <X size={18} />
-                  </button>
+                <div className="relative p-6 bg-surface-2 text-encre">
+                  <BoutonIcone icone={X} libelle="Fermer la fiche" taille={18} className="absolute top-3 right-3" onClick={() => setSelectedEmployee(null)} />
                   <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 rounded-2xl bg-white/20 flex items-center justify-center text-2xl font-bold">
-                      {emp.prenom?.[0]}{emp.nom?.[0]}
-                    </div>
+                    <Avatar nom={`${emp.prenom || ''} ${emp.nom || ''}`} taille={64} />
                     <div>
                       <h2 className="text-xl font-bold">{emp.prenom} {emp.nom}</h2>
-                      <p className="text-white/80">{emp.role || 'Employé'}</p>
+                      <p className="text-encre-2">{emp.role || 'Employé'}</p>
                       {emp.dateEmbauche && (
-                        <p className="text-white/60 text-sm flex items-center gap-1 mt-0.5">
+                        <p className="text-encre-3 text-sm flex items-center gap-1 mt-0.5">
                           <Cake size={12} />
                           Embauché le {dateLue(emp.dateEmbauche).toLocaleDateString('fr-FR')}
                           {stats.daysSinceHire !== null && <span> ({stats.daysSinceHire}j)</span>}
@@ -3732,8 +3320,8 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
 
                   {/* POINTAGE RAPIDE — Mobile-first, visible sans scroll — #6: filter test names */}
                   {chantiers.filter(c => c.statut === 'en_cours' && !isTestChantier(c)).length > 0 && (
-                    <div className={`p-3 rounded-xl ${isDark ? 'bg-emerald-900/20 border border-emerald-800/50' : 'bg-emerald-50 border border-emerald-200'}`}>
-                      <p className={`text-xs font-semibold uppercase tracking-wide mb-2 text-succes-texte`}>⚡ Pointage rapide</p>
+                    <div className={`p-3 rounded-xl ${'bg-succes-fond border border-succes-point/40'}`}>
+                      <p className="text-sm font-semibold mb-2 text-encre-2">Pointage rapide</p>
                       <div className="flex flex-wrap gap-2">
                         {chantiers.filter(c => c.statut === 'en_cours' && !isTestChantier(c)).slice(0, 3).map(ch => {
                           const isRunning = chrono.running && chrono.chantierId === ch.id && chrono.employeId === emp.id;
@@ -3746,7 +3334,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                               }}
                               className={`flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-medium min-h-[44px] transition-all ${
                                 isRunning
-                                  ? 'bg-emerald-500 text-white shadow-md'
+                                  ? 'bg-encre text-surface'
                                   : 'bg-surface text-encre-2 hover:bg-surface-2 shadow-sm'
                               }`}
                             >
@@ -3762,13 +3350,13 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                   {/* Stats Grid */}
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                     {[
-                      { label: 'Heures/mois', value: `${Math.round(stats.monthHours)}h`, color: couleur },
-                      { label: 'Moy./jour', value: `${stats.avgDaily}h`, color: '#22c55e' },
-                      { label: 'Chantiers', value: stats.chantiersWorked, color: '#8b5cf6' },
-                      { label: 'Pointages', value: stats.totalPointages, color: '#f59e0b' }
+                      { label: 'Heures ce mois', value: `${Math.round(stats.monthHours)} h` },
+                      { label: 'Par jour en moyenne', value: `${stats.avgDaily} h` },
+                      { label: 'Chantiers', value: stats.chantiersWorked },
+                      { label: 'Pointages', value: stats.totalPointages }
                     ].map((s, i) => (
                       <div key={i} className={`text-center p-2.5 rounded-xl bg-surface-2`}>
-                        <p className="text-lg font-bold" style={{ color: s.color }}>{s.value}</p>
+                        <p className="text-lg font-bold tabular-nums text-encre">{s.value}</p>
                         <p className={`text-xs ${textMuted}`}>{s.label}</p>
                       </div>
                     ))}
@@ -3780,14 +3368,18 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                       <p className={`text-xs ${textMuted}`}>Contrat</p>
                       <p className={`text-sm font-semibold ${textPrimary}`}>{emp.contrat || '—'}</p>
                     </div>
-                    <div>
-                      <p className={`text-xs ${textMuted}`}>Taux horaire</p>
-                      <p className={`text-sm font-semibold ${textPrimary}`}>{modeDiscret ? '***' : `${emp.tauxHoraire || '—'} €/h`}</p>
-                    </div>
-                    <div>
-                      <p className={`text-xs ${textMuted}`}>Coût chargé</p>
-                      <p className={`text-sm font-semibold ${textPrimary}`}>{modeDiscret ? '***' : `${emp.coutHoraireCharge || '—'} €/h`}</p>
-                    </div>
+                    {voitPrix && (
+                      <>
+                        <div>
+                          <p className={`text-sm ${textMuted}`}>Taux horaire</p>
+                          <p className={`text-sm font-semibold ${textPrimary}`}>{modeDiscret ? '***' : `${emp.tauxHoraire || '—'} €/h`}</p>
+                        </div>
+                        <div>
+                          <p className={`text-sm ${textMuted}`}>Coût chargé</p>
+                          <p className={`text-sm font-semibold ${textPrimary}`}>{modeDiscret ? '***' : `${emp.coutHoraireCharge || '—'} €/h`}</p>
+                        </div>
+                      </>
+                    )}
                     <div>
                       <p className={`text-xs ${textMuted}`}>Congés</p>
                       <p className={`text-sm font-semibold ${textPrimary}`}>{bal.cpTotal - bal.cpUsed}j CP + {bal.rttTotal - bal.rttUsed}j RTT</p>
@@ -3825,7 +3417,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                     <div className={`flex items-center gap-3 p-3 rounded-xl bg-succes-fond`}>
                       <img src={sig.data} alt="Signature" className="h-8 w-20 object-contain rounded" />
                       <div>
-                        <p className={`text-xs font-semibold text-emerald-600`}>Feuille de la semaine signée</p>
+                        <p className={`text-xs font-semibold text-succes-texte`}>Feuille de la semaine signée</p>
                         <p className={`text-xs ${textMuted}`}>{new Date(sig.date).toLocaleString('fr-FR')}</p>
                       </div>
                     </div>
@@ -3845,7 +3437,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                               <span className={textMuted}>{dateLue(p.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}</span>
                               <span className={`truncate mx-2 ${textPrimary}`}>{ch?.nom || '—'}</span>
                               <span className="font-bold text-accent-texte">{p.heures}h</span>
-                              <span className={`ml-2 w-2 h-2 rounded-full ${p.verrouille ? 'bg-blue-500' : p.approuve ? 'bg-emerald-500' : 'bg-amber-400'}`} />
+                              <span className={`ml-2 w-2 h-2 rounded-full ${p.verrouille ? 'bg-info-point' : p.approuve ? 'bg-succes-point' : 'bg-alerte-point'}`} />
                             </div>
                           );
                         })
@@ -3880,7 +3472,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
 
       {/* ============ COÛTS SOUS-TRAITANTS TAB ============ */}
       <AnimatePresence mode="wait">
-        {tab === 'couts' && isSousTraitants && (
+        {tab === 'couts' && isSousTraitants && voitPrix && (
           <motion.div
             className="space-y-4"
             initial={{ opacity: 0, y: 10 }}
@@ -3892,12 +3484,12 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
               <div className={`${cardBg} rounded-2xl border p-4`}>
                 <p className={`text-xs font-medium uppercase tracking-wide ${textMuted} mb-1`}>Sous-traitants</p>
-                <p className="text-2xl font-bold" style={{ color: '#7c3aed' }}>{sousTraitantsList.length}</p>
+                <p className="text-2xl font-bold tabular-nums text-encre">{sousTraitantsList.length}</p>
                 <p className={`text-xs ${textMuted} mt-1`}>actifs</p>
               </div>
               <div className={`${cardBg} rounded-2xl border p-4`}>
                 <p className={`text-xs font-medium uppercase tracking-wide ${textMuted} mb-1`}>Coût moyen/h</p>
-                <p className="text-2xl font-bold text-amber-500">
+                <p className="text-2xl font-bold text-alerte-texte">
                   {sousTraitantsList.length > 0
                     ? (sousTraitantsList.reduce((s, st) => s + (parseFloat(st.tauxHoraire) || 0), 0) / sousTraitantsList.length).toFixed(0)
                     : '0'
@@ -3907,7 +3499,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
               </div>
               <div className={`${cardBg} rounded-2xl border p-4`}>
                 <p className={`text-xs font-medium uppercase tracking-wide ${textMuted} mb-1`}>Décennales</p>
-                <p className="text-2xl font-bold text-emerald-500">
+                <p className="text-2xl font-bold text-succes-texte">
                   {sousTraitantsList.filter(st => st.decennale_expiration && new Date(st.decennale_expiration) > new Date()).length}
                   <span className={`text-sm font-normal ${textMuted}`}> / {sousTraitantsList.length}</span>
                 </p>
@@ -3915,7 +3507,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
               </div>
               <div className={`${cardBg} rounded-2xl border p-4`}>
                 <p className={`text-xs font-medium uppercase tracking-wide ${textMuted} mb-1`}>Vigilance URSSAF</p>
-                <p className="text-2xl font-bold text-blue-500">
+                <p className="text-2xl font-bold text-info-texte">
                   {sousTraitantsList.filter(st => {
                     if (!st.urssaf_date) return false;
                     const sixMonths = 180 * 24 * 3600 * 1000;
@@ -3946,7 +3538,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                   return (
                     <div key={st.id} className={`p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3 hover:bg-surface-2 transition-colors`}>
                       <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-500 font-bold text-sm">
+                        <div className="w-10 h-10 rounded-xl bg-surface-2 flex items-center justify-center text-encre-2 font-bold text-sm">
                           {st.nom?.[0]}{st.prenom?.[0] || ''}
                         </div>
                         <div className="min-w-0">
@@ -3955,7 +3547,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                         </div>
                       </div>
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className={`px-2 py-1 rounded-lg text-xs font-medium ${isDark ? 'bg-purple-900/30 text-purple-300' : 'bg-purple-100 text-purple-700'}`}>
+                        <span className={`px-2 py-1 rounded-lg text-xs font-medium ${'bg-neutre-fond text-neutre-texte'}`}>
                           {st.tarif_type === 'forfait' && st.tarif_forfait ? `${parseFloat(st.tarif_forfait).toLocaleString('fr-FR')} € forfait` : `${st.tauxHoraire || '?'} €/h`}
                         </span>
                         {expired ? (
@@ -4000,7 +3592,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
               }
               const activeChantiers = chantiers.filter(c => c.statut === 'en_cours');
               const chantierColors = {};
-              const palette = ['#f97316','#3b82f6','#22c55e','#8b5cf6','#ec4899','#eab308','#14b8a6','#ef4444'];
+              const palette = ['#78716c','#3b82f6','#22c55e','#8b5cf6','#ec4899','#eab308','#14b8a6','#0ea5e9'];
               activeChantiers.forEach((c, i) => { chantierColors[c.id] = palette[i % palette.length]; });
 
               // #11: Planning events for this week (filter by type 'chantier' or any with chantierId)
@@ -4082,7 +3674,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                           const ch = chantiers.find(c => c.id === ev.chantierId);
                           return (
                             <div key={ev.id} className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs bg-surface-2`}>
-                              <div className="w-2 h-2 rounded-full" style={{ background: ev.chantierId ? (chantierColors[ev.chantierId] || couleur) : couleur }} />
+                              <div className="w-2 h-2 rounded-full" style={{ background: ev.chantierId ? (chantierColors[ev.chantierId] || 'rgb(var(--accent))') : 'rgb(var(--accent))' }} />
                               <span className={`font-medium ${textPrimary}`}>{ev.title || ch?.nom || 'Événement'}</span>
                               <span className={textMuted}>
                                 {dateLue(ev.date + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric' })}
@@ -4126,12 +3718,11 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                         <tbody>
                           {getFilteredEquipe.map(emp => {
                             const empWeekHours = weekPointages.filter(p => p.employeId === emp.id).reduce((s, p) => s + (p.heures || 0), 0);
-                            const RoleIcon = getRoleIcon(emp.role);
                             return (
                               <tr key={emp.id} className={`border-t border-bord hover:bg-surface-2 transition-colors`}>
                                 <td className={`px-4 py-3 sticky left-0 z-10 bg-surface`}>
                                   <div className="flex items-center gap-2">
-                                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold" style={{ background: getRoleConfig(emp.role).color }}>
+                                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-encre-2 bg-surface-2 text-xs font-bold">
                                       {emp.prenom?.[0]}{emp.nom?.[0]}
                                     </div>
                                     <div>
@@ -4142,10 +3733,9 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                                 </td>
                                 {weekDays.map((day, di) => {
                                   const cellPointages = getCellPointage(emp.id, day);
-                                  const cellHours = cellPointages.reduce((s, p) => s + (p.heures || 0), 0);
                                   const isToday = formatLocalDate(day) === today;
                                   return (
-                                    <td key={di} className={`px-1 py-2 text-center align-top ${isToday ? (isDark ? 'bg-orange-900/10' : 'bg-orange-50/50') : ''}`}>
+                                    <td key={di} className={`px-1 py-2 text-center align-top ${isToday ? 'bg-accent/5' : ''}`}>
                                       {cellPointages.length > 0 ? (
                                         <div className="space-y-1">
                                           {cellPointages.map(p => {
@@ -4163,7 +3753,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                                                 {!p.verrouille && (
                                                   <button
                                                     onClick={() => removeAssignment(p.id)}
-                                                    className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                                    className="absolute -top-1 -right-1 w-4 h-4 bg-danger-point text-white rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                                                   >×</button>
                                                 )}
                                               </div>
@@ -4192,10 +3782,10 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                                   );
                                 })}
                                 <td className={`px-3 py-3 text-center`}>
-                                  <span className={`text-sm font-bold ${empWeekHours > 35 ? 'text-red-500' : empWeekHours > 0 ? ('text-succes-texte') : textMuted}`}>
+                                  <span className={`text-sm font-bold ${empWeekHours > 35 ? 'text-alerte-texte' : empWeekHours > 0 ? ('text-succes-texte') : textMuted}`}>
                                     {empWeekHours > 0 ? `${empWeekHours}h` : '—'}
                                   </span>
-                                  {empWeekHours > 35 && <div className="text-xs text-red-500 font-medium">+{Math.round((empWeekHours - 35) * 10) / 10}h sup</div>}
+                                  {empWeekHours > 35 && <div className="text-xs text-alerte-texte font-medium">+{Math.round((empWeekHours - 35) * 10) / 10}h sup</div>}
                                 </td>
                               </tr>
                             );
@@ -4208,9 +3798,9 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                       <span className={`text-sm font-semibold ${textPrimary}`}>Total semaine</span>
                       <div className="flex items-center gap-4">
                         <span className={`text-sm font-bold ${textPrimary}`}>{totalWeekHours}h</span>
-                        <span className={`text-sm ${textMuted}`}>Coût: {modeDiscret ? '***' : `${Math.round(weekCost).toLocaleString('fr-FR')} €`}</span>
+                        {voitPrix && <span className={`text-sm ${textMuted}`}>Coût : {modeDiscret ? '***' : `${Math.round(weekCost).toLocaleString('fr-FR')} €`}</span>}
                         {totalWeekHours > 35 * equipe.length && (
-                          <span className="text-xs text-red-500 font-medium flex items-center gap-1">
+                          <span className="text-xs text-alerte-texte font-medium flex items-center gap-1">
                             <AlertCircle size={12} /> Heures sup détectées
                           </span>
                         )}
@@ -4231,7 +3821,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
           <motion.div className="space-y-4" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
             {equipe.length === 0 ? (
               <div className={`${cardBg} rounded-2xl border p-12 text-center`}>
-                <div className="w-20 h-20 rounded-full mx-auto mb-4 flex items-center justify-center" style={{ background: `${couleur}15` }}>
+                <div className="w-20 h-20 rounded-full mx-auto mb-4 flex items-center justify-center bg-accent/10">
                   <Users size={40} className="text-accent-texte" />
                 </div>
                 <p className={`font-semibold text-lg ${textPrimary} mb-2`}>Ajoutez votre équipe d'abord</p>
@@ -4308,23 +3898,23 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                     <div className="space-y-2">
                       <h3 className={`text-sm font-semibold uppercase tracking-wide ${textMuted}`}>Alertes certifications</h3>
                       {expired.map((c, i) => (
-                        <div key={`exp-${i}`} className={`flex items-center gap-3 p-3 rounded-xl border-2 ${isDark ? 'bg-red-900/20 border-red-800' : 'bg-red-50 border-red-200'}`}>
-                          <div className="w-8 h-8 rounded-full bg-red-500 flex items-center justify-center"><Shield size={16} className="text-white" /></div>
+                        <div key={`exp-${i}`} className={`flex items-center gap-3 p-3 rounded-xl border-2 ${'bg-danger-fond border-danger-point/40'}`}>
+                          <div className="w-8 h-8 rounded-full bg-danger-fond text-danger-texte flex items-center justify-center"><Shield size={16} aria-hidden="true" /></div>
                           <div className="flex-1">
-                            <p className={`font-medium ${isDark ? 'text-red-300' : 'text-red-800'}`}>{c.certName} — {c.employee.prenom} {c.employee.nom}</p>
+                            <p className={`font-medium ${'text-danger-texte'}`}>{c.certName} — {c.employee.prenom} {c.employee.nom}</p>
                             <p className={`text-xs text-danger-texte`}>Expirée depuis {Math.abs(c.daysUntil)} jours</p>
                           </div>
-                          <span className="px-2 py-1 bg-red-500 text-white text-xs font-bold rounded-lg">EXPIRÉE</span>
+                          <Pastille ton="danger">Expirée</Pastille>
                         </div>
                       ))}
                       {expiringSoon.map((c, i) => (
-                        <div key={`soon-${i}`} className={`flex items-center gap-3 p-3 rounded-xl border ${isDark ? 'bg-amber-900/20 border-amber-800' : 'bg-amber-50 border-amber-200'}`}>
-                          <div className="w-8 h-8 rounded-full bg-amber-500 flex items-center justify-center"><Clock size={16} className="text-white" /></div>
+                        <div key={`soon-${i}`} className={`flex items-center gap-3 p-3 rounded-xl border ${'bg-alerte-fond border-alerte-point/40'}`}>
+                          <div className="w-8 h-8 rounded-full bg-alerte-fond text-alerte-texte flex items-center justify-center"><Clock size={16} aria-hidden="true" /></div>
                           <div className="flex-1">
-                            <p className={`font-medium ${isDark ? 'text-amber-300' : 'text-amber-800'}`}>{c.certName} — {c.employee.prenom} {c.employee.nom}</p>
+                            <p className={`font-medium ${'text-alerte-texte'}`}>{c.certName} — {c.employee.prenom} {c.employee.nom}</p>
                             <p className={`text-xs text-alerte-texte`}>Expire dans {c.daysUntil} jours</p>
                           </div>
-                          <span className="px-2 py-1 bg-amber-500 text-white text-xs font-bold rounded-lg">URGENT</span>
+                          <Pastille ton="alerte">À renouveler</Pastille>
                         </div>
                       ))}
                     </div>
@@ -4340,7 +3930,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                             <span className={`text-sm font-medium w-36 truncate ${textPrimary}`}>{skill}</span>
                             <div className="flex-1 flex flex-wrap gap-1">
                               {emps.map(emp => (
-                                <span key={emp.id} className="px-2 py-0.5 rounded-full text-xs text-white" style={{ background: getRoleConfig(emp.role).color }}>
+                                <span key={emp.id} className="px-2 py-0.5 rounded-full text-xs text-encre-2 bg-surface-2">
                                   {emp.prenom} {emp.nom?.[0]}.
                                 </span>
                               ))}
@@ -4353,7 +3943,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                       </div>
                     ) : (
                       <div className={`p-8 text-center rounded-xl bg-surface-2`}>
-                        <div className="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center" style={{ background: `${couleur}15` }}>
+                        <div className="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center bg-accent/10">
                           <Award size={32} className="text-accent-texte" />
                         </div>
                         <p className={`font-semibold ${textPrimary} mb-2`}>Aucune compétence renseignée</p>
@@ -4361,7 +3951,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                           Ajoutez des compétences à vos employés pour visualiser la matrice des compétences et obtenir des suggestions d'affectation intelligentes.
                         </p>
                         <div className={`inline-flex flex-col gap-2 text-left text-sm ${textMuted} p-4 rounded-xl bg-surface border border-bord`}>
-                          <p className="font-medium text-accent-texte">💡 Comment faire :</p>
+                          <p className="font-semibold text-encre">Comment faire :</p>
                           <p>1. Allez sur l'onglet <strong className={textPrimary}>Équipe</strong></p>
                           <p>2. Cliquez sur <Edit3 size={12} className="inline" /> pour modifier un employé</p>
                           <p>3. Remplissez le champ <strong className={textPrimary}>Compétences</strong> (séparées par des virgules)</p>
@@ -4401,8 +3991,8 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                                   <Building2 size={14} className="inline mr-1" />{chantier.nom}
                                 </p>
                                 {noQualified && (
-                                  <div className={`flex items-center gap-2 p-2.5 rounded-lg mb-2 ${isDark ? 'bg-amber-900/30 border border-amber-800/50' : 'bg-amber-50 border border-amber-200'}`}>
-                                    <AlertCircle size={14} className="text-amber-500 flex-shrink-0" />
+                                  <div className={`flex items-center gap-2 p-2.5 rounded-lg mb-2 ${'bg-alerte-fond border border-alerte-point/40'}`}>
+                                    <AlertCircle size={14} className="text-alerte-texte flex-shrink-0" />
                                     <p className={`text-xs text-alerte-texte`}>
                                       Aucun membre qualifié — <button onClick={() => { setViewMode('sous_traitants'); setTab('overview'); }} className="underline font-medium">Sous-traitant ?</button>
                                     </p>
@@ -4411,7 +4001,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                                 <div className="space-y-2">
                                   {matches.slice(0, 4).map(({ emp, score, matching, missing }) => (
                                     <div key={emp.id} className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl border border-bord bg-surface`}>
-                                      <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style={{ background: getRoleConfig(emp.role).color }}>
+                                      <div className="w-8 h-8 rounded-full flex items-center justify-center text-encre-2 bg-surface-2 text-xs font-bold flex-shrink-0">
                                         {emp.prenom?.[0]}{emp.nom?.[0]}
                                       </div>
                                       <div className="flex-1 min-w-0">
@@ -4421,11 +4011,11 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                                           <div className="flex items-center gap-1.5 flex-1 max-w-[120px]">
                                             <div className={`flex-1 h-1.5 rounded-full bg-bord`}>
                                               <div
-                                                className="h-full rounded-full transition-all"
-                                                style={{ width: `${score}%`, background: score >= 75 ? '#22c55e' : score >= 50 ? '#f59e0b' : '#ef4444' }}
+                                                className={`h-full rounded-full transition-all ${score >= 75 ? 'bg-succes-point' : score >= 50 ? 'bg-alerte-point' : 'bg-neutre-point'}`}
+                                                style={{ width: `${score}%` }}
                                               />
                                             </div>
-                                            <span className="text-xs font-bold" style={{ color: score >= 75 ? '#22c55e' : score >= 50 ? '#f59e0b' : '#ef4444' }}>
+                                            <span className={`text-sm font-bold tabular-nums ${score >= 75 ? 'text-succes-texte' : score >= 50 ? 'text-alerte-texte' : 'text-encre-2'}`}>
                                               {score}%
                                             </span>
                                           </div>
@@ -4453,7 +4043,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                                           const missingNames = missing.map(s => capitalizeSkill(s)).join(', ');
                                           const confirmed = await confirm({
                                             title: 'Confirmer l\'affectation',
-                                            message: `Affecter ${emp.prenom} ${emp.nom} à ${chantier.nom} ?${missing.length > 0 ? `\n\n⚠️ Compétences manquantes : ${missingNames}` : ''}`,
+                                            message: `Affecter ${emp.prenom} ${emp.nom} à ${chantier.nom} ?${missing.length > 0 ? `\n\nCompétences manquantes : ${missingNames}` : ''}`,
                                             confirmText: 'Affecter',
                                             confirmColor: couleur
                                           });
@@ -4483,13 +4073,13 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         {certAlerts.map((c, i) => (
                           <div key={i} className={`flex items-center gap-2 p-2 rounded-lg bg-surface-2`}>
-                            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${c.status === 'expired' ? 'bg-red-500' : c.status === 'expiring_soon' ? 'bg-amber-500' : c.status === 'valid' ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+                            <span aria-hidden="true" className={`w-2 h-2 rounded-full flex-shrink-0 ${c.status === 'expired' ? 'bg-danger-point' : c.status === 'expiring_soon' ? 'bg-alerte-point' : c.status === 'valid' ? 'bg-succes-point' : 'bg-neutre-point'}`} />
                             <div className="flex-1 min-w-0">
                               <p className={`text-sm font-medium truncate ${textPrimary}`}>{c.certName}</p>
                               <p className={`text-xs ${textMuted}`}>{c.employee.prenom} {c.employee.nom}</p>
                             </div>
                             {c.expiryDate && (
-                              <span className={`text-xs flex-shrink-0 ${c.status === 'expired' ? 'text-red-500' : c.status === 'expiring_soon' ? 'text-amber-500' : textMuted}`}>
+                              <span className={`text-sm flex-shrink-0 ${c.status === 'expired' ? 'text-danger-texte' : c.status === 'expiring_soon' ? 'text-alerte-texte' : textMuted}`}>
                                 {c.expiryDate.toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' })}
                               </span>
                             )}
@@ -4504,7 +4094,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                           Ajoutez des certifications avec dates d'expiration pour un suivi automatique.
                         </p>
                         <div className={`inline-block text-left text-xs ${textMuted} p-3 rounded-lg bg-surface border border-bord`}>
-                          <p className="font-medium mb-1 text-accent-texte">📋 Formats acceptés :</p>
+                          <p className="font-semibold mb-1 text-encre">Formats acceptés :</p>
                           <p>• CACES R489 (exp: 2026-06)</p>
                           <p>• Habilitation électrique (expire: 2025-12-31)</p>
                           <p>• SST (valide: 2027-03)</p>
@@ -4559,9 +4149,9 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                       <p className={`text-2xl font-bold ${textPrimary}`}>{Math.round(monthHours)}h</p>
                       <p className={`text-xs ${textMuted}`}>{now.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}</p>
                     </div>
-                    <div className={`rounded-2xl border p-4 ${cardBg}`}>
+                    {voitPrix && <div className={`rounded-2xl border p-4 ${cardBg}`}>
                       <div className="flex items-center gap-2 mb-2">
-                        <Euro size={16} className="text-emerald-500" />
+                        <Euro size={16} className="text-encre-3" aria-hidden="true" />
                         <span className={`text-xs font-medium uppercase ${textMuted}`}>Coût des heures</span>
                       </div>
                       <p className={`text-2xl font-bold ${textPrimary}`}>
@@ -4570,20 +4160,20 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                       <p className={`text-xs ${heuresSansCout > 0 ? 'text-alerte-texte' : textMuted}`}>
                         {heuresSansCout > 0 ? `${Math.round(heuresSansCout * 10) / 10} h sans coût horaire saisi` : 'majorations des heures sup comprises'}
                       </p>
-                    </div>
+                    </div>}
                     <div className={`rounded-2xl border p-4 ${cardBg}`}>
                       <div className="flex items-center gap-2 mb-2">
-                        <AlertCircle size={16} className={totalOvertime > 0 ? 'text-red-500' : 'text-emerald-500'} />
+                        <AlertCircle size={16} className={totalOvertime > 0 ? 'text-alerte-texte' : 'text-succes-texte'} />
                         <span className={`text-xs font-medium uppercase ${textMuted}`}>Heures sup</span>
                       </div>
-                      <p className={`text-2xl font-bold ${totalOvertime > 0 ? 'text-red-500' : textPrimary}`}>{Math.round(totalOvertime * 10) / 10}h</p>
+                      <p className={`text-2xl font-bold ${totalOvertime > 0 ? 'text-alerte-texte' : textPrimary}`}>{Math.round(totalOvertime * 10) / 10}h</p>
                       <p className={`text-xs ${textMuted}`}>au-delà de 35 h par semaine civile</p>
                     </div>
                   </div>
 
                   {/* Employee ranking table */}
                   <div className={`rounded-2xl border ${cardBg} overflow-hidden`}>
-                    <div className="px-4 py-3 border-b flex items-center justify-between" style={{ borderColor: isDark ? '#334155' : '#e2e8f0' }}>
+                    <div className="px-4 py-3 border-b flex items-center justify-between border-bord">
                       <h3 className={`font-bold ${textPrimary} flex items-center gap-2`}><TrendingUp size={18} className="text-accent-texte" /> Classement productivité</h3>
                     </div>
                     <div className="overflow-x-auto">
@@ -4594,20 +4184,20 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                             <th className={`text-left px-4 py-2 text-xs font-semibold uppercase ${textMuted}`}>Employé</th>
                             <th className={`text-center px-4 py-2 text-xs font-semibold uppercase ${textMuted}`}>Heures</th>
                             <th className={`text-center px-4 py-2 text-xs font-semibold uppercase ${textMuted}`}>H. Sup</th>
-                            <th className={`text-right px-4 py-2 text-xs font-semibold uppercase ${textMuted}`}>Coût</th>
+                            {voitPrix && <th className={`text-right px-4 py-2 text-sm font-semibold ${textMuted}`}>Coût</th>}
                           </tr>
                         </thead>
                         <tbody>
                           {empMetrics.map(({ emp, hours, sup25, sup50, overtimeHours, cost }, idx) => (
                             <tr key={emp.id} className={`border-t border-bord`}>
                               <td className={`px-4 py-3`}>
-                                <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${idx === 0 ? 'bg-amber-400 text-amber-900' : idx === 1 ? 'bg-slate-300 text-slate-700' : idx === 2 ? 'bg-amber-700 text-amber-100' : ('bg-surface-2 text-encre-3')}`}>
+                                <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${idx === 0 ? 'bg-surface-2 text-encre' : idx === 1 ? 'bg-surface-2 text-encre' : idx === 2 ? 'bg-surface-2 text-encre' : ('bg-surface-2 text-encre-3')}`}>
                                   {idx + 1}
                                 </span>
                               </td>
                               <td className="px-4 py-3">
                                 <div className="flex items-center gap-2">
-                                  <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold" style={{ background: getRoleConfig(emp.role).color }}>
+                                  <div className="w-7 h-7 rounded-full flex items-center justify-center text-encre-2 bg-surface-2 text-xs font-bold">
                                     {emp.prenom?.[0]}{emp.nom?.[0]}
                                   </div>
                                   <div>
@@ -4617,13 +4207,15 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                                 </div>
                               </td>
                               <td className={`text-center px-4 py-3 text-sm font-semibold ${textPrimary}`}>{Math.round(hours)}h</td>
-                              <td className={`text-center px-4 py-3 text-sm ${overtimeHours > 0 ? 'text-red-500 font-semibold' : textMuted}`}>
+                              <td className={`text-center px-4 py-3 text-sm ${overtimeHours > 0 ? 'text-alerte-texte font-semibold' : textMuted}`}>
                                 {overtimeHours > 0 ? `+${Math.round(overtimeHours * 10) / 10}h` : '—'}
                                 {overtimeHours > 0 && <span className={`block text-xs font-normal ${textMuted}`}>{Math.round(sup25 * 10) / 10} h à 25 %{sup50 > 0 ? ` · ${Math.round(sup50 * 10) / 10} h à 50 %` : ''}</span>}
                               </td>
-                              <td className={`text-right px-4 py-3 text-sm font-semibold ${cost === null ? 'text-alerte-texte' : textPrimary}`}>
-                                {cost === null ? 'coût non saisi' : modeDiscret ? '***' : `${Math.round(cost).toLocaleString('fr-FR')} €`}
-                              </td>
+                              {voitPrix && (
+                                <td className={`text-right px-4 py-3 text-sm font-semibold ${cost === null ? 'text-alerte-texte' : textPrimary}`}>
+                                  {cost === null ? 'coût non saisi' : modeDiscret ? '***' : `${Math.round(cost).toLocaleString('fr-FR')} €`}
+                                </td>
+                              )}
                             </tr>
                           ))}
                         </tbody>

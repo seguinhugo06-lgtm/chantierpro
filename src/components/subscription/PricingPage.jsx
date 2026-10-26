@@ -6,7 +6,7 @@
  * Responsive: 3-col on desktop, stacked on mobile.
  */
 
-import React, { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import {
   Check, X, ChevronDown, ArrowRight, Zap, Hammer, Users,
   Shield, Clock, CreditCard, MapPin
@@ -17,6 +17,8 @@ import { createCheckoutSession } from '../../services/subscriptionsApi';
 import { toast } from '../../stores/toastStore';
 import { isDemo } from '../../supabaseClient';
 import { ouvrirLienExterne } from '../../lib/natif';
+import { Bouton } from '../ui/Bouton';
+import { Segmente } from '../ui/Onglets';
 
 const PLAN_ICONS = { gratuit: Zap, artisan: Hammer, equipe: Users };
 
@@ -24,25 +26,16 @@ const PLAN_ICONS = { gratuit: Zap, artisan: Hammer, equipe: Users };
 
 function PricingToggle({ billing, setBilling }) {
   return (
-    <div className="flex items-center justify-center gap-4 mt-8">
-      <span className={`text-sm font-semibold transition-colors ${billing === 'monthly' ? 'text-slate-900' : 'text-slate-400'}`}>
-        Mensuel
-      </span>
-      <button
-        onClick={() => setBilling(b => b === 'monthly' ? 'yearly' : 'monthly')}
-        className={`relative w-14 h-7 rounded-full transition-colors ${billing === 'yearly' ? 'bg-accent' : 'bg-slate-300'}`}
-        aria-label="Basculer entre facturation mensuelle et annuelle"
-      >
-        <span className={`absolute top-0.5 w-6 h-6 rounded-full bg-white shadow-md transition-transform ${billing === 'yearly' ? 'translate-x-7' : 'translate-x-0.5'}`} />
-      </button>
-      <span className={`text-sm font-semibold transition-colors ${billing === 'yearly' ? 'text-slate-900' : 'text-slate-400'}`}>
-        Annuel
-      </span>
-      {billing === 'yearly' && moisOffertsCommuns(PLANS) > 0 && (
-        <span className="px-2.5 py-1 text-xs font-bold rounded-full bg-green-50 text-green-700 border border-green-200">
-          {moisOffertsCommuns(PLANS)} mois offerts
-        </span>
-      )}
+    <div className="flex justify-center mt-8">
+      <Segmente
+        ariaLabel="Facturation"
+        valeur={billing}
+        onChange={setBilling}
+        options={[
+          { valeur: 'monthly', libelle: 'Mensuel' },
+          { valeur: 'yearly', libelle: moisOffertsCommuns(PLANS) > 0 ? `Annuel · ${moisOffertsCommuns(PLANS)} mois offerts` : 'Annuel' },
+        ]}
+      />
     </div>
   );
 }
@@ -54,34 +47,27 @@ function PricingCard({ plan, billing, isCurrent, isLoading, onSelect }) {
   const isRecommended = plan.id === 'equipe';
   const isPopular = plan.id === 'artisan';
   const hasBadge = isRecommended || isPopular;
+  // À l'année : l'équivalent mensuel, par l'outil commun
   const price = billing === 'yearly' && plan.priceYearly
-    ? (plan.priceYearly / 12).toFixed(2).replace('.', ',')
-    : plan.priceMonthly;
+    ? prixAbonnement(plan, 'mois-a-l-annee')
+    : prixAbonnement(plan);
 
-  const badgeColor = isRecommended ? 'bg-purple-500' : 'bg-orange-500';
-  const borderHighlight = isPopular
-    ? 'border-orange-300 shadow-[0_20px_25px_-5px_rgba(249,115,22,0.1)] scale-[1.02] z-10'
-    : isRecommended
-      ? 'border-purple-300 shadow-[0_20px_25px_-5px_rgba(139,92,246,0.1)] z-10'
-      : '';
+  const borderHighlight = isPopular ? 'border-accent ring-1 ring-accent' : 'border-bord-fort';
 
   const ctaLabel = plan.priceMonthly === 0
     ? 'Commencer gratuitement'
     : isPopular
-      ? 'Passer à Artisan'
-      : 'Passer à Équipe';
+      ? 'Passer au plan Artisan'
+      : 'Passer au plan Équipe';
 
   return (
     <div
-      className={`relative rounded-2xl border-2 px-6 py-8 transition-all duration-300 hover:scale-[1.02] hover:shadow-xl ${
-        hasBadge ? borderHighlight : 'hover:shadow-lg'
-      }`}
-      style={{ borderColor: hasBadge ? undefined : plan.borderColor }}
+      className={`relative rounded-2xl border bg-surface shadow-e1 px-6 py-8 ${hasBadge ? borderHighlight : 'border-bord'}`}
     >
       {/* Badge ribbon */}
       {hasBadge && (
         <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-          <span className={`px-4 py-1.5 text-xs font-bold rounded-full ${badgeColor} text-white shadow-lg`}>
+          <span className="px-4 py-1.5 text-sm font-semibold rounded-full bg-encre text-surface whitespace-nowrap">
             {plan.badge}
           </span>
         </div>
@@ -90,58 +76,48 @@ function PricingCard({ plan, billing, isCurrent, isLoading, onSelect }) {
       {/* Current badge */}
       {isCurrent && !hasBadge && (
         <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-          <span className="px-3 py-1 text-xs font-semibold rounded-full bg-slate-600 text-white">
+          <span className="px-3 py-1 text-sm font-semibold rounded-full bg-encre text-surface">
             Plan actuel
           </span>
         </div>
       )}
 
-      {/* Plan badge */}
-      <span
-        className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border"
-        style={{
-          backgroundColor: plan.bgColor,
-          color: plan.color,
-          borderColor: plan.borderColor
-        }}
-      >
-        <Icon size={12} className="mr-1.5" />
+      <h2 className="flex items-center gap-2 text-lg font-bold text-encre">
+        <Icon size={18} aria-hidden="true" className="text-encre-2" />
         {plan.name}
-      </span>
+      </h2>
 
       {/* Target audience */}
-      <p className="text-sm text-slate-500 mt-2">{plan.target}</p>
+      <p className="text-sm text-encre-3 mt-2">{plan.target}</p>
 
       {/* Price */}
       <div className="mt-5 mb-6">
         {plan.priceMonthly === 0 ? (
           <div>
-            <p className="text-3xl font-bold text-slate-900">Gratuit</p>
-            <p className="text-sm text-slate-500 mt-1">Sans limite de durée</p>
+            <p className="text-3xl font-bold text-encre">Gratuit</p>
+            <p className="text-sm text-encre-3 mt-1">Sans limite de durée</p>
           </div>
         ) : (
           <div>
             <div className="flex items-baseline gap-2 flex-wrap">
-              <span className="text-3xl font-bold" style={{ color: plan.color }}>
-                {billing === 'yearly' ? `${price} €` : prixAbonnement(plan)}
+              <span className="text-3xl font-bold text-encre tabular-nums">
+                {price}
               </span>
-              <span className="text-sm text-slate-500">par mois</span>
+              <span className="text-sm text-encre-3">par mois</span>
             </div>
-            <p className="text-xs text-slate-500 mt-1">{MENTION_TVA_ABONNEMENT}</p>
+            <p className="text-sm text-encre-3 mt-1">{MENTION_TVA_ABONNEMENT}</p>
             {plan.offreLancement && (
-              <div className="mt-1">
-                <span className="inline-block px-2 py-0.5 text-[11px] font-bold rounded-full bg-accent/10 text-accent-texte">
-                  {plan.offreLancement} — prix gardé tant que vous restez abonné
-                </span>
-              </div>
+              <p className="text-sm mt-1 font-medium text-encre-2">
+                {plan.offreLancement} : prix gardé tant que vous restez abonné
+              </p>
             )}
             {billing === 'yearly' && (
-              <p className="text-xs text-slate-400 mt-1">
-                Facturé {plan.priceYearly}€ annuellement
+              <p className="text-sm text-encre-3 mt-1 tabular-nums">
+                Facturé {prixAbonnement(plan, 'an')} par an
               </p>
             )}
             {billing === 'monthly' && (
-              <p className="text-xs text-slate-400 mt-1">
+              <p className="text-sm text-encre-3 mt-1 tabular-nums">
                 ou {prixAbonnement(plan, 'an')} par an (économisez {economieAnnuelle(plan)})
               </p>
             )}
@@ -150,48 +126,29 @@ function PricingCard({ plan, billing, isCurrent, isLoading, onSelect }) {
       </div>
 
       {/* CTA Button */}
-      <button
+      <Bouton
+        pleineLargeur
+        variante={isPopular && !isCurrent ? 'principal' : 'secondaire'}
         onClick={() => onSelect(plan.id)}
+        chargement={isLoading}
         disabled={isCurrent || isLoading}
-        className={`w-full py-3 rounded-xl font-semibold text-sm transition-all ${
-          isCurrent
-            ? 'bg-slate-100 text-slate-400 cursor-default'
-            : isPopular
-              ? 'bg-accent text-sur-accent hover:opacity-90 hover:shadow-lg hover:shadow-accent/25'
-              : isRecommended
-                ? 'bg-purple-500 text-white hover:bg-purple-600 hover:shadow-lg hover:shadow-purple-500/25'
-                : 'text-white hover:opacity-90'
-        }`}
-        style={!isCurrent && !isPopular && !isRecommended ? { backgroundColor: plan.color } : {}}
       >
-        {isLoading ? (
-          <span className="flex items-center justify-center gap-2">
-            <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-            </svg>
-            Chargement...
-          </span>
-        ) : isCurrent ? (
-          'Plan actuel'
-        ) : (
-          ctaLabel
-        )}
-      </button>
+        {isCurrent ? 'Plan actuel' : ctaLabel}
+      </Bouton>
 
       {/* Features separator */}
-      <div className="border-t border-slate-200 my-6" />
+      <div className="border-t border-bord my-6" />
 
       {/* Feature list */}
       <ul className="space-y-2.5">
         {plan.featureLabels.map((feat, i) => (
           <li key={i} className="flex items-start gap-2 text-sm">
             {feat.included ? (
-              <Check size={16} className="text-green-500 flex-shrink-0 mt-0.5" />
+              <Check size={16} aria-hidden="true" className="text-succes-point flex-shrink-0 mt-0.5" />
             ) : (
-              <X size={16} className="text-slate-300 flex-shrink-0 mt-0.5" />
+              <X size={16} aria-hidden="true" className="text-encre-3 flex-shrink-0 mt-0.5" />
             )}
-            <span className={feat.included ? 'text-slate-700' : 'text-slate-400'}>
+            <span className={feat.included ? 'text-encre-2' : 'text-encre-3'}>
               {feat.name}
             </span>
           </li>
@@ -210,7 +167,7 @@ const FAQ_ITEMS = [
   },
   {
     q: 'Quelle est la différence entre Artisan et Équipe ?',
-    a: 'Le plan Artisan est idéal pour un artisan seul : devis illimités, signatures, marges, relances. Le plan Équipe ajoute la gestion multi-utilisateurs (jusqu\'à 10), le pointage des heures, la trésorerie, les sous-traitants et le support prioritaire.'
+    a: 'Le plan Artisan lève les limites du plan Gratuit pour un artisan seul (vous + 1 collaborateur) : devis, clients, chantiers et photos sans limite. Le plan Équipe ajoute jusqu\'à 10 collaborateurs, chacun avec son rôle.'
   },
   {
     q: 'Puis-je changer de plan à tout moment ?',
@@ -230,7 +187,7 @@ const FAQ_ITEMS = [
   }
 ];
 
-function FAQSection({ isDark }) {
+function FAQSection() {
   const [openIndex, setOpenIndex] = useState(null);
 
   return (
@@ -246,6 +203,7 @@ function FAQSection({ isDark }) {
           >
             <button
               onClick={() => setOpenIndex(openIndex === i ? null : i)}
+              aria-expanded={openIndex === i}
               className={`w-full flex items-center justify-between px-5 py-4 text-left hover:bg-surface-2 transition-colors`}
             >
               <span className={`font-semibold text-sm text-encre`}>
@@ -253,7 +211,8 @@ function FAQSection({ isDark }) {
               </span>
               <ChevronDown
                 size={18}
-                className={`text-slate-400 transition-transform flex-shrink-0 ml-3 ${openIndex === i ? 'rotate-180' : ''}`}
+                aria-hidden="true"
+                className={`text-encre-3 transition-transform flex-shrink-0 ml-3 ${openIndex === i ? 'rotate-180' : ''}`}
               />
             </button>
             {openIndex === i && (
@@ -272,21 +231,21 @@ function FAQSection({ isDark }) {
 
 const TRUST_ITEMS = [
   { icon: Shield, label: 'Paiement sécurisé', desc: 'Stripe' },
-  { icon: Clock, label: 'Gratuit pour démarrer', desc: 'Sans CB' },
+  { icon: Clock, label: 'Gratuit pour démarrer', desc: 'Sans carte bancaire' },
   { icon: CreditCard, label: 'Mensuel sans engagement', desc: 'Résiliable à tout moment' },
   { icon: MapPin, label: 'Base de données à Paris', desc: 'Supabase, AWS Paris' }
 ];
 
-function TrustSection({ isDark }) {
+function TrustSection() {
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto py-10">
       {TRUST_ITEMS.map((item, i) => (
         <div key={i} className="flex flex-col items-center text-center gap-2">
           <div className={`w-10 h-10 rounded-xl flex items-center justify-center bg-surface-2`}>
-            <item.icon size={18} className="text-accent-texte" />
+            <item.icon size={18} aria-hidden="true" className="text-encre-2" />
           </div>
-          <p className={`text-sm font-semibold text-encre`}>{item.label}</p>
-          <p className="text-xs text-slate-500">{item.desc}</p>
+          <p className="text-sm font-semibold text-encre">{item.label}</p>
+          <p className="text-sm text-encre-3">{item.desc}</p>
         </div>
       ))}
     </div>
@@ -297,27 +256,23 @@ function TrustSection({ isDark }) {
 
 function CTASection({ onAction }) {
   return (
-    <section className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-2xl py-12 px-6 text-center my-8">
-      <h2 className="text-2xl md:text-3xl font-bold text-white mb-3">
+    <section className="bg-surface border border-bord rounded-2xl py-12 px-6 text-center my-8">
+      <h2 className="text-2xl font-bold text-encre mb-3">
         Prêt à démarrer ?
       </h2>
-      <p className="text-orange-100 mb-8 max-w-md mx-auto">
+      <p className="text-encre-2 mb-8 max-w-md mx-auto">
         Commencez gratuitement, sans carte bancaire. Passez au plan supérieur quand vous en avez besoin.
       </p>
-      <button
-        onClick={onAction}
-        className="inline-flex items-center gap-2 px-8 py-3.5 bg-white text-orange-600 font-bold rounded-xl hover:shadow-lg hover:shadow-white/25 transition-all"
-      >
-        Commencer gratuitement
-        <ArrowRight size={18} />
-      </button>
+      <Bouton iconeFin={ArrowRight} onClick={onAction}>
+        Voir les offres
+      </Bouton>
     </section>
   );
 }
 
 // ─── Main PricingPage ───────────────────────────────────────────────────────
 
-export default function PricingPage({ isDark, couleur, setPage }) {
+export default function PricingPage({ isDark: _isDark, couleur: _couleur, setPage }) {
   const currentPlanId = useSubscriptionStore((s) => s.planId);
   const setSubscription = useSubscriptionStore((s) => s.setSubscription);
 
@@ -375,7 +330,7 @@ export default function PricingPage({ isDark, couleur, setPage }) {
       </div>
 
       {/* Trust badges */}
-      <TrustSection isDark={isDark} />
+      <TrustSection />
 
       {/* Plans grid — 3 columns */}
       <div ref={scrollRef} className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-4 px-1">
@@ -392,14 +347,14 @@ export default function PricingPage({ isDark, couleur, setPage }) {
       </div>
 
       {/* FAQ */}
-      <FAQSection isDark={isDark} />
+      <FAQSection />
 
       {/* CTA */}
       <CTASection onAction={scrollToPlans} />
 
       {/* Demo notice */}
       {isDemo && (
-        <p className="text-center text-xs text-slate-400 py-4">
+        <p className="text-center text-sm text-encre-3 py-4">
           Mode démo — le changement de plan est simulé
         </p>
       )}

@@ -10,9 +10,17 @@ import { useEffect, useRef } from 'react';
  */
 export function Onglets({ onglets, actif, onChange, ariaLabel, className = '' }) {
   const rangeeRef = useRef(null);
+  // L'onglet actif est ramené dans la rangée qui défile, et SEULEMENT la rangée. Avant (retours d'Hugo, 21-23 oct. 2026,
+  // et audit-ui) : scrollIntoView faisait aussi défiler la page jusqu'à la rangée au premier affichage ; Finances
+  // s'ouvrait au milieu de la page, sur les onglets de la trésorerie (1 285 px plus bas au téléphone).
   useEffect(() => {
-    const el = rangeeRef.current?.querySelector('[aria-selected="true"]');
-    el?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
+    const rangee = rangeeRef.current;
+    const el = rangee?.querySelector('[aria-selected="true"]');
+    if (!rangee || !el) return;
+    const r = rangee.getBoundingClientRect();
+    const e = el.getBoundingClientRect();
+    if (e.left < r.left) rangee.scrollLeft -= r.left - e.left + 12;
+    else if (e.right > r.right) rangee.scrollLeft += e.right - r.right + 12;
   }, [actif]);
   return (
     <div

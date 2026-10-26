@@ -96,3 +96,19 @@ describe('attestation de ramonage — émetteur figé', () => {
     expect(h).not.toContain('Nouvel assureur');
   });
 });
+
+// Task 8 (26 oct. 2026) : Paramètres enregistre l'adresse en trois champs, l'adresse complète (« rue », puis
+// « code postal ville ») ET les colonnes code postal et ville. L'attestation ne répète pas « 24000 Imaginaire ».
+describe('attestation de ramonage — adresse du professionnel', () => {
+  it('adresse en trois champs : « code postal ville » une seule fois', () => {
+    const fiche = { ...entreprise, adresse: '1 rue de l’Exemple\n24000 Imaginaire', codePostal: '24000', ville: 'Imaginaire' };
+    const html = buildAttestationRamonageHtml({ ramonage, entreprise: fiche });
+    expect(html).toContain('1 rue de l’Exemple, 24000 Imaginaire');
+    expect(html.match(/24000 Imaginaire/g).length).toBe(html.match(/3 chemin de l’Exemple, 24000 Imaginaire/g).length + 1);
+  });
+
+  it('fiche plus ancienne (rue seule et colonnes) : lue comme avant', () => {
+    const html = buildAttestationRamonageHtml({ ramonage, entreprise });
+    expect(html).toContain('1 rue de l’Exemple, 24000 Imaginaire');
+  });
+});

@@ -323,18 +323,22 @@ module.exports = [
           return json([]);
         },
       });
-      // L'onglet « Équipe » des Paramètres, pas la page « Équipe » (salariés) du menu latéral.
+      // La rubrique « Équipe & accès » des Paramètres (colonne des rubriques au bureau), pas la page « Équipe »
+      // (salariés) du menu latéral.
       const onglet = await page.evaluate(() => {
-        const b = [...document.querySelectorAll('button')].find((x) => x.innerText.trim() === 'Équipe' && !x.closest('nav, aside'));
+        const b = [...document.querySelectorAll('nav[aria-label="Rubriques des paramètres"] button')].find((x) => x.innerText.trim() === 'Équipe & accès');
         if (b) b.click();
         return !!b;
       });
-      verifier(onglet, 'onglet Équipe des Paramètres visible pour le propriétaire');
+      verifier(onglet, 'rubrique Équipe & accès des Paramètres visible pour le propriétaire');
       await attendre(800);
       verifier((await texte(page)).includes('nouvel@exemple.fr'), 'invitation en attente listée');
       const toasts = () => page.evaluate(() => document.body.innerText);
 
-      await page.select('select', 'chef_chantier');
+      // Le rôle se choisit dans le menu de l'interface (ui/ChampChoix), plus dans une liste native
+      await page.evaluate(() => document.getElementById('role-membre-m-2')?.click());
+      await attendre(400);
+      await page.evaluate(() => [...document.querySelectorAll('[role="radio"]')].find((o) => o.innerText.trim().startsWith('Chef de chantier'))?.click());
       await attendre(800);
       verifier(gestes.includes('PATCH'), 'changement de rôle envoyé');
       let t = await toasts();

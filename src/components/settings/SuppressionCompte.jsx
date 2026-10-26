@@ -33,7 +33,7 @@ export default function SuppressionCompte({ isDark, showToast, onExporter }) {
 
   const textPrimary = 'text-encre';
   const textMuted = 'text-encre-2';
-  const inputBg = isDark ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400' : 'bg-white border-slate-300';
+  const inputBg = 'bg-surface border-bord-fort';
 
   const fermer = () => { if (!enCours) { setOuvert(false); setSaisie(''); setErreur(''); } };
 
@@ -84,25 +84,25 @@ export default function SuppressionCompte({ isDark, showToast, onExporter }) {
   };
 
   return (
-    <div className={`rounded-xl sm:rounded-2xl border-2 p-4 sm:p-6 ${isDark ? 'bg-red-950/20 border-red-800/50' : 'bg-red-50 border-red-300'}`}>
-      <h3 className={`font-semibold mb-2 flex items-center gap-2 ${isDark ? 'text-red-400' : 'text-red-600'}`}>
+    <div className={`rounded-xl sm:rounded-2xl border-2 p-4 sm:p-6 ${'bg-danger-fond border-danger-point/40'}`}>
+      <h3 className={`font-semibold mb-2 flex items-center gap-2 ${'text-danger-texte'}`}>
         <Trash2 size={18} />
         Zone de danger
       </h3>
-      <p className={`text-sm mb-2 ${isDark ? 'text-red-300/80' : 'text-red-700/80'}`}>
+      <p className="text-sm mb-2 text-danger-texte">
         <strong>Supprimer mon compte et mes données.</strong> Devis, factures, clients, chantiers, photos et
         paramètres sont effacés définitivement, ainsi que votre accès.
       </p>
-      <p className={`text-xs mb-4 ${isDark ? 'text-red-400/70' : 'text-red-600/70'}`}>
+      <p className="text-sm mb-4 text-danger-texte">
         Vos factures doivent être conservées 10 ans, sous la forme où vous les avez envoyées : téléchargez leur PDF avant
         de continuer (l'export des données, en JSON, ne les remplace pas).
       </p>
       <button
         type="button"
         onClick={() => setOuvert(true)}
-        className={`flex items-center gap-2 px-5 py-3 rounded-xl font-medium transition-all ${isDark ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-red-500 text-white hover:bg-red-600'}`}
+        className="flex items-center gap-2 h-11 px-5 rounded-full border border-danger-point/40 bg-surface font-semibold text-danger-texte transition-colors hover:bg-danger-fond"
       >
-        <Trash2 size={18} />
+        <Trash2 size={18} aria-hidden="true" />
         Supprimer mon compte
       </button>
 
@@ -112,7 +112,7 @@ export default function SuppressionCompte({ isDark, showToast, onExporter }) {
         </ModalHeader>
         <ModalBody className="space-y-4">
           {abonnementPayantActif && (
-            <div className={`p-3 rounded-xl border text-sm flex gap-2 ${isDark ? 'bg-amber-900/20 border-amber-800 text-amber-200' : 'bg-amber-50 border-amber-200 text-amber-800'}`}>
+            <div className={`p-3 rounded-xl border text-sm flex gap-2 ${'bg-alerte-fond border-alerte-point/40 text-alerte-texte'}`}>
               <CreditCard size={16} className="flex-shrink-0 mt-0.5" />
               <div>
                 Votre abonnement est encore actif : résiliez-le d’abord, sinon il continuerait d’être prélevé.
@@ -123,9 +123,9 @@ export default function SuppressionCompte({ isDark, showToast, onExporter }) {
             </div>
           )}
           <ul className={`text-sm space-y-1.5 ${textMuted}`}>
-            <li className="flex gap-2"><AlertTriangle size={15} className="text-red-500 flex-shrink-0 mt-0.5" /> Irréversible : rien ne pourra être récupéré.</li>
-            <li className="flex gap-2"><AlertTriangle size={15} className="text-red-500 flex-shrink-0 mt-0.5" /> Les liens de signature et de paiement déjà envoyés à vos clients cesseront de fonctionner.</li>
-            <li className="flex gap-2"><AlertTriangle size={15} className="text-red-500 flex-shrink-0 mt-0.5" /> Un client particulier qui a signé en ligne il y a moins de 14 jours perdrait son bouton « renoncer au contrat ici » : attendez la fin de son délai de rétractation.</li>
+            <li className="flex gap-2"><AlertTriangle size={15} className="text-danger-texte flex-shrink-0 mt-0.5" aria-hidden="true" /> Irréversible : rien ne pourra être récupéré.</li>
+            <li className="flex gap-2"><AlertTriangle size={15} className="text-danger-texte flex-shrink-0 mt-0.5" aria-hidden="true" /> Les liens de signature et de paiement déjà envoyés à vos clients cesseront de fonctionner.</li>
+            <li className="flex gap-2"><AlertTriangle size={15} className="text-danger-texte flex-shrink-0 mt-0.5" aria-hidden="true" /> Un client particulier qui a signé en ligne il y a moins de 14 jours perdrait son bouton « renoncer au contrat ici » : attendez la fin de son délai de rétractation.</li>
           </ul>
           {onExporter && (
             <button type="button" onClick={onExporter} className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium border-bord-fort text-encre-2 hover:bg-surface-2`}>
@@ -145,7 +145,7 @@ export default function SuppressionCompte({ isDark, showToast, onExporter }) {
             />
           </label>
           {erreur && (
-            <div role="alert" className={`p-3 rounded-xl border text-sm ${isDark ? 'bg-red-900/30 border-red-800 text-red-200' : 'bg-red-50 border-red-200 text-red-700'}`}>
+            <div role="alert" className={`p-3 rounded-xl border text-sm ${'bg-danger-fond border-danger-point/40 text-danger-texte'}`}>
               {erreur}
             </div>
           )}

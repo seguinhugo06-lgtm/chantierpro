@@ -11,9 +11,9 @@
  *   </FeatureGuard>
  */
 
-import React from 'react';
 import { useSubscriptionStore, PLANS, getMinPlanForFeature, getMinPlanNameForFeature } from '../../stores/subscriptionStore';
-import { Lock, ArrowUpRight } from 'lucide-react';
+import { Lock, ArrowRight } from 'lucide-react';
+import { Bouton } from '../ui/Bouton';
 
 /**
  * FeatureGuard wrapper — renders children only if plan allows.
@@ -72,26 +72,22 @@ function LockedOverlay({ feature, onUpgrade }) {
   const planName = getMinPlanNameForFeature(feature);
 
   return (
-    <div className="relative rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50/50/50 p-8 text-center">
+    <div className="relative rounded-2xl border-2 border-dashed border-bord-fort bg-surface p-8 text-center">
       <div className="flex flex-col items-center gap-4">
-        <div className="w-14 h-14 rounded-2xl bg-slate-200 flex items-center justify-center">
-          <Lock className="w-6 h-6 text-slate-400" />
+        <div className="w-14 h-14 rounded-2xl bg-surface-2 flex items-center justify-center">
+          <Lock className="w-6 h-6 text-encre-3" aria-hidden="true" />
         </div>
         <div>
-          <h3 className="text-lg font-semibold text-slate-700">
+          <h3 className="text-lg font-semibold text-encre">
             Fonctionnalité réservée au plan {planName}
           </h3>
-          <p className="text-sm text-slate-500 mt-1">
+          <p className="text-sm text-encre-2 mt-1">
             Passez au plan {planName} pour débloquer cette fonctionnalité.
           </p>
         </div>
-        <button
-          onClick={onUpgrade}
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 text-white font-medium text-sm hover:shadow-lg hover:shadow-orange-500/25 transition-all"
-        >
-          <ArrowUpRight size={16} />
-          Voir les plans
-        </button>
+        <Bouton variante="principal" iconeFin={ArrowRight} onClick={onUpgrade}>
+          Voir les offres
+        </Bouton>
       </div>
     </div>
   );
@@ -100,7 +96,7 @@ function LockedOverlay({ feature, onUpgrade }) {
 /**
  * Limit reached overlay — shown when a resource count exceeds plan limit
  */
-function LimitOverlay({ resource, current, max, onUpgrade }) {
+function LimitOverlay({ resource, max, onUpgrade }) {
   const RESOURCE_LABELS = {
     devis: 'devis',
     clients: 'clients',
@@ -111,28 +107,26 @@ function LimitOverlay({ resource, current, max, onUpgrade }) {
   };
 
   const label = RESOURCE_LABELS[resource] || resource;
+  // Seuls les devis se comptent au mois (PLANS.gratuit : 5 devis par mois) ; les autres limites sont un total.
+  const parMois = resource === 'devis' ? ' par mois' : '';
 
   return (
-    <div className="rounded-2xl border-2 border-dashed border-amber-300 bg-amber-50/50 p-6 text-center">
+    <div className="rounded-2xl border border-bord bg-alerte-fond p-6 text-center">
       <div className="flex flex-col items-center gap-3">
-        <div className="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center">
-          <Lock className="w-5 h-5 text-amber-500" />
+        <div className="w-12 h-12 rounded-xl bg-surface flex items-center justify-center">
+          <Lock className="w-5 h-5 text-alerte-texte" aria-hidden="true" />
         </div>
         <div>
-          <h3 className="text-base font-semibold text-slate-700">
-            Limite atteinte : {current}/{max} {label}
+          <h3 className="text-base font-semibold text-alerte-texte">
+            Limite atteinte : {max} {label}{parMois}
           </h3>
-          <p className="text-sm text-slate-500 mt-1">
-            Votre plan actuel est limité à {max} {label} par mois.
+          <p className="text-sm text-encre-2 mt-1">
+            Votre plan actuel est limité à {max} {label}{parMois}.
           </p>
         </div>
-        <button
-          onClick={onUpgrade}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 text-white font-medium text-sm hover:shadow-lg transition-all"
-        >
-          <ArrowUpRight size={16} />
-          Augmenter ma limite
-        </button>
+        <Bouton variante="principal" iconeFin={ArrowRight} onClick={onUpgrade}>
+          Voir les offres
+        </Bouton>
       </div>
     </div>
   );
@@ -149,14 +143,10 @@ export function UpgradeBadge({ feature, className = '' }) {
   if (plan.features.includes(feature)) return null;
 
   const minPlan = getMinPlanForFeature(feature);
-  const label = minPlan === 'equipe' ? 'ÉQUIPE' : 'ARTISAN';
-  const bgClass = minPlan === 'equipe'
-    ? 'bg-purple-100 text-purple-700'
-    : 'bg-amber-100 text-amber-700';
 
   return (
-    <span className={`inline-flex items-center px-1.5 py-0.5 text-[10px] font-medium rounded-full ${bgClass} ${className}`}>
-      {label}
+    <span className={`inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-info-fond text-info-texte ${className}`}>
+      {PLANS[minPlan]?.name || 'Artisan'}
     </span>
   );
 }

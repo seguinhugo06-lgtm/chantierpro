@@ -1,13 +1,20 @@
 /**
  * PostChantierSettings - Configuration de la séquence post-chantier
  *
- * Permet de configurer les actions automatiques déclenchées après
- * la fin d'un chantier (remerciement, avis Google, rapport, entretien, anniversaire).
+ * Les modèles de messages de la suite d'un chantier terminé (remerciement, avis Google, rapport, entretien,
+ * anniversaire). Gardés dans ce navigateur (cp_post_chantier_sequence) ; aucun envoi n'est branché dessus : l'écran le
+ * dit (Task 8, 26 oct. 2026 — avant, il promettait des envois automatiques).
  *
  * @module PostChantierSettings
  */
 
 import { useState, useCallback, useEffect } from 'react';
+import Carte from '../ui/Carte';
+import Champ from '../ui/Champ';
+import ChampChoix from '../ui/ChampChoix';
+import Modal from '../ui/Modal';
+import { Bouton } from '../ui/Bouton';
+import { Interrupteur } from './RamonageTab';
 import {
   Mail,
   MessageSquare,
@@ -15,16 +22,13 @@ import {
   FileText,
   Wrench,
   Cake,
-  ToggleLeft,
-  ToggleRight,
   Pencil,
-  X,
-  Clock,
   ChevronDown,
   ChevronUp,
   Save,
   RotateCcw,
-  Sparkles,
+  Construction,
+  Info,
 } from 'lucide-react';
 
 // ── Default sequence ──────────────────────────────────────────────────────────
@@ -87,9 +91,9 @@ const ICON_MAP = {
 };
 
 const TYPE_OPTIONS = [
-  { value: 'email', label: 'Email', icon: Mail },
+  { value: 'email', label: 'E-mail', icon: Mail },
   { value: 'sms', label: 'SMS', icon: MessageSquare },
-  { value: 'both', label: 'Email + SMS', icon: Sparkles },
+  { value: 'both', label: 'E-mail et SMS', icon: MessageSquare },
 ];
 
 const TEMPLATE_VARIABLES = [
@@ -121,7 +125,7 @@ function loadSéquence() {
 }
 
 function saveSéquence(data) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch { /* stockage plein ou privé : séquence non gardée */ }
 }
 
 function formatDelay(days) {
@@ -133,21 +137,12 @@ function formatDelay(days) {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export default function PostChantierSettings({ isDark, couleur, showToast }) {
+// isDark et couleur restent acceptés : les jetons du thème suivent le clair, le sombre et l'accent d'eux-mêmes
+export default function PostChantierSettings({ isDark: _isDark, couleur: _couleur, showToast }) {
   const [config, setConfig] = useState(loadSéquence);
   const [editingStep, setEditingStep] = useState(null);
   const [editForm, setEditForm] = useState(null);
   const [showVars, setShowVars] = useState(false);
-
-  // Theme
-  const cardBg = 'bg-surface border-bord';
-  const inputBg = isDark ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400' : 'bg-white border-slate-300';
-  const textPrimary = 'text-encre';
-  const textSecondary = 'text-encre-2';
-  const textMuted = 'text-encre-3';
-  const hoverBg = 'hover:bg-surface-2';
-  const modalBg = 'bg-surface';
-  const overlayBg = 'bg-black/50';
 
   // Persist on change
   useEffect(() => {
@@ -186,13 +181,13 @@ export default function PostChantierSettings({ isDark, couleur, showToast }) {
         s.id === editForm.id ? { ...editForm } : s
       ),
     }));
-    if (showToast) showToast('Étape mise à jour', 'success');
+    if (showToast) showToast('Étape mise à jour sur cet appareil', 'success');
     closeEdit();
   }, [editForm, showToast, closeEdit]);
 
   const resetDefaults = useCallback(() => {
     setConfig({ enabled: true, steps: DEFAULT_SEQUENCE });
-    if (showToast) showToast('Séquence réinitialisée', 'success');
+    if (showToast) showToast('Séquence réinitialisée sur cet appareil', 'success');
   }, [showToast]);
 
   const StepIcon = useCallback(({ icon, size = 18 }) => {
@@ -202,327 +197,137 @@ export default function PostChantierSettings({ isDark, couleur, showToast }) {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      {/* Header */}
-      <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div className="flex items-center gap-3">
-            <div
-              className="w-10 h-10 rounded-xl flex items-center justify-center"
-              style={{ background: `${couleur}15` }}
-            >
-              <Sparkles size={20} className="text-accent-texte" />
+      {/* En-tête */}
+      <Carte>
+        <div className="flex items-start justify-between flex-wrap gap-3">
+          <div className="flex items-start gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 bg-surface-2 text-encre-2">
+              <Construction size={20} aria-hidden="true" />
             </div>
-            <div>
-              <h3 className={`font-semibold text-base sm:text-lg ${textPrimary}`}>
-                Séquence post-chantier
-              </h3>
-              <p className={`text-xs sm:text-sm ${textSecondary}`}>
-                Actions automatiques après la fin d'un chantier
+            <div className="min-w-0">
+              <h2 className="text-lg font-semibold text-encre">Après la fin d’un chantier</h2>
+              <p className="text-sm text-encre-2">
+                Vos modèles de messages pour la suite d’un chantier terminé : remerciement, avis, entretien.
               </p>
             </div>
           </div>
-
-          <div className="flex items-center gap-3">
-            <button
-              onClick={resetDefaults}
-              className={`text-xs px-3 py-1.5 rounded-lg border ${cardBg} ${textMuted} ${hoverBg} transition-colors`}
-              title="Réinitialiser les valeurs par défaut"
-            >
-              <RotateCcw size={14} className="inline mr-1" />
-              Réinitialiser
-            </button>
-            <button
-              onClick={toggleGlobal}
-              className="flex items-center gap-2 transition-colors"
-              title={config.enabled ? 'Désactiver la séquence' : 'Activer la séquence'}
-            >
-              {config.enabled ? (
-                <ToggleRight size={28} className="text-accent-texte" />
-              ) : (
-                <ToggleLeft size={28} className={textMuted} />
-              )}
-              <span className={`text-sm font-medium ${config.enabled ? textPrimary : textMuted}`}>
-                {config.enabled ? 'Active' : 'Inactive'}
-              </span>
-            </button>
-          </div>
+          <Bouton taille="compacte" variante="discret" icone={RotateCcw} onClick={resetDefaults}>Réinitialiser</Bouton>
         </div>
-      </div>
+        {/* Retours relus à la Task 8 (26 oct. 2026) : l'écran promettait que « les étapes actives se déclenchent
+            automatiquement au délai configuré » ; aucun envoi n'est branché sur ces étapes (relecture de la Task 6) et la
+            séquence n'est gardée que dans ce navigateur. On le dit. */}
+        <div className="mt-4 flex items-start gap-2.5 p-3.5 rounded-xl bg-info-fond text-info-texte text-sm">
+          <Info size={18} aria-hidden="true" className="flex-shrink-0 mt-0.5" />
+          <p>Aucun message ne part tout seul pour l’instant : ces étapes sont des modèles, gardés sur cet appareil.</p>
+        </div>
+        <div className="mt-4">
+          <Interrupteur id="post-chantier-actif" actif={config.enabled} onChange={toggleGlobal}
+            libelle="Séquence après chantier" description={config.enabled ? 'Activée sur cet appareil' : 'Désactivée'} />
+        </div>
+      </Carte>
 
-      {/* Steps timeline */}
-      <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6 ${!config.enabled ? 'opacity-50 pointer-events-none' : ''}`}>
-        <div className="space-y-0">
+      {/* Étapes */}
+      <Carte className={!config.enabled ? 'opacity-50 pointer-events-none' : ''}>
+        <ol className="space-y-0">
           {config.steps.map((step, idx) => {
             const isLast = idx === config.steps.length - 1;
             const TypeIcon = TYPE_OPTIONS.find((t) => t.value === step.type)?.icon || Mail;
 
             return (
-              <div key={step.id} className="flex gap-3 sm:gap-4">
-                {/* Timeline line */}
+              <li key={step.id} className="flex gap-3 sm:gap-4">
+                {/* Frise */}
                 <div className="flex flex-col items-center">
-                  <div
-                    className="w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center shrink-0 transition-colors"
-                    style={{
-                      background: step.active ? `${couleur}20` : isDark ? '#334155' : '#f1f5f9',
-                      color: step.active ? couleur : isDark ? '#64748b' : '#94a3b8',
-                    }}
-                  >
+                  <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center shrink-0 transition-colors ${step.active ? 'bg-accent/10 text-accent-texte' : 'bg-surface-2 text-encre-3'}`}>
                     <StepIcon icon={step.icon} size={16} />
                   </div>
-                  {!isLast && (
-                    <div
-                      className="w-0.5 flex-1 min-h-[24px]"
-                      style={{
-                        background: isDark ? '#334155' : '#e2e8f0',
-                      }}
-                    />
-                  )}
+                  {!isLast && <div className="w-0.5 flex-1 min-h-[24px] bg-bord" />}
                 </div>
 
-                {/* Step content */}
-                <div className={`flex-1 pb-4 sm:pb-5 ${isLast ? 'pb-0' : ''}`}>
-                  <div
-                    className={`rounded-xl border p-3 sm:p-4 transition-colors ${
-                      step.active
-                        ? cardBg
-                        : 'bg-fond border-bord/50'
-                    } ${hoverBg}`}
-                  >
-                    <div className="flex items-center justify-between gap-2 flex-wrap">
-                      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                        {/* Delay badge */}
-                        <span
-                          className="text-xs font-bold px-2 py-0.5 rounded-md shrink-0"
-                          style={{
-                            background: step.active ? `${couleur}15` : isDark ? '#1e293b' : '#f1f5f9',
-                            color: step.active ? couleur : isDark ? '#64748b' : '#94a3b8',
-                          }}
-                        >
+                {/* Étape */}
+                <div className={`flex-1 min-w-0 pb-4 sm:pb-5 ${isLast ? 'pb-0' : ''}`}>
+                  <div className={`rounded-xl border p-3 sm:p-4 transition-colors ${step.active ? 'bg-surface border-bord' : 'bg-fond border-bord'}`}>
+                    <div className="flex items-start justify-between gap-2 flex-wrap">
+                      <div className="flex items-start gap-2 sm:gap-3 min-w-0">
+                        <span className={`text-sm font-semibold tabular-nums px-2 py-0.5 rounded-md shrink-0 ${step.active ? 'bg-accent/10 text-accent-texte' : 'bg-surface-2 text-encre-3'}`}>
                           {formatDelay(step.delay)}
                         </span>
-
                         <div className="min-w-0">
-                          <p className={`text-sm font-medium truncate ${step.active ? textPrimary : textMuted}`}>
-                            {step.label}
+                          <p className={`text-sm font-semibold break-words ${step.active ? 'text-encre' : 'text-encre-3'}`}>{step.label}</p>
+                          <p className="flex items-center gap-1.5 mt-0.5 text-sm text-encre-3">
+                            <TypeIcon size={14} aria-hidden="true" />
+                            {TYPE_OPTIONS.find((t) => t.value === step.type)?.label}
                           </p>
-                          <div className="flex items-center gap-1.5 mt-0.5">
-                            <TypeIcon size={12} className={textMuted} />
-                            <span className={`text-xs ${textMuted}`}>
-                              {TYPE_OPTIONS.find((t) => t.value === step.type)?.label}
-                            </span>
-                          </div>
                         </div>
                       </div>
-
-                      <div className="flex items-center gap-2 shrink-0">
-                        <button
-                          onClick={() => toggleStep(step.id)}
-                          className="transition-colors"
-                          title={step.active ? 'Désactiver' : 'Activer'}
-                        >
-                          {step.active ? (
-                            <ToggleRight size={22} className="text-accent-texte" />
-                          ) : (
-                            <ToggleLeft size={22} className={textMuted} />
-                          )}
-                        </button>
-                        <button
-                          onClick={() => openEdit(step)}
-                          className={`text-xs px-2.5 min-h-[44px] rounded-lg border transition-colors ${cardBg} ${textSecondary} ${hoverBg}`}
-                        >
-                          <Pencil size={13} className="inline mr-1" />
-                          Modifier
-                        </button>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <Interrupteur id={`post-chantier-etape-${step.id}`} actif={step.active} onChange={() => toggleStep(step.id)} libelle={<span className="sr-only">{step.label}</span>} />
+                        <Bouton taille="compacte" icone={Pencil} onClick={() => openEdit(step)}>Modifier</Bouton>
                       </div>
                     </div>
-
-                    {/* Preview template */}
-                    <p className={`text-xs mt-2 line-clamp-2 ${textMuted}`}>
-                      {step.template}
-                    </p>
+                    <p className="text-sm mt-2 line-clamp-2 text-encre-3">{step.template}</p>
                   </div>
                 </div>
-              </div>
+              </li>
             );
           })}
-        </div>
-      </div>
+        </ol>
+      </Carte>
 
-      {/* Info card */}
-      <div
-        className="rounded-xl border p-3 sm:p-4 text-xs sm:text-sm"
-        style={{
-          background: `${couleur}08`,
-          borderColor: `${couleur}25`,
-          color: isDark ? '#cbd5e1' : '#475569',
-        }}
-      >
-        <div className="flex items-start gap-2">
-          <Clock size={16} className="shrink-0 mt-0.5 text-accent-texte" />
-          <div>
-            <p className="font-medium text-accent-texte">
-              Comment ça marche ?
-            </p>
-            <p className="mt-1">
-              Quand vous marquez un chantier comme "Terminé", les étapes actives se déclenchent
-              automatiquement au délai configuré. Les messages utilisent les variables du chantier
-              et du client.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Edit Modal */}
-      {editingStep && editForm && (
-        <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 ${overlayBg}`} onClick={closeEdit}>
-          <div
-            className={`w-full max-w-lg rounded-2xl border shadow-2xl ${modalBg} border-bord`}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Modal header */}
-            <div className={`flex items-center justify-between p-4 sm:p-5 border-b border-bord`}>
-              <div className="flex items-center gap-3">
-                <div
-                  className="w-9 h-9 rounded-lg flex items-center justify-center"
-                  style={{ background: `${couleur}15` }}
-                >
-                  <StepIcon icon={editForm.icon} size={16} />
-                </div>
-                <h4 className={`font-semibold ${textPrimary}`}>
-                  Modifier : {editForm.label}
-                </h4>
-              </div>
-              <button
-                onClick={closeEdit}
-                className={`min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg transition-colors ${hoverBg} ${textMuted}`}
-                aria-label="Fermer"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            {/* Modal body */}
-            <div className="p-4 sm:p-5 space-y-4">
-              {/* Label */}
+      {/* Modifier une étape */}
+      <Modal isOpen={!!(editingStep && editForm)} onClose={closeEdit} size="md" title={editForm ? `Modifier : ${editForm.label}` : ''}
+        footer={(
+          <>
+            <Bouton variante="discret" onClick={closeEdit}>Annuler</Bouton>
+            <Bouton variante="principal" icone={Save} onClick={saveEdit}>Enregistrer sur cet appareil</Bouton>
+          </>
+        )}>
+        {editForm ? (
+          <div className="space-y-4">
+            <Champ id="post-chantier-nom" libelle="Nom de l’étape" value={editForm.label}
+              onChange={(e) => setEditForm((f) => ({ ...f, label: e.target.value }))} />
+            <div className="grid grid-cols-2 gap-3">
+              <Champ id="post-chantier-delai" libelle="Délai (jours)" type="number" inputMode="numeric" min="1" max="730" value={editForm.delay}
+                onChange={(e) => setEditForm((f) => ({ ...f, delay: Math.max(1, parseInt(e.target.value, 10) || 1) }))} />
               <div>
-                <label className={`block text-sm font-medium mb-1.5 ${textPrimary}`}>
-                  Nom de l'étape
-                </label>
-                <input
-                  type="text"
-                  value={editForm.label}
-                  onChange={(e) => setEditForm((f) => ({ ...f, label: e.target.value }))}
-                  className={`w-full px-3 py-2 rounded-xl border text-sm ${inputBg}`}
-                />
+                <label id="post-chantier-canal-libelle" htmlFor="post-chantier-canal" className="block mb-1.5 text-sm font-medium text-encre-2">Canal</label>
+                <ChampChoix id="post-chantier-canal" idLibelle="post-chantier-canal-libelle" titre="Canal"
+                  options={TYPE_OPTIONS.map((o) => ({ valeur: o.value, libelle: o.label }))}
+                  valeur={editForm.type} onChange={(v) => setEditForm((f) => ({ ...f, type: v }))} />
               </div>
-
-              {/* Delay + Type row */}
-              <div className="flex gap-3">
-                <div className="flex-1">
-                  <label className={`block text-sm font-medium mb-1.5 ${textPrimary}`}>
-                    Délai (jours)
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="730"
-                    value={editForm.delay}
-                    onChange={(e) =>
-                      setEditForm((f) => ({
-                        ...f,
-                        delay: Math.max(1, parseInt(e.target.value) || 1),
-                      }))
-                    }
-                    className={`w-full px-3 py-2 rounded-xl border text-sm ${inputBg}`}
-                  />
-                </div>
-                <div className="flex-1">
-                  <label className={`block text-sm font-medium mb-1.5 ${textPrimary}`}>
-                    Canal
-                  </label>
-                  <select
-                    value={editForm.type}
-                    onChange={(e) => setEditForm((f) => ({ ...f, type: e.target.value }))}
-                    className={`w-full px-3 py-2 rounded-xl border text-sm ${inputBg}`}
-                  >
-                    {TYPE_OPTIONS.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </option>
+            </div>
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label htmlFor="post-chantier-message" className="text-sm font-medium text-encre-2">Message</label>
+                <button type="button" aria-expanded={showVars} onClick={() => setShowVars((v) => !v)}
+                  className="h-11 -my-2 px-2 rounded-lg text-sm font-semibold flex items-center gap-1 text-encre-2 hover:bg-surface-2">
+                  {showVars ? <ChevronUp size={14} aria-hidden="true" /> : <ChevronDown size={14} aria-hidden="true" />}
+                  Variables
+                </button>
+              </div>
+              {showVars && (
+                <div className="mb-2 p-2 rounded-xl border bg-fond border-bord">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
+                    {TEMPLATE_VARIABLES.map((v) => (
+                      <button key={v.var} type="button"
+                        onClick={() => setEditForm((f) => ({ ...f, template: f.template + ' ' + v.var }))}
+                        className="text-left min-h-[44px] px-2 py-1 rounded-lg hover:bg-surface-2 transition-colors">
+                        <code className="text-sm text-encre">{v.var}</code>
+                        <span className="block text-sm text-encre-3">{v.desc}</span>
+                      </button>
                     ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Template */}
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className={`text-sm font-medium ${textPrimary}`}>
-                    Message template
-                  </label>
-                  <button
-                    onClick={() => setShowVars((v) => !v)}
-                    className={`text-xs flex items-center gap-1 ${textMuted} ${hoverBg} px-2 py-1 rounded-lg`}
-                  >
-                    {showVars ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-                    Variables
-                  </button>
-                </div>
-
-                {showVars && (
-                  <div
-                    className={`mb-2 p-3 rounded-xl border text-xs bg-fond border-bord`}
-                  >
-                    <div className="grid grid-cols-2 gap-1.5">
-                      {TEMPLATE_VARIABLES.map((v) => (
-                        <button
-                          key={v.var}
-                          type="button"
-                          onClick={() =>
-                            setEditForm((f) => ({
-                              ...f,
-                              template: f.template + ' ' + v.var,
-                            }))
-                          }
-                          className={`text-left px-2 py-1 rounded-lg ${hoverBg} transition-colors`}
-                        >
-                          <code className="text-accent-texte">{v.var}</code>
-                          <span className={`block text-xs ${textMuted}`}>{v.desc}</span>
-                        </button>
-                      ))}
-                    </div>
                   </div>
-                )}
-
-                <textarea
-                  value={editForm.template}
-                  onChange={(e) => setEditForm((f) => ({ ...f, template: e.target.value }))}
-                  rows={4}
-                  className={`w-full px-3 py-2 rounded-xl border text-sm resize-none ${inputBg}`}
-                  placeholder="Entrez le message template..."
-                />
-              </div>
-            </div>
-
-            {/* Modal footer */}
-            <div className={`flex items-center justify-end gap-2 p-4 sm:p-5 border-t border-bord`}>
-              <button
-                onClick={closeEdit}
-                className={`px-4 py-2 rounded-xl text-sm border transition-colors ${cardBg} ${textSecondary} ${hoverBg}`}
-              >
-                Annuler
-              </button>
-              <button
-                onClick={saveEdit}
-                className="px-4 py-2 rounded-xl text-sm transition-colors bg-accent text-sur-accent"
-              >
-                <Save size={14} className="inline mr-1.5" />
-                Enregistrer
-              </button>
+                </div>
+              )}
+              <textarea id="post-chantier-message" value={editForm.template}
+                onChange={(e) => setEditForm((f) => ({ ...f, template: e.target.value }))}
+                rows={4}
+                className="w-full px-3.5 py-3 rounded-xl border text-base sm:text-sm resize-none bg-surface border-bord-fort text-encre placeholder:text-encre-3 focus:outline-none focus:border-accent focus:ring-4 focus:ring-accent/20"
+                placeholder="Votre message…"
+              />
             </div>
           </div>
-        </div>
-      )}
+        ) : null}
+      </Modal>
     </div>
   );
 }

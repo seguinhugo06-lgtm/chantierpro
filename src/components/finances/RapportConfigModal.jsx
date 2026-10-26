@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Save, TrendingUp, Wallet, Mail, Image, BarChart3, Loader2 } from 'lucide-react';
 import supabase, { isDemo } from '../../supabaseClient';
@@ -9,7 +9,8 @@ const PERIODICITE_OPTIONS = {
   annuel: 'Annuel',
 };
 
-export default function RapportConfigModal({ isOpen, onClose, isDark, couleur = '#f97316', entreprise }) {
+// couleur reste acceptée : l'accent du thème suit la couleur de l'entreprise
+export default function RapportConfigModal({ isOpen, onClose, isDark: _isDark, couleur: _couleur, entreprise }) {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     activite_actif: false,
@@ -161,8 +162,8 @@ export default function RapportConfigModal({ isOpen, onClose, isDark, couleur = 
               <div className={`rounded-xl border ${borderColor} p-4`}>
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#3b82f620' }}>
-                      <TrendingUp size={16} style={{ color: '#3b82f6' }} />
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-surface-2 text-encre-2">
+                      <TrendingUp size={16} aria-hidden="true" />
                     </div>
                     <div>
                       <p className={`text-sm font-semibold ${textPrimary}`}>Rapport d'activité</p>
@@ -171,8 +172,9 @@ export default function RapportConfigModal({ isOpen, onClose, isDark, couleur = 
                   </div>
                   <button
                     onClick={() => updateField('activite_actif', !form.activite_actif)}
-                    className={`relative w-11 h-6 rounded-full transition-colors ${form.activite_actif ? '' : isDark ? 'bg-slate-600' : 'bg-slate-300'}`}
-                    style={form.activite_actif ? { backgroundColor: couleur } : undefined}
+                    className={`relative w-11 h-6 rounded-full transition-colors ${form.activite_actif ? 'bg-accent' : 'bg-bord-fort'}`}
+                    role="switch"
+                    aria-checked={!!form.activite_actif}
                   >
                     <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${form.activite_actif ? 'translate-x-5' : ''}`} />
                   </button>
@@ -183,12 +185,12 @@ export default function RapportConfigModal({ isOpen, onClose, isDark, couleur = 
                       <button
                         key={p}
                         onClick={() => updateField('activite_periodicite', p)}
-                        className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
+                        className={`h-11 px-4 text-sm font-medium rounded-full transition-colors ${
                           form.activite_periodicite === p
-                            ? 'text-white'
+                            ? 'bg-encre text-surface'
                             : 'bg-surface-2 text-encre-2'
                         }`}
-                        style={form.activite_periodicite === p ? { backgroundColor: couleur } : undefined}
+                        aria-pressed={form.activite_periodicite === p}
                       >
                         {PERIODICITE_OPTIONS[p]}
                       </button>
@@ -201,8 +203,8 @@ export default function RapportConfigModal({ isOpen, onClose, isDark, couleur = 
               <div className={`rounded-xl border ${borderColor} p-4`}>
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#8b5cf620' }}>
-                      <Wallet size={16} style={{ color: '#8b5cf6' }} />
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-surface-2 text-encre-2">
+                      <Wallet size={16} aria-hidden="true" />
                     </div>
                     <div>
                       <p className={`text-sm font-semibold ${textPrimary}`}>Rapport financier</p>
@@ -211,8 +213,9 @@ export default function RapportConfigModal({ isOpen, onClose, isDark, couleur = 
                   </div>
                   <button
                     onClick={() => updateField('financier_actif', !form.financier_actif)}
-                    className={`relative w-11 h-6 rounded-full transition-colors ${form.financier_actif ? '' : isDark ? 'bg-slate-600' : 'bg-slate-300'}`}
-                    style={form.financier_actif ? { backgroundColor: couleur } : undefined}
+                    className={`relative w-11 h-6 rounded-full transition-colors ${form.financier_actif ? 'bg-accent' : 'bg-bord-fort'}`}
+                    role="switch"
+                    aria-checked={!!form.financier_actif}
                   >
                     <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${form.financier_actif ? 'translate-x-5' : ''}`} />
                   </button>
@@ -223,12 +226,12 @@ export default function RapportConfigModal({ isOpen, onClose, isDark, couleur = 
                       <button
                         key={p}
                         onClick={() => updateField('financier_periodicite', p)}
-                        className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
+                        className={`h-11 px-4 text-sm font-medium rounded-full transition-colors ${
                           form.financier_periodicite === p
-                            ? 'text-white'
+                            ? 'bg-encre text-surface'
                             : 'bg-surface-2 text-encre-2'
                         }`}
-                        style={form.financier_periodicite === p ? { backgroundColor: couleur } : undefined}
+                        aria-pressed={form.financier_periodicite === p}
                       >
                         {PERIODICITE_OPTIONS[p]}
                       </button>
@@ -252,8 +255,7 @@ export default function RapportConfigModal({ isOpen, onClose, isDark, couleur = 
                     onChange={e => setEmailInput(e.target.value)}
                     onKeyDown={handleKeyDown}
                     placeholder="email@exemple.com"
-                    className={`flex-1 px-3 py-2 rounded-lg text-sm border ${borderColor} ${inputBg} focus:outline-none focus:ring-2`}
-                    style={{ focusRingColor: couleur }}
+                    className={`flex-1 px-3 py-2 rounded-lg text-sm border ${borderColor} ${inputBg} focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent`}
                   />
                   <button
                     onClick={addEmail}
@@ -289,8 +291,9 @@ export default function RapportConfigModal({ isOpen, onClose, isDark, couleur = 
                   </span>
                   <button
                     onClick={() => updateField('inclure_logo', !form.inclure_logo)}
-                    className={`relative w-11 h-6 rounded-full transition-colors ${form.inclure_logo ? '' : isDark ? 'bg-slate-600' : 'bg-slate-300'}`}
-                    style={form.inclure_logo ? { backgroundColor: couleur } : undefined}
+                    className={`relative w-11 h-6 rounded-full transition-colors ${form.inclure_logo ? 'bg-accent' : 'bg-bord-fort'}`}
+                    role="switch"
+                    aria-checked={!!form.inclure_logo}
                   >
                     <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${form.inclure_logo ? 'translate-x-5' : ''}`} />
                   </button>
@@ -301,8 +304,9 @@ export default function RapportConfigModal({ isOpen, onClose, isDark, couleur = 
                   </span>
                   <button
                     onClick={() => updateField('inclure_graphiques', !form.inclure_graphiques)}
-                    className={`relative w-11 h-6 rounded-full transition-colors ${form.inclure_graphiques ? '' : isDark ? 'bg-slate-600' : 'bg-slate-300'}`}
-                    style={form.inclure_graphiques ? { backgroundColor: couleur } : undefined}
+                    className={`relative w-11 h-6 rounded-full transition-colors ${form.inclure_graphiques ? 'bg-accent' : 'bg-bord-fort'}`}
+                    role="switch"
+                    aria-checked={!!form.inclure_graphiques}
                   >
                     <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${form.inclure_graphiques ? 'translate-x-5' : ''}`} />
                   </button>
@@ -315,7 +319,7 @@ export default function RapportConfigModal({ isOpen, onClose, isDark, couleur = 
               <button
                 onClick={onClose}
                 className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                  isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  'bg-surface-2 text-encre-2 hover:bg-bord'
                 }`}
               >
                 Annuler

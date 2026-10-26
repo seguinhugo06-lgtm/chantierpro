@@ -1,7 +1,7 @@
 // src/components/settings/TeamManagement.jsx
 // Team management & invitation UI for org owners/admins
 import { useState, useEffect, useCallback } from 'react';
-import { Users, UserPlus, Mail, Phone, Trash2, Clock, Check, X, Copy, Loader2 } from 'lucide-react';
+import { Users, UserPlus, Mail, Phone, Trash2, Clock, X, Copy } from 'lucide-react';
 import { supabase, isDemo } from '../../supabaseClient';
 import { useOrg } from '../../context/OrgContext';
 import { usePermissions } from '../../hooks/usePermissions';
@@ -12,6 +12,11 @@ import { urlPublique } from '../../lib/urlPublique';
 import { captureException } from '../../lib/sentry';
 import { messageErreurFonction } from '../../lib/emailSender';
 import { dateLue } from '../../lib/dates';
+import Carte from '../ui/Carte';
+import Pastille from '../ui/Pastille';
+import ChampChoix from '../ui/ChampChoix';
+import { Avatar } from '../ui/LigneListe';
+import { Bouton, BoutonIcone } from '../ui/Bouton';
 
 const INVITABLE_ROLES = getInvitableRoles();
 
@@ -27,9 +32,10 @@ function getMemberDisplayName(member, currentUserEmail) {
   return member.user_id?.slice(0, 8) + '...';
 }
 
-export default function TeamManagement({ isDark, couleur = '#F97316' }) {
+// isDark et couleur restent acceptés : les jetons du thème suivent le clair, le sombre et l'accent d'eux-mêmes
+export default function TeamManagement({ isDark: _isDark, couleur: _couleur }) {
   const { orgId, orgName, members, refreshOrg } = useOrg();
-  const { isOwner, isAdmin, canManageTeam } = usePermissions();
+  const { canManageTeam } = usePermissions();
   const { confirm } = useConfirm();
   const { showToast } = useToast();
   const checkLimit = useSubscriptionStore((s) => s.checkLimit);
@@ -47,7 +53,7 @@ export default function TeamManagement({ isDark, couleur = '#F97316' }) {
 
   // State (must be declared before derived values that reference them)
   const [invitations, setInvitations] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [, setLoading] = useState(false);
   const [showInviteForm, setShowInviteForm] = useState(false);
   const [inviteForm, setInviteForm] = useState({ email: '', phone: '', role: 'ouvrier' });
   const [inviteLoading, setInviteLoading] = useState(false);
@@ -60,9 +66,7 @@ export default function TeamManagement({ isDark, couleur = '#F97316' }) {
   const teamLimitReached = memberLimit.limit !== -1 && (nonOwnerCount + pendingCount) >= memberLimit.limit;
 
   // Theme
-  const cardBg = 'bg-surface border-bord';
-  const inputBg = isDark ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400' : 'bg-white border-slate-300';
-  const textPrimary = 'text-encre';
+  const inputBg = 'bg-surface border-bord-fort';
   const textMuted = 'text-encre-3';
 
   // Load invitations
@@ -230,268 +234,185 @@ export default function TeamManagement({ isDark, couleur = '#F97316' }) {
   const copyInviteLink = (token) => {
     const url = urlPublique(`/invitation/${token}`);
     navigator.clipboard?.writeText(url)
-      .then(() => showToast('Lien copié !', 'success'))
+      .then(() => showToast('Lien d’invitation copié', 'success'))
       .catch(() => showToast('Copie échouée', 'error'));
-  };
-
-  // Role badge color
-  const roleBadge = (role) => {
-    const colors = {
-      owner: 'bg-amber-100 text-amber-800',
-      admin: 'bg-blue-100 text-blue-800',
-      comptable: 'bg-purple-100 text-purple-800',
-      chef_chantier: 'bg-emerald-100 text-emerald-800',
-      ouvrier: 'bg-slate-100 text-slate-700',
-      readonly: 'bg-slate-100 text-slate-500',
-    };
-    return colors[role] || colors.readonly;
   };
 
   if (isDemo) {
     return (
-      <div className={`${cardBg} rounded-2xl border p-6 text-center`}>
-        <Users size={32} className={textMuted} />
-        <p className={`mt-2 font-medium ${textPrimary}`}>Gestion d'équipe</p>
-        <p className={`text-sm ${textMuted}`}>Disponible avec un compte connecté</p>
-      </div>
+      <Carte className="text-center">
+        <Users size={32} aria-hidden="true" className="mx-auto text-encre-3" />
+        <p className="mt-2 font-semibold text-encre">Gestion d’équipe</p>
+        <p className="text-sm text-encre-3">Disponible avec un compte connecté</p>
+      </Carte>
     );
   }
 
   const pendingInvitations = invitations.filter(i => i.status === 'pending');
   const pastInvitations = invitations.filter(i => i.status !== 'pending');
+  const optionsRoles = INVITABLE_ROLES.map((r) => ({ valeur: r.value, libelle: r.label, detail: r.description }));
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className={`text-lg font-bold ${textPrimary}`}>Équipe & Accès</h2>
-          <p className={`text-sm ${textMuted}`}>
+      {/* En-tête */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="text-lg font-bold text-encre">Équipe et accès</h2>
+          <p className="text-sm text-encre-3">
             {members.length} membre{members.length > 1 ? 's' : ''} dans {orgName || 'votre organisation'}
             {memberLimit.limit !== -1 && (
               <span className="ml-1">
-                ({nonOwnerCount}/{memberLimit.limit} places utilisées)
+                ({nonOwnerCount} sur {memberLimit.limit} places utilisées)
               </span>
             )}
           </p>
         </div>
         {canManageTeam && (
           teamLimitReached ? (
-            <button
-              onClick={() => openUpgradeModal('equipe')}
-              className="px-4 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-2 bg-amber-100 text-amber-800 hover:bg-amber-200 transition-all"
-            >
-              <UserPlus size={16} /> Limite atteinte — Upgrader
-            </button>
+            <Bouton icone={UserPlus} onClick={() => openUpgradeModal('equipe')}>Limite atteinte : voir les offres</Bouton>
           ) : (
-            <button
-              onClick={() => setShowInviteForm(true)}
-              className="px-4 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-2 hover:opacity-90 transition-all bg-accent text-sur-accent"
-            >
-              <UserPlus size={16} /> Inviter
-            </button>
+            <Bouton icone={UserPlus} onClick={() => setShowInviteForm(true)}>Inviter</Bouton>
           )
         )}
       </div>
 
-      {/* Invite Form */}
+      {/* Invitation */}
       {showInviteForm && (
-        <div className={`${cardBg} rounded-xl border p-4 space-y-3`}>
+        <Carte className="space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className={`font-semibold ${textPrimary}`}>Nouvelle invitation</h3>
-            <button onClick={() => setShowInviteForm(false)} className={`p-1.5 rounded-lg hover:bg-surface-2`}>
-              <X size={16} className={textMuted} />
-            </button>
+            <h3 className="font-semibold text-encre">Nouvelle invitation</h3>
+            <BoutonIcone icone={X} libelle="Fermer l’invitation" taille={18} className="-my-2 -mr-2" onClick={() => setShowInviteForm(false)} />
           </div>
 
           <div className="grid sm:grid-cols-2 gap-3">
             <div>
-              <label className={`text-xs font-medium ${textMuted} mb-1 block`}>Email</label>
+              <label htmlFor="invitation-email" className="block mb-1.5 text-sm font-medium text-encre-2">E-mail</label>
               <div className="relative">
-                <Mail size={14} className={`absolute left-3 top-1/2 -translate-y-1/2 ${textMuted}`} />
+                <Mail size={16} aria-hidden="true" className={`absolute left-3 top-1/2 -translate-y-1/2 ${textMuted}`} />
                 <input
+                  id="invitation-email"
                   type="email"
                   value={inviteForm.email}
                   onChange={e => setInviteForm(f => ({ ...f, email: e.target.value }))}
                   placeholder="prenom@exemple.fr"
-                  className={`w-full pl-9 pr-3 py-2 border rounded-lg text-sm ${inputBg}`}
+                  className={`w-full h-12 pl-9 pr-3 border rounded-xl text-base sm:text-sm ${inputBg}`}
                 />
               </div>
             </div>
             <div>
-              <label className={`text-xs font-medium ${textMuted} mb-1 block`}>Téléphone (optionnel)</label>
+              <label htmlFor="invitation-tel" className="block mb-1.5 text-sm font-medium text-encre-2">Téléphone <span className="font-normal text-encre-3">(facultatif)</span></label>
               <div className="relative">
-                <Phone size={14} className={`absolute left-3 top-1/2 -translate-y-1/2 ${textMuted}`} />
+                <Phone size={16} aria-hidden="true" className={`absolute left-3 top-1/2 -translate-y-1/2 ${textMuted}`} />
                 <input
+                  id="invitation-tel"
                   type="tel"
                   value={inviteForm.phone}
                   onChange={e => setInviteForm(f => ({ ...f, phone: e.target.value }))}
                   placeholder="06 12 34 56 78"
-                  className={`w-full pl-9 pr-3 py-2 border rounded-lg text-sm ${inputBg}`}
+                  className={`w-full h-12 pl-9 pr-3 border rounded-xl text-base sm:text-sm ${inputBg}`}
                 />
               </div>
             </div>
           </div>
 
           <div>
-            <label className={`text-xs font-medium ${textMuted} mb-1 block`}>Rôle</label>
-            <select
-              value={inviteForm.role}
-              onChange={e => setInviteForm(f => ({ ...f, role: e.target.value }))}
-              className={`w-full px-3 py-2 border rounded-lg text-sm ${inputBg}`}
-            >
-              {INVITABLE_ROLES.map(r => (
-                <option key={r.value} value={r.value}>{r.label} — {r.description}</option>
-              ))}
-            </select>
+            <label id="invitation-role-libelle" htmlFor="invitation-role" className="block mb-1.5 text-sm font-medium text-encre-2">Rôle</label>
+            <ChampChoix id="invitation-role" idLibelle="invitation-role-libelle" titre="Rôle de la personne invitée"
+              options={optionsRoles} valeur={inviteForm.role} onChange={(v) => setInviteForm(f => ({ ...f, role: v }))} />
+            <p className="mt-1.5 text-sm text-encre-3">{INVITABLE_ROLES.find((r) => r.value === inviteForm.role)?.description}</p>
           </div>
 
-          <p className={`text-xs ${textMuted}`}>
+          <p className="text-sm text-encre-3">
             La personne invitée reçoit un e-mail de Mallettico avec un lien valable 7 jours. Votre adresse e-mail y figure : elle sait qui l’invite et peut vous répondre.
           </p>
 
           <div className="flex justify-end gap-2">
-            <button
-              onClick={() => setShowInviteForm(false)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
-            >
-              Annuler
-            </button>
-            <button
-              onClick={handleInvite}
-              disabled={inviteLoading}
-              className="px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 hover:opacity-90 disabled:opacity-50 bg-accent text-sur-accent"
-            >
-              {inviteLoading ? <Loader2 size={14} className="animate-spin" /> : <Mail size={14} />}
-              Envoyer l'invitation
-            </button>
+            <Bouton variante="discret" onClick={() => setShowInviteForm(false)}>Annuler</Bouton>
+            <Bouton variante="principal" icone={Mail} chargement={inviteLoading} onClick={handleInvite}>Envoyer l’invitation</Bouton>
           </div>
-        </div>
+        </Carte>
       )}
 
-      {/* Members List */}
-      <div className={`${cardBg} rounded-xl border overflow-hidden`}>
-        <div className={`px-4 py-3 border-b border-bord`}>
-          <h3 className={`font-semibold text-sm ${textPrimary}`}>Membres actifs</h3>
-        </div>
-        <div className="divide-y divide-slate-200">
+      {/* Membres */}
+      <Carte marge="aucun" className="overflow-hidden">
+        <h3 className="px-4 py-3 border-b border-bord font-semibold text-sm text-encre">Membres actifs</h3>
+        <ul className="divide-y divide-bord">
           {members.map(member => {
             const isMe = member.user_id === currentUserId;
             const displayName = getMemberDisplayName({ ...member, isCurrentUser: isMe }, currentUserEmail);
-            const initials = displayName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) || '?';
+            const idRole = `role-membre-${member.id}`;
             return (
-              <div key={member.id} className={`px-4 py-3 flex items-center gap-3 hover:bg-surface-2 transition-colors`}>
-                <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold"
-                  style={{ background: member.role === 'owner' ? '#f59e0b' : couleur }}>
-                  {initials}
-                </div>
+              <li key={member.id} className="px-4 py-3 flex flex-wrap items-center gap-3">
+                <Avatar nom={displayName} taille={40} />
                 <div className="flex-1 min-w-0">
-                  <p className={`text-sm font-medium truncate ${textPrimary}`}>
+                  <p id={`${idRole}-libelle`} className="text-sm font-semibold truncate text-encre">
                     {displayName}
-                    {isMe && <span className={`ml-2 text-xs ${textMuted}`}>(vous)</span>}
+                    {isMe && <span className="ml-2 text-sm font-normal text-encre-3">(vous)</span>}
                   </p>
-                  <span className={`inline-block text-[11px] px-2 py-0.5 rounded-full font-medium ${roleBadge(member.role)}`}>
-                    {getRoleLabel(member.role)}
-                  </span>
+                  <Pastille className="mt-1">{getRoleLabel(member.role)}</Pastille>
                 </div>
                 {canManageTeam && member.role !== 'owner' && (
-                  <div className="flex items-center gap-1.5">
-                    <select
-                      value={member.role}
-                      onChange={e => handleChangeRole(member.id, e.target.value)}
-                      disabled={changingRole === member.id}
-                      className={`text-xs px-2 py-1 rounded-lg border ${inputBg}`}
-                    >
-                      {INVITABLE_ROLES.map(r => (
-                        <option key={r.value} value={r.value}>{r.label}</option>
-                      ))}
-                    </select>
-                    <button
-                      onClick={() => handleRemoveMember(member.id, displayName)}
-                      className={`p-1.5 rounded-lg ${isDark ? 'hover:bg-red-900/50 text-red-400' : 'hover:bg-red-50 text-red-500'}`}
-                      title="Retirer ce membre"
-                    >
-                      <Trash2 size={14} />
-                    </button>
+                  <div className="flex items-center gap-1.5 w-full sm:w-auto">
+                    <div className="flex-1 sm:w-48">
+                      <ChampChoix id={idRole} idLibelle={`${idRole}-libelle`} titre={`Rôle de ${displayName}`} options={optionsRoles}
+                        valeur={member.role} onChange={(v) => handleChangeRole(member.id, v)} disabled={changingRole === member.id} className="!h-11" />
+                    </div>
+                    <BoutonIcone icone={Trash2} taille={18} libelle="Retirer ce membre" className="!text-danger-texte hover:!bg-danger-fond"
+                      onClick={() => handleRemoveMember(member.id, displayName)} />
                   </div>
                 )}
-              </div>
+              </li>
             );
           })}
-        </div>
-      </div>
+        </ul>
+      </Carte>
 
-      {/* Pending Invitations */}
+      {/* Invitations en attente */}
       {pendingInvitations.length > 0 && (
-        <div className={`${cardBg} rounded-xl border overflow-hidden`}>
-          <div className={`px-4 py-3 border-b border-bord`}>
-            <h3 className={`font-semibold text-sm ${textPrimary}`}>
-              Invitations en attente ({pendingInvitations.length})
-            </h3>
-          </div>
-          <div className="divide-y divide-slate-200">
+        <Carte marge="aucun" className="overflow-hidden">
+          <h3 className="px-4 py-3 border-b border-bord font-semibold text-sm text-encre">
+            Invitations en attente ({pendingInvitations.length})
+          </h3>
+          <ul className="divide-y divide-bord">
             {pendingInvitations.map(inv => (
-              <div key={inv.id} className="px-4 py-3 flex items-center gap-3">
-                <Clock size={16} className="text-amber-500 flex-shrink-0" />
+              <li key={inv.id} className="px-4 py-3 flex items-center gap-3">
+                <Clock size={18} aria-hidden="true" className="text-encre-3 flex-shrink-0" />
                 <div className="flex-1 min-w-0">
-                  <p className={`text-sm truncate ${textPrimary}`}>{inv.email || inv.phone}</p>
-                  <p className={`text-xs ${textMuted}`}>
-                    {getRoleLabel(inv.role)} · Expire le {dateLue(inv.expires_at).toLocaleDateString('fr-FR')}
+                  <p className="text-sm truncate text-encre">{inv.email || inv.phone}</p>
+                  <p className="text-sm text-encre-3">
+                    {getRoleLabel(inv.role)} · expire le {dateLue(inv.expires_at).toLocaleDateString('fr-FR')}
                   </p>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <button
-                    onClick={() => copyInviteLink(inv.token)}
-                    className={`p-1.5 rounded-lg hover:bg-surface-2 text-encre-3`}
-                    title="Copier le lien d'invitation"
-                  >
-                    <Copy size={14} />
-                  </button>
+                <div className="flex items-center gap-1">
+                  <BoutonIcone icone={Copy} taille={18} libelle="Copier le lien d'invitation" onClick={() => copyInviteLink(inv.token)} />
                   {canManageTeam && (
-                    <button
-                      onClick={() => handleRevoke(inv.id)}
-                      className={`p-1.5 rounded-lg ${isDark ? 'hover:bg-red-900/50 text-red-400' : 'hover:bg-red-50 text-red-500'}`}
-                      title="Annuler l'invitation"
-                    >
-                      <X size={14} />
-                    </button>
+                    <BoutonIcone icone={X} taille={18} libelle="Annuler l'invitation" className="!text-danger-texte hover:!bg-danger-fond" onClick={() => handleRevoke(inv.id)} />
                   )}
                 </div>
-              </div>
+              </li>
             ))}
-          </div>
-        </div>
+          </ul>
+        </Carte>
       )}
 
-      {/* Past Invitations (collapsed) */}
+      {/* Historique (replié) */}
       {pastInvitations.length > 0 && (
-        <details className={`${cardBg} rounded-xl border overflow-hidden`}>
-          <summary className={`px-4 py-3 cursor-pointer hover:bg-surface-2`}>
-            <span className={`text-sm font-medium ${textMuted}`}>
-              Historique ({pastInvitations.length})
+        <details className="bg-surface border border-bord rounded-2xl shadow-e1 overflow-hidden">
+          <summary className="px-4 min-h-[48px] flex items-center cursor-pointer hover:bg-surface-2">
+            <span className="text-sm font-semibold text-encre-2">
+              Historique des invitations ({pastInvitations.length})
             </span>
           </summary>
-          <div className="divide-y divide-slate-200">
+          <ul className="divide-y divide-bord">
             {pastInvitations.slice(0, 10).map(inv => (
-              <div key={inv.id} className="px-4 py-2.5 flex items-center gap-3">
-                {inv.status === 'accepted' ? (
-                  <Check size={14} className="text-emerald-500" />
-                ) : (
-                  <X size={14} className="text-red-400" />
-                )}
-                <div className="flex-1 min-w-0">
-                  <p className={`text-xs truncate ${textMuted}`}>{inv.email || inv.phone}</p>
-                </div>
-                <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
-                  inv.status === 'accepted' ? 'bg-emerald-100 text-emerald-700' :
-                  inv.status === 'revoked' ? 'bg-red-100 text-red-700' :
-                  'bg-slate-100 text-slate-500'
-                }`}>
+              <li key={inv.id} className="px-4 py-2.5 flex items-center gap-3">
+                <p className="flex-1 min-w-0 text-sm truncate text-encre-2">{inv.email || inv.phone}</p>
+                <Pastille ton={inv.status === 'accepted' ? 'succes' : 'neutre'}>
                   {inv.status === 'accepted' ? 'Acceptée' : inv.status === 'revoked' ? 'Annulée' : 'Expirée'}
-                </span>
-              </div>
+                </Pastille>
+              </li>
             ))}
-          </div>
+          </ul>
         </details>
       )}
     </div>

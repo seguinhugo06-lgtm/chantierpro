@@ -5,14 +5,18 @@
  * Shows a list of entreprises with CRUD, activation, archival.
  */
 
-import React, { useState, memo } from 'react';
+import { useState, memo } from 'react';
 import {
-  Building2, Plus, Star, Edit2, Archive, Check,
+  Building2, Plus, Star, Edit2, Archive,
   Phone, Mail, MapPin, ChevronDown, ChevronUp, Loader2,
 } from 'lucide-react';
 import { useEntreprise } from '../../context/EntrepriseContext';
 import { useConfirm } from '../../context/AppContext';
 import EntrepriseFormModal from './EntrepriseFormModal';
+import { Bouton, BoutonIcone } from '../ui/Bouton';
+import Pastille from '../ui/Pastille';
+import { Avatar } from '../ui/LigneListe';
+import { adresseComplete } from '../../lib/adresseEntreprise';
 
 const MAX_ENTREPRISES = 5;
 
@@ -29,19 +33,17 @@ function getInitiales(ent) {
 
 const EntrepriseSettingsPage = memo(function EntrepriseSettingsPage({
   isDark = false,
-  couleur = '#f97316',
+  couleur,
   showToast,
 }) {
   const { confirm } = useConfirm();
   const {
     entreprises,
     activeEntreprise,
-    hasMultiple,
     switchEntreprise,
     addEntreprise,
     updateEntreprise,
     archiveEntreprise,
-    refreshEntreprises,
   } = useEntreprise();
 
   const [showForm, setShowForm] = useState(false);
@@ -138,17 +140,7 @@ const EntrepriseSettingsPage = memo(function EntrepriseSettingsPage({
             {entreprises.length} entreprise{entreprises.length > 1 ? 's' : ''} · Maximum {MAX_ENTREPRISES}
           </p>
         </div>
-        <button
-          onClick={handleAdd}
-          disabled={!canAdd || isProcessing}
-          className={`
-            flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium
-            transition-colors disabled:opacity-50 disabled:cursor-not-allowed bg-accent text-sur-accent
-          `}
-        >
-          <Plus size={16} />
-          Nouvelle entreprise
-        </button>
+        <Bouton icone={Plus} onClick={handleAdd} disabled={!canAdd || isProcessing}>Nouvelle entreprise</Bouton>
       </div>
 
       {/* Entreprise list */}
@@ -163,20 +155,18 @@ const EntrepriseSettingsPage = memo(function EntrepriseSettingsPage({
               key={ent.id}
               className={`
                 rounded-2xl border overflow-hidden transition-shadow
-                ${isActive ? 'ring-2' : ''}
+                ${isActive ? 'ring-2 ring-accent' : ''}
                 ${tc.card}
               `}
-              style={isActive ? { '--tw-ring-color': ent.couleur || couleur } : undefined}
             >
               {/* Main row */}
               <div className="flex items-center gap-4 p-4">
                 {/* Logo/Initiales */}
-                <div
-                  className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 text-white font-bold text-sm shadow-sm"
-                  style={{ background: `linear-gradient(135deg, ${ent.couleur || '#94a3b8'}, ${ent.couleur || '#94a3b8'}cc)` }}
-                >
-                  {initiales}
-                </div>
+                {/* Initiales neutres, et la couleur des documents de cette entreprise en pastille */}
+                <span className="relative flex-shrink-0">
+                  <Avatar nom={initiales.split('').join(' ')} taille={48} />
+                  {ent.couleur ? <span aria-hidden="true" className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full border-2 border-surface" style={{ background: ent.couleur }} /> : null}
+                </span>
 
                 {/* Info */}
                 <div className="flex-1 min-w-0">
@@ -184,14 +174,7 @@ const EntrepriseSettingsPage = memo(function EntrepriseSettingsPage({
                     <h3 className={`font-semibold truncate ${tc.text}`}>
                       {ent.nom}
                     </h3>
-                    {isActive && (
-                      <span
-                        className="px-2 py-0.5 rounded-full text-[10px] font-semibold text-white flex-shrink-0"
-                        style={{ background: ent.couleur || couleur }}
-                      >
-                        Active
-                      </span>
-                    )}
+                    {isActive && <Pastille ton="info" className="flex-shrink-0">Active</Pastille>}
                   </div>
                   <p className={`text-sm truncate ${tc.textMuted}`}>
                     {[ent.formeJuridique, ent.siret && `SIRET ${ent.siret}`, ent.ville].filter(Boolean).join(' · ')}
@@ -201,41 +184,23 @@ const EntrepriseSettingsPage = memo(function EntrepriseSettingsPage({
                 {/* Actions */}
                 <div className="flex items-center gap-1 flex-shrink-0">
                   {!isActive && (
-                    <button
-                      onClick={() => handleActivate(ent.id)}
-                      disabled={isProcessing}
-                      className={`min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg transition-colors hover:bg-surface-2 text-encre-3`}
-                      title="Activer cette entreprise"
-                    >
-                      <Star size={16} />
-                    </button>
+                    <BoutonIcone icone={Star} taille={18} libelle="Activer cette entreprise" onClick={() => handleActivate(ent.id)} disabled={isProcessing} />
                   )}
-                  <button
-                    onClick={() => handleEdit(ent)}
-                    className={`min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg transition-colors hover:bg-surface-2 text-encre-3`}
-                    title="Modifier"
-                  >
-                    <Edit2 size={16} />
-                  </button>
-                  <button
-                    onClick={() => setExpandedId(isExpanded ? null : ent.id)}
-                    className={`min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg transition-colors hover:bg-surface-2 text-encre-3`}
-                    title={isExpanded ? 'Réduire' : 'Détails'}
-                  >
-                    {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                  </button>
+                  <BoutonIcone icone={Edit2} taille={18} libelle={`Modifier ${ent.nom}`} onClick={() => handleEdit(ent)} />
+                  <BoutonIcone icone={isExpanded ? ChevronUp : ChevronDown} taille={18} libelle={isExpanded ? 'Réduire' : 'Détails'} aria-expanded={isExpanded}
+                    onClick={() => setExpandedId(isExpanded ? null : ent.id)} />
                 </div>
               </div>
 
               {/* Expanded details */}
               {isExpanded && (
-                <div className={`px-4 pb-4 pt-1 border-t ${isDark ? 'border-slate-700/50' : 'border-gray-100'}`}>
+                <div className={`px-4 pb-4 pt-1 border-t ${'border-bord'}`}>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                     {ent.adresse && (
                       <div className="flex items-start gap-2">
                         <MapPin size={14} className={`mt-0.5 ${tc.textMuted}`} />
                         <span className={tc.textMuted}>
-                          {ent.adresse}{ent.codePostal ? `, ${ent.codePostal}` : ''}{ent.ville ? ` ${ent.ville}` : ''}
+                          {adresseComplete(ent).replace(/\n/g, ', ')}
                         </span>
                       </div>
                     )}
@@ -261,13 +226,13 @@ const EntrepriseSettingsPage = memo(function EntrepriseSettingsPage({
 
                   {/* Archive button */}
                   {entreprises.length > 1 && (
-                    <div className="mt-4 pt-3 border-t flex justify-end" style={{ borderColor: isDark ? 'rgb(51,65,85,0.5)' : 'rgb(243,244,246)' }}>
+                    <div className="mt-4 pt-3 border-t border-bord flex justify-end">
                       <button
                         onClick={() => handleArchive(ent)}
                         disabled={isProcessing}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-red-500 hover:bg-red-50 transition-colors"
+                        className="flex items-center gap-1.5 h-11 px-3 rounded-full text-sm font-semibold text-danger-texte hover:bg-danger-fond transition-colors"
                       >
-                        <Archive size={14} />
+                        <Archive size={16} aria-hidden="true" />
                         Archiver
                       </button>
                     </div>

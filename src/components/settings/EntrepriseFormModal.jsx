@@ -4,8 +4,18 @@
  * Multi-tab form: Identité, Légal, Assurances, Banque, Documents
  */
 
-import React, { useState, useCallback, memo } from 'react';
+import { useState, useCallback, memo } from 'react';
 import { X, Building2, FileText, Shield, CreditCard, Settings } from 'lucide-react';
+import { COULEUR_DOCUMENTS_DEFAUT } from '../../lib/theme';
+import { champsAdresse, adresseComposee } from '../../lib/adresseEntreprise';
+import ChampChoix from '../ui/ChampChoix';
+
+// « Micro-entreprise » : la valeur que reconnaît la franchise de TVA (avant : « Auto-entrepreneur »,
+// TVA facturée sous « TVA non applicable, art. 293 B » — relecture juridique du 10 oct. 2026)
+const FORMES = [
+  { valeur: 'Micro-entreprise', libelle: 'Micro-entreprise', detail: 'auto-entrepreneur' },
+  ...['EI', 'EIRL', 'EURL', 'SARL', 'SAS', 'SASU', 'SA', 'SCI'].map((v) => ({ valeur: v, libelle: v })),
+];
 
 const TABS = [
   { key: 'identite', label: 'Identité', icon: Building2 },
@@ -16,7 +26,7 @@ const TABS = [
 ];
 
 const COULEURS_PRESET = [
-  '#f97316', '#ef4444', '#3b82f6', '#10b981',
+  '#12336F', COULEUR_DOCUMENTS_DEFAUT, '#ef4444', '#3b82f6', '#10b981',
   '#8b5cf6', '#ec4899', '#06b6d4', '#eab308',
 ];
 
@@ -35,23 +45,26 @@ const EntrepriseFormModal = memo(function EntrepriseFormModal({
   entreprise = null, // null = create, object = edit
   onSave,
   onClose,
-  isDark = false,
-  couleur = '#f97316',
+  // isDark et couleur restent acceptés : les jetons du thème suivent le clair, le sombre et l'accent d'eux-mêmes
+  isDark: _isDark = false,
+  couleur: _couleur,
   isProcessing = false,
 }) {
   const isEdit = !!entreprise;
+  // Adresse en trois champs (src/lib/adresseEntreprise.js) : l'adresse complète enregistrée est celle que lisent les documents
+  const adresseLue = champsAdresse(entreprise || {});
 
   const [tab, setTab] = useState('identite');
   const [form, setForm] = useState({
     nom: entreprise?.nom || '',
     nomCourt: entreprise?.nomCourt || '',
-    couleur: entreprise?.couleur || '#f97316',
+    couleur: entreprise?.couleur || COULEUR_DOCUMENTS_DEFAUT,
     logo: entreprise?.logo || '',
     slogan: entreprise?.slogan || '',
     // Coordonnées
-    adresse: entreprise?.adresse || '',
-    codePostal: entreprise?.codePostal || '',
-    ville: entreprise?.ville || '',
+    adresse: adresseLue.rue,
+    codePostal: adresseLue.codePostal,
+    ville: adresseLue.ville,
     tel: entreprise?.tel || '',
     email: entreprise?.email || '',
     siteWeb: entreprise?.siteWeb || '',
@@ -95,19 +108,19 @@ const EntrepriseFormModal = memo(function EntrepriseFormModal({
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!form.nom.trim()) return;
-    onSave(form);
+    onSave({ ...form, adresse: adresseComposee({ rue: form.adresse, codePostal: form.codePostal, ville: form.ville, suite: adresseLue.suite }) });
   };
 
   const tc = {
     card: 'bg-surface',
-    input: isDark ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400' : 'bg-white border-gray-300 text-gray-900',
+    input: 'bg-surface border-bord-fort text-encre',
     text: 'text-encre',
     textMuted: 'text-encre-3',
     label: 'text-encre-2',
     border: 'border-bord',
   };
 
-  const inputCls = `w-full px-3 py-2 rounded-xl border text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-0 ${tc.input}`;
+  const inputCls = `w-full h-11 px-3 rounded-xl border text-base sm:text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent ${tc.input}`;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -115,17 +128,18 @@ const EntrepriseFormModal = memo(function EntrepriseFormModal({
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
 
       {/* Modal */}
-      <div className={`relative w-full max-w-2xl max-h-[90vh] rounded-2xl shadow-xl flex flex-col ${tc.card}`}>
+      <div role="dialog" aria-modal="true" aria-labelledby="entreprise-form-titre" className={`relative w-full max-w-2xl max-h-[90vh] rounded-2xl shadow-xl flex flex-col ${tc.card}`}>
         {/* Header */}
         <div className={`flex items-center justify-between px-6 py-4 border-b ${tc.border}`}>
-          <h2 className={`text-lg font-semibold ${tc.text}`}>
+          <h2 id="entreprise-form-titre" className={`text-lg font-semibold ${tc.text}`}>
             {isEdit ? `Modifier ${entreprise.nom}` : 'Nouvelle entreprise'}
           </h2>
           <button
             onClick={onClose}
-            className={`p-2 rounded-lg transition-colors hover:bg-surface-2 text-encre-3`}
+            aria-label="Fermer"
+            className="w-11 h-11 -mr-2 flex items-center justify-center rounded-lg transition-colors hover:bg-surface-2 text-encre-3"
           >
-            <X size={18} />
+            <X size={18} aria-hidden="true" />
           </button>
         </div>
 
@@ -136,14 +150,14 @@ const EntrepriseFormModal = memo(function EntrepriseFormModal({
               key={t.key}
               onClick={() => setTab(t.key)}
               className={`
-                flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium
+                flex items-center gap-1.5 h-11 px-3 rounded-full text-sm font-semibold
                 whitespace-nowrap transition-colors flex-shrink-0
                 ${tab === t.key
-                  ? 'text-white'
+                  ? 'bg-encre text-surface'
                   : 'text-encre-3 hover:bg-surface-2 hover:text-encre'
                 }
               `}
-              style={tab === t.key ? { background: couleur } : undefined}
+              aria-pressed={tab === t.key}
             >
               <t.icon size={14} />
               {t.label}
@@ -167,7 +181,6 @@ const EntrepriseFormModal = memo(function EntrepriseFormModal({
                   className={inputCls}
                   placeholder="Ex: Martin Renovation SARL"
                   required
-                  style={{ '--tw-ring-color': couleur }}
                 />
               </div>
 
@@ -190,21 +203,23 @@ const EntrepriseFormModal = memo(function EntrepriseFormModal({
                 <label className={`block text-sm font-medium mb-1.5 ${tc.label}`}>
                   Couleur
                 </label>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   {COULEURS_PRESET.map(c => (
                     <button
                       key={c}
                       type="button"
                       onClick={() => updateField('couleur', c)}
-                      className={`w-8 h-8 rounded-lg transition-transform ${form.couleur === c ? 'ring-2 ring-offset-2 scale-110' : 'hover:scale-105'}`}
-                      style={{ background: c, '--tw-ring-color': c }}
+                      aria-pressed={form.couleur === c}
+                      aria-label={`Couleur ${c}`}
+                      className={`w-11 h-11 rounded-xl transition-transform ${form.couleur === c ? 'scale-105' : 'hover:scale-105'}`}
+                      style={{ background: c, outline: form.couleur === c ? `3px solid ${c}` : 'none', outlineOffset: 2 }}
                     />
                   ))}
                   <input
                     type="color"
                     value={form.couleur}
                     onChange={e => updateField('couleur', e.target.value)}
-                    className="w-8 h-8 rounded-lg cursor-pointer border-0 p-0"
+                    className="w-11 h-11 rounded-xl cursor-pointer border-0 p-0"
                     title="Couleur personnalisée"
                   />
                 </div>
@@ -313,27 +328,12 @@ const EntrepriseFormModal = memo(function EntrepriseFormModal({
             <>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className={`block text-sm font-medium mb-1 ${tc.label}`}>
+                  <label id="entreprise-form-forme-libelle" htmlFor="entreprise-form-forme" className={`block text-sm font-medium mb-1 ${tc.label}`}>
                     Forme juridique
                   </label>
-                  <select
-                    value={form.formeJuridique}
-                    onChange={e => updateField('formeJuridique', e.target.value)}
-                    className={inputCls}
-                  >
-                    <option value="">Sélectionner...</option>
-                    {/* « Micro-entreprise » : la valeur que reconnaît la franchise de TVA (avant : « Auto-entrepreneur »,
-                        TVA facturée sous « TVA non applicable, art. 293 B » — relecture juridique du 10 oct. 2026) */}
-                    <option value="Micro-entreprise">Micro-entreprise / Auto-entrepreneur</option>
-                    <option value="EI">EI</option>
-                    <option value="EIRL">EIRL</option>
-                    <option value="EURL">EURL</option>
-                    <option value="SARL">SARL</option>
-                    <option value="SAS">SAS</option>
-                    <option value="SASU">SASU</option>
-                    <option value="SA">SA</option>
-                    <option value="SCI">SCI</option>
-                  </select>
+                  {/* Menu de l'interface, pas une liste native (retours d'Hugo, 21-23 oct. 2026) */}
+                  <ChampChoix id="entreprise-form-forme" idLibelle="entreprise-form-forme-libelle" titre="Forme juridique" vide="Choisir…"
+                    options={FORMES} valeur={form.formeJuridique} onChange={(v) => updateField('formeJuridique', v)} />
                 </div>
                 <div>
                   <label className={`block text-sm font-medium mb-1 ${tc.label}`}>

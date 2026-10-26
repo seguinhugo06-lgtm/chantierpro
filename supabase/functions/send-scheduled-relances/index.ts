@@ -24,6 +24,8 @@ import { estClientPro, creditsParFacture, paiementsParDocument, resteDu, relanca
 // Rappels du prochain ramonage (migration 104, D-30) : règles et e-mail sans import distant, testés sous vitest
 import { rappelsAEnvoyer, emailRappelRamonage, jourParis } from './ramonage.ts';
 import { nomImprime } from '../_shared/identite.ts';
+// Adresse complète sans répéter « code postal ville » (Paramètres l'enregistre en trois champs depuis le 26 oct. 2026)
+import { adresseComplete } from '../_shared/adresseEntreprise.ts';
 
 const APP_ORIGIN = 'https://mallettico.fr';
 // Paiement en ligne des factures masqué en v1 (décision D-21, FONCTIONS.paiementEnLigne côté app) : aucun lien
@@ -548,7 +550,7 @@ serve(async (req) => {
       report.totalDue += dus.length;
       const identite = {
         nom: nomImprime({ nom: ent.nom, forme_juridique: ent.forme_juridique, nomEntrepreneur: reglages.nomEntrepreneur }),
-        adresse: [ent.adresse, [ent.code_postal, ent.ville].filter(Boolean).join(' ')].filter(Boolean).join(', '),
+        adresse: adresseComplete(ent).split('\n').join(', '),
         telephone: ent.telephone,
         email: ent.email,
         couleur: ent.couleur,

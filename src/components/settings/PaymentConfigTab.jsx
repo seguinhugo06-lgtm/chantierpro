@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   CreditCard, Building2, Shield, CheckCircle, XCircle, ExternalLink,
   AlertTriangle, Loader2, Info, ToggleLeft, ToggleRight, Lock, Zap, KeyRound,
@@ -16,7 +16,8 @@ import supabase, { isDemo } from '../../supabaseClient';
  * 1. Clé API Stripe (connexion, activation, frais)
  * 2. Récapitulatif des moyens de paiement
  */
-export default function PaymentConfigTab({ entreprise, isDark, couleur = '#F97316', user }) {
+// couleur reste accepté : l'accent du thème suit la couleur de l'entreprise de lui-même
+export default function PaymentConfigTab({ entreprise, isDark, couleur: _couleur, user }) {
   const [config, setConfig] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -144,7 +145,7 @@ export default function PaymentConfigTab({ entreprise, isDark, couleur = '#F9731
       {/* Header */}
       <div className={`${cardBg} rounded-2xl border p-5`}>
         <div className="flex items-start gap-4">
-          <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${couleur}15` }}>
+          <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 bg-accent/10">
             <CreditCard size={24} className="text-accent-texte" />
           </div>
           <div className="flex-1 min-w-0">
@@ -157,14 +158,14 @@ export default function PaymentConfigTab({ entreprise, isDark, couleur = '#F9731
             <div className="flex flex-wrap gap-2 mt-3">
               <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
                 isActive
-                  ? (isDark ? 'bg-emerald-900/40 text-emerald-400' : 'bg-emerald-50 text-emerald-700')
+                  ? ('bg-succes-fond text-succes-texte')
                   : 'bg-surface-2 text-encre-3'
               }`}>
                 <CreditCard size={12} />
                 CB {isActive ? '✓' : '—'}
               </span>
               <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
-                isDark ? 'bg-emerald-900/40 text-emerald-400' : 'bg-emerald-50 text-emerald-700'
+                'bg-succes-fond text-succes-texte'
               }`}>
                 <Building2 size={12} />
                 Virement {entreprise?.iban ? '✓' : '—'}
@@ -176,11 +177,11 @@ export default function PaymentConfigTab({ entreprise, isDark, couleur = '#F9731
 
       {/* Demo mode banner */}
       {isDemo && (
-        <div className={`rounded-xl p-4 flex items-start gap-3 ${isDark ? 'bg-amber-900/30 border border-amber-700' : 'bg-amber-50 border border-amber-200'}`}>
-          <AlertTriangle size={18} className={`flex-shrink-0 mt-0.5 ${isDark ? 'text-amber-400' : 'text-amber-600'}`} />
+        <div className={`rounded-xl p-4 flex items-start gap-3 ${'bg-alerte-fond border border-alerte-point/40'}`}>
+          <AlertTriangle size={18} className={`flex-shrink-0 mt-0.5 ${'text-alerte-texte'}`} />
           <div>
-            <p className={`text-sm font-medium ${isDark ? 'text-amber-300' : 'text-amber-800'}`}>Mode démonstration</p>
-            <p className={`text-xs mt-1 ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>
+            <p className={`text-sm font-medium ${'text-alerte-texte'}`}>Mode démonstration</p>
+            <p className={`text-xs mt-1 ${'text-alerte-texte'}`}>
               En mode démo, la connexion Stripe n'est pas fonctionnelle. Passez en mode production pour activer les paiements.
             </p>
           </div>
@@ -189,10 +190,10 @@ export default function PaymentConfigTab({ entreprise, isDark, couleur = '#F9731
 
       {/* ── Section 1: Clé API Stripe ──────────────── */}
       <div className={`${cardBg} rounded-2xl border overflow-hidden`}>
-        <div className="p-5 border-b" style={{ borderColor: isDark ? '#334155' : '#e2e8f0' }}>
+        <div className="p-5 border-b border-bord">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-indigo-500/10">
-              <CreditCard size={20} className="text-indigo-500" />
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-surface-2">
+              <CreditCard size={20} className="text-encre-2" aria-hidden="true" />
             </div>
             <div className="flex-1">
               <h4 className={`font-semibold ${textPrimary}`}>Carte bancaire — Stripe</h4>
@@ -200,7 +201,7 @@ export default function PaymentConfigTab({ entreprise, isDark, couleur = '#F9731
             </div>
             {isActive && (
               <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold ${
-                isDark ? 'bg-emerald-900/40 text-emerald-400' : 'bg-emerald-50 text-emerald-700'
+                'bg-succes-fond text-succes-texte'
               }`}>
                 <CheckCircle size={14} />
                 Activé
@@ -211,9 +212,9 @@ export default function PaymentConfigTab({ entreprise, isDark, couleur = '#F9731
 
         <div className="p-5 space-y-4">
           {keySaved && (
-            <div className={`rounded-xl p-3 flex items-center gap-2 ${isDark ? 'bg-emerald-900/30 border border-emerald-800' : 'bg-emerald-50 border border-emerald-200'}`}>
-              <CheckCircle size={16} className="text-emerald-500 flex-shrink-0" />
-              <p className={`text-sm ${isDark ? 'text-emerald-300' : 'text-emerald-700'}`}>
+            <div className={`rounded-xl p-3 flex items-center gap-2 ${'bg-succes-fond border border-succes-point/40'}`}>
+              <CheckCircle size={16} className="text-succes-texte flex-shrink-0" aria-hidden="true" />
+              <p className={`text-sm ${'text-succes-texte'}`}>
                 Clé enregistrée — le paiement en ligne est activé.
               </p>
             </div>
@@ -281,7 +282,7 @@ export default function PaymentConfigTab({ entreprise, isDark, couleur = '#F9731
                 {showKeyForm && (
                   <button
                     onClick={() => { setShowKeyForm(false); setApiKey(''); setKeyError(null); }}
-                    className={`px-4 py-3.5 rounded-xl text-sm font-medium ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}
+                    className={`px-4 py-3.5 rounded-xl text-sm font-medium ${'bg-surface-2 hover:bg-bord text-encre-2'}`}
                   >
                     Annuler
                   </button>
@@ -299,7 +300,7 @@ export default function PaymentConfigTab({ entreprise, isDark, couleur = '#F9731
                 </div>
                 <button
                   onClick={() => setShowKeyForm(true)}
-                  className={`text-xs font-medium px-3 py-1.5 rounded-lg ${isDark ? 'bg-slate-600 hover:bg-slate-500 text-slate-200' : 'bg-slate-200 hover:bg-slate-300 text-slate-700'}`}
+                  className={`text-xs font-medium px-3 py-1.5 rounded-lg ${'bg-bord hover:bg-bord-fort text-encre-2'}`}
                 >
                   Remplacer
                 </button>
@@ -372,9 +373,9 @@ export default function PaymentConfigTab({ entreprise, isDark, couleur = '#F9731
           </div>
 
           {!entreprise?.iban && (
-            <div className={`rounded-xl p-3 flex items-start gap-2 ${isDark ? 'bg-amber-900/20 border border-amber-800' : 'bg-amber-50 border border-amber-200'}`}>
-              <AlertTriangle size={14} className={`flex-shrink-0 mt-0.5 ${isDark ? 'text-amber-400' : 'text-amber-600'}`} />
-              <p className={`text-xs ${isDark ? 'text-amber-300' : 'text-amber-700'}`}>
+            <div className={`rounded-xl p-3 flex items-start gap-2 ${'bg-alerte-fond border border-alerte-point/40'}`}>
+              <AlertTriangle size={14} className={`flex-shrink-0 mt-0.5 ${'text-alerte-texte'}`} />
+              <p className={`text-xs ${'text-alerte-texte'}`}>
                 Ajoutez votre IBAN dans Réglages &gt; Banque pour afficher l'option virement sur la page de paiement.
               </p>
             </div>
@@ -410,7 +411,7 @@ export default function PaymentConfigTab({ entreprise, isDark, couleur = '#F9731
 }
 
 /** Payment method row component */
-function PaymentMethodRow({ icon, label, description, enabled, fees, isDark, textPrimary, textMuted, alwaysAvailable }) {
+function PaymentMethodRow({ icon, label, description, enabled, fees, textPrimary, textMuted, alwaysAvailable }) {
   return (
     <div className={`flex items-center gap-3 p-3 rounded-xl bg-fond`}>
       <div className="flex-shrink-0">{icon}</div>
@@ -420,7 +421,7 @@ function PaymentMethodRow({ icon, label, description, enabled, fees, isDark, tex
       </div>
       <div className="text-right flex-shrink-0">
         {enabled ? (
-          <span className={`inline-flex items-center gap-1 text-xs font-medium ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>
+          <span className={`inline-flex items-center gap-1 text-xs font-medium ${'text-succes-texte'}`}>
             <CheckCircle size={14} />
             Actif
           </span>

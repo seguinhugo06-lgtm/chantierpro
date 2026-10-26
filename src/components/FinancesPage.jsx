@@ -1,10 +1,12 @@
-import React, { lazy, Suspense, useState, useEffect } from 'react';
-import { Wallet, Download, BarChart3, Landmark, CreditCard, FileText, AlertTriangle, RefreshCw } from 'lucide-react';
+import { lazy, Suspense, useState, useEffect, useMemo } from 'react';
+import { Wallet, Download, BarChart3, FileText, AlertTriangle, RefreshCw } from 'lucide-react';
 import TabBar from './ui/TabBar';
 import ErrorBoundary from './ui/ErrorBoundary';
-import PageHeader from './ui/PageHeader';
+import { EnTetePage } from './ui/EnTete';
+import { Bouton } from './ui/Bouton';
 import { usePermissions } from '../hooks/usePermissions';
 import { captureException } from '../lib/sentry';
+import { estOuverte } from '../lib/ventes';
 
 // Lazy load the 5 sub-modules
 const TresorerieModule = lazy(() => import('./tresorerie/TresorerieModule'));
@@ -12,41 +14,35 @@ const ExportComptable = lazy(() => import('./export/ExportComptable'));
 const AnalyticsPremium = lazy(() => import('./AnalyticsPremium'));
 const RapportsTab = lazy(() => import('./finances/RapportsTab'));
 
-const LoadingSpinner = ({ couleur }) => (
-  <div className="flex items-center justify-center py-16" role="status" aria-label="Chargement...">
-    <div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin"
-      style={{ borderColor: `${couleur}33`, borderTopColor: couleur }} />
+const LoadingSpinner = () => (
+  <div className="flex items-center justify-center py-16" role="status" aria-label="Chargement…">
+    <div className="w-8 h-8 border-4 rounded-full animate-spin border-accent/20 border-t-accent" />
   </div>
 );
 
-const ModuleErrorFallback = ({ moduleName, isDark, couleur, onRetry }) => (
-  <div className={`rounded-xl border p-6 text-center bg-surface border-bord`}>
-    <AlertTriangle size={32} className="mx-auto mb-3 text-amber-500" />
-    <p className={`font-medium mb-1 text-encre`}>
+const ModuleErrorFallback = ({ moduleName, onRetry }) => (
+  <div className="rounded-2xl border p-6 text-center bg-surface border-bord">
+    <AlertTriangle size={32} aria-hidden="true" className="mx-auto mb-3 text-alerte-texte" />
+    <p className="font-semibold mb-1 text-encre">
       Impossible de charger le module {moduleName}
     </p>
-    <p className={`text-sm mb-4 text-encre-3`}>
+    <p className="text-sm mb-4 text-encre-3">
       Une erreur est survenue. Vérifiez votre connexion ou réessayez.
     </p>
-    <button
-      onClick={onRetry || (() => window.location.reload())}
-      className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-accent text-sur-accent"
-    >
-      <RefreshCw size={14} /> Réessayer
-    </button>
+    <Bouton icone={RefreshCw} onClick={onRetry || (() => window.location.reload())}>Réessayer</Bouton>
   </div>
 );
 
+// « Export comptable » s'abrège au téléphone : les quatre onglets tiennent dans la rangée à 375 px (audit UX du 20 oct. 2026 :
+// « Rap… » coupé, et « Export Comptable » avec une capitale)
 const TAB_CONFIG = [
   { key: 'tresorerie', label: 'Trésorerie', icon: Wallet },
-  { key: 'export', label: 'Export Comptable', icon: Download },
+  { key: 'export', label: <><span className="sm:hidden">Export</span><span className="hidden sm:inline">Export comptable</span></>, icon: Download },
   { key: 'analytique', label: 'Analytique', icon: BarChart3 },
   { key: 'rapports', label: 'Rapports', icon: FileText },
 ];
 
-export default function FinancesPage({ devis, depenses, clients, chantiers, entreprise, equipe, paiements, pointages = [], isDark, couleur = '#F97316', setPage, modeDiscret: modeDiscretGlobal, ouvrirDocument}) {
-  const textPrimary = 'text-encre';
-  const textMuted = 'text-encre-2';
+export default function FinancesPage({ devis, depenses, clients, chantiers, entreprise, equipe, paiements, pointages = [], isDark, couleur, setPage, modeDiscret: modeDiscretGlobal, ouvrirDocument }) {
   // Onglet demandé par une autre page (Réglages › Comptabilité → « Ouvrir l'export comptable ») : lu au premier rendu,
   // effacé après le montage (un premier rendu abandonné puis repris le relit)
   const [activeTab, setActiveTab] = useState(() => {
@@ -65,22 +61,18 @@ export default function FinancesPage({ devis, depenses, clients, chantiers, entr
   // avait aussi son propre « Masquer les montants », qui ne masquait que cette page)
   const modeDiscret = modeDiscretGlobal;
 
-  // RBAC permissions
-  const { getPermission, canExportData } = usePermissions();
-  const finPerm = getPermission('finances');
+  // Droits : en consultation (rôle « readonly »), rien à ajouter, modifier ni supprimer dans la trésorerie
+  const { getPermission } = usePermissions();
+  const peutModifier = getPermission('finances') === 'full';
+
+  // Sous-titre : un fait vivant (audit UX § 2.2), pas un slogan. Une seule définition d'une facture à encaisser (ventes.js).
+  const aEncaisser = useMemo(() => (devis || []).filter((d) => estOuverte(d, paiements || [], new Date())).length, [devis, paiements]);
+  const sousTitre = aEncaisser === 0 ? 'Aucune facture à encaisser' : `${aEncaisser} facture${aEncaisser > 1 ? 's' : ''} à encaisser`;
 
   return (
     <div className="animate-page-enter">
-      {/* Header (design system) */}
-      <PageHeader
-        icon={Wallet}
-        title="Finances"
-        subtitle="Trésorerie, export comptable et analyses"
-        isDark={isDark}
-        color={couleur}
-      />
+      <EnTetePage titre="Finances" sousTitre={sousTitre} />
 
-      {/* Tab navigation */}
       <TabBar
         tabs={TAB_CONFIG}
         activeTab={activeTab}
@@ -92,8 +84,8 @@ export default function FinancesPage({ devis, depenses, clients, chantiers, entr
 
       {/* Tab content — kept mounted, hidden via CSS to preserve state */}
       <div className="mt-6" style={{ display: activeTab === 'tresorerie' ? 'block' : 'none' }}>
-        <ErrorBoundary isDark={isDark} fallback={<ModuleErrorFallback moduleName="Trésorerie" isDark={isDark} couleur={couleur} />}>
-          <Suspense fallback={<LoadingSpinner couleur={couleur} />}>
+        <ErrorBoundary isDark={isDark} fallback={<ModuleErrorFallback moduleName="Trésorerie" />}>
+          <Suspense fallback={<LoadingSpinner />}>
             <TresorerieModule
               devis={devis}
               depenses={depenses}
@@ -106,14 +98,15 @@ export default function FinancesPage({ devis, depenses, clients, chantiers, entr
               setPage={setPage}
               modeDiscret={modeDiscret}
               ouvrirDocument={ouvrirDocument}
+              peutModifier={peutModifier}
             />
           </Suspense>
         </ErrorBoundary>
       </div>
 
       <div className="mt-6" style={{ display: activeTab === 'export' ? 'block' : 'none' }}>
-        <ErrorBoundary isDark={isDark} fallback={<ModuleErrorFallback moduleName="Export Comptable" isDark={isDark} couleur={couleur} />}>
-          <Suspense fallback={<LoadingSpinner couleur={couleur} />}>
+        <ErrorBoundary isDark={isDark} fallback={<ModuleErrorFallback moduleName="Export comptable" />}>
+          <Suspense fallback={<LoadingSpinner />}>
             <ExportComptable
               devis={devis}
               depenses={depenses}
@@ -130,8 +123,8 @@ export default function FinancesPage({ devis, depenses, clients, chantiers, entr
       </div>
 
       <div className="mt-6" style={{ display: activeTab === 'analytique' ? 'block' : 'none' }}>
-        <ErrorBoundary isDark={isDark} fallback={<ModuleErrorFallback moduleName="Analytique" isDark={isDark} couleur={couleur} />}>
-          <Suspense fallback={<LoadingSpinner couleur={couleur} />}>
+        <ErrorBoundary isDark={isDark} fallback={<ModuleErrorFallback moduleName="Analytique" />}>
+          <Suspense fallback={<LoadingSpinner />}>
             <AnalyticsPremium
               modeDiscret={modeDiscret}
               devis={devis}
@@ -150,8 +143,8 @@ export default function FinancesPage({ devis, depenses, clients, chantiers, entr
       </div>
 
       <div className="mt-6" style={{ display: activeTab === 'rapports' ? 'block' : 'none' }}>
-        <ErrorBoundary isDark={isDark} fallback={<ModuleErrorFallback moduleName="Rapports" isDark={isDark} couleur={couleur} />}>
-          <Suspense fallback={<LoadingSpinner couleur={couleur} />}>
+        <ErrorBoundary isDark={isDark} fallback={<ModuleErrorFallback moduleName="Rapports" />}>
+          <Suspense fallback={<LoadingSpinner />}>
             <RapportsTab
             devis={devis}
             depenses={depenses}

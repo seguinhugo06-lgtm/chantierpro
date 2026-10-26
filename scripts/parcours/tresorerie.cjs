@@ -3,7 +3,7 @@
 // chargement par les réglages par défaut (solde de départ 0 €) ; la démo affichait un solde négatif et deux alertes.
 
 const lireSolde = (page) => page.evaluate(() => {
-  const m = /Solde aujourd'hui\s*\n\s*([^\n]+)/.exec(document.body.innerText);
+  const m = /Solde estimé\s*\n\s*([^\n]+)/.exec(document.body.innerText);
   return m ? m[1].trim() : '';
 });
 // Le signe moins peut être le tiret (« -3 077 € ») ou le vrai signe U+2212 (« −3 077 € », Intl) : les deux comptent

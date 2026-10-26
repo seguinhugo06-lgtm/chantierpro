@@ -1,6 +1,10 @@
-import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useId } from 'react';
 import { useToast, useConfirm } from '../context/AppContext';
-import { Download, FileText, RefreshCw, CheckCircle, AlertCircle, Calendar, Calculator, Building2, ArrowLeft, Shield, Search, ChevronDown, ChevronRight, Zap, Palette, FileCheck, BellRing, Package, Check, X, Loader2, Home, Smartphone, Fuel, Landmark, BarChart3, CreditCard, Users, Settings2, HardDrive, FolderOpen, Construction, Receipt, Mail, Sparkles, ClipboardList, GraduationCap, Flame } from 'lucide-react';
+import {
+  Download, FileText, RefreshCw, AlertCircle, AlertTriangle, Info, Calculator, Building2, ChevronLeft, Shield, Check,
+  Home, Smartphone, Fuel, Landmark, BarChart3, CreditCard, Users, HardDrive, FolderOpen, Construction, Receipt, Mail,
+  GraduationCap, Flame, Package, LayoutTemplate, Scale,
+} from 'lucide-react';
 import { captureException } from '../lib/sentry';
 import AdminHelp from './admin-help/AdminHelp';
 import { calculateTVASummary } from '../lib/integrations/accounting';
@@ -8,68 +12,78 @@ import { estFranchiseTva, tvaARegulariser } from '../lib/franchiseTva';
 
 import Facture2026Tab from './settings/Facture2026Tab';
 import RelanceConfigTab from './settings/RelanceConfigTab';
-import RamonageTab from './settings/RamonageTab';
+import RamonageTab, { Interrupteur } from './settings/RamonageTab';
 import PaymentConfigTab from './settings/PaymentConfigTab';
 import EntrepriseSettingsPage from './settings/EntrepriseSettingsPage';
 import TeamManagement from './settings/TeamManagement';
 import { usePermissions } from '../hooks/usePermissions';
-import useKeepInViewport from '../hooks/useKeepInViewport';
 import { useRelances } from '../hooks/useRelances';
 import { compressImage } from '../lib/image-utils';
 import { useOrg } from '../context/OrgContext';
 import TemplateManager from './settings/TemplateManager';
 import SuppressionCompte from './settings/SuppressionCompte';
 import PostChantierSettings from './settings/PostChantierSettings';
+import AssistantProfil from './settings/AssistantProfil';
+import EtatProfil from './settings/EtatProfil';
+import ChampsAdresse from './settings/ChampsAdresse';
+import ChoixCouleur from './settings/ChoixCouleur';
+import ChoixTva from './settings/ChoixTva';
+import {
+  ChampParam, DebouncedInput, DebouncedTextarea, EnregistrementContext, EtatEnregistrement, useEtatsEnregistrement, CLASSE_CHAMP,
+} from './settings/champsParametres';
 import { remettreFichier } from '../lib/natif';
 import { FONCTIONS } from '../lib/fonctions';
-import { Bouton, BoutonIcone } from './ui/Bouton';
+import { Bouton } from './ui/Bouton';
+import Carte from './ui/Carte';
+import Pastille from './ui/Pastille';
+import ChampChoix from './ui/ChampChoix';
+import AideMot from './ui/AideMot';
+import LigneListe, { GroupeListe } from './ui/LigneListe';
+import { EnTetePage } from './ui/EnTete';
 import { jourLocal, dateLue } from '../lib/dates';
 import { estEntrepreneurIndividuel, estEirl, nomImprime } from '../lib/identiteEntreprise';
 import { URL_SIRENE, profilDepuisSirene } from '../lib/sirene';
 import { chiffreAffairesHT } from '../lib/ventes';
-import { profilManquant } from '../lib/profilLegal';
 import { jaugeProfil } from '../lib/jaugeProfil';
+import { MODES_PAIEMENT } from '../lib/modesPaiement';
+import { champsAdresse, adresseComposee, adresseComplete } from '../lib/adresseEntreprise';
+import { LEXIQUE } from '../lib/lexique';
+import { formatMoney } from '../lib/formatters';
+import { COULEUR_DOCUMENTS_DEFAUT } from '../lib/theme';
 
-// ── Tab groups for mobile navigation ────────────────────────────────────────
-const TAB_GROUPS = [
-  { id: 'entreprise', label: 'Mon entreprise', icon: Zap, tabs: [
-    { key: 'identite', label: 'Identité', icon: Building2 },
-    { key: 'legal', label: 'Légal', icon: ClipboardList },
-    { key: 'assurances', label: 'Assurances', icon: Shield },
-    { key: 'banque', label: 'Banque', icon: Landmark },
+// ── Rubriques ────────────────────────────────────────────────────────────────
+// Audit UX du 20 oct. 2026 (P2) : au bureau, une colonne de navigation à gauche (avant : deux rangées d'onglets) ; au
+// téléphone, une liste de rubriques qui ouvre chacune sa page (avant : un accordéon mêlé de puces).
+const GROUPES = [
+  { id: 'entreprise', libelle: 'Mon entreprise', rubriques: [
+    { cle: 'identite', libelle: 'Identité', icone: Building2 },
+    { cle: 'legal', libelle: 'Légal', icone: Scale },
+    { cle: 'assurances', libelle: 'Assurances', icone: Shield },
+    { cle: 'banque', libelle: 'Banque', icone: Landmark },
   ]},
-  { id: 'documents', label: 'Documents', icon: FileText, tabs: [
-    { key: 'documents', label: 'Documents', icon: FileText },
-    { key: 'templates', label: 'Modèles', icon: ClipboardList },
-    { key: 'facture2026', label: 'Facture 2026', icon: Receipt },
-    { key: 'relances', label: 'Relances', icon: Mail },
-    { key: 'postchantier', label: 'Post-chantier', icon: Construction },
+  { id: 'documents', libelle: 'Documents', rubriques: [
+    { cle: 'documents', libelle: 'Documents', icone: FileText },
+    { cle: 'templates', libelle: 'Modèles', icone: LayoutTemplate },
+    { cle: 'facture2026', libelle: 'Facture 2026', icone: Receipt },
+    { cle: 'relances', libelle: 'Relances', icone: Mail },
+    { cle: 'postchantier', libelle: 'Post-chantier', icone: Construction },
     // Parcours ramoneur (D-30) : attestations, rappels, tarifs
-    { key: 'ramonage', label: 'Ramonage', icon: Flame },
+    { cle: 'ramonage', libelle: 'Ramonage', icone: Flame },
   ]},
-  { id: 'finance', label: 'Finance', icon: Calculator, tabs: [
-    { key: 'comptabilite', label: 'Comptabilité', icon: Calculator },
-    { key: 'rentabilite', label: 'Rentabilité', icon: BarChart3 },
+  { id: 'finance', libelle: 'Finance', rubriques: [
+    { cle: 'comptabilite', libelle: 'Comptabilité', icone: Calculator },
+    { cle: 'rentabilite', libelle: 'Rentabilité', icone: BarChart3 },
     // Paiement en ligne des factures masqué en v1 (D-21, src/lib/fonctions.js)
-    ...(FONCTIONS.paiementEnLigne ? [{ key: 'paiements', label: 'Paiements', icon: CreditCard }] : []),
+    ...(FONCTIONS.paiementEnLigne ? [{ cle: 'paiements', libelle: 'Paiements', icone: CreditCard }] : []),
   ]},
-  { id: 'equipe', label: 'Équipe', icon: Users, tabs: [
-    { key: 'team', label: 'Équipe & Accès', icon: Users },
+  { id: 'equipe', libelle: 'Équipe', rubriques: [
+    { cle: 'team', libelle: 'Équipe & accès', icone: Users },
   ]},
-  { id: 'avance', label: 'Avancé', icon: Settings2, tabs: [
-    { key: 'donnees', label: 'Données', icon: HardDrive },
-    { key: 'administratif', label: 'Administratif', icon: FolderOpen },
-    { key: 'multi', label: 'Multi-entreprise', icon: Construction },
+  { id: 'avance', libelle: 'Avancé', rubriques: [
+    { cle: 'donnees', libelle: 'Données', icone: HardDrive },
+    { cle: 'administratif', libelle: 'Administratif', icone: FolderOpen },
+    { cle: 'multi', libelle: 'Multi-entreprise', icone: Construction },
   ]},
-];
-
-// ── Wizard step definitions ─────────────────────────────────────────────────
-const WIZARD_STEPS_DEF = [
-  { id: 'identite', title: 'Identité', desc: 'Votre entreprise en un coup d’œil', icon: Palette },
-  { id: 'siret', title: 'Informations légales', desc: 'SIRET + auto-remplissage SIRENE', icon: Search },
-  { id: 'documents', title: 'Documents', desc: 'TVA, acompte et mentions', icon: FileCheck },
-  { id: 'relances', title: 'Relances', desc: 'Relancer les impayés et les devis sans réponse', icon: BellRing },
-  { id: 'catalogue', title: 'Catalogue', desc: 'Importez le référentiel BTP', icon: Package },
 ];
 
 // ── Frais de structure charge items ─────────────────────────────────────────
@@ -82,19 +96,18 @@ const FRAIS_ITEMS = [
   { key: 'divers', label: 'Fournitures / Divers', placeholder: '200', icon: Package },
 ];
 
-// Villes RCS principales France
 // Formes juridiques : une liste fermée (l'assistant proposait un texte libre ; « micro-entreprise » tapé à la
 // main n'était pas reconnu et la TVA s'ajoutait sous la franchise 293 B)
 const FORMES_JURIDIQUES = [
-  { valeur: 'EI', libelle: 'Entreprise Individuelle (EI)' },
+  { valeur: 'EI', libelle: 'Entreprise individuelle (EI)' },
   { valeur: 'EIRL', libelle: 'EIRL' },
-  { valeur: 'Micro-entreprise', libelle: 'Micro-entreprise / Auto-entrepreneur' },
+  { valeur: 'Micro-entreprise', libelle: 'Micro-entreprise', detail: 'auto-entrepreneur' },
   { valeur: 'EURL', libelle: 'EURL' },
   { valeur: 'SARL', libelle: 'SARL' },
   { valeur: 'SAS', libelle: 'SAS' },
   { valeur: 'SASU', libelle: 'SASU' },
-  { valeur: 'SA', libelle: 'SA (Société Anonyme)' },
-  { valeur: 'SNC', libelle: 'SNC (Société en Nom Collectif)' },
+  { valeur: 'SA', libelle: 'SA (société anonyme)' },
+  { valeur: 'SNC', libelle: 'SNC (société en nom collectif)' },
 ];
 
 // Champs repris par « Reprendre les informations de l'entreprise » (texte et nombres seulement)
@@ -109,52 +122,47 @@ const CHAMPS_IMPORTABLES = [
 
 const VILLES_RCS = ['Paris', 'Lyon', 'Marseille', 'Toulouse', 'Nice', 'Nantes', 'Strasbourg', 'Montpellier', 'Bordeaux', 'Lille', 'Rennes', 'Reims', 'Toulon', 'Saint-Étienne', 'Le Havre', 'Grenoble', 'Dijon', 'Angers', 'Nîmes', 'Villeurbanne', 'Clermont-Ferrand', 'Aix-en-Provence', 'Brest', 'Tours', 'Amiens', 'Limoges', 'Annecy', 'Perpignan', 'Boulogne-Billancourt', 'Metz', 'Besançon', 'Orléans', 'Rouen', 'Mulhouse', 'Caen', 'Nancy', 'Saint-Denis', 'Argenteuil', 'Roubaix', 'Tourcoing', 'Montreuil', 'Avignon', 'Créteil', 'Poitiers', 'Fort-de-France', 'Versailles', 'Courbevoie', 'Vitry-sur-Seine', 'Colombes', 'Pau'];
 
-// Saisie différée (moins de rendus à chaque frappe, au téléphone), mais jamais perdue : la valeur en attente est
-// écrite à la sortie du champ et quand le champ disparaît (changement d'onglet ou de page). Avant (recette du
-// 9 oct. 2026), le minuteur était annulé au démontage : un code APE tapé puis « Accueil » touché dans la
-// seconde n'était jamais enregistré, sans message.
-function useSaisieDifferee(value, onChange, delay) {
-  const [localValue, setLocalValue] = useState(value ?? '');
-  const timerRef = useRef(null);
-  const attenteRef = useRef(null); // valeur tapée pas encore transmise
-  const onChangeRef = useRef(onChange);
-  onChangeRef.current = onChange;
+// Listes des réglages des documents (menus de l'app à la place des listes natives : retours d'Hugo, 21-23 oct. 2026).
+// « 30 % (recommandé BTP) » et « Virement bancaire (recommandé BTP) » sont retirés : affirmations invérifiables.
+const VALIDITES = [{ valeur: 15, libelle: '15 jours' }, { valeur: 30, libelle: '30 jours' }, { valeur: 60, libelle: '2 mois' }, { valeur: 90, libelle: '3 mois' }];
+const DELAIS = [{ valeur: 0, libelle: 'Comptant' }, { valeur: 14, libelle: '14 jours' }, { valeur: 30, libelle: '30 jours' }, { valeur: 45, libelle: '45 jours' }, { valeur: 60, libelle: '60 jours' }];
+const ACOMPTES = [{ valeur: 0, libelle: 'Pas d’acompte' }, { valeur: 20, libelle: '20 %' }, { valeur: 30, libelle: '30 %' }, { valeur: 40, libelle: '40 %' }, { valeur: 50, libelle: '50 %' }];
+const TYPES_RCS = [{ valeur: 'A', libelle: 'A : commerçant' }, { valeur: 'B', libelle: 'B : société commerciale' }, { valeur: 'C', libelle: 'C : GIE' }, { valeur: 'D', libelle: 'D : société civile' }];
+const ORGANISMES_RGE = ['Qualibat', 'Qualifelec', 'Qualit\'EnR', 'Qualiopi', 'Autre'].map((v) => ({ valeur: v, libelle: v }));
 
-  useEffect(() => {
-    if (attenteRef.current === null) setLocalValue(value ?? '');
-  }, [value]);
+const TITRE_CARTE = 'text-lg font-semibold text-encre';
 
-  const vider = useCallback(() => {
-    if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
-    if (attenteRef.current !== null) {
-      const v = attenteRef.current;
-      attenteRef.current = null;
-      onChangeRef.current(v);
-    }
-  }, []);
-
-  const handleChange = (e) => {
-    const newVal = e.target.value;
-    setLocalValue(newVal);
-    attenteRef.current = newVal;
-    if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(vider, delay);
-  };
-
-  useEffect(() => vider, [vider]);
-
-  return { localValue, handleChange, vider };
+/** Une carte des Paramètres : titre de bloc (18 px), puis son contenu. */
+function Bloc({ titre, sousTitre, lexique, children, className = '' }) {
+  const t = <h2 className={TITRE_CARTE}>{titre}</h2>;
+  return (
+    <Carte className={className}>
+      <div className="mb-4">
+        {lexique ? <AideMot mot={lexique.mot} texte={lexique.texte}>{t}</AideMot> : t}
+        {sousTitre ? <p className="mt-1 text-sm text-encre-3">{sousTitre}</p> : null}
+      </div>
+      {children}
+    </Carte>
+  );
 }
 
-function DebouncedInput({ value, onChange, delay = 800, onBlur, ...props }) {
-  const { localValue, handleChange, vider } = useSaisieDifferee(value, onChange, delay);
-  return <input {...props} value={localValue} onChange={handleChange} onBlur={(e) => { vider(); onBlur?.(e); }} />;
+/** Un choix dans une liste (menu de l'app) avec son libellé. */
+function ChoixParam({ id, cle, libelle, titre, options, valeur, onChange, aide, lexique, facultatif, vide }) {
+  const idLibelle = `${id}-libelle`;
+  return (
+    <ChampParam id={id} idLibelle={idLibelle} cle={cle} libelle={libelle} aide={aide} lexique={lexique} facultatif={facultatif}>
+      <ChampChoix id={id} idLibelle={idLibelle} titre={titre || libelle} options={options} valeur={valeur} onChange={onChange} vide={vide} />
+    </ChampParam>
+  );
 }
 
-// Same for textarea
-function DebouncedTextarea({ value, onChange, delay = 800, onBlur, ...props }) {
-  const { localValue, handleChange, vider } = useSaisieDifferee(value, onChange, delay);
-  return <textarea {...props} value={localValue} onChange={handleChange} onBlur={(e) => { vider(); onBlur?.(e); }} />;
+/** État d'une assurance d'après sa date de validité. */
+function PastilleValidite({ date }) {
+  if (!date) return null;
+  const jours = Math.ceil((dateLue(date) - new Date()) / 86400000);
+  if (jours < 0) return <Pastille ton="danger">Expirée</Pastille>;
+  if (jours < 60) return <Pastille ton="alerte">Expire dans {jours} j</Pastille>;
+  return <Pastille ton="succes" icone={Check}>Valide</Pastille>;
 }
 
 export default function Settings({ entreprise, setEntreprise, user, devis = [], depenses = [], clients = [], chantiers = [], isDark, couleur, setPage, modeDiscret }) {
@@ -199,26 +207,25 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
     }
   };
 
-  // Theme classes
-  const cardBg = "bg-surface border-bord";
-  const inputBg = isDark ? "bg-slate-700 border-slate-600 text-white placeholder-slate-400" : "bg-white border-slate-300";
-  const textPrimary = "text-encre";
-  const textSecondary = "text-encre-2";
-  const textMuted = "text-encre-2";
-
   const [tab, setTab] = useState('identite');
+  // Téléphone : la liste des rubriques d'abord, puis la page d'une rubrique (au bureau, les deux côte à côte)
+  const [vueMobile, setVueMobile] = useState('liste');
+  const ouvrirRubrique = useCallback((cle) => {
+    setTab(cle);
+    setVueMobile('rubrique');
+    try { window.scrollTo({ top: 0 }); } catch { /* jsdom : pas de défilement */ }
+  }, []);
   const [showSetupWizard, setShowSetupWizard] = useState(false);
   const [wizardStep, setWizardStep] = useState(() => {
-    try { return parseInt(localStorage.getItem('cp_wizard_step')) || 0; } catch { return 0; }
+    try { return parseInt(localStorage.getItem('cp_wizard_step'), 10) || 0; } catch { return 0; }
   });
-  const [showProfileDetail, setShowProfileDetail] = useState(false);
   const [sireneLoading, setSireneLoading] = useState(false);
-  const [mobileGroupOpen, setMobileGroupOpen] = useState('entreprise');
   const [showFraisCalc, setShowFraisCalc] = useState(false);
   const [fraisCharges, setFraisCharges] = useState({});
+  const [survolLogo, setSurvolLogo] = useState(false);
 
-  // Filter tab groups based on permissions (hide Équipe tab if not team manager)
-  const visibleTabGroups = TAB_GROUPS.filter(g => g.id !== 'equipe' || canManageTeam);
+  // Rubrique Équipe réservée à qui gère l'équipe
+  const groupesVisibles = GROUPES.filter((g) => g.id !== 'equipe' || canManageTeam);
 
   // Persist wizard step
   useEffect(() => {
@@ -227,41 +234,27 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
     }
   }, [wizardStep, showSetupWizard]);
 
-  // Debounced save notification with visible indicator (MUST be before lookupSIRENE)
-  const saveTimeoutRef = useRef(null);
-  const [saveStatus, setSaveStatus] = useState(null); // null | 'saving' | 'saved' | 'error'
-  // « Enregistré » seulement une fois la base d'accord ; un refus se dit (le message s'affichait
-  // même quand rien n'était écrit). L'ancienne copie dans entreprise.settings_json est retirée :
-  // l'upsert échouait toujours (pas de contrainte unique sur user_id) et, s'il avait marché, il
-  // aurait écrasé la configuration des relances rangée au même endroit (relanceEngine.js).
-  const updateEntreprise = useCallback((updater) => {
-    setSaveStatus('saving');
-    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+  // Enregistrement : « Enregistré » près du champ (`cle`), seulement une fois la base d'accord ; un refus se dit près du
+  // champ et par une notification, et reste affiché. Plus de « Modifications enregistrées » à chaque champ (retours
+  // d'Hugo, 21-23 oct. 2026). Sans `cle` (rubriques Relances, Ramonage…), l'état s'affiche à côté du titre de la page.
+  const { etat: etatEnregistrement, debut, reussite, echec, abandon } = useEtatsEnregistrement();
+  const CLE_PAGE = '__page';
+  const updateEntreprise = useCallback((updater, cle = CLE_PAGE) => {
+    debut(cle);
     return Promise.resolve(setEntreprise(updater)).then((ecrit) => {
       // Rien n'a été écrit (envois automatiques refusés faute de conditions d'utilisation acceptées, App.jsx) : aucun
       // « Enregistré » — l'app a déjà dit pourquoi (relecture du 25 oct. 2026 : « Enregistré » s'affichait quand même)
-      if (ecrit === false) {
-        if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-        setSaveStatus(null);
-        return false;
-      }
-      // Debounce the toast to avoid spam
-      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-      saveTimeoutRef.current = setTimeout(() => {
-        setSaveStatus('saved');
-        showToast('Modifications enregistrées', 'success');
-        // Reset indicator after 3s
-        setTimeout(() => setSaveStatus(null), 3000);
-      }, 800);
+      if (ecrit === false) { abandon(cle); return false; }
+      reussite(cle);
       return true;
     }).catch((e) => {
       captureException(e, { context: 'paramètres entreprise' });
-      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-      setSaveStatus('error');
+      echec(cle);
       showToast('Modification non enregistrée. Vérifiez votre connexion et réessayez.', 'error');
       return false;
     });
-  }, [setEntreprise, showToast]);
+  }, [setEntreprise, showToast, debut, reussite, echec, abandon]);
+  const maj = (cle, transformer = (v) => v) => (val) => updateEntreprise((p) => ({ ...p, [cle]: transformer(val) }), cle);
 
   // SIRENE API lookup
   const lookupSIRENE = useCallback(async () => {
@@ -278,17 +271,20 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
       const profil = profilDepuisSirene(await resp.json(), siret);
       if (!profil) throw new Error('SIRET introuvable');
       const fullNom = profil.nom;
-      // Seuls les champs vides sont remplis (le code APE, public, est mis à jour)
-      updateEntreprise(prev => ({
-        ...prev,
-        ...(profil.nom && !prev.nom ? { nom: profil.nom } : {}),
-        ...(profil.adresse && !prev.adresse ? { adresse: profil.adresse } : {}),
-        ...(profil.codeApe ? { codeApe: profil.codeApe } : {}),
-        ...(profil.formeJuridique && !prev.formeJuridique ? { formeJuridique: profil.formeJuridique } : {}),
-        ...(profil.nomEntrepreneur && !prev.nomEntrepreneur ? { nomEntrepreneur: profil.nomEntrepreneur } : {}),
-      }));
-
-      showToast(`SIRENE : ${fullNom || 'Entreprise trouvée'}`, 'success');
+      // Seuls les champs vides sont remplis (le code APE, public, est mis à jour). L'adresse d'une ligne du répertoire
+      // (« 3 RUE DES LILAS 33000 BORDEAUX ») se range dans les trois champs.
+      const ok = await updateEntreprise((prev) => {
+        const adresseSirene = profil.adresse && !prev.adresse ? champsAdresse({ adresse: profil.adresse }) : null;
+        return {
+          ...prev,
+          ...(profil.nom && !prev.nom ? { nom: profil.nom } : {}),
+          ...(adresseSirene ? { adresse: adresseComposee(adresseSirene), codePostal: adresseSirene.codePostal, ville: adresseSirene.ville } : {}),
+          ...(profil.codeApe ? { codeApe: profil.codeApe } : {}),
+          ...(profil.formeJuridique && !prev.formeJuridique ? { formeJuridique: profil.formeJuridique } : {}),
+          ...(profil.nomEntrepreneur && !prev.nomEntrepreneur ? { nomEntrepreneur: profil.nomEntrepreneur } : {}),
+        };
+      }, 'siret');
+      if (ok) showToast(`SIRENE : ${fullNom || 'Entreprise trouvée'}`, 'success');
     } catch (err) {
       if (err?.message === 'SIRET introuvable') showToast('Ce SIRET est introuvable dans le répertoire SIRENE : vérifiez-le.', 'error');
       else { captureException(err, { context: 'auto-remplissage SIRENE' }); showToast('Le répertoire SIRENE ne répond pas : réessayez plus tard ou remplissez les champs à la main.', 'error'); }
@@ -308,42 +304,29 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
   // Pas de chiffre d'affaires : pas de suggestion ; sinon borné comme le champ (50 %)
   const tauxSuggere = useMemo(() => (caEstime > 0 ? Math.min(50, Math.round((fraisTotal / caEstime) * 100)) : null), [fraisTotal, caEstime]);
 
-  // Listen for cross-tab navigation events (e.g. from Facture2026Tab)
+  // Ouvre la rubrique et amène le champ sous les yeux (chaque champ porte id="settings-field-<champ>")
+  const allerAuChamp = useCallback((onglet, champ) => {
+    ouvrirRubrique(onglet);
+    setTimeout(() => {
+      const el = document.getElementById(`settings-field-${champ}`);
+      if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.focus(); }
+    }, 150);
+  }, [ouvrirRubrique]);
+
+  // Navigation demandée par une autre rubrique (ex. Facture 2026 → « Compléter »)
   useEffect(() => {
     const handleTabNav = (e) => {
       const data = e.detail;
       // Support both string (legacy) and object { tab, fieldId } formats
       const tabValue = typeof data === 'string' ? data : data?.tab;
       const fieldId = typeof data === 'object' ? data?.fieldId : null;
-      if (tabValue) {
-        setTab(tabValue);
-        // After tab switch, scroll to and focus the relevant field
-        if (fieldId) {
-          setTimeout(() => {
-            const el = document.getElementById(`settings-field-${fieldId}`);
-            if (el) {
-              el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-              el.focus();
-            }
-          }, 150);
-        }
-      }
+      if (!tabValue) return;
+      if (fieldId) allerAuChamp(tabValue, fieldId);
+      else ouvrirRubrique(tabValue);
     };
     window.addEventListener('navigate-settings-tab', handleTabNav);
     return () => window.removeEventListener('navigate-settings-tab', handleTabNav);
-  }, []);
-
-  // Escape key handler for modals
-  useEffect(() => {
-    const handleEscape = (e) => {
-      if (e.key === 'Escape') {
-        if (showSetupWizard) { setShowSetupWizard(false); return; }
-        if (showProfileDetail) { setShowProfileDetail(false); return; }
-      }
-    };
-    window.addEventListener('keydown', handleEscape);
-    return () => window.removeEventListener('keydown', handleEscape);
-  }, [showSetupWizard, showProfileDetail]);
+  }, [allerAuChamp, ouvrirRubrique]);
 
   // Comptabilite state
   const [exportPeriod, setExportPeriod] = useState(() => {
@@ -360,7 +343,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
     if (!file) return;
     if (!file.type.startsWith('image/')) {
       showToast('Veuillez choisir un fichier image', 'error');
-      e.target.value = '';
+      if (e.target) e.target.value = '';
       return;
     }
     try {
@@ -381,42 +364,22 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
         reader.readAsDataURL(blob);
       });
       // Par l'enregistrement commun : un refus de la base se dit (avant : aucun message, logo absent)
-      await updateEntreprise(p => ({ ...p, logo: dataUrl }));
+      await updateEntreprise(p => ({ ...p, logo: dataUrl }), 'logo');
     } catch (err) {
       // Échec du traitement de l'image (le refus de la base est dit par updateEntreprise)
       captureException(err, { context: 'logo entreprise' });
       showToast('Le logo n\'a pas été enregistré. Réessayez avec une image plus légère ou plus tard.', 'error');
     } finally {
-      e.target.value = '';
+      if (e.target) e.target.value = '';
     }
   };
 
   // Helper to mask sensitive data in modeDiscret
   const maskValue = (value) => modeDiscret ? '····················' : value;
-  
-  const COULEURS = ['#f97316', '#ef4444', '#22c55e', '#3b82f6', '#8b5cf6', '#ec4899', '#14b8a6', '#64748b'];
 
-  // Jauge « Profil complété » (lib/jaugeProfil) : le pourcentage est la note de l'onglet Facture 2026 — ce qui
-  // bloque l'envoi (lib/profilLegal), plus capital, RCS et TVA intracom quand ils concernent l'entreprise. Le
-  // menu sépare ce qui bloque l'envoi, les autres mentions obligatoires selon la situation (qui ne le bloquent
-  // pas) et les simples recommandations (code APE, RC Pro).
-  const { obligatoires: missingRequired, selonSituation: missingSelonSituation, recommandes: missingRecommended, completude } = jaugeProfil(entreprise);
-  const nbManquants = missingRequired.length + missingSelonSituation.length + missingRecommended.length;
-  // À 100 %, le menu reste ouvrable tant qu'une mention due aux particuliers manque (médiateur, assureur
-  // décennal, hors pourcentage) : avant, il se fermait dès 100 %
-  const menuProfil = completude < 100 || missingSelonSituation.length > 0;
-  const NOM_ONGLET = { identite: 'Identité', legal: 'Légal', assurances: 'Assurances', documents: 'Documents' };
-  // Ouvre l'onglet et amène le champ sous les yeux (chaque champ porte id="settings-field-<champ>")
-  const allerAuChamp = (onglet, champ) => {
-    setTab(onglet);
-    setTimeout(() => {
-      const el = document.getElementById(`settings-field-${champ}`);
-      if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.focus(); }
-    }, 150);
-  };
-  // Le menu des champs manquants est ancré à droite de la jauge : à 375 px il sortait de 77 px à gauche
-  const profileDetailRef = useRef(null);
-  useKeepInViewport(profileDetailRef, showProfileDetail && menuProfil);
+  // Où en est le profil (lib/jaugeProfil) : ce qui bloque l'envoi, ce qui est à vérifier selon la situation, le reste
+  const jauge = jaugeProfil(entreprise);
+  const { completude } = jauge;
 
   // Alertes assurances
   const alertesAssurances = useMemo(() => {
@@ -424,33 +387,20 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
     const now = new Date();
     const in30Days = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
     const in60Days = new Date(now.getTime() + 60 * 24 * 60 * 60 * 1000);
-
-    if (entreprise.rcProValidite) {
-      const dateRC = new Date(entreprise.rcProValidite);
-      if (dateRC < now) {
-        alerts.push({ type: 'rc', severity: 'critical', message: 'RC Pro EXPIRÉE !', date: dateRC });
-      } else if (dateRC < in30Days) {
-        alerts.push({ type: 'rc', severity: 'warning', message: 'RC Pro expire dans moins de 30 jours', date: dateRC });
-      } else if (dateRC < in60Days) {
-        alerts.push({ type: 'rc', severity: 'info', message: 'RC Pro expire dans moins de 60 jours', date: dateRC });
-      }
-    }
-
-    if (entreprise.decennaleValidite) {
-      const dateDec = new Date(entreprise.decennaleValidite);
-      if (dateDec < now) {
-        alerts.push({ type: 'decennale', severity: 'critical', message: 'Décennale EXPIRÉE !', date: dateDec });
-      } else if (dateDec < in30Days) {
-        alerts.push({ type: 'decennale', severity: 'warning', message: 'Décennale expire dans moins de 30 jours', date: dateDec });
-      } else if (dateDec < in60Days) {
-        alerts.push({ type: 'decennale', severity: 'info', message: 'Décennale expire dans moins de 60 jours', date: dateDec });
-      }
-    }
-
+    const verifier = (type, valeur, nom) => {
+      if (!valeur) return;
+      const date = new Date(valeur);
+      if (date < now) alerts.push({ type, severity: 'critical', message: `${nom} expirée`, date });
+      else if (date < in30Days) alerts.push({ type, severity: 'warning', message: `${nom} : expire dans moins de 30 jours`, date });
+      else if (date < in60Days) alerts.push({ type, severity: 'info', message: `${nom} : expire dans moins de 60 jours`, date });
+    };
+    verifier('rc', entreprise.rcProValidite, 'RC Pro');
+    verifier('decennale', entreprise.decennaleValidite, 'Décennale');
     return alerts;
   }, [entreprise.rcProValidite, entreprise.decennaleValidite]);
 
   const hasAssuranceAlerts = alertesAssurances.some(a => a.severity === 'critical' || a.severity === 'warning');
+  const TON_ALERTE = { critical: 'bg-danger-fond text-danger-texte', warning: 'bg-alerte-fond text-alerte-texte', info: 'bg-info-fond text-info-texte' };
 
   // Résumé de TVA de la période : règles communes (src/lib/integrations/accounting.js). Les exports (FEC, CSV) sont
   // ceux de Finances › Export comptable ; ceux d'ici comptaient les brouillons et recalculaient la TVA à 20 %
@@ -466,16 +416,11 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
   };
 
   // Validation format TVA
-  const validateTVA = (value) => {
-    const cleaned = value.replace(/\s/g, '').toUpperCase();
-    return /^FR\d{11}$/.test(cleaned);
-  };
-
+  const validateTVA = (value) => /^FR[0-9A-Z]{2}\d{9}$/.test(value.replace(/\s/g, '').toUpperCase());
   // Validation SIRET
-  const validateSIRET = (value) => {
-    const cleaned = value.replace(/\s/g, '');
-    return /^\d{14}$/.test(cleaned);
-  };
+  const validateSIRET = (value) => /^\d{14}$/.test(value.replace(/\s/g, ''));
+  const telValide = (v) => /^(?:\+33|0)\s*[1-9](?:[\s.-]*\d{2}){4}$/.test((v || '').trim());
+  const emailValide = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((v || '').trim());
 
   // Formater RCS complet
   const getRCSComplet = () => {
@@ -483,273 +428,145 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
     return `RCS ${entreprise.rcsVille} ${entreprise.rcsType || 'B'} ${entreprise.rcsNumero}`;
   };
 
+  const ouvrirAssistant = () => { setShowSetupWizard(true); setWizardStep(0); };
+  const rubriqueCourante = groupesVisibles.flatMap((g) => g.rubriques).find((r) => r.cle === tab);
+  const formeLibelle = FORMES_JURIDIQUES.find((f) => f.valeur === entreprise.formeJuridique)?.libelle;
+  const pageEnregistrement = { enCours: etatEnregistrement.enCours === CLE_PAGE, fait: etatEnregistrement.fait === CLE_PAGE, erreur: !!etatEnregistrement.erreurs[CLE_PAGE] };
+  const idIban = useId();
+
   return (
+    <EnregistrementContext.Provider value={etatEnregistrement}>
     <div className="space-y-4 sm:space-y-6">
-      {/* Header avec score */}
-      <div className="flex items-center justify-between flex-wrap gap-4">
-        <div className="flex items-center gap-3">
-          {setPage && (
-            <button
-              onClick={() => setPage('dashboard')}
-              className={`p-2 rounded-xl min-w-[40px] min-h-[40px] flex items-center justify-center transition-colors hover:bg-surface-2 text-encre-3`}
-              aria-label="Retour au tableau de bord"
-              title="Retour au tableau de bord"
-            >
-              <ArrowLeft size={20} />
-            </button>
-          )}
-          <h1 className={`text-xl sm:text-2xl font-bold text-encre`}>Paramètres</h1>
-          {/* Auto-save status indicator */}
-          {saveStatus && (
-            <span role="status" className={`text-xs px-2.5 py-1 rounded-full flex items-center gap-1.5 animate-fade-in ${
-              saveStatus === 'saving'
-                ? 'bg-alerte-fond text-alerte-texte'
-                : saveStatus === 'error' ? 'bg-danger-fond text-danger-texte' : 'bg-succes-fond text-succes-texte'
-            }`}>
-              {/* Avant (recette du 9 oct. 2026), un refus s'affichait aussi « Enregistré » en vert */}
-              {saveStatus === 'saving' ? (
-                <><span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" /> Enregistrement...</>
-              ) : saveStatus === 'error' ? (
-                <><AlertCircle size={12} /> Non enregistré</>
-              ) : (
-                <><CheckCircle size={12} /> Enregistré</>
-              )}
-            </span>
-          )}
-        </div>
-        <div className="flex items-center gap-4">
-          <div className="relative">
-            <button
-              onClick={() => menuProfil ? setShowProfileDetail(prev => !prev) : null}
-              className={`flex items-center gap-3 sm:gap-4 px-3 sm:px-4 py-2 sm:py-3 rounded-2xl border bg-surface border-bord shadow-e1 transition-colors ${menuProfil ? 'cursor-pointer hover:border-bord-fort' : ''}`}
-              title={menuProfil ? 'Cliquez pour voir les champs manquants' : 'Profil complet !'}
-              {...(menuProfil ? { 'aria-expanded': showProfileDetail } : {})}
-            >
-              <div className="text-right shrink-0">
-                <p className="text-sm font-medium text-encre-2">Profil complété</p>
-                {/* Vert seulement à 100 %, comme la note de l'onglet Facture 2026 : avant, 88 % s'affichait en vert, envoi bloqué */}
-                <p className={`text-xl font-bold tabular-nums ${completude >= 100 ? 'text-succes-texte' : completude >= 50 ? 'text-alerte-texte' : 'text-danger-texte'}`}>{completude} %</p>
-                {/* Ce qui reste dû hors pourcentage se dit sous le chiffre, plutôt qu'un « 100 % » seul */}
-                {completude === 100 && missingSelonSituation.length > 0 && (
-                  <p className="text-xs font-medium text-alerte-texte max-w-[10rem] ml-auto">
-                    {missingSelonSituation.length > 1
-                      ? `${missingSelonSituation.length} mentions obligatoires selon votre situation`
-                      : '1 mention obligatoire selon votre situation'}
-                  </p>
-                )}
-              </div>
-              <div className="w-16 sm:w-32 h-2 rounded-full overflow-hidden shrink-0 bg-surface-2">
-                <div className={`h-full rounded-full transition-all duration-500 ${completude >= 100 ? 'bg-succes-point' : completude >= 50 ? 'bg-alerte-point' : 'bg-danger-point'}`} style={{ width: `${completude}%` }} />
-              </div>
-              {menuProfil && <ChevronDown size={16} aria-hidden="true" className="text-encre-3" />}
-            </button>
+      <EnTetePage
+        className="!mb-0"
+        titre="Paramètres"
+        sousTitre={[entreprise.nom, formeLibelle].filter(Boolean).join(' · ') || null}
+        actions={(pageEnregistrement.enCours || pageEnregistrement.fait || pageEnregistrement.erreur) ? (
+          <span className="text-sm"><EtatEnregistrement cle={CLE_PAGE} /></span>
+        ) : null}
+      />
+      {/* Annonce aux lecteurs d'écran (l'état visible est près du champ) */}
+      <p role="status" className="sr-only">
+        {Object.keys(etatEnregistrement.erreurs).length ? 'Modification non enregistrée' : etatEnregistrement.fait ? 'Enregistré' : ''}
+      </p>
 
-            {/* Champs manquants, en trois groupes (lib/jaugeProfil) */}
-            {showProfileDetail && menuProfil && (
-              <div ref={profileDetailRef} className="absolute right-0 top-full mt-2 w-80 max-w-[calc(100vw-2rem)] max-h-[60vh] overflow-y-auto rounded-xl border shadow-xl z-50 bg-surface border-bord">
-                <div className="p-4 space-y-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-sm font-semibold text-encre">Champs manquants ({nbManquants})</p>
-                    <BoutonIcone icone={X} libelle="Fermer" taille={16} className="-my-2 -mr-2" onClick={() => setShowProfileDetail(false)} />
-                  </div>
-
-                  {[
-                    { id: 'obligatoires', titre: 'Obligatoires (bloquent l\'envoi)', point: 'bg-danger-point', ton: 'text-danger-texte', champs: missingRequired },
-                    { id: 'selon-situation', titre: 'Autres mentions obligatoires selon votre situation', sousTitre: '(n\'empêchent pas l\'envoi)', point: 'bg-alerte-point', ton: 'text-alerte-texte', champs: missingSelonSituation },
-                    { id: 'recommandes', titre: 'Recommandés', point: 'bg-neutre-point', ton: 'text-encre-2', champs: missingRecommended },
-                  ].filter((g) => g.champs.length > 0).map((g) => (
-                    <div key={g.id} data-groupe={g.id}>
-                      <p className={`text-xs font-semibold mb-1.5 flex items-start gap-1.5 ${g.ton}`}>
-                        <span aria-hidden="true" className={`w-1.5 h-1.5 mt-1.5 rounded-full shrink-0 ${g.point}`} />
-                        <span>{g.titre}{g.sousTitre && <span className="font-normal"> {g.sousTitre}</span>}</span>
-                      </p>
-                      <ul className="space-y-1">
-                        {g.champs.map((f) => (
-                          <li key={f.id}>
-                            <button onClick={() => { allerAuChamp(f.onglet, f.champ); setShowProfileDetail(false); }} className="w-full min-h-[44px] text-left px-3 py-1.5 rounded-lg text-sm transition-colors flex items-center justify-between gap-3 hover:bg-surface-2 text-encre-2">
-                              <span className="min-w-0">
-                                <span className="block">{f.libelle}</span>
-                                {f.precision && <span className="block text-xs text-encre-3">{f.precision}</span>}
-                              </span>
-                              <span className="text-xs text-encre-3 shrink-0 whitespace-nowrap">→ {NOM_ONGLET[f.onglet]}</span>
-                            </button>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ))}
-
-                  {/* L'assistant traite ce qui bloque l'envoi : sans objet quand plus rien ne le bloque */}
-                  {missingRequired.length > 0 && (
-                    <Bouton variante="principal" pleineLargeur icone={Sparkles} className="mt-1"
-                      onClick={() => { setShowSetupWizard(true); setWizardStep(0); setShowProfileDetail(false); }}>
-                      Compléter avec l'assistant
-                    </Bouton>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
+      {/* Profil : au bureau toujours, au téléphone sur la liste des rubriques */}
+      <div className={vueMobile === 'rubrique' ? 'hidden md:block' : ''}>
+        <EtatProfil jauge={jauge} onAllerAuChamp={allerAuChamp} onAssistant={ouvrirAssistant} />
       </div>
 
       {/* Alertes assurances critiques */}
       {alertesAssurances.filter(a => a.severity === 'critical').map((alert, i) => (
-        <div key={i} className="rounded-2xl px-4 py-3 flex items-center gap-3 bg-danger-fond text-danger-texte">
+        <div key={i} className={`rounded-2xl px-4 py-3 flex flex-wrap items-center gap-3 bg-danger-fond text-danger-texte ${vueMobile === 'rubrique' ? 'hidden md:flex' : ''}`}>
           <AlertCircle size={20} aria-hidden="true" className="flex-shrink-0" />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold">{alert.message}</p>
             <p className="text-sm">Expiration le {alert.date.toLocaleDateString('fr-FR')}</p>
           </div>
-          <Bouton taille="compacte" onClick={() => setTab('assurances')}>Renouveler</Bouton>
+          <Bouton taille="compacte" onClick={() => ouvrirRubrique('assurances')}>Renouveler</Bouton>
         </div>
       ))}
 
-      {completude < 50 && (
-        <div className="rounded-2xl px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-3 bg-alerte-fond text-alerte-texte">
-          <div className="flex items-start gap-3 min-w-0 flex-1">
-            <AlertCircle size={20} aria-hidden="true" className="shrink-0 mt-0.5" />
-            <div className="min-w-0">
-              <p className="text-sm font-semibold">{'Profil incomplet (' + completude + ' %)'}</p>
-              <p className="text-sm">
-                {missingRequired.length > 0
-                  ? missingRequired.length + ' champ' + (missingRequired.length > 1 ? 's' : '') + ' obligatoire' + (missingRequired.length > 1 ? 's' : '') + ' manquant' + (missingRequired.length > 1 ? 's' : '') + '.'
-                  : 'Complétez vos informations pour un profil professionnel.'}
-              </p>
+      <div className="md:flex md:items-start md:gap-6">
+        {/* Bureau et tablette : colonne de navigation */}
+        <nav aria-label="Rubriques des paramètres" className="hidden md:block md:w-52 lg:w-56 flex-shrink-0 md:sticky md:top-4">
+          {groupesVisibles.map((g) => (
+            <div key={g.id} className="mb-4">
+              <p className="px-3 mb-1 text-sm font-semibold text-encre-3">{g.libelle}</p>
+              <ul>
+                {g.rubriques.map((r) => {
+                  const actif = r.cle === tab;
+                  const Icone = r.icone;
+                  return (
+                    <li key={r.cle}>
+                      <button
+                        type="button"
+                        onClick={() => ouvrirRubrique(r.cle)}
+                        aria-current={actif ? 'page' : undefined}
+                        className={`relative w-full h-11 flex items-center gap-2.5 px-3 rounded-xl text-left text-sm transition-colors ${actif ? 'bg-surface-2 text-encre font-semibold' : 'text-encre-2 font-medium hover:bg-surface-2 hover:text-encre'}`}
+                      >
+                        {actif ? <span aria-hidden="true" className="absolute left-0 top-2.5 bottom-2.5 w-1 rounded-full bg-accent" /> : null}
+                        <Icone size={17} aria-hidden="true" className="flex-shrink-0" />
+                        <span className="truncate">{r.libelle}</span>
+                        {r.cle === 'assurances' && hasAssuranceAlerts ? <span aria-label="à renouveler" className="ml-auto w-2 h-2 rounded-full bg-danger-point" /> : null}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
             </div>
+          ))}
+        </nav>
+
+        {/* Téléphone : la liste des rubriques */}
+        {vueMobile === 'liste' && (
+          <div className="md:hidden space-y-5" data-parametres="liste">
+            {groupesVisibles.map((g) => (
+              <section key={g.id} aria-label={g.libelle}>
+                <h2 className="text-sm font-semibold text-encre-3 mb-2 px-1">{g.libelle}</h2>
+                <GroupeListe>
+                  {g.rubriques.map((r) => {
+                    const Icone = r.icone;
+                    return (
+                      <LigneListe
+                        key={r.cle}
+                        onClick={() => ouvrirRubrique(r.cle)}
+                        aria-label={r.libelle}
+                        debut={<span className="w-9 h-9 rounded-xl flex items-center justify-center bg-surface-2 text-encre-2"><Icone size={18} aria-hidden="true" /></span>}
+                        titre={r.libelle}
+                        pastille={r.cle === 'assurances' && hasAssuranceAlerts ? <Pastille ton="danger">À renouveler</Pastille> : null}
+                      />
+                    );
+                  })}
+                </GroupeListe>
+              </section>
+            ))}
           </div>
-          <button
-            onClick={() => {
-              const firstMissing = missingRequired[0] || missingSelonSituation[0] || missingRecommended[0];
-              if (firstMissing) allerAuChamp(firstMissing.onglet, firstMissing.champ);
-            }}
-            className="self-end sm:self-auto h-11 px-4 rounded-xl text-sm font-semibold whitespace-nowrap shrink-0 bg-surface text-encre border border-bord-fort hover:bg-surface-2"
-          >
-            Compléter
-          </button>
-        </div>
-      )}
+        )}
 
-      {/* Tabs — Desktop: 2-level grouped navigation (4 groups → sub-tabs) */}
-      {/* Level 1: Group pills (hidden on mobile) */}
-      <div className={`hidden sm:block border-b border-bord`}>
-        <div className="flex gap-0.5">
-          {visibleTabGroups.map(group => {
-            const activeInGroup = group.tabs.some(t => t.key === tab);
-            return (
-              <button
-                key={group.id}
-                onClick={() => { if (!activeInGroup) setTab(group.tabs[0].key); }}
-                className={`relative px-4 py-2.5 font-medium whitespace-nowrap min-h-[44px] text-sm transition-all rounded-t-lg ${activeInGroup ? 'font-semibold' : `text-encre-3 hover:text-encre hover:bg-surface-2`}`}
-                style={activeInGroup ? { color: entreprise.couleur } : {}}
-              >
-                <span className="inline-flex items-center gap-1.5">{group.icon && <group.icon size={14} />}{group.label}</span>
-                {activeInGroup && (
-                  <span className="absolute bottom-0 left-2 right-2 h-[2px] rounded-full" style={{ backgroundColor: entreprise.couleur }} />
-                )}
-              </button>
-            );
-          })}
-        </div>
-        {/* Level 2: Sub-tabs within active group */}
-        {(() => {
-          const activeGroup = visibleTabGroups.find(g => g.tabs.some(t => t.key === tab));
-          if (!activeGroup || activeGroup.tabs.length <= 1) return null;
-          return (
-            <div className="flex gap-1 p-1 my-2 rounded-xl bg-surface-2 w-fit">
-              {activeGroup.tabs.map(t => (
-                <button
-                  key={t.key}
-                  data-tab={t.key}
-                  onClick={() => setTab(t.key)}
-                  aria-pressed={tab === t.key}
-                  className={`h-9 px-3 rounded-lg text-sm transition-colors ${tab === t.key ? 'bg-surface text-encre font-semibold shadow-e1' : 'text-encre-2 font-medium hover:text-encre'} ${t.key === 'assurances' && hasAssuranceAlerts ? 'text-danger-texte' : ''}`}
-                >
-                  <span className="inline-flex items-center gap-1">{t.icon && <t.icon size={13} />}{t.label}</span>
-                </button>
-              ))}
-            </div>
-          );
-        })()}
-      </div>
-
-      {/* Mobile tabs — grouped accordion (visible < 640px) */}
-      <div className={`sm:hidden space-y-1 border rounded-xl overflow-hidden border-bord`}>
-        {visibleTabGroups.map(group => {
-          const isOpen = mobileGroupOpen === group.id;
-          const activeInGroup = group.tabs.some(t => t.key === tab);
-          return (
-            <div key={group.id}>
-              <button
-                onClick={() => setMobileGroupOpen(isOpen ? '' : group.id)}
-                className={`w-full flex items-center justify-between px-4 py-3 text-sm font-semibold transition-colors ${
-                  activeInGroup
-                    ? 'bg-surface-2 text-encre'
-                    : 'text-encre-2 hover:bg-surface-2'
-                }`}
-              >
-                <span className="inline-flex items-center gap-1.5">{group.icon && <group.icon size={15} />}{group.label}</span>
-                <div className="flex items-center gap-2">
-                  {activeInGroup && !isOpen && (
-                    <span className="text-sm px-2 py-0.5 rounded-full bg-surface-2 text-encre-2">
-                      {group.tabs.find(t => t.key === tab)?.label}
-                    </span>
-                  )}
-                  {isOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-                </div>
-              </button>
-              {isOpen && (
-                <div className={`px-2 pb-2 flex gap-1.5 overflow-x-auto bg-surface`} style={{ scrollbarWidth: 'none' }}>
-                  {group.tabs.map(t => (
-                    <button
-                      key={t.key}
-                      onClick={() => setTab(t.key)}
-                      aria-pressed={tab === t.key}
-                      className={`px-3.5 rounded-full text-sm font-semibold transition-colors min-h-[44px] whitespace-nowrap shrink-0 ${
-                        tab === t.key ? 'bg-encre text-surface' : 'bg-surface-2 text-encre-2 hover:text-encre'
-                      } ${t.key === 'assurances' && hasAssuranceAlerts && tab !== t.key ? 'text-danger-texte' : ''}`}
-                    >
-                      <span className="inline-flex items-center gap-1">{t.icon && <t.icon size={13} />}{t.label}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
+        {/* La rubrique */}
+        <div className={`flex-1 min-w-0 space-y-4 sm:space-y-6 ${vueMobile === 'liste' ? 'hidden md:block' : ''}`}>
+          <div className="md:hidden flex items-center gap-1 -ml-2">
+            <button type="button" onClick={() => { setVueMobile('liste'); try { window.scrollTo({ top: 0 }); } catch { /* jsdom */ } }}
+              className="h-11 inline-flex items-center gap-1 pl-1 pr-3 rounded-xl text-sm font-semibold text-accent-texte hover:bg-surface-2">
+              <ChevronLeft size={20} aria-hidden="true" /> Paramètres
+            </button>
+          </div>
+          {rubriqueCourante ? <h2 className="md:hidden text-xl font-bold text-encre">{rubriqueCourante.libelle}</h2> : null}
 
       {/* IDENTITÉ */}
       {tab === 'identite' && (
         <div className="space-y-4 sm:space-y-6">
-          <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
-            <h3 className="font-semibold mb-4">Logo & Couleur</h3>
+          <Bloc titre="Logo et couleur">
             <div className="flex gap-6 flex-wrap items-start">
               <div>
-                <p className="text-sm font-medium mb-2">Logo entreprise</p>
+                <div className="flex items-end justify-between gap-2 mb-1.5">
+                  <p className="text-sm font-medium text-encre-2">Logo de l’entreprise</p>
+                  <EtatEnregistrement cle="logo" />
+                </div>
                 <div className="flex items-center gap-4">
                   <div
-                  onDragOver={e => { e.preventDefault(); e.currentTarget.classList.add('ring-2'); e.currentTarget.style.borderColor = entreprise.couleur; e.currentTarget.style.ringColor = entreprise.couleur; }}
-                  onDragLeave={e => { e.currentTarget.classList.remove('ring-2'); e.currentTarget.style.borderColor = ''; }}
-                  onDrop={e => { e.preventDefault(); e.currentTarget.classList.remove('ring-2'); e.currentTarget.style.borderColor = ''; const file = e.dataTransfer.files?.[0]; if (file) { const fakeEvent = { target: { files: [file] } }; handleLogoUpload(fakeEvent); } }}
-                  className={`w-24 h-24 rounded-xl border-2 border-dashed flex items-center justify-center overflow-hidden transition-all bg-surface-2`}>
+                    onDragOver={e => { e.preventDefault(); setSurvolLogo(true); }}
+                    onDragLeave={() => setSurvolLogo(false)}
+                    onDrop={e => { e.preventDefault(); setSurvolLogo(false); const file = e.dataTransfer.files?.[0]; if (file) handleLogoUpload({ target: { files: [file] } }); }}
+                    className={`w-24 h-24 rounded-xl border-2 border-dashed flex items-center justify-center overflow-hidden transition-all bg-surface-2 ${survolLogo ? 'border-accent ring-2 ring-accent' : 'border-bord-fort'}`}>
                     {entreprise.logo ? (
                       <img src={entreprise.logo} className="w-full h-full object-contain" alt="Logo" onError={(e) => { e.target.style.display = 'none'; }} />
                     ) : entreprise.nom ? (
-                      <span className="text-2xl font-bold" style={{ color: entreprise.couleur || '#64748b' }}>
+                      <span className="text-2xl font-bold text-encre-2" aria-hidden="true">
                         {entreprise.nom.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
                       </span>
                     ) : (
-                      <Building2 size={28} className="text-slate-300" />
+                      <Building2 size={28} aria-hidden="true" className="text-encre-3" />
                     )}
                   </div>
                   <div className="space-y-2">
-                    <label className="inline-flex items-center h-11 px-4 rounded-xl cursor-pointer text-sm font-semibold bg-surface text-encre border border-bord-fort hover:bg-surface-2">
+                    <label className="inline-flex items-center h-11 px-4 rounded-full cursor-pointer text-sm font-semibold bg-surface text-encre border border-bord-fort hover:bg-surface-2">
                       Choisir une image
-                      <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
+                      <input type="file" accept="image/*" onChange={handleLogoUpload} className="sr-only" />
                     </label>
                     {entreprise.logo && (
-                      <button onClick={() => updateEntreprise(p => ({...p, logo: ''}))} className="block h-11 text-sm font-semibold text-danger-texte hover:underline">
+                      <button type="button" onClick={() => updateEntreprise(p => ({ ...p, logo: '' }), 'logo')} className="block h-11 text-sm font-semibold text-danger-texte hover:underline">
                         Supprimer le logo
                       </button>
                     )}
@@ -757,205 +574,175 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                 </div>
                 <p className="text-sm text-encre-3 mt-2">PNG ou JPG, 500 Ko au plus.</p>
               </div>
-              <div>
-                <p className="text-sm font-medium mb-2">Couleur principale</p>
-                <div className="flex gap-2 flex-wrap">
-                  {COULEURS.map(c => (
-                    <button
-                      key={c}
-                      onClick={() => updateEntreprise(p => ({...p, couleur: c}))}
-                      aria-pressed={entreprise.couleur === c}
-                      aria-label={`Couleur ${c}${entreprise.couleur === c ? ' (choisie)' : ''}`}
-                      className="w-11 h-11 rounded-xl transition-transform duration-150 hover:scale-105 flex items-center justify-center"
-                      // ringColor n'existe pas en CSS : la sélection passe par un contour de la couleur elle-même
-                      style={{ background: c, outline: entreprise.couleur === c ? `3px solid ${c}` : 'none', outlineOffset: 3 }}
-                      title={entreprise.couleur === c ? 'Couleur choisie' : 'Choisir cette couleur'}
-                    >
-                      {entreprise.couleur === c && (
-                        <svg className="w-5 h-5 text-white drop-shadow" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                        </svg>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </div>
+              <ChoixCouleur entreprise={entreprise} updateEntreprise={updateEntreprise} />
             </div>
-          </div>
+          </Bloc>
 
-          <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
-            <h3 className="font-semibold mb-4">Informations entreprise</h3>
+          <Bloc titre="Informations de l’entreprise">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium mb-1">Nom de l'entreprise <span className="text-red-500">*</span></label>
-                <DebouncedInput id="settings-field-nom" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Ex: Dupont Rénovation" value={entreprise.nom || ''} onChange={val => updateEntreprise(p => ({...p, nom: val}))} />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Statut juridique <span className="text-red-500">*</span></label>
-                <select id="settings-field-formeJuridique" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={entreprise.formeJuridique || ''} onChange={e => updateEntreprise(p => ({...p, formeJuridique: e.target.value}))}>
-                  <option value="">Sélectionner...</option>
-                  {FORMES_JURIDIQUES.map(f => <option key={f.valeur} value={f.valeur}>{f.libelle}</option>)}
-                </select>
-              </div>
-              <div>
-                {/* Société : forme juridique ET capital social sur les factures (service-public F31808) */}
-                <label htmlFor="settings-field-capital" className="block text-sm font-medium mb-1">
-                  Capital social (obligatoire pour une société)
-                </label>
+              <ChampParam id="settings-field-nom" cle="nom" libelle="Nom de l’entreprise" className="md:col-span-2">
+                <DebouncedInput id="settings-field-nom" placeholder="Ex : Dupont Rénovation" value={entreprise.nom || ''} onChange={maj('nom')} />
+              </ChampParam>
+              <ChoixParam id="settings-field-formeJuridique" cle="formeJuridique" libelle="Statut juridique" titre="Forme juridique"
+                options={FORMES_JURIDIQUES} valeur={entreprise.formeJuridique || ''} onChange={maj('formeJuridique')} vide="Choisir le statut" />
+              {/* Société : forme juridique ET capital social sur les factures (service-public F31808) */}
+              <ChampParam id="settings-field-capital" cle="capital" libelle="Capital social" aide="Obligatoire pour une société.">
                 <div className="flex">
-                  <DebouncedInput id="settings-field-capital" type="number" className={`flex-1 px-4 py-2.5 border rounded-l-xl ${inputBg}`} placeholder="10000" value={entreprise.capital || ''} onChange={val => updateEntreprise(p => ({...p, capital: val}))} />
-                  <span className={`px-4 py-2.5 border-y border-r rounded-r-xl bg-surface-2 text-encre-3 border-bord-fort`}>€</span>
+                  <DebouncedInput id="settings-field-capital" type="number" inputMode="decimal" className={`${CLASSE_CHAMP} rounded-r-none`} placeholder="10000" value={entreprise.capital || ''} onChange={maj('capital')} />
+                  <span className="h-12 px-4 flex items-center border-y border-r rounded-r-xl bg-surface-2 text-encre-3 border-bord-fort">€</span>
                 </div>
-              </div>
+              </ChampParam>
               {(estEntrepreneurIndividuel(entreprise) || estEirl(entreprise)) && (
-                <div className="md:col-span-2">
-                  <label htmlFor="settings-field-nomEntrepreneur" className="block text-sm font-medium mb-1">Votre prénom et nom</label>
-                  <DebouncedInput id="settings-field-nomEntrepreneur" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Ex : Hugo Séguin" value={entreprise.nomEntrepreneur || ''} onChange={val => updateEntreprise(p => ({...p, nomEntrepreneur: val}))} />
-                  <p className="text-xs text-encre-3 mt-1">
-                    Sur vos devis et factures, votre nom doit être suivi de « {estEirl(entreprise) ? 'EIRL' : 'EI'} ». Il s'imprimera ainsi : <strong className="text-encre-2">{nomImprime(entreprise) || '—'}</strong>
-                  </p>
-                </div>
+                <ChampParam id="settings-field-nomEntrepreneur" cle="nomEntrepreneur" libelle="Votre prénom et nom" lexique={LEXIQUE.ei} className="md:col-span-2"
+                  aide={<>Sur vos devis et factures, votre nom doit être suivi de « {estEirl(entreprise) ? 'EIRL' : 'EI'} ». Il s’imprimera ainsi : <strong className="text-encre-2">{nomImprime(entreprise) || '—'}</strong></>}>
+                  <DebouncedInput id="settings-field-nomEntrepreneur" placeholder="Ex : Hugo Séguin" value={entreprise.nomEntrepreneur || ''} onChange={maj('nomEntrepreneur')} />
+                </ChampParam>
               )}
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium mb-1">Adresse siège social <span className="text-red-500">*</span></label>
-                <DebouncedTextarea id="settings-field-adresse" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} rows={2} placeholder="12 rue des Artisans&#10;75001 Paris&#10;FRANCE" value={entreprise.adresse || ''} onChange={val => updateEntreprise(p => ({...p, adresse: val}))} />
-                <p className="text-xs text-slate-500 mt-1">Inclure "FRANCE" pour les documents internationaux</p>
+                <ChampsAdresse id="settings-field-adresse" entreprise={entreprise} updateEntreprise={updateEntreprise} />
               </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Téléphone <span className="text-red-500">*</span></label>
+              <ChampParam id="settings-field-tel" cle="tel" libelle="Téléphone">
                 <div className="relative">
-                  <DebouncedInput id="settings-field-tel" type="tel" className={`w-full px-4 py-2.5 border rounded-xl text-base sm:text-sm ${inputBg}`} placeholder="06 12 34 56 78" value={entreprise.tel || ''} onChange={val => updateEntreprise(p => ({...p, tel: val}))} />
-                  {entreprise.tel && /^(?:\+33|0)\s*[1-9](?:[\s.-]*\d{2}){4}$/.test((entreprise.tel || '').trim()) && (
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-green-500 text-white flex items-center justify-center text-xs font-bold" aria-label="Valide"><Check size={12} /></span>
-                  )}
+                  <DebouncedInput id="settings-field-tel" type="tel" className={`${CLASSE_CHAMP} pr-10`} placeholder="06 12 34 56 78" value={entreprise.tel || ''} onChange={maj('tel')} />
+                  {telValide(entreprise.tel) && <Check size={18} aria-label="Numéro valide" className="absolute right-3 top-1/2 -translate-y-1/2 text-succes-texte" />}
                 </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Email <span className="text-red-500">*</span></label>
+              </ChampParam>
+              <ChampParam id="settings-field-email" cle="email" libelle="E-mail">
                 <div className="relative">
-                  <DebouncedInput id="settings-field-email" type="email" className={`w-full px-4 py-2.5 border rounded-xl text-base sm:text-sm ${inputBg}`} placeholder="contact@monentreprise.fr" value={entreprise.email || ''} onChange={val => updateEntreprise(p => ({...p, email: val}))} />
-                  {entreprise.email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((entreprise.email || '').trim()) && (
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-green-500 text-white flex items-center justify-center text-xs font-bold" aria-label="Valide"><Check size={12} /></span>
-                  )}
+                  <DebouncedInput id="settings-field-email" type="email" className={`${CLASSE_CHAMP} pr-10`} placeholder="contact@monentreprise.fr" value={entreprise.email || ''} onChange={maj('email')} />
+                  {emailValide(entreprise.email) && <Check size={18} aria-label="Adresse valide" className="absolute right-3 top-1/2 -translate-y-1/2 text-succes-texte" />}
                 </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Site web</label>
-                <DebouncedInput className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="www.monentreprise.fr" value={entreprise.siteWeb || ''} onChange={val => updateEntreprise(p => ({...p, siteWeb: val}))} />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Slogan (optionnel)</label>
-                <DebouncedInput className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Votre artisan de confiance" value={entreprise.slogan || ''} onChange={val => updateEntreprise(p => ({...p, slogan: val}))} />
-              </div>
+              </ChampParam>
+              <ChampParam id="settings-field-siteWeb" cle="siteWeb" libelle="Site web" facultatif>
+                <DebouncedInput id="settings-field-siteWeb" placeholder="www.monentreprise.fr" value={entreprise.siteWeb || ''} onChange={maj('siteWeb')} />
+              </ChampParam>
+              <ChampParam id="settings-field-slogan" cle="slogan" libelle="Slogan" facultatif>
+                <DebouncedInput id="settings-field-slogan" placeholder="Votre artisan de confiance" value={entreprise.slogan || ''} onChange={maj('slogan')} />
+              </ChampParam>
             </div>
-          </div>
+          </Bloc>
+
+          {/* Aperçu de l'en-tête d'un document : la couleur imprimée telle quelle (comme les générateurs de documents) */}
+          {(() => {
+            const couleurDoc = entreprise.couleur || COULEUR_DOCUMENTS_DEFAUT;
+            return (
+              <Bloc titre="Aperçu de l’en-tête de vos documents">
+                <div className="border border-bord rounded-xl p-4 sm:p-6 bg-surface-2">
+                  <div className="flex justify-between items-start gap-4 mb-4">
+                    <div className="flex items-center gap-4 min-w-0">
+                      {entreprise.logo ? (
+                        <img src={entreprise.logo} className="h-16 object-contain" alt="Logo" onError={(e) => { e.target.style.display = 'none'; }} />
+                      ) : null}
+                      <div className="min-w-0">
+                        <p className="font-bold text-lg text-encre break-words">{nomImprime(entreprise) || entreprise.nom || 'Nom de l’entreprise'}</p>
+                        {entreprise.slogan && <p className="text-sm text-encre-3 italic">{entreprise.slogan}</p>}
+                        {entreprise.formeJuridique && (
+                          <p className="text-sm text-encre-3">{entreprise.formeJuridique}{entreprise.capital && ` · Capital : ${entreprise.capital} €`}</p>
+                        )}
+                        {entreprise.adresse ? (
+                          <p className="text-sm text-encre-3 whitespace-pre-line mt-1">{adresseComplete(entreprise)}</p>
+                        ) : (
+                          <p className="text-sm text-alerte-texte mt-1 flex items-center gap-1"><AlertTriangle size={14} aria-hidden="true" /> Adresse manquante : vos documents ne seront pas conformes</p>
+                        )}
+                      </div>
+                    </div>
+                    <p className="font-bold text-xl flex-shrink-0" style={{ color: couleurDoc }}>DEVIS</p>
+                  </div>
+                  <div className="text-sm text-encre-3 space-y-0.5 border-t border-bord pt-3 mt-3">
+                    {entreprise.siret && <p>SIRET : {maskValue(entreprise.siret)} {entreprise.codeApe && `· APE : ${entreprise.codeApe}`}</p>}
+                    {getRCSComplet() && <p>{getRCSComplet()}</p>}
+                    {entreprise.tvaIntra && <p>TVA intracommunautaire : {entreprise.tvaIntra}</p>}
+                    {entreprise.tel && <p>Tél. : {entreprise.tel} {entreprise.email && `· ${entreprise.email}`}</p>}
+                    {/* Même règle que les documents : la décennale n'apparaît qu'avec l'assureur ET le n° de police */}
+                    {(entreprise.rcProAssureur || (entreprise.decennaleAssureur && entreprise.decennaleNumero)) && (
+                      <p className="pt-1">
+                        {entreprise.rcProAssureur && `RC Pro : ${entreprise.rcProAssureur}${entreprise.rcProNumero ? ` n° ${entreprise.rcProNumero}` : ''}`}
+                        {entreprise.rcProAssureur && entreprise.decennaleAssureur && entreprise.decennaleNumero && ' · '}
+                        {entreprise.decennaleAssureur && entreprise.decennaleNumero && `Décennale : ${entreprise.decennaleAssureur} n° ${entreprise.decennaleNumero}${entreprise.decennaleValidite ? ` (valide jusqu’au ${dateLue(entreprise.decennaleValidite).toLocaleDateString('fr-FR')})` : ''}`}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </Bloc>
+            );
+          })()}
         </div>
       )}
 
       {/* LÉGAL */}
       {tab === 'legal' && (
         <div className="space-y-4 sm:space-y-6">
-          <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
-            <h3 className="font-semibold mb-4">Numéros d'identification</h3>
+          <Bloc titre="Numéros d’identification">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">SIRET (14 chiffres) <span className="text-red-500">*</span></label>
+              <ChampParam id="settings-field-siret" cle="siret" libelle="SIRET (14 chiffres)" lexique={LEXIQUE.siret}>
                 <div className="relative">
-                  <DebouncedInput id="settings-field-siret" className={`w-full px-4 py-2.5 border rounded-xl font-mono text-base sm:text-sm ${entreprise.siret && !validateSIRET(entreprise.siret) ? 'border-red-300 bg-red-50' : inputBg}`} placeholder="123 456 789 00012" maxLength={17} value={entreprise.siret || ''} onChange={val => updateEntreprise(p => ({...p, siret: val}))} />
-                  {entreprise.siret && validateSIRET(entreprise.siret) && (
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-green-500 text-white flex items-center justify-center text-xs font-bold" aria-label="Valide"><Check size={12} /></span>
-                  )}
+                  <DebouncedInput id="settings-field-siret" inputMode="numeric"
+                    className={`${CLASSE_CHAMP} pr-10 tabular-nums ${entreprise.siret && !validateSIRET(entreprise.siret) ? '!border-red-500' : ''}`}
+                    aria-invalid={entreprise.siret && !validateSIRET(entreprise.siret) ? true : undefined}
+                    placeholder="123 456 789 00012" maxLength={17} value={entreprise.siret || ''} onChange={maj('siret')} />
+                  {entreprise.siret && validateSIRET(entreprise.siret) && <Check size={18} aria-label="SIRET valide" className="absolute right-3 top-1/2 -translate-y-1/2 text-succes-texte" />}
                 </div>
                 {entreprise.siret && !validateSIRET(entreprise.siret) && (
-                  <p className="text-xs text-red-500 mt-1">Format invalide. Attendu: 14 chiffres</p>
+                  <p className="mt-1.5 text-sm font-medium text-danger-texte">Format invalide : 14 chiffres attendus.</p>
                 )}
-              </div>
-              <div>
-                <label htmlFor="settings-field-codeApe" className="block text-sm font-medium mb-1">Code APE/NAF</label>
-                <DebouncedInput id="settings-field-codeApe" className={`w-full px-4 py-2.5 border rounded-xl font-mono ${inputBg}`} placeholder="4339Z" maxLength={5} value={entreprise.codeApe || ''} onChange={val => updateEntreprise(p => ({...p, codeApe: val.toUpperCase()}))} />
-              </div>
+              </ChampParam>
+              <ChampParam id="settings-field-codeApe" cle="codeApe" libelle="Code APE (NAF)" facultatif lexique={LEXIQUE.ape}>
+                <DebouncedInput id="settings-field-codeApe" placeholder="4321A" maxLength={5} value={entreprise.codeApe || ''} onChange={maj('codeApe', (v) => v.toUpperCase())} />
+              </ChampParam>
             </div>
-          </div>
+          </Bloc>
 
           {entreprise.formeJuridique !== 'Micro-entreprise' && entreprise.formeJuridique !== 'Auto-entrepreneur' ? (
-          <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
-            <h3 className="font-semibold mb-4">RCS - Registre du Commerce</h3>
-            <p className={`text-sm mb-4 ${textMuted}`}>Format légal: RCS [Ville] [Type] [Numéro] — ex: RCS Paris B 123 456 789</p>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">Ville du greffe</label>
-                <select id="settings-field-rcs" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={entreprise.rcsVille || ''} onChange={e => updateEntreprise(p => ({...p, rcsVille: e.target.value}))}>
-                  <option value="">Sélectionner...</option>
-                  {VILLES_RCS.map(v => <option key={v} value={v}>{v}</option>)}
-                </select>
+            <Bloc titre="RCS : registre du commerce" lexique={LEXIQUE.rcs} sousTitre="Format : RCS, ville du greffe, type, numéro (ex. RCS Paris B 123 456 789).">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <ChoixParam id="settings-field-rcs" cle="rcsVille" libelle="Ville du greffe" options={VILLES_RCS.map((v) => ({ valeur: v, libelle: v }))}
+                  valeur={entreprise.rcsVille || ''} onChange={maj('rcsVille')} vide="Choisir la ville" />
+                <ChoixParam id="settings-field-rcsType" cle="rcsType" libelle="Type" titre="Type d’immatriculation" options={TYPES_RCS}
+                  valeur={entreprise.rcsType || 'B'} onChange={maj('rcsType')} />
+                <ChampParam id="settings-field-rcsNumero" cle="rcsNumero" libelle="Numéro (9 chiffres)">
+                  <DebouncedInput id="settings-field-rcsNumero" inputMode="numeric" className={`${CLASSE_CHAMP} tabular-nums`} placeholder="123 456 789" maxLength={11} value={entreprise.rcsNumero || ''} onChange={maj('rcsNumero')} />
+                </ChampParam>
               </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Type</label>
-                <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={entreprise.rcsType || 'B'} onChange={e => updateEntreprise(p => ({...p, rcsType: e.target.value}))}>
-                  <option value="A">A - Commerçant</option>
-                  <option value="B">B - Société commerciale</option>
-                  <option value="C">C - GIE</option>
-                  <option value="D">D - Société civile</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Numéro (9 chiffres)</label>
-                <DebouncedInput id="settings-field-rcsNumero" className={`w-full px-4 py-2.5 border rounded-xl font-mono ${inputBg}`} placeholder="123 456 789" maxLength={11} value={entreprise.rcsNumero || ''} onChange={val => updateEntreprise(p => ({...p, rcsNumero: val}))} />
-              </div>
-            </div>
-            {getRCSComplet() && (
-              <div className="mt-4 p-3 bg-green-50 rounded-xl">
-                <p className="text-sm text-green-700">" Sera affiché: <strong>{getRCSComplet()}</strong></p>
-              </div>
-            )}
-          </div>
-          ) : (
-          <div className={`rounded-xl p-4 border ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-blue-50 border-blue-200'}`}>
-            <p className={`text-sm font-medium ${isDark ? 'text-blue-300' : 'text-blue-800'}`}>ℹ️ Auto-entrepreneur / Micro-entreprise</p>
-            <p className={`text-xs mt-1 text-info-texte`}>Le RCS n'est pas requis pour votre statut juridique.</p>
-          </div>
-          )}
-
-          <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
-            <h3 className="font-semibold mb-4">TVA Intracommunautaire</h3>
-            <div>
-              <label className="block text-sm font-medium mb-1">Numéro TVA</label>
-              <DebouncedInput id="settings-field-tvaIntra" className={`w-full px-4 py-2.5 border rounded-xl font-mono ${entreprise.tvaIntra && !validateTVA(entreprise.tvaIntra) ? 'border-amber-300 bg-amber-50' : inputBg}`} placeholder="FR 12 345678901" value={entreprise.tvaIntra || ''} onChange={val => updateEntreprise(p => ({...p, tvaIntra: val.toUpperCase()}))} />
-              <p className="text-xs text-slate-500 mt-1">Format: FR + 11 chiffres (ex: FR12345678901)</p>
-              {entreprise.tvaIntra && validateTVA(entreprise.tvaIntra) && (
-                <p className="text-xs text-green-600 mt-1">“ Format valide</p>
+              {getRCSComplet() && (
+                <p className="mt-4 p-3 rounded-xl text-sm bg-succes-fond text-succes-texte">Sera imprimé : <strong>{getRCSComplet()}</strong></p>
               )}
-            </div>
-          </div>
-
-          {entreprise.formeJuridique === 'Micro-entreprise' && (
-            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-              <p className="font-medium text-blue-800"> Micro-entreprise</p>
-              <p className="text-sm text-blue-700 mt-1">La mention "TVA non applicable, article 293 B du CGI" sera automatiquement ajoutée sur vos devis et factures.</p>
+            </Bloc>
+          ) : (
+            <div className="rounded-2xl p-4 flex items-start gap-3 bg-info-fond text-info-texte">
+              <Info size={18} aria-hidden="true" className="flex-shrink-0 mt-0.5" />
+              <div className="text-sm">
+                <p className="font-semibold">Micro-entreprise</p>
+                <p className="mt-0.5">Le RCS n’est pas requis pour votre statut juridique.</p>
+              </div>
             </div>
           )}
 
-          <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
-            <h3 className="font-semibold mb-4">Qualifications professionnelles</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">Numéro RGE</label>
-                <DebouncedInput className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="E-12345" value={entreprise.rge || ''} onChange={val => updateEntreprise(p => ({...p, rge: val}))} />
-                <p className="text-xs text-slate-500 mt-1">Reconnu Garant de l'Environnement</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Organisme RGE</label>
-                <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={entreprise.rgeOrganisme || ''} onChange={e => updateEntreprise(p => ({...p, rgeOrganisme: e.target.value}))}>
-                  <option value="">Sélectionner...</option>
-                  <option value="Qualibat">Qualibat</option>
-                  <option value="Qualifelec">Qualifelec</option>
-                  <option value="Qualit'EnR">Qualit'EnR</option>
-                  <option value="Qualiopi">Qualiopi</option>
-                  <option value="Autre">Autre</option>
-                </select>
+          {franchiseTva ? (
+            <div className="rounded-2xl p-4 flex items-start gap-3 bg-info-fond text-info-texte">
+              <Info size={18} aria-hidden="true" className="flex-shrink-0 mt-0.5" />
+              <div className="text-sm">
+                <p className="font-semibold">Franchise en base de TVA</p>
+                <p className="mt-0.5">La mention « TVA non applicable, art. 293 B du CGI » est ajoutée d’elle-même sur vos devis et factures.</p>
               </div>
             </div>
-          </div>
+          ) : (
+            <Bloc titre="TVA intracommunautaire" lexique={LEXIQUE.tvaIntra}>
+              <ChampParam id="settings-field-tvaIntra" cle="tvaIntra" libelle="Numéro de TVA" aide="FR suivi de 11 caractères (ex. FR12345678901).">
+                <DebouncedInput id="settings-field-tvaIntra" className={`${CLASSE_CHAMP} ${entreprise.tvaIntra && !validateTVA(entreprise.tvaIntra) ? '!border-alerte-point' : ''}`} placeholder="FR 12 345678901" value={entreprise.tvaIntra || ''} onChange={maj('tvaIntra', (v) => v.toUpperCase())} />
+                {entreprise.tvaIntra && validateTVA(entreprise.tvaIntra) && <p className="mt-1.5 text-sm text-succes-texte">Format valide</p>}
+              </ChampParam>
+            </Bloc>
+          )}
+
+          <Bloc titre="Qualifications professionnelles">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <ChampParam id="settings-field-rge" cle="rge" libelle="Numéro RGE" facultatif aide="Reconnu garant de l’environnement.">
+                <DebouncedInput id="settings-field-rge" placeholder="E-12345" value={entreprise.rge || ''} onChange={maj('rge')} />
+              </ChampParam>
+              <ChoixParam id="settings-field-rgeOrganisme" cle="rgeOrganisme" libelle="Organisme RGE" facultatif options={ORGANISMES_RGE}
+                valeur={entreprise.rgeOrganisme || ''} onChange={maj('rgeOrganisme')} vide="Choisir l’organisme" />
+            </div>
+          </Bloc>
         </div>
       )}
 
@@ -965,19 +752,11 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
           {alertesAssurances.length > 0 && (
             <div className="space-y-3">
               {alertesAssurances.map((alert, i) => (
-                <div key={i} className={`rounded-xl p-4 flex items-center gap-3 ${
-                  alert.severity === 'critical' ? 'bg-red-50 border-2 border-red-300' :
-                  alert.severity === 'warning' ? 'bg-amber-50 border border-amber-300' :
-                  'bg-blue-50 border border-blue-200'
-                }`}>
-                  <span className="text-xl">{alert.severity === 'critical' ? '' : alert.severity === 'warning' ? '⚠️ ' : 'ℹ'}</span>
-                  <div className="flex-1">
-                    <p className={`font-medium ${alert.severity === 'critical' ? 'text-red-800' : alert.severity === 'warning' ? 'text-amber-800' : 'text-blue-800'}`}>
-                      {alert.message}
-                    </p>
-                    <p className={`text-sm ${alert.severity === 'critical' ? 'text-red-600' : alert.severity === 'warning' ? 'text-amber-600' : 'text-blue-600'}`}>
-                      Expiration: {alert.date.toLocaleDateString('fr-FR')}
-                    </p>
+                <div key={i} className={`rounded-2xl p-4 flex items-start gap-3 ${TON_ALERTE[alert.severity]}`}>
+                  {alert.severity === 'info' ? <Info size={18} aria-hidden="true" className="flex-shrink-0 mt-0.5" /> : <AlertTriangle size={18} aria-hidden="true" className="flex-shrink-0 mt-0.5" />}
+                  <div className="flex-1 text-sm">
+                    <p className="font-semibold">{alert.message}</p>
+                    <p>Expiration le {alert.date.toLocaleDateString('fr-FR')}</p>
                   </div>
                 </div>
               ))}
@@ -986,277 +765,181 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
 
           {/* C. assur. L241-1 (obligation : travaux de construction) et L243-2 (attestation jointe aux devis et factures) ;
               la RC Pro n'est pas obligatoire dans le bâtiment. Avant : « obligatoire pour les artisans du BTP », « L243-1 ». */}
-          <div className="rounded-xl p-4 bg-alerte-fond text-alerte-texte">
-            <p className="font-medium">Décennale : obligatoire pour les travaux de construction</p>
+          <div className="rounded-2xl p-4 bg-alerte-fond text-alerte-texte">
+            <p className="font-semibold">Décennale : obligatoire pour les travaux de construction</p>
             <p className="text-sm mt-1">Si vous en faites, même parfois, joignez votre attestation à vos devis et factures. La RC Pro est conseillée, pas obligatoire.</p>
           </div>
 
-          <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold"> Assurance RC Professionnelle</h3>
-              {entreprise.rcProValidite && (() => {
-                const d = new Date(entreprise.rcProValidite);
-                const now = new Date();
-                const daysLeft = Math.ceil((d - now) / (1000*60*60*24));
-                if (daysLeft < 0) return <span className="px-3 py-1 bg-red-100 text-red-700 rounded-full text-sm font-medium">Expirée</span>;
-                if (daysLeft < 60) return <span className="px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-sm font-medium">Expire dans {daysLeft}j</span>;
-                return <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">✓ Valide</span>;
-              })()}
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">Compagnie d'assurance</label>
-                <DebouncedInput id="settings-field-rcPro" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="AXA, MAAF, MMA..." value={entreprise.rcProAssureur || ''} onChange={val => updateEntreprise(p => ({...p, rcProAssureur: val}))} />
-              </div>
-              <div>
-                <label htmlFor="settings-field-rcProNumero" className="block text-sm font-medium mb-1">Numéro de contrat</label>
-                <DebouncedInput id="settings-field-rcProNumero" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="RC-123456789" value={entreprise.rcProNumero || ''} onChange={val => updateEntreprise(p => ({...p, rcProNumero: val}))} />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Date de validité</label>
-                <input type="date" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={entreprise.rcProValidite || ''} onChange={e => updateEntreprise(p => ({...p, rcProValidite: e.target.value}))} />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Montant de garantie</label>
-                <div className="flex">
-                  <DebouncedInput type="number" className={`flex-1 px-4 py-2.5 border rounded-l-xl ${inputBg}`} placeholder="300000" value={entreprise.rcProMontantGarantie || ''} onChange={val => updateEntreprise(p => ({...p, rcProMontantGarantie: val}))} />
-                  <span className={`px-4 py-2.5 border-y border-r rounded-r-xl bg-surface-2 text-encre-3 border-bord-fort`}>€</span>
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Zone géographique</label>
-                <DebouncedInput className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="France entière" value={entreprise.rcProZone || 'France entière'} onChange={val => updateEntreprise(p => ({...p, rcProZone: val}))} />
-              </div>
-            </div>
-          </div>
-
-          <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold"> Garantie Décennale</h3>
-              {entreprise.decennaleValidite && (() => {
-                const d = new Date(entreprise.decennaleValidite);
-                const now = new Date();
-                const daysLeft = Math.ceil((d - now) / (1000*60*60*24));
-                if (daysLeft < 0) return <span className="px-3 py-1 bg-red-100 text-red-700 rounded-full text-sm font-medium">Expirée</span>;
-                if (daysLeft < 60) return <span className="px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-sm font-medium">Expire dans {daysLeft}j</span>;
-                return <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">✓ Valide</span>;
-              })()}
+          <Carte>
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+              <AideMot mot={LEXIQUE.decennale.mot} texte={LEXIQUE.decennale.texte} className="min-w-0">
+                <h2 className={TITRE_CARTE}>Garantie décennale</h2>
+              </AideMot>
+              <PastilleValidite date={entreprise.decennaleValidite} />
             </div>
             {/* D-24 : l'obligation de décennale (C. assur. L241-1) vise les travaux de construction, pas le dépannage
                 ni l'entretien. Déclaré par l'artisan, sous sa responsabilité : l'envoi n'exige plus la décennale. */}
             <label className="flex items-start gap-3 min-h-11 mb-4 cursor-pointer">
-              <input id="settings-field-decennaleNonSoumis" type="checkbox" className="mt-0.5 w-5 h-5 shrink-0" style={{ accentColor: couleur }}
+              <input id="settings-field-decennaleNonSoumis" type="checkbox" className="mt-0.5 w-5 h-5 shrink-0 accent-accent"
                 checked={entreprise.decennaleNonSoumis === true}
-                onChange={e => updateEntreprise(p => ({ ...p, decennaleNonSoumis: e.target.checked }))} />
+                onChange={e => updateEntreprise(p => ({ ...p, decennaleNonSoumis: e.target.checked }), 'decennaleNonSoumis')} />
               <span className="text-sm">
                 <span className="font-medium text-encre">Je ne fais que du dépannage, de l'entretien ou de petites réparations : je ne suis pas soumis à la décennale</span>
                 <span className="block text-encre-3">À cocher seulement si vous ne faites jamais de construction, d'extension ni de rénovation importante (par exemple refaire une toiture ou toute l'électricité d'un logement). En cas de doute, demandez à votre assureur. Vous le déclarez sous votre responsabilité.</span>
+                <EtatEnregistrement cle="decennaleNonSoumis" />
               </span>
             </label>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">Compagnie d'assurance {entreprise.decennaleNonSoumis ? null : <span className="text-red-500">*</span>}</label>
-                <DebouncedInput id="settings-field-decennaleAssureur" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="SMABTP, AXA..." value={entreprise.decennaleAssureur || ''} onChange={val => updateEntreprise(p => ({...p, decennaleAssureur: val}))} />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Numéro de contrat {entreprise.decennaleNonSoumis ? null : <span className="text-red-500">*</span>}</label>
-                <DebouncedInput id="settings-field-decennaleNumero" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="DEC-987654321" value={entreprise.decennaleNumero || ''} onChange={val => updateEntreprise(p => ({...p, decennaleNumero: val}))} />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Date de validité {entreprise.decennaleNonSoumis ? null : <span className="text-red-500">*</span>}</label>
-                <input type="date" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={entreprise.decennaleValidite || ''} onChange={e => updateEntreprise(p => ({...p, decennaleValidite: e.target.value}))} />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Activités couvertes</label>
-                <DebouncedInput className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Tous corps d'état" value={entreprise.decennaleActivites || ''} onChange={val => updateEntreprise(p => ({...p, decennaleActivites: val}))} />
-              </div>
+              <ChampParam id="settings-field-decennaleAssureur" cle="decennaleAssureur" libelle="Compagnie d’assurance">
+                <DebouncedInput id="settings-field-decennaleAssureur" placeholder="SMABTP, AXA…" value={entreprise.decennaleAssureur || ''} onChange={maj('decennaleAssureur')} />
+              </ChampParam>
+              <ChampParam id="settings-field-decennaleNumero" cle="decennaleNumero" libelle="Numéro de contrat">
+                <DebouncedInput id="settings-field-decennaleNumero" placeholder="DEC-987654321" value={entreprise.decennaleNumero || ''} onChange={maj('decennaleNumero')} />
+              </ChampParam>
+              <ChampParam id="settings-field-decennaleValidite" cle="decennaleValidite" libelle="Date de validité">
+                <input id="settings-field-decennaleValidite" type="date" className={CLASSE_CHAMP} value={entreprise.decennaleValidite || ''} onChange={e => updateEntreprise(p => ({ ...p, decennaleValidite: e.target.value }), 'decennaleValidite')} />
+              </ChampParam>
+              <ChampParam id="settings-field-decennaleActivites" cle="decennaleActivites" libelle="Activités couvertes" facultatif>
+                <DebouncedInput id="settings-field-decennaleActivites" placeholder="Tous corps d’état" value={entreprise.decennaleActivites || ''} onChange={maj('decennaleActivites')} />
+              </ChampParam>
               {/* Mentions obligatoires sur devis et factures : coordonnées de l'assureur et couverture géographique */}
-              <div>
-                <label htmlFor="settings-field-decennaleAssureurAdresse" className="block text-sm font-medium mb-1">Coordonnées de l'assureur {entreprise.decennaleNonSoumis ? null : <span className="text-red-500">*</span>}</label>
-                <DebouncedInput id="settings-field-decennaleAssureurAdresse" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Adresse de la compagnie" value={entreprise.decennaleAssureurAdresse || ''} onChange={val => updateEntreprise(p => ({...p, decennaleAssureurAdresse: val}))} />
-              </div>
-              <div>
-                <label htmlFor="settings-field-decennaleZone" className="block text-sm font-medium mb-1">Zone géographique couverte {entreprise.decennaleNonSoumis ? null : <span className="text-red-500">*</span>}</label>
-                <DebouncedInput id="settings-field-decennaleZone" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="France métropolitaine" value={entreprise.decennaleZone || ''} onChange={val => updateEntreprise(p => ({...p, decennaleZone: val}))} />
-              </div>
+              <ChampParam id="settings-field-decennaleAssureurAdresse" cle="decennaleAssureurAdresse" libelle="Coordonnées de l’assureur">
+                <DebouncedInput id="settings-field-decennaleAssureurAdresse" placeholder="Adresse de la compagnie" value={entreprise.decennaleAssureurAdresse || ''} onChange={maj('decennaleAssureurAdresse')} />
+              </ChampParam>
+              <ChampParam id="settings-field-decennaleZone" cle="decennaleZone" libelle="Zone géographique couverte">
+                <DebouncedInput id="settings-field-decennaleZone" placeholder="France métropolitaine" value={entreprise.decennaleZone || ''} onChange={maj('decennaleZone')} />
+              </ChampParam>
             </div>
-          </div>
+          </Carte>
+
+          <Carte>
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+              <h2 className={TITRE_CARTE}>RC professionnelle</h2>
+              <PastilleValidite date={entreprise.rcProValidite} />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <ChampParam id="settings-field-rcPro" cle="rcProAssureur" libelle="Compagnie d’assurance" facultatif>
+                <DebouncedInput id="settings-field-rcPro" placeholder="AXA, MAAF, MMA…" value={entreprise.rcProAssureur || ''} onChange={maj('rcProAssureur')} />
+              </ChampParam>
+              <ChampParam id="settings-field-rcProNumero" cle="rcProNumero" libelle="Numéro de contrat" facultatif>
+                <DebouncedInput id="settings-field-rcProNumero" placeholder="RC-123456789" value={entreprise.rcProNumero || ''} onChange={maj('rcProNumero')} />
+              </ChampParam>
+              <ChampParam id="settings-field-rcProValidite" cle="rcProValidite" libelle="Date de validité" facultatif>
+                <input id="settings-field-rcProValidite" type="date" className={CLASSE_CHAMP} value={entreprise.rcProValidite || ''} onChange={e => updateEntreprise(p => ({ ...p, rcProValidite: e.target.value }), 'rcProValidite')} />
+              </ChampParam>
+              <ChampParam id="settings-field-rcProMontantGarantie" cle="rcProMontantGarantie" libelle="Montant de garantie" facultatif>
+                <div className="flex">
+                  <DebouncedInput id="settings-field-rcProMontantGarantie" type="number" inputMode="decimal" className={`${CLASSE_CHAMP} rounded-r-none`} placeholder="300000" value={entreprise.rcProMontantGarantie || ''} onChange={maj('rcProMontantGarantie')} />
+                  <span className="h-12 px-4 flex items-center border-y border-r rounded-r-xl bg-surface-2 text-encre-3 border-bord-fort">€</span>
+                </div>
+              </ChampParam>
+              <ChampParam id="settings-field-rcProZone" cle="rcProZone" libelle="Zone géographique" facultatif>
+                <DebouncedInput id="settings-field-rcProZone" placeholder="France entière" value={entreprise.rcProZone || 'France entière'} onChange={maj('rcProZone')} />
+              </ChampParam>
+            </div>
+          </Carte>
         </div>
       )}
 
       {/* BANQUE */}
       {tab === 'banque' && (
-        <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
-          <h3 className="font-semibold mb-4">Coordonnées bancaires</h3>
-          <p className="text-sm text-slate-500 mb-4">Ces informations apparaîtront sur vos factures pour faciliter le paiement par virement.</p>
+        <Bloc titre="Coordonnées bancaires" sousTitre="Elles s’impriment sur vos factures pour faciliter les virements.">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">Banque</label>
-              <DebouncedInput className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Crédit Agricole, BNP..." value={entreprise.banque || ''} onChange={val => updateEntreprise(p => ({...p, banque: val}))} />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Titulaire du compte</label>
-              <DebouncedInput className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder={entreprise.nom || 'Nom du titulaire'} value={entreprise.titulaireBanque || ''} onChange={val => updateEntreprise(p => ({...p, titulaireBanque: val}))} />
-            </div>
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium mb-1">IBAN</label>
-              <DebouncedInput id="settings-field-iban" className={`w-full px-4 py-2.5 border rounded-xl font-mono ${entreprise.iban && !/^FR\d{2}\s?([A-Z0-9]{4}\s?){5}[A-Z0-9]{3}$/.test(entreprise.iban.replace(/\s/g, '').match(/^FR\d{2}/) ? entreprise.iban : '') && entreprise.iban.replace(/\s/g, '').length > 4 ? 'border-amber-300' : ''} ${inputBg}`} placeholder="FR76 1234 5678 9012 3456 7890 123" value={modeDiscret ? '···· ···· ···· ···· ···· ···· ···' : (entreprise.iban || '')} onChange={val => updateEntreprise(p => ({...p, iban: val.toUpperCase()}))} readOnly={modeDiscret} />
-              {entreprise.iban && entreprise.iban.replace(/\s/g, '').length === 27 && entreprise.iban.replace(/\s/g, '').startsWith('FR') && (
-                <p className="text-xs text-green-600 mt-1">✓ Format IBAN valide</p>
-              )}
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">BIC/SWIFT</label>
-              <DebouncedInput className={`w-full px-4 py-2.5 border rounded-xl font-mono ${inputBg}`} placeholder="AGRIFRPP" value={modeDiscret ? '········' : (entreprise.bic || '')} onChange={val => updateEntreprise(p => ({...p, bic: val.toUpperCase()}))} readOnly={modeDiscret} />
-            </div>
-          </div>
-          <div className={`mt-4 rounded-xl p-3 flex items-start gap-2 ${isDark ? 'bg-blue-900/20 border border-blue-800' : 'bg-blue-50 border border-blue-200'}`}>
-            <Shield size={16} className={`flex-shrink-0 mt-0.5 text-info-texte`} />
-            <p className={`text-xs text-info-texte`}>
-              Vos coordonnées bancaires apparaîtront sur vos factures pour faciliter les virements. Elles sont stockées localement et ne sont jamais partagées avec des tiers.
-            </p>
+            <ChampParam id="settings-field-banque" cle="banque" libelle="Banque" facultatif>
+              <DebouncedInput id="settings-field-banque" placeholder="Crédit Agricole, BNP…" value={entreprise.banque || ''} onChange={maj('banque')} />
+            </ChampParam>
+            <ChampParam id="settings-field-titulaireBanque" cle="titulaireBanque" libelle="Titulaire du compte" facultatif>
+              <DebouncedInput id="settings-field-titulaireBanque" placeholder={entreprise.nom || 'Nom du titulaire'} value={entreprise.titulaireBanque || ''} onChange={maj('titulaireBanque')} />
+            </ChampParam>
+            <ChampParam id="settings-field-iban" cle="iban" libelle="IBAN" facultatif className="md:col-span-2">
+              <DebouncedInput id="settings-field-iban" aria-describedby={idIban}
+                className={`${CLASSE_CHAMP} tabular-nums ${entreprise.iban && entreprise.iban.replace(/\s/g, '').length > 4 && !(entreprise.iban.replace(/\s/g, '').length === 27 && entreprise.iban.replace(/\s/g, '').startsWith('FR')) ? '!border-alerte-point' : ''}`}
+                placeholder="FR76 1234 5678 9012 3456 7890 123" value={modeDiscret ? '···· ···· ···· ···· ···· ···· ···' : (entreprise.iban || '')} onChange={maj('iban', (v) => v.toUpperCase())} readOnly={modeDiscret} />
+              <p id={idIban} className="mt-1.5 text-sm text-succes-texte">{entreprise.iban && entreprise.iban.replace(/\s/g, '').length === 27 && entreprise.iban.replace(/\s/g, '').startsWith('FR') ? 'Format d’IBAN valide' : ''}</p>
+            </ChampParam>
+            <ChampParam id="settings-field-bic" cle="bic" libelle="BIC" facultatif>
+              <DebouncedInput id="settings-field-bic" className={`${CLASSE_CHAMP} tabular-nums`} placeholder="AGRIFRPP" value={modeDiscret ? '········' : (entreprise.bic || '')} onChange={maj('bic', (v) => v.toUpperCase())} readOnly={modeDiscret} />
+            </ChampParam>
           </div>
 
-          {/* Mode de paiement par défaut */}
-          <div className={`mt-6 pt-6 border-t border-bord`}>
-            <h4 className="font-semibold mb-3">Mode de paiement par défaut</h4>
-            <p className={`text-sm ${textMuted} mb-3`}>Mode pré-sélectionné lors de l'encaissement d'une facture.</p>
-            <select
-              className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`}
-              value={entreprise.modePaiementDefaut || 'virement'}
-              onChange={e => updateEntreprise(p => ({...p, modePaiementDefaut: e.target.value}))}
-            >
-              <option value="virement">Virement bancaire (recommandé BTP)</option>
-              <option value="cheque">Chèque</option>
-              <option value="especes">Espèces</option>
-              <option value="cb">Carte bancaire</option>
-              <option value="prelevement">Prélèvement</option>
-              <option value="autre">Autre</option>
-            </select>
+          <div className="mt-6 pt-6 border-t border-bord">
+            <ChoixParam id="settings-field-modePaiementDefaut" cle="modePaiementDefaut" libelle="Mode de paiement par défaut"
+              aide="Proposé quand vous encaissez une facture." options={MODES_PAIEMENT}
+              valeur={entreprise.modePaiementDefaut || 'virement'} onChange={maj('modePaiementDefaut')} />
           </div>
-        </div>
+        </Bloc>
       )}
 
-      {/* DOCUMENTS — removed, content moved to comptabilite */}
+      {/* DOCUMENTS */}
       {tab === 'documents' && (
         <div className="space-y-4 sm:space-y-6">
-          <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
-            <h3 className="font-semibold mb-4">Paramètres par défaut des devis</h3>
+          <Bloc titre="Réglages par défaut des devis">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">Validité devis par défaut</label>
-                <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={entreprise.validiteDevis || 30} onChange={e => updateEntreprise(p => ({...p, validiteDevis: parseInt(e.target.value)}))}>
-                  <option value={15}>15 jours</option>
-                  <option value={30}>30 jours</option>
-                  <option value={60}>2 mois</option>
-                  <option value={90}>3 mois</option>
-                </select>
-                <p className={`text-xs mt-1 ${textMuted}`}>Art. L.111-1 du Code de la consommation</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">TVA par défaut</label>
-                <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={(entreprise.tvaDefaut ?? 10)} onChange={e => updateEntreprise(p => ({...p, tvaDefaut: parseFloat(e.target.value)}))}>
-                  <option value={20}>20% (taux normal)</option>
-                  <option value={10}>10% (rénovation &gt;2 ans)</option>
-                  <option value={5.5}>5,5% (réno. énergétique)</option>
-                  <option value={0}>0% (franchise TVA)</option>
-                </select>
-                <p className={`text-xs mt-1 ${textMuted}`}>20% standard · 10% rénovation {'>'} 2 ans · 5,5% performance énergétique</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Délai de paiement</label>
-                <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={entreprise.delaiPaiement || 30} onChange={e => updateEntreprise(p => ({...p, delaiPaiement: parseInt(e.target.value)}))}>
-                  <option value={0}>Comptant</option>
-                  <option value={14}>14 jours</option>
-                  <option value={30}>30 jours</option>
-                  <option value={45}>45 jours</option>
-                  <option value={60}>60 jours</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Acompte par défaut</label>
-                <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={(entreprise.acompteDefaut ?? 30)} onChange={e => updateEntreprise(p => ({...p, acompteDefaut: parseInt(e.target.value)}))}>
-                  <option value={0}>Pas d'acompte</option>
-                  <option value={20}>20%</option>
-                  <option value={30}>30% (recommandé BTP)</option>
-                  <option value={40}>40%</option>
-                  <option value={50}>50%</option>
-                </select>
+              <ChoixParam id="settings-field-validiteDevis" cle="validiteDevis" libelle="Validité d’un devis" options={VALIDITES}
+                valeur={Number(entreprise.validiteDevis) || 30} onChange={maj('validiteDevis', (v) => parseInt(v, 10))} aide="Art. L111-1 du Code de la consommation." />
+              <ChoixParam id="settings-field-delaiPaiement" cle="delaiPaiement" libelle="Délai de paiement" options={DELAIS}
+                valeur={Number(entreprise.delaiPaiement ?? 30)} onChange={maj('delaiPaiement', (v) => parseInt(v, 10))} />
+              <ChoixParam id="settings-field-acompteDefaut" cle="acompteDefaut" libelle="Acompte par défaut" options={ACOMPTES}
+                valeur={Number(entreprise.acompteDefaut ?? 30)} onChange={maj('acompteDefaut', (v) => parseInt(v, 10))} />
+              <div className="md:col-span-2">
+                <ChoixTva entreprise={entreprise} updateEntreprise={updateEntreprise} />
               </div>
             </div>
-          </div>
+          </Bloc>
 
-          <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
-            <h3 className="font-semibold mb-4">Mentions légales sur les documents</h3>
+          <Bloc titre="Mentions légales sur les documents">
             <div className="space-y-4">
               {/* Plus d'interrupteur : l'avis et le formulaire de rétractation sont obligatoires pour un particulier
                   (C. conso. L221-5, 7° ; sans eux, délai prolongé de douze mois, L221-20) et jamais imprimés pour un
                   professionnel (relecture juriste-btp du 12 oct. 2026) */}
-              <div className="p-3 rounded-xl bg-surface-2">
-                <p className="font-medium">Droit de rétractation</p>
+              <div className="p-3.5 rounded-xl bg-surface-2">
+                <p className="font-semibold text-encre">Droit de rétractation</p>
                 <p className="text-sm text-encre-2">Imprimé automatiquement sur les devis des clients particuliers (obligatoire) : conditions, délai de 14 jours et formulaire type.</p>
               </div>
-              <div className={`flex items-center justify-between p-3 rounded-xl bg-surface-2`}>
-                <div>
-                  <p className="font-medium">Garanties légales BTP</p>
-                  <p className="text-sm text-slate-500">Parfait achèvement, biennale, décennale</p>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input type="checkbox" checked={entreprise.mentionGaranties !== false} onChange={e => updateEntreprise(p => ({...p, mentionGaranties: e.target.checked}))} className="sr-only peer" />
-                  <div className="w-11 h-6 bg-slate-200 peer-focus:ring-2 rounded-full peer peer-checked:after:translate-x-full peer-checked:bg-emerald-500 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
-                </label>
+              <div className="p-3.5 rounded-xl bg-surface-2">
+                <Interrupteur id="settings-field-mentionGaranties" actif={entreprise.mentionGaranties !== false}
+                  onChange={(v) => updateEntreprise(p => ({ ...p, mentionGaranties: v }), 'mentionGaranties')}
+                  libelle="Garanties légales BTP" description="Parfait achèvement, biennale, décennale." />
+                <EtatEnregistrement cle="mentionGaranties" />
               </div>
             </div>
-          </div>
+          </Bloc>
 
-          {/* Pénalités de retard */}
-          <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h3 className="font-semibold">Pénalités de retard</h3>
-                <p className={`text-sm ${textMuted}`}>Art. L441-10 du Code de commerce — obligatoire sur les factures</p>
+          {/* Pénalités de retard (relecture juriste-btp, H3) : la case « Pénalités de retard » ne faisait rien — aucun générateur
+              ne la lisait ; la mention s'imprime toujours pour un client professionnel (src/lib/piedDePageDocument.js). Reste le
+              taux, lu par les documents et les relances. */}
+          <Bloc titre="Pénalités de retard" sousTitre="Art. L441-10 du Code de commerce — imprimé sur les documents de vos clients professionnels">
+            <ChampParam id="settings-field-tauxPenalites" cle="tauxPenalites" libelle="Taux annuel" facultatif
+              aide="Laissé vide : taux de la BCE majoré de 10 points. Un taux choisi ne peut être inférieur à 3 fois le taux d’intérêt légal (art. L441-10 II C. com.).">
+              <div className="flex max-w-[14rem]">
+                <input id="settings-field-tauxPenalites" type="number" inputMode="decimal" step="0.01" min="0" max="50" className={`${CLASSE_CHAMP} rounded-r-none`}
+                  value={entreprise.tauxPenalites || ''} placeholder="BCE + 10"
+                  onChange={e => updateEntreprise(p => ({ ...p, tauxPenalites: parseFloat(e.target.value) || null }), 'tauxPenalites')} />
+                <span className="h-12 px-4 flex items-center border-y border-r rounded-r-xl bg-surface-2 text-encre-3 border-bord-fort">%</span>
               </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input type="checkbox" checked={entreprise.mentionPenalites !== false} onChange={e => updateEntreprise(p => ({...p, mentionPenalites: e.target.checked}))} className="sr-only peer" />
-                <div className="w-11 h-6 bg-slate-200 peer-focus:ring-2 rounded-full peer peer-checked:after:translate-x-full peer-checked:bg-emerald-500 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
-              </label>
-            </div>
-            {entreprise.mentionPenalites !== false && (
-              <div className="flex items-center gap-3">
-                <label className={`text-sm ${textSecondary}`}>Taux annuel :</label>
-                <div className="flex items-center">
-                  <input type="number" step="0.01" min="0" max="50" className={`w-24 px-3 py-2 border rounded-l-xl text-sm ${inputBg}`} value={entreprise.tauxPenalites || ''} placeholder="BCE + 10" aria-label="Taux annuel des pénalités de retard" onChange={e => updateEntreprise(p => ({...p, tauxPenalites: parseFloat(e.target.value) || null}))} />
-                  <span className={`px-3 py-2 border-y border-r rounded-r-xl text-sm bg-surface-2 text-encre-3 border-bord-fort`}>%</span>
-                </div>
-                <p className={`text-xs ${textMuted}`}>Laissé vide : taux de la BCE majoré de 10 points. Un taux choisi ne peut être inférieur à 3 fois le taux d'intérêt légal (art. L441-10 II C. com.).</p>
-              </div>
-            )}
-          </div>
+            </ChampParam>
+          </Bloc>
 
           {/* Médiateur de la consommation */}
-          <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
-            <h3 className="font-semibold mb-1">Médiateur de la consommation</h3>
-            {/* Pas de médiation de la consommation entre professionnels (C. conso. L611-3 1°) */}
-            <p className={`text-sm mb-4 ${textMuted}`}>Obligatoire si vous travaillez pour des particuliers (C. conso. L612-1 et L616-1)</p>
+          {/* Pas de médiation de la consommation entre professionnels (C. conso. L611-3 1°) */}
+          <Bloc titre="Médiateur de la consommation" sousTitre="Obligatoire si vous travaillez pour des particuliers (C. conso. L612-1 et L616-1).">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="settings-field-mediateur" className="block text-sm font-medium mb-1">Nom du médiateur</label>
-                <DebouncedInput id="settings-field-mediateur" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Médiation de la consommation" value={entreprise.mediateur || ''} onChange={val => updateEntreprise(p => ({...p, mediateur: val}))} />
-              </div>
-              <div>
-                {/* R616-1 : les coordonnées du médiateur et l'adresse de son site internet */}
-                <label htmlFor="settings-field-mediateurContact" className="block text-sm font-medium mb-1">Site internet et adresse du médiateur</label>
-                <DebouncedInput id="settings-field-mediateurContact" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="www.… — adresse postale" value={entreprise.mediateurContact || ''} onChange={val => updateEntreprise(p => ({...p, mediateurContact: val}))} />
-              </div>
+              <ChampParam id="settings-field-mediateur" cle="mediateur" libelle="Nom du médiateur">
+                <DebouncedInput id="settings-field-mediateur" placeholder="Médiation de la consommation" value={entreprise.mediateur || ''} onChange={maj('mediateur')} />
+              </ChampParam>
+              {/* R616-1 : les coordonnées du médiateur et l'adresse de son site internet */}
+              <ChampParam id="settings-field-mediateurContact" cle="mediateurContact" libelle="Site internet et adresse du médiateur">
+                <DebouncedInput id="settings-field-mediateurContact" placeholder="www.… — adresse postale" value={entreprise.mediateurContact || ''} onChange={maj('mediateurContact')} />
+              </ChampParam>
             </div>
-          </div>
+          </Bloc>
 
           {/* CGV */}
-          <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
-            <h3 className="font-semibold mb-4">Conditions générales personnalisées</h3>
-            <DebouncedTextarea className={`w-full px-4 py-3 border rounded-xl ${inputBg}`} rows={4} placeholder="Ajoutez ici vos conditions générales personnalisées qui apparaîtront sur tous vos devis et factures..." value={entreprise.cgv || ''} onChange={val => updateEntreprise(p => ({...p, cgv: val}))} />
-            <p className={`text-xs ${textMuted} mt-2`}>Ce texte sera ajouté après les mentions légales obligatoires.</p>
-          </div>
+          <Bloc titre="Conditions générales personnalisées">
+            <ChampParam id="settings-field-cgv" cle="cgv" libelle="Vos conditions" facultatif aide="Ce texte est ajouté après les mentions légales obligatoires.">
+              <DebouncedTextarea id="settings-field-cgv" rows={4} placeholder="Ajoutez ici vos conditions générales personnalisées qui apparaîtront sur tous vos devis et factures…" value={entreprise.cgv || ''} onChange={maj('cgv')} />
+            </ChampParam>
+          </Bloc>
         </div>
       )}
 
@@ -1308,134 +991,118 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
 
       {/* RENTABILITÉ */}
       {tab === 'rentabilite' && (
-        <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
-          <h3 className={`font-semibold mb-4 flex items-center gap-2 ${textPrimary}`}><BarChart3 size={18} /> Calcul de Rentabilité</h3>
+        <Bloc titre="Calcul de rentabilité">
           <div className="space-y-4">
             <div className="flex items-end gap-3 flex-wrap">
-              <div>
-                <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Taux de frais de structure (%)</label>
-                <input type="text" inputMode="decimal" aria-label="Taux de frais de structure, en %" key={`taux-frais-${entreprise.tauxFraisStructure ?? 15}`} className={`w-32 px-4 py-2.5 border rounded-xl ${inputBg}`} defaultValue={String(entreprise.tauxFraisStructure ?? 15).replace('.', ',')}
+              <ChampParam id="settings-field-tauxFraisStructure" cle="tauxFraisStructure" libelle="Taux de frais de structure (%)">
+                <input id="settings-field-tauxFraisStructure" type="text" inputMode="decimal" key={`taux-frais-${entreprise.tauxFraisStructure ?? 15}`} className={`${CLASSE_CHAMP} !w-32`} defaultValue={String(entreprise.tauxFraisStructure ?? 15).replace('.', ',')}
                   onBlur={e => {
                     // Validé à la sortie du champ, borné de 0 à 50 (avant : « 15 » réimposé dès que le champ était vide)
                     const n = parseFloat(e.target.value.replace(',', '.'));
                     const v = Number.isFinite(n) ? Math.max(0, Math.min(50, n)) : (entreprise.tauxFraisStructure ?? 15);
                     e.target.value = String(v).replace('.', ',');
-                    if (v !== entreprise.tauxFraisStructure) updateEntreprise(p => ({ ...p, tauxFraisStructure: v }));
+                    if (v !== entreprise.tauxFraisStructure) updateEntreprise(p => ({ ...p, tauxFraisStructure: v }), 'tauxFraisStructure');
                   }}
                   onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); }} />
-              </div>
-              <button
-                onClick={() => setShowFraisCalc(!showFraisCalc)}
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all hover:opacity-90 bg-accent text-sur-accent"
-              >
-                <Calculator size={16} /> {showFraisCalc ? 'Masquer' : 'Calculer mes frais'}
-              </button>
+              </ChampParam>
+              <Bouton icone={Calculator} aria-expanded={showFraisCalc} onClick={() => setShowFraisCalc(!showFraisCalc)}>
+                {showFraisCalc ? 'Masquer le calcul' : 'Calculer mes frais'}
+              </Bouton>
             </div>
 
             {/* Mini-wizard frais de structure */}
             {showFraisCalc && (
-              <div className={`p-4 rounded-xl border space-y-3 ${isDark ? 'bg-slate-700/50 border-slate-600' : 'bg-blue-50 border-blue-200'}`}>
-                <p className={`text-sm font-semibold flex items-center gap-1.5 ${textPrimary}`}><Calculator size={15} /> Calculez votre taux réel</p>
+              <div className="p-4 rounded-2xl space-y-3 bg-surface-2">
+                <p className="text-sm font-semibold text-encre">Calculez votre taux réel</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {FRAIS_ITEMS.map(item => (
                     <div key={item.key}>
-                      <label className={`flex items-center gap-1 text-xs font-medium mb-1 ${textSecondary}`}>{item.icon && <item.icon size={13} />} {item.label}</label>
+                      <label htmlFor={`frais-${item.key}`} className="flex items-center gap-1.5 text-sm font-medium mb-1.5 text-encre-2">{item.icon && <item.icon size={14} aria-hidden="true" />} {item.label}</label>
                       <input
+                        id={`frais-${item.key}`}
                         type="number"
+                        inputMode="decimal"
                         placeholder={item.placeholder}
                         value={fraisCharges[item.key] || ''}
                         onChange={e => setFraisCharges(prev => ({ ...prev, [item.key]: e.target.value }))}
-                        className={`w-full px-3 py-2 border rounded-lg text-sm ${inputBg}`}
+                        className={CLASSE_CHAMP}
                       />
                     </div>
                   ))}
                 </div>
-                <div className={`flex items-center justify-between p-3 rounded-xl ${isDark ? 'bg-slate-800 border border-slate-600' : 'bg-white border border-blue-200'}`}>
+                <div className="grid grid-cols-3 gap-3 p-3 rounded-xl bg-surface border border-bord">
                   <div>
-                    <p className={`text-xs ${textSecondary}`}>Total charges mensuelles</p>
-                    <p className={`text-lg font-bold ${textPrimary}`}>{new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(fraisTotal)}</p>
+                    <p className="text-sm text-encre-3">Charges par mois</p>
+                    <p className="text-lg font-bold tabular-nums text-encre">{formatMoney(fraisTotal, 0)}</p>
                   </div>
-                  <div className="text-center px-4">
-                    <p className={`text-xs ${textSecondary}`}>CA moyen mensuel</p>
-                    <p className={`text-sm font-medium ${textPrimary}`}>{new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(caEstime)}</p>
+                  <div className="text-center">
+                    <p className="text-sm text-encre-3">CA moyen par mois</p>
+                    <p className="text-sm font-semibold tabular-nums text-encre">{formatMoney(caEstime, 0)}</p>
                   </div>
                   <div className="text-right">
-                    <p className={`text-xs ${textSecondary}`}>Taux suggéré</p>
-                    <p className="text-xl font-bold text-accent-texte">{tauxSuggere === null ? '—' : `${tauxSuggere} %`}</p>
+                    <p className="text-sm text-encre-3">Taux suggéré</p>
+                    <p className="text-xl font-bold tabular-nums text-encre">{tauxSuggere === null ? '—' : `${tauxSuggere} %`}</p>
                   </div>
                 </div>
                 {tauxSuggere === null ? (
-                  <p className={`text-sm ${textSecondary}`}>Le taux se calcule à partir de vos factures des 6 derniers mois. Sans facture émise, saisissez-le à la main ci-dessus.</p>
+                  <p className="text-sm text-encre-2">Le taux se calcule à partir de vos factures des 6 derniers mois. Sans facture émise, saisissez-le à la main ci-dessus.</p>
                 ) : (
-                  <button
-                    onClick={() => {
-                      updateEntreprise(p => ({ ...p, tauxFraisStructure: tauxSuggere }));
-                      setShowFraisCalc(false);
-                      showToast(`Taux mis à jour : ${tauxSuggere} %`, 'success');
+                  <Bouton pleineLargeur
+                    onClick={async () => {
+                      const ok = await updateEntreprise(p => ({ ...p, tauxFraisStructure: tauxSuggere }), 'tauxFraisStructure');
+                      if (ok) { setShowFraisCalc(false); showToast(`Taux mis à jour : ${tauxSuggere} %`, 'success'); }
                     }}
-                    className="w-full py-2.5 rounded-xl text-sm font-semibold transition-all hover:opacity-90 bg-accent text-sur-accent"
                   >
                     Appliquer {tauxSuggere} % comme taux de frais de structure
-                  </button>
+                  </Bouton>
                 )}
               </div>
             )}
 
             {/* Visual formula breakdown */}
-            <div className={`rounded-xl border p-5 ${isDark ? 'bg-slate-700/50 border-slate-600' : 'bg-gradient-to-br from-slate-50 to-blue-50/50 border-slate-200'}`}>
-              <p className={`text-sm font-semibold mb-3 ${textPrimary}`}>Formule de calcul</p>
+            <div className="rounded-2xl p-4 sm:p-5 bg-surface-2">
+              <p className="text-sm font-semibold mb-3 text-encre">Formule de calcul</p>
               <div className="flex flex-wrap items-center gap-2 text-sm">
-                <span className="px-3 py-1.5 rounded-lg font-semibold bg-accent text-sur-accent">Marge Réelle</span>
-                <span className={`text-lg font-bold ${textMuted}`}>=</span>
-                <span className={`px-3 py-1.5 rounded-lg font-medium bg-succes-fond text-succes-texte`}>CA HT</span>
-                <span className={`text-lg font-bold ${textMuted}`}>+</span>
-                <span className={`px-3 py-1.5 rounded-lg font-medium bg-info-fond text-info-texte`}>Ajustements Revenus</span>
+                <span className="px-3 py-1.5 rounded-lg font-semibold bg-encre text-surface">Marge réelle</span>
+                <span className="text-lg font-bold text-encre-3" aria-hidden="true">=</span>
+                <span className="px-3 py-1.5 rounded-lg font-medium bg-surface text-encre border border-bord">CA HT</span>
+                <span className="text-lg font-bold text-encre-3" aria-hidden="true">+</span>
+                <span className="px-3 py-1.5 rounded-lg font-medium bg-surface text-encre border border-bord">Ajustements de revenus</span>
               </div>
               <div className="flex flex-wrap items-center gap-2 text-sm mt-2 ml-0 sm:ml-8">
-                <span className={`text-lg font-bold ${textMuted}`}>−</span>
-                <span className={`px-3 py-1.5 rounded-lg font-medium bg-danger-fond text-danger-texte`}>Matériaux</span>
-                <span className={`text-lg font-bold ${textMuted}`}>−</span>
-                <span className={`px-3 py-1.5 rounded-lg font-medium bg-danger-fond text-danger-texte`}>Main d'œuvre</span>
-                <span className={`text-lg font-bold ${textMuted}`}>−</span>
-                <span className={`px-3 py-1.5 rounded-lg font-medium bg-alerte-fond text-alerte-texte`}>Frais structure ({entreprise.tauxFraisStructure || 15}%)</span>
-                <span className={`text-lg font-bold ${textMuted}`}>−</span>
-                <span className={`px-3 py-1.5 rounded-lg font-medium bg-danger-fond text-danger-texte`}>Ajustements Dépenses</span>
+                {['Matériaux', 'Main d’œuvre', `Frais de structure (${entreprise.tauxFraisStructure ?? 15} %)`, 'Ajustements de dépenses'].map((t) => (
+                  <React.Fragment key={t}>
+                    <span className="text-lg font-bold text-encre-3" aria-hidden="true">−</span>
+                    <span className="px-3 py-1.5 rounded-lg font-medium bg-surface text-encre border border-bord">{t}</span>
+                  </React.Fragment>
+                ))}
               </div>
             </div>
 
-            {/* Color legend */}
-            <div className={`rounded-xl p-4 text-sm ${isDark ? 'bg-blue-900/20 border border-blue-800/30' : 'bg-blue-50 border border-blue-100'}`}>
-              <p className={`font-semibold mb-2 text-info-texte`}>Code couleur marge :</p>
-              <div className="flex flex-wrap gap-4">
-                <span className={`flex items-center gap-2 text-info-texte`}><span className="w-3 h-3 rounded bg-red-500 shrink-0"></span> {'<'}0% — Négative</span>
-                <span className={`flex items-center gap-2 text-info-texte`}><span className="w-3 h-3 rounded bg-amber-500 shrink-0"></span> 0-15% — Faible</span>
-                <span className={`flex items-center gap-2 text-info-texte`}><span className="w-3 h-3 rounded bg-emerald-500 shrink-0"></span> {'>'}15% — Saine</span>
+            {/* Code couleur de la marge : la marge négative est « à surveiller » (ambre), pas « en retard » (rouge) */}
+            <div className="rounded-2xl p-4 text-sm bg-surface-2">
+              <p className="font-semibold mb-2 text-encre">Couleur de la marge</p>
+              <div className="flex flex-wrap gap-4 text-encre-2">
+                <span className="flex items-center gap-2"><span className="w-3 h-3 rounded bg-alerte-point shrink-0" aria-hidden="true" /> Moins de 0 % : négative</span>
+                <span className="flex items-center gap-2"><span className="w-3 h-3 rounded bg-neutre-point shrink-0" aria-hidden="true" /> 0 à 15 % : faible</span>
+                <span className="flex items-center gap-2"><span className="w-3 h-3 rounded bg-succes-point shrink-0" aria-hidden="true" /> Plus de 15 % : saine</span>
               </div>
             </div>
           </div>
-        </div>
+        </Bloc>
       )}
 
       {/* COMPTABILITÉ */}
       {tab === 'comptabilite' && (
         <div className="space-y-4 sm:space-y-6">
           {/* Exports : un seul endroit, Finances › Export comptable */}
-          <div className={`${cardBg} rounded-xl border p-4`}>
-            <h3 className={`font-semibold mb-1 flex items-center gap-2 ${textPrimary}`}>
-              <FileText size={18} className="text-accent-texte" />
-              Exports pour votre comptable
-            </h3>
-            <p className={`text-sm mb-3 ${textSecondary}`}>
-              Le fichier des écritures comptables (FEC) et les fichiers par journal se préparent dans Finances › Export comptable :
-              factures émises seulement, avoirs déduits, TVA des dépenses seulement quand elle est saisie.
-            </p>
+          <Bloc titre="Exports pour votre comptable" sousTitre="Le fichier des écritures comptables (FEC) et les fichiers par journal se préparent dans Finances › Export comptable : factures émises seulement, avoirs déduits, TVA des dépenses seulement quand elle est saisie.">
             {setPage && <Bouton icone={Download} onClick={ouvrirExportComptable}>Ouvrir l’export comptable</Bouton>}
-          </div>
+          </Bloc>
 
           {franchiseTva ? (
-            <div className={`${cardBg} rounded-xl border p-4`}>
-              <p className={`font-semibold ${textPrimary}`}>Franchise en base de TVA</p>
-              <p className={`text-sm mt-1 ${textSecondary}`}>
+            <Bloc titre="Franchise en base de TVA">
+              <p className="text-sm text-encre-2">
                 En franchise en base de TVA (art. 293 B du CGI), vous ne facturez pas de TVA et n’en déduisez pas. Mallettico l’applique d’après la forme « Micro-entreprise » indiquée dans vos Paramètres.
               </p>
               {(() => {
@@ -1446,143 +1113,91 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                   </p>
                 );
               })()}
-            </div>
+            </Bloc>
           ) : (
             <>
-              {/* Period Selector */}
-              <div className={`${cardBg} rounded-xl border p-4`}>
-                <h3 className={`font-semibold mb-3 flex items-center gap-2 ${textPrimary}`}>
-                  <Calendar size={18} className="text-accent-texte" />
-                  Période
-                </h3>
+              <Bloc titre="Période">
                 <div className="flex flex-wrap gap-4">
                   <div>
-                    <label htmlFor="compta-du" className={`block text-sm mb-1 ${textMuted}`}>Du</label>
-                    <input
-                      id="compta-du"
-                      type="date"
-                      value={exportPeriod.debut}
-                      onChange={(e) => setExportPeriod(p => ({ ...p, debut: e.target.value }))}
-                      className={`px-3 py-2 rounded-lg border ${inputBg}`}
-                    />
+                    <label htmlFor="compta-du" className="block text-sm font-medium mb-1.5 text-encre-2">Du</label>
+                    <input id="compta-du" type="date" value={exportPeriod.debut} onChange={(e) => setExportPeriod(p => ({ ...p, debut: e.target.value }))} className={CLASSE_CHAMP} />
                   </div>
                   <div>
-                    <label htmlFor="compta-au" className={`block text-sm mb-1 ${textMuted}`}>Au</label>
-                    <input
-                      id="compta-au"
-                      type="date"
-                      value={exportPeriod.fin}
-                      onChange={(e) => setExportPeriod(p => ({ ...p, fin: e.target.value }))}
-                      className={`px-3 py-2 rounded-lg border ${inputBg}`}
-                    />
+                    <label htmlFor="compta-au" className="block text-sm font-medium mb-1.5 text-encre-2">Au</label>
+                    <input id="compta-au" type="date" value={exportPeriod.fin} onChange={(e) => setExportPeriod(p => ({ ...p, fin: e.target.value }))} className={CLASSE_CHAMP} />
                   </div>
                 </div>
+              </Bloc>
+
+              <div className="grid sm:grid-cols-3 gap-4">
+                <Carte>
+                  <p className="text-sm text-encre-2 mb-1">TVA facturée</p>
+                  <p className="text-2xl font-bold tabular-nums text-encre">{formatMoney(tvaSummary.tvaCollectee)}</p>
+                  <p className="text-sm text-encre-3 mt-1">{tvaSummary.nbFactures} facture{tvaSummary.nbFactures > 1 ? 's' : ''}</p>
+                </Carte>
+                <Carte>
+                  <p className="text-sm text-encre-2 mb-1">TVA déductible</p>
+                  <p className="text-2xl font-bold tabular-nums text-encre">{formatMoney(tvaSummary.tvaDeductible)}</p>
+                  <p className="text-sm text-encre-3 mt-1">{tvaSummary.nbDepenses} dépense{tvaSummary.nbDepenses > 1 ? 's' : ''}</p>
+                </Carte>
+                <Carte>
+                  <p className="text-sm text-encre-2 mb-1">{tvaSummary.isCredit ? 'Crédit estimé (débits)' : 'Solde estimé (débits)'}</p>
+                  <p className="text-2xl font-bold tabular-nums text-encre">{formatMoney(Math.abs(tvaSummary.tvaNetteAPayer))}</p>
+                  <p className="text-sm text-encre-3 mt-1">{tvaSummary.periode.debut} au {tvaSummary.periode.fin}</p>
+                </Carte>
               </div>
 
-              <div className="space-y-6">
-                {/* Summary Cards */}
-                <div className="grid sm:grid-cols-3 gap-4">
-                  <div className={`${cardBg} rounded-xl border p-4`}>
-                    <p className={`text-sm ${textMuted} mb-1`}>TVA facturée</p>
-                    <p className={`text-2xl font-bold text-emerald-500`}>
-                      {tvaSummary.tvaCollectee.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
-                    </p>
-                    <p className={`text-xs ${textMuted} mt-1`}>{tvaSummary.nbFactures} facture{tvaSummary.nbFactures > 1 ? 's' : ''}</p>
-                  </div>
-
-                  <div className={`${cardBg} rounded-xl border p-4`}>
-                    <p className={`text-sm ${textMuted} mb-1`}>TVA déductible</p>
-                    <p className={`text-2xl font-bold text-blue-500`}>
-                      {tvaSummary.tvaDeductible.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
-                    </p>
-                    <p className={`text-xs ${textMuted} mt-1`}>{tvaSummary.nbDepenses} dépense{tvaSummary.nbDepenses > 1 ? 's' : ''}</p>
-                  </div>
-
-                  <div className={`${cardBg} rounded-xl border p-4 ${
-                    tvaSummary.isCredit
-                      ? (isDark ? 'border-blue-800' : 'border-blue-200')
-                      : (isDark ? 'border-amber-800' : 'border-amber-200')
-                  }`}>
-                    <p className={`text-sm ${textMuted} mb-1`}>
-                      {tvaSummary.isCredit ? 'Crédit estimé (débits)' : 'Solde estimé (débits)'}
-                    </p>
-                    <p className={`text-2xl font-bold ${tvaSummary.isCredit ? 'text-blue-500' : 'text-amber-500'}`}>
-                      {Math.abs(tvaSummary.tvaNetteAPayer).toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
-                    </p>
-                    <p className={`text-xs ${textMuted} mt-1`}>
-                      {tvaSummary.periode.debut} au {tvaSummary.periode.fin}
-                    </p>
-                  </div>
+              {tvaSummary.depensesSansTva > 0 && (
+                <div role="status" className="rounded-2xl p-3.5 flex items-start gap-2 text-sm bg-alerte-fond text-alerte-texte">
+                  <AlertCircle size={16} className="mt-0.5 flex-shrink-0" aria-hidden="true" />
+                  <span>
+                    {tvaSummary.depensesSansTva === 1 ? '1 dépense de la période n’a pas sa TVA saisie : aucune TVA n’est déduite pour elle.' : `${tvaSummary.depensesSansTva} dépenses de la période n’ont pas leur TVA saisie : aucune TVA n’est déduite pour elles.`}
+                    {' '}Choisissez le taux porté sur la facture du fournisseur dans la fiche du chantier, onglet Finances.
+                  </span>
                 </div>
+              )}
 
-                {tvaSummary.depensesSansTva > 0 && (
-                  <div role="status" className="rounded-xl p-3 flex items-start gap-2 text-sm bg-alerte-fond text-alerte-texte">
-                    <AlertCircle size={16} className="mt-0.5 flex-shrink-0" aria-hidden="true" />
-                    <span>
-                      {tvaSummary.depensesSansTva === 1 ? '1 dépense de la période n’a pas sa TVA saisie : aucune TVA n’est déduite pour elle.' : `${tvaSummary.depensesSansTva} dépenses de la période n’ont pas leur TVA saisie : aucune TVA n’est déduite pour elles.`}
-                      {' '}Choisissez le taux porté sur la facture du fournisseur dans la fiche du chantier, onglet Finances.
-                    </span>
-                  </div>
-                )}
-
-                {/* Detail par taux */}
-                <div className={`${cardBg} rounded-xl border overflow-hidden`}>
-                  <div className={`px-4 py-3 border-b border-bord bg-surface-2`}>
-                    <h3 className={`font-semibold ${textPrimary}`}>Détail par taux de TVA</h3>
-                  </div>
-                  <div className="overflow-x-auto">
-                    <table className="w-full" aria-label="Détail par taux de TVA">
-                      <thead className={'bg-surface-2'}>
-                        <tr>
-                          <th scope="col" className={`text-left px-4 py-3 text-sm font-medium ${textMuted}`}>Taux</th>
-                          <th scope="col" className={`text-right px-4 py-3 text-sm font-medium ${textMuted}`}>Base HT</th>
-                          <th scope="col" className={`text-right px-4 py-3 text-sm font-medium ${textMuted}`}>Facturée</th>
-                          <th scope="col" className={`text-right px-4 py-3 text-sm font-medium ${textMuted}`}>Déductible</th>
-                          <th scope="col" className={`text-right px-4 py-3 text-sm font-medium ${textMuted}`}>Solde</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {Object.entries(tvaSummary.detailParTaux)
-                          .sort(([a], [b]) => Number(b) - Number(a))
-                          .map(([taux, data]) => {
-                            const solde = data.collectee - data.deductible;
-                            return (
-                              <tr key={taux} className={`border-t border-bord`}>
-                                <td className={`px-4 py-3 font-medium ${textPrimary}`}>{String(taux).replace('.', ',')} %</td>
-                                <td className={`text-right px-4 py-3 ${textSecondary}`}>
-                                  {data.base.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
-                                </td>
-                                <td className={`text-right px-4 py-3 text-emerald-500`}>
-                                  {data.collectee.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
-                                </td>
-                                <td className={`text-right px-4 py-3 text-blue-500`}>
-                                  {data.deductible.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
-                                </td>
-                                <td className={`text-right px-4 py-3 font-medium ${solde >= 0 ? 'text-amber-500' : 'text-blue-500'}`}>
-                                  {solde >= 0 ? '+' : ''}{solde.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
-                                </td>
-                              </tr>
-                            );
-                          })}
-                      </tbody>
-                    </table>
-                  </div>
+              {/* Détail par taux */}
+              <Carte marge="aucun" className="overflow-hidden">
+                <h2 className="px-4 py-3 border-b border-bord bg-surface-2 text-base font-semibold text-encre">Détail par taux de TVA</h2>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm" aria-label="Détail par taux de TVA">
+                    <thead className="bg-surface-2">
+                      <tr>
+                        <th scope="col" className="text-left px-4 py-3 font-medium text-encre-2">Taux</th>
+                        <th scope="col" className="text-right px-4 py-3 font-medium text-encre-2">Base HT</th>
+                        <th scope="col" className="text-right px-4 py-3 font-medium text-encre-2">Facturée</th>
+                        <th scope="col" className="text-right px-4 py-3 font-medium text-encre-2">Déductible</th>
+                        <th scope="col" className="text-right px-4 py-3 font-medium text-encre-2">Solde</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {Object.entries(tvaSummary.detailParTaux)
+                        .sort(([a], [b]) => Number(b) - Number(a))
+                        .map(([taux, data]) => {
+                          const solde = data.collectee - data.deductible;
+                          return (
+                            <tr key={taux} className="border-t border-bord">
+                              <td className="px-4 py-3 font-medium text-encre">{String(taux).replace('.', ',')} %</td>
+                              <td className="text-right px-4 py-3 tabular-nums text-encre-2">{formatMoney(data.base)}</td>
+                              <td className="text-right px-4 py-3 tabular-nums text-encre-2">{formatMoney(data.collectee)}</td>
+                              <td className="text-right px-4 py-3 tabular-nums text-encre-2">{formatMoney(data.deductible)}</td>
+                              <td className="text-right px-4 py-3 tabular-nums font-semibold text-encre">{solde >= 0 ? '+' : ''}{formatMoney(solde)}</td>
+                            </tr>
+                          );
+                        })}
+                    </tbody>
+                  </table>
                 </div>
+              </Carte>
 
-                {/* Info */}
-                <div className={`rounded-xl p-4 ${isDark ? 'bg-blue-900/20 border border-blue-800' : 'bg-blue-50 border border-blue-200'}`}>
-                  <div className="flex items-start gap-3">
-                    <AlertCircle size={20} className="text-blue-500 mt-0.5 flex-shrink-0" />
-                    <div>
-                      <p className={`font-medium ${isDark ? 'text-blue-300' : 'text-blue-800'}`}>Information</p>
-                      <p className={`text-sm mt-1 text-info-texte`}>
-                        Ce résumé est calculé sur vos factures émises (régime des débits). Sans option pour les débits, la TVA de vos
-                        travaux est due à l’encaissement (art. 269 du CGI) : le montant à déclarer peut différer. Pour votre
-                        déclaration, consultez votre expert-comptable.
-                      </p>
-                    </div>
-                  </div>
-                </div>
+              <div className="rounded-2xl p-4 flex items-start gap-3 bg-info-fond text-info-texte">
+                <Info size={18} className="mt-0.5 flex-shrink-0" aria-hidden="true" />
+                <p className="text-sm">
+                  Ce résumé est calculé sur vos factures émises (régime des débits). Sans option pour les débits, la TVA de vos
+                  travaux est due à l’encaissement (art. 269 du CGI) : le montant à déclarer peut différer. Pour votre
+                  déclaration, consultez votre expert-comptable.
+                </p>
               </div>
             </>
           )}
@@ -1600,34 +1215,26 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
         />
       )}
 
-      {/* Données Import/Export Tab — removed */}
+      {/* DONNÉES */}
       {tab === 'donnees' && (
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           {/* Export Global */}
-          <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
-            <h3 className={`font-semibold mb-2 flex items-center gap-2 ${textPrimary}`}>
-              <Download size={18} className="text-accent-texte" />
-              Export global des données
-            </h3>
-            <p className={`text-sm ${textMuted} mb-4`}>
-              Exportez toutes vos données Mallettico dans un fichier JSON. Idéal pour les sauvegardes ou le transfert vers un autre appareil.
-            </p>
-
+          <Bloc titre="Export global des données" sousTitre="Exportez toutes vos données Mallettico dans un fichier JSON : pour une sauvegarde ou un transfert vers un autre appareil.">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
               {[
-                { label: 'Devis/Factures', count: devis.length, color: couleur },
-                { label: 'Clients', count: clients.length, color: '#3b82f6' },
-                { label: 'Chantiers', count: chantiers.length, color: '#10b981' },
-                { label: 'Dépenses', count: depenses.length, color: '#8b5cf6' },
-              ].map((s, i) => (
-                <div key={i} className={`p-3 rounded-xl text-center bg-surface-2`}>
-                  <p className="text-xl font-bold" style={{ color: s.color }}>{s.count}</p>
-                  <p className={`text-xs ${textMuted}`}>{s.label}</p>
+                { label: 'Devis et factures', count: devis.length },
+                { label: 'Clients', count: clients.length },
+                { label: 'Chantiers', count: chantiers.length },
+                { label: 'Dépenses', count: depenses.length },
+              ].map((s) => (
+                <div key={s.label} className="p-3 rounded-xl text-center bg-surface-2">
+                  <p className="text-xl font-bold tabular-nums text-encre">{s.count}</p>
+                  <p className="text-sm text-encre-3">{s.label}</p>
                 </div>
               ))}
             </div>
 
-            <button
+            <Bouton icone={Download}
               onClick={() => {
                 try {
                   const exportData = {
@@ -1656,32 +1263,24 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                     .then((r) => { if (r !== 'annule') showToast('Export global prêt', 'success'); })
                     .catch(() => showToast('Erreur lors de l\'export', 'error'));
                 } catch (err) {
+                  captureException(err, { context: 'export global' });
                   showToast('Erreur lors de l\'export', 'error');
                 }
               }}
-              className="flex items-center gap-2 px-5 py-3 rounded-xl font-medium transition-all hover:shadow-lg bg-accent text-sur-accent"
             >
-              <Download size={18} />
               Exporter toutes les données (.json)
-            </button>
-          </div>
+            </Bouton>
+          </Bloc>
 
           {/* Import Global */}
-          <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
-            <h3 className={`font-semibold mb-2 flex items-center gap-2 ${textPrimary}`}>
-              <RefreshCw size={18} style={{ color: '#3b82f6' }} />
-              Reprendre les informations de l'entreprise
-            </h3>
-            <p className={`text-sm ${textMuted} mb-4`}>
-              Reprend l'identité, les mentions et les réglages de l'entreprise d'un export Mallettico (.json). Les devis, factures, clients et chantiers de l'export ne sont pas importés : gardez ce fichier, il fait office d'archive.
-            </p>
-
-            <div className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors ${isDark ? 'border-slate-600 hover:border-slate-500' : 'border-slate-300 hover:border-slate-400'}`}>
+          <Bloc titre="Reprendre les informations de l’entreprise" sousTitre="Reprend l’identité, les mentions et les réglages de l’entreprise d’un export Mallettico (.json). Les devis, factures, clients et chantiers de l’export ne sont pas importés : gardez ce fichier, il fait office d’archive.">
+            <div className="flex items-end justify-end mb-1"><EtatEnregistrement cle="import" /></div>
+            <div className="border-2 border-dashed rounded-xl p-6 sm:p-8 text-center transition-colors border-bord-fort hover:border-encre-3">
               <input
                 type="file"
                 accept=".json"
                 id="import-file"
-                className="hidden"
+                className="sr-only"
                 onChange={(e) => {
                   const file = e.target.files?.[0];
                   if (!file) return;
@@ -1714,7 +1313,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                           });
                           if (!ok) return;
                         }
-                        const ok = await updateEntreprise(prev => ({ ...prev, ...infos }));
+                        const ok = await updateEntreprise(prev => ({ ...prev, ...infos }), 'import');
                         if (ok) showToast(`Informations de l'entreprise reprises de l'export${data.exportDate ? ` du ${dateLue(data.exportDate).toLocaleDateString('fr-FR')}` : ''}.`, 'success');
                       })();
                     } catch {
@@ -1725,87 +1324,59 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                   e.target.value = '';
                 }}
               />
-              <label htmlFor="import-file" className="cursor-pointer">
-                <div className={`w-14 h-14 mx-auto mb-3 rounded-xl flex items-center justify-center bg-surface-2`}>
-                  <RefreshCw size={24} className={textMuted} />
-                </div>
-                <p className={`text-sm font-medium ${textPrimary}`}>Cliquez pour sélectionner un fichier</p>
-                <p className={`text-xs ${textMuted} mt-1`}>Format .json (export Mallettico)</p>
+              <label htmlFor="import-file" className="cursor-pointer block">
+                <span className="w-14 h-14 mx-auto mb-3 rounded-xl flex items-center justify-center bg-surface-2">
+                  <RefreshCw size={24} aria-hidden="true" className="text-encre-2" />
+                </span>
+                <span className="block text-sm font-semibold text-encre">Choisir un fichier</span>
+                <span className="block text-sm text-encre-3 mt-1">Format .json (export Mallettico)</span>
               </label>
             </div>
-          </div>
+          </Bloc>
 
           {/* Onboarding Replay */}
-          <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
-            <h3 className={`font-semibold mb-2 flex items-center gap-2 ${textPrimary}`}>
-              <GraduationCap size={18} /> Visite guidée
-            </h3>
-            <p className={`text-sm ${textMuted} mb-4`}>
-              Rejouez le tutoriel d'introduction pour redécouvrir toutes les fonctionnalités de Mallettico.
-            </p>
-            <button
+          <Bloc titre="Visite guidée" sousTitre="Rejouez le tutoriel d’introduction pour redécouvrir les fonctions de Mallettico.">
+            <Bouton icone={GraduationCap}
               onClick={() => {
-                localStorage.removeItem('mallettico_onboarding_complete');
-                localStorage.removeItem('mallettico_onboarding_skipped');
+                try {
+                  localStorage.removeItem('mallettico_onboarding_complete');
+                  localStorage.removeItem('mallettico_onboarding_skipped');
+                } catch { /* stockage indisponible : la visite ne sera pas rejouée */ }
                 showToast('Rechargez la page pour relancer la visite guidée', 'info');
               }}
-              className={`flex items-center gap-2 px-5 py-3 rounded-xl font-medium transition-all hover:shadow-lg bg-surface-2 text-encre-2 hover:bg-bord`}
             >
-              <RefreshCw size={18} />
               Relancer la visite guidée
-            </button>
-          </div>
+            </Bouton>
+          </Bloc>
 
-          {/* Data Management */}
-          <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
-            <h3 className={`font-semibold mb-2 flex items-center gap-2 text-red-500`}>
-              <AlertCircle size={18} />
-              Gestion des données locales
-            </h3>
-            <p className={`text-sm ${textMuted} mb-4`}>
-              Les données sont stockées localement dans votre navigateur. Pensez à exporter régulièrement.
-            </p>
+          {/* Données gardées sur cet appareil */}
+          <Bloc titre="Données gardées sur cet appareil" sousTitre="Certains réglages et brouillons sont gardés dans le navigateur de cet appareil.">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {Object.keys(localStorage).filter(k => k.startsWith('cp_') || k.startsWith('mallettico')).length > 0 && (
-                <div className={`p-3 rounded-xl bg-surface-2`}>
-                  <p className={`text-xs ${textMuted}`}>Clés stockées</p>
-                  <p className="text-lg font-bold text-accent-texte">
+                <div className="p-3 rounded-xl bg-surface-2">
+                  <p className="text-sm text-encre-3">Clés stockées</p>
+                  <p className="text-lg font-bold tabular-nums text-encre">
                     {Object.keys(localStorage).filter(k => k.startsWith('cp_') || k.startsWith('mallettico')).length}
                   </p>
                 </div>
               )}
-              <div className={`p-3 rounded-xl bg-surface-2`}>
-                <p className={`text-xs ${textMuted}`}>Taille estimée</p>
-                <p className="text-lg font-bold text-accent-texte">
+              <div className="p-3 rounded-xl bg-surface-2">
+                <p className="text-sm text-encre-3">Taille estimée</p>
+                <p className="text-lg font-bold tabular-nums text-encre">
                   {(() => {
                     let total = 0;
                     Object.keys(localStorage).forEach(k => { total += (localStorage.getItem(k) || '').length; });
-                    return total > 1024 * 1024 ? `${(total / (1024 * 1024)).toFixed(1)} Mo` : `${Math.round(total / 1024)} Ko`;
+                    return total > 1024 * 1024 ? `${(total / (1024 * 1024)).toFixed(1).replace('.', ',')} Mo` : `${Math.round(total / 1024)} Ko`;
                   })()}
                 </p>
               </div>
             </div>
-          </div>
+          </Bloc>
 
           {/* RGPD — Export données personnelles */}
-          <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
-            <h3 className={`font-semibold mb-2 flex items-center gap-2 ${textPrimary}`}>
-              <Shield size={18} style={{ color: '#3b82f6' }} />
-              Vos droits RGPD
-            </h3>
-            <p className={`text-sm ${textMuted} mb-4`}>
-              Conformément au RGPD, vous pouvez exporter ou supprimer vos données personnelles à tout moment.
-            </p>
-
-            {/* Export RGPD */}
-            <button
-              onClick={exporterDonneesRGPD}
-              className={`flex items-center gap-2 px-5 py-3 rounded-xl font-medium transition-all hover:shadow-lg ${isDark ? 'bg-blue-600 text-white hover:bg-blue-500' : 'bg-blue-500 text-white hover:bg-blue-600'}`}
-            >
-              <Download size={18} />
-              Exporter toutes mes données
-            </button>
-          </div>
+          <Bloc titre="Vos droits RGPD" sousTitre="Conformément au RGPD, vous pouvez exporter ou supprimer vos données personnelles à tout moment.">
+            <Bouton icone={Download} onClick={exporterDonneesRGPD}>Exporter toutes mes données</Bouton>
+          </Bloc>
 
           {/* Danger Zone — Suppression de compte (RPC supprimer_mon_compte, migration 072) */}
           <SuppressionCompte isDark={isDark} showToast={showToast} onExporter={exporterDonneesRGPD} />
@@ -1838,342 +1409,32 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
           couleur={couleur}
         />
       )}
-
-      {/* APERÇU DOCUMENT — only visible on identite tab */}
-      {tab === 'identite' && <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6`}>
-        <h3 className="font-semibold mb-4"> Aperçu en-tête document</h3>
-        <div className={`border rounded-xl p-6 bg-surface-2`}>
-          <div className="flex justify-between items-start mb-4">
-            <div className="flex items-center gap-4">
-              {entreprise.logo ? (
-                <img src={entreprise.logo} className="h-16 object-contain" alt="Logo" onError={(e) => { e.target.style.display = 'none'; }} />
-              ) : entreprise.nom ? (
-                <div className="w-16 h-16 rounded-xl flex items-center justify-center text-xl font-bold" style={{ background: `${entreprise.couleur}20`, color: entreprise.couleur }}>
-                  {entreprise.nom.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
-                </div>
-              ) : (
-                <div className="w-16 h-16 rounded-xl flex items-center justify-center" style={{background: `${entreprise.couleur}20`}}><Building2 size={28} style={{ color: entreprise.couleur }} /></div>
-              )}
-              <div>
-                <p className="font-bold text-lg">{entreprise.nom || 'Nom entreprise'}</p>
-                {entreprise.slogan && <p className="text-xs text-slate-500 italic">{entreprise.slogan}</p>}
-                {entreprise.formeJuridique && (
-                  <p className="text-xs text-slate-500">{entreprise.formeJuridique}{entreprise.capital && ` · Capital: ${entreprise.capital} €`}</p>
-                )}
-                {entreprise.adresse ? (
-                  <p className="text-sm text-slate-500 whitespace-pre-line mt-1">{entreprise.adresse}</p>
-                ) : (
-                  <p className="text-sm text-amber-600 mt-1 flex items-center gap-1">⚠️ Adresse manquante — vos documents ne seront pas conformes</p>
-                )}
-              </div>
-            </div>
-            <p className="font-bold text-xl" style={{color: entreprise.couleur}}>DEVIS</p>
-          </div>
-          <div className="text-xs text-slate-500 space-y-0.5 border-t pt-3 mt-3">
-            {entreprise.siret && <p>SIRET: {maskValue(entreprise.siret)} {entreprise.codeApe && `· APE: ${entreprise.codeApe}`}</p>}
-            {getRCSComplet() && <p>{getRCSComplet()}</p>}
-            {entreprise.tvaIntra && <p>TVA Intracommunautaire: {entreprise.tvaIntra}</p>}
-            {entreprise.tel && <p>Tél: {entreprise.tel} {entreprise.email && `· ${entreprise.email}`}</p>}
-            {/* Même règle que les documents : la décennale n'apparaît qu'avec l'assureur ET le n° de police */}
-            {(entreprise.rcProAssureur || (entreprise.decennaleAssureur && entreprise.decennaleNumero)) && (
-              <p className="pt-1 text-xs">
-                {entreprise.rcProAssureur && `RC Pro: ${entreprise.rcProAssureur}${entreprise.rcProNumero ? ` N°${entreprise.rcProNumero}` : ''}`}
-                {entreprise.rcProAssureur && entreprise.decennaleAssureur && entreprise.decennaleNumero && ' · '}
-                {entreprise.decennaleAssureur && entreprise.decennaleNumero && `Décennale: ${entreprise.decennaleAssureur} N°${entreprise.decennaleNumero}${entreprise.decennaleValidite ? ` (Valide: ${dateLue(entreprise.decennaleValidite).toLocaleDateString('fr-FR')})` : ''}`}
-              </p>
-            )}
-          </div>
         </div>
-      </div>}
+      </div>
 
-      {/* ── Setup Wizard Modal (5 steps) ─────────────────────────── */}
-      {showSetupWizard && (() => {
-        const totalSteps = WIZARD_STEPS_DEF.length;
-        const safeStep = Math.min(wizardStep, totalSteps - 1);
-        const stepDef = WIZARD_STEPS_DEF[safeStep];
-        const progress = ((safeStep + 1) / totalSteps) * 100;
-        // Ce qui bloquerait l'envoi (lib/profilLegal). Avant, la dernière étape disait « Configuration terminée ! »
-        // même sans décennale (que l'assistant ne demande pas) : l'artisan croyait pouvoir envoyer, l'envoi était bloqué.
-        const manquantes = profilManquant(entreprise);
-        const completer = (mention) => { setShowSetupWizard(false); allerAuChamp(mention.onglet, mention.champ); };
-
-        return (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={() => setShowSetupWizard(false)}>
-            <div className={`bg-surface rounded-t-2xl sm:rounded-2xl w-full max-w-lg max-h-[90vh] flex flex-col`} onClick={e => e.stopPropagation()}>
-              {/* Progress bar */}
-              <div className="h-1.5 rounded-t-2xl overflow-hidden" style={{ background: isDark ? '#334155' : '#e2e8f0' }}>
-                <div className="h-full transition-all duration-500 bg-accent" style={{ width: `${progress}%` }} />
-              </div>
-
-              {/* Step dots */}
-              <div className="flex items-center justify-center gap-3 px-5 pt-4 pb-1">
-                {WIZARD_STEPS_DEF.map((s, i) => {
-                  const SIcon = s.icon;
-                  const isDone = i < safeStep;
-                  const isCurrent = i === safeStep;
-                  return (
-                    <React.Fragment key={s.id}>
-                      <button
-                        onClick={() => i <= safeStep && setWizardStep(i)}
-                        className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
-                          isDone ? 'text-white' : isCurrent ? 'text-white shadow-lg scale-110' : 'bg-bord text-encre-3'
-                        }`}
-                        style={(isDone || isCurrent) ? { backgroundColor: couleur } : undefined}
-                        title={s.title}
-                      >
-                        {isDone ? <Check size={14} /> : <SIcon size={14} />}
-                      </button>
-                      {i < totalSteps - 1 && (
-                        <div className={`flex-1 h-0.5 rounded max-w-[40px] ${isDone ? '' : 'bg-bord'}`} style={isDone ? { backgroundColor: couleur } : undefined} />
-                      )}
-                    </React.Fragment>
-                  );
-                })}
-              </div>
-
-              {/* Header */}
-              <div className="px-5 pb-2 pt-2">
-                <div className="flex items-center justify-between mb-1">
-                  <p className={`text-xs font-medium text-encre-3`}>Étape {safeStep + 1}/{totalSteps}</p>
-                  <button onClick={() => setShowSetupWizard(false)} className={`p-1.5 rounded-lg hover:bg-surface-2 text-encre-3`}>
-                    <X size={16} />
-                  </button>
-                </div>
-                <h3 className={`text-lg font-bold ${textPrimary}`}>{stepDef.title}</h3>
-                <p className={`text-sm ${textMuted}`}>{stepDef.desc}</p>
-              </div>
-
-              {/* Step content */}
-              <div className="flex-1 overflow-y-auto px-5 pb-3 space-y-3">
-
-                {/* Step 1: Identité */}
-                {safeStep === 0 && (
-                  <>
-                    <div>
-                      <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Nom de l’entreprise *</label>
-                      <DebouncedInput type="text" value={entreprise.nom || ''} onChange={val => updateEntreprise(p => ({ ...p, nom: val }))}
-                        placeholder="Ex : Martin Rénovation" className={`w-full px-4 py-2.5 border rounded-xl text-sm ${inputBg}`} />
-                    </div>
-                    <div>
-                      <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Logo</label>
-                      <div className="flex items-center gap-3">
-                        {entreprise.logo ? (
-                          <img src={entreprise.logo} alt="Logo" className="w-12 h-12 rounded-xl object-contain border" onError={(e) => { e.target.style.display = 'none'; }} />
-                        ) : (
-                          <div className="w-12 h-12 rounded-xl flex items-center justify-center text-lg font-bold text-white" style={{ backgroundColor: entreprise.couleur || couleur }}>
-                            {(entreprise.nom || 'E').charAt(0).toUpperCase()}
-                          </div>
-                        )}
-                        <label className={`px-4 py-2 rounded-xl text-sm font-medium cursor-pointer transition-colors bg-surface-2 text-encre-2 hover:bg-bord`}>
-                          {entreprise.logo ? 'Changer' : 'Uploader'} un logo
-                          <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
-                        </label>
-                      </div>
-                    </div>
-                    <div>
-                      <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Couleur principale</label>
-                      <div className="flex gap-2 flex-wrap">
-                        {COULEURS.map(c => (
-                          <button key={c} onClick={() => updateEntreprise(p => ({ ...p, couleur: c }))}
-                            className={`w-9 h-9 rounded-xl transition-all ${entreprise.couleur === c ? 'ring-2 ring-offset-2 scale-110' : 'opacity-70 hover:opacity-100'}`}
-                            style={{ backgroundColor: c, ringColor: c }} />
-                        ))}
-                      </div>
-                    </div>
-                  </>
-                )}
-
-                {/* Step 2: SIRET + SIRENE */}
-                {safeStep === 1 && (
-                  <>
-                    <div>
-                      <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>N° SIRET *</label>
-                      <div className="flex gap-2">
-                        <DebouncedInput type="text" value={entreprise.siret || ''} onChange={val => updateEntreprise(p => ({ ...p, siret: val }))}
-                          placeholder="123 456 789 00012" className={`flex-1 px-4 py-2.5 border rounded-xl text-sm ${inputBg}`} />
-                        <button
-                          onClick={lookupSIRENE}
-                          disabled={sireneLoading}
-                          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all hover:opacity-90 disabled:opacity-50 bg-accent text-sur-accent"
-                        >
-                          {sireneLoading ? <Loader2 size={16} className="animate-spin" /> : <Search size={16} />}
-                          Auto-remplir
-                        </button>
-                      </div>
-                      <p className={`text-xs mt-1 ${textMuted}`}>Recherche automatique via l’API SIRENE</p>
-                    </div>
-                    <div>
-                      <label htmlFor="assistant-forme" className={`block text-sm font-medium mb-1 ${textPrimary}`}>Forme juridique</label>
-                      <select id="assistant-forme" className={`w-full px-4 py-2.5 border rounded-xl text-sm ${inputBg}`} value={entreprise.formeJuridique || ''} onChange={e => updateEntreprise(p => ({ ...p, formeJuridique: e.target.value }))}>
-                        <option value="">Sélectionner...</option>
-                        {FORMES_JURIDIQUES.map(f => <option key={f.valeur} value={f.valeur}>{f.libelle}</option>)}
-                      </select>
-                    </div>
-                    {(estEntrepreneurIndividuel(entreprise) || estEirl(entreprise)) && (
-                      <div>
-                        <label htmlFor="assistant-nom-entrepreneur" className={`block text-sm font-medium mb-1 ${textPrimary}`}>Votre prénom et nom</label>
-                        <DebouncedInput id="assistant-nom-entrepreneur" type="text" value={entreprise.nomEntrepreneur || ''} onChange={val => updateEntreprise(p => ({ ...p, nomEntrepreneur: val }))}
-                          placeholder="Ex : Hugo Séguin" className={`w-full px-4 py-2.5 border rounded-xl text-sm ${inputBg}`} />
-                        <p className={`text-xs mt-1 ${textMuted}`}>Imprimé suivi de « {estEirl(entreprise) ? 'EIRL' : 'EI'} » sur vos documents.</p>
-                      </div>
-                    )}
-                    {[
-                      { key: 'codeApe', label: 'Code APE', placeholder: '4399C' },
-                      { key: 'tvaIntra', label: 'N° TVA Intracommunautaire', placeholder: 'FR12345678901' },
-                      { key: 'adresse', label: 'Adresse complète *', placeholder: '12 rue des Artisans, 75011 Paris' },
-                      { key: 'tel', label: 'Téléphone *', placeholder: '06 12 34 56 78' },
-                      { key: 'email', label: 'Email *', placeholder: 'contact@entreprise.fr' },
-                    ].map(f => (
-                      <div key={f.key}>
-                        <label htmlFor={`assistant-${f.key}`} className={`block text-sm font-medium mb-1 ${textPrimary}`}>{f.label}</label>
-                        <DebouncedInput id={`assistant-${f.key}`} type="text" value={entreprise[f.key] || ''} onChange={val => updateEntreprise(p => ({ ...p, [f.key]: val }))}
-                          placeholder={f.placeholder} className={`w-full px-4 py-2.5 border rounded-xl text-sm ${inputBg}`} />
-                      </div>
-                    ))}
-                  </>
-                )}
-
-                {/* Step 3: Documents */}
-                {safeStep === 2 && (
-                  <>
-                    {/* Les mêmes réglages que l'onglet Documents (tvaDefaut, acompteDefaut). Avant (recette du 9 oct. 2026),
-                        l'assistant écrivait tauxTva / acompte / mentionRGE / mentionDecennale, que rien ne lit. */}
-                    <div>
-                      <p className={`block text-sm font-medium mb-2 ${textPrimary}`}>Taux de TVA par défaut</p>
-                      <div className="flex flex-wrap gap-2" role="group" aria-label="Taux de TVA par défaut">
-                        {[20, 10, 5.5, 0].map(t => (
-                          <button key={t} type="button" aria-pressed={(entreprise.tvaDefaut ?? 10) === t}
-                            onClick={() => updateEntreprise(p => ({ ...p, tvaDefaut: t }))}
-                            className={`min-h-[44px] px-4 rounded-xl border text-sm font-medium ${(entreprise.tvaDefaut ?? 10) === t ? 'bg-accent text-sur-accent border-transparent' : 'border-bord text-encre-2 hover:bg-surface-2'}`}>
-                            {String(t).replace('.', ',')} %
-                          </button>
-                        ))}
-                      </div>
-                      <p className={`text-xs mt-1 ${textMuted}`}>Modifiable ligne par ligne sur chaque devis. En franchise de TVA (art. 293 B du CGI, sous les seuils) : aucune TVA n'est facturée.</p>
-                    </div>
-                    <div>
-                      <label className={`block text-sm font-medium mb-2 ${textPrimary}`}>Acompte par défaut : <strong>{entreprise.acompteDefaut ?? 30} %</strong></label>
-                      <input type="range" min="0" max="50" step="5"
-                        value={entreprise.acompteDefaut ?? 30}
-                        onChange={e => updateEntreprise(p => ({ ...p, acompteDefaut: parseInt(e.target.value, 10) }))}
-                        className="w-full" style={{ accentColor: couleur }}
-                      />
-                      <div className={`flex justify-between text-xs ${textMuted}`}><span>0 %</span><span>30 %</span><span>50 %</span></div>
-                    </div>
-                    <p className={`text-xs ${textMuted}`}>Assurances, garanties légales, pénalités de retard et droit de rétractation s'impriment à partir de votre profil. À joindre vous-même pour l'instant : votre attestation d'assurance décennale.</p>
-                  </>
-                )}
-
-                {/* Step 4: Relances */}
-                {safeStep === 3 && (
-                  <>
-                    <div className={`p-4 rounded-xl border bg-surface-2 border-bord`}>
-                      <p className={`text-sm font-semibold mb-2 ${textPrimary}`}>Scénario de relance type :</p>
-                      <div className="space-y-2">
-                        {[
-                          { jour: 'J+7', type: 'Email', desc: 'Rappel de consultation' },
-                          { jour: 'J+15', type: 'Email', desc: 'Relance douce' },
-                          { jour: 'J+30', type: 'Email', desc: 'Dernière relance' },
-                        ].map(r => (
-                          <div key={r.jour} className={`flex items-center gap-3 text-sm ${textSecondary}`}>
-                            <span className="font-mono font-bold w-10 text-accent-texte">{r.jour}</span>
-                            <span className={`px-2 py-0.5 rounded text-xs font-medium bg-bord text-encre-2`}>{r.type}</span>
-                            <span className={textPrimary}>{r.desc}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                    {/* L'interrupteur réel des relances (relanceConfig.enabled) est dans l'onglet Relances, avec ses
-                        étapes et ses textes. Avant (recette du 9 oct. 2026), celui de l'assistant écrivait
-                        « relancesActives », que rien ne lit : les relances restaient désactivées. */}
-                    <div className={`flex items-center justify-between gap-3 p-4 rounded-xl border border-bord`}>
-                      <div>
-                        <p className={`text-sm font-semibold ${textPrimary}`}>Relances automatiques : {relances.isEnabled ? 'activées' : 'désactivées'}</p>
-                        <p className={`text-xs ${textMuted}`}>Réglez-les (étapes, textes, envoi) dans l'onglet Relances.</p>
-                      </div>
-                      <button type="button" onClick={() => { setShowSetupWizard(false); setTab('relances'); }}
-                        className="min-h-[44px] px-3 rounded-xl border border-bord-fort text-sm font-medium text-encre hover:bg-surface-2 whitespace-nowrap">
-                        Ouvrir les relances
-                      </button>
-                    </div>
-                  </>
-                )}
-
-                {/* Step 5: Catalogue */}
-                {safeStep === 4 && (
-                  <>
-                    {manquantes.length > 0 && (
-                      <div className="p-4 rounded-xl bg-alerte-fond text-alerte-texte" data-assistant="manquantes">
-                        <p className="text-sm font-semibold flex items-start gap-2">
-                          <AlertCircle size={18} aria-hidden="true" className="shrink-0 mt-px" />
-                          {manquantes.length === 1 ? 'Il manque une information' : `Il manque ${manquantes.length} informations`} pour envoyer vos devis et factures :
-                        </p>
-                        <ul className="mt-2 space-y-1.5">
-                          {manquantes.map(m => (
-                            <li key={m.id}>
-                              <button type="button" onClick={() => completer(m)}
-                                className="w-full min-h-[44px] px-3 py-2 rounded-lg flex items-center justify-between gap-3 text-left text-sm bg-surface text-encre hover:bg-surface-2">
-                                <span>{m.libelle}</span>
-                                <span className="text-sm text-encre-3 whitespace-nowrap">{NOM_ONGLET[m.onglet]} →</span>
-                              </button>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                    <div className={`p-4 rounded-xl border text-center bg-surface-2 border-bord`}>
-                      <Package size={40} className={`mx-auto mb-3 ${textSecondary}`} />
-                      <p className={`text-sm font-semibold ${textPrimary}`}>Importez le Référentiel BTP</p>
-                      <p className={`text-xs mt-1 ${textMuted}`}>Sélectionnez votre métier pour importer automatiquement les articles courants dans votre catalogue.</p>
-                    </div>
-                    <Bouton pleineLargeur icone={Package} onClick={() => { setShowSetupWizard(false); setPage('catalogue'); }}>
-                      Ouvrir le Catalogue pour importer
-                    </Bouton>
-                    <p className={`text-xs text-center ${textMuted}`}>Vous pourrez toujours le faire plus tard depuis le module Catalogue.</p>
-                  </>
-                )}
-              </div>
-
-              {/* Footer Navigation */}
-              <div className={`p-5 pt-3 border-t flex items-center gap-3 border-bord`}>
-                {safeStep > 0 && (
-                  <button
-                    onClick={() => setWizardStep(s => Math.max(0, s - 1))}
-                    className={`px-4 py-2.5 rounded-xl text-sm font-medium bg-surface-2 text-encre-2`}
-                  >
-                    ← Précédent
-                  </button>
-                )}
-                <div className="flex-1">
-                  <p className={`text-xs text-center ${textMuted}`}>Profil {completude}%</p>
-                </div>
-                {safeStep < totalSteps - 1 ? (
-                  <button
-                    onClick={() => setWizardStep(s => s + 1)}
-                    className="px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors bg-accent text-sur-accent"
-                  >
-                    Suivant →
-                  </button>
-                ) : manquantes.length > 0 ? (
-                  <Bouton variante="principal" onClick={() => completer(manquantes[0])}>
-                    Compléter le profil
-                  </Bouton>
-                ) : (
-                  <Bouton variante="principal" icone={Check}
-                    onClick={() => {
-                      setShowSetupWizard(false);
-                      try { localStorage.setItem('cp_wizard_done', '1'); } catch { /* préférence non enregistrée : quota plein ou navigation privée */ }
-                      showToast('Configuration terminée !', 'success');
-                    }}>
-                    Terminer
-                  </Bouton>
-                )}
-              </div>
-            </div>
-          </div>
-        );
-      })()}
-
+      <AssistantProfil
+        ouvert={showSetupWizard}
+        onFermer={() => setShowSetupWizard(false)}
+        etape={wizardStep}
+        setEtape={setWizardStep}
+        entreprise={entreprise}
+        updateEntreprise={updateEntreprise}
+        formesJuridiques={FORMES_JURIDIQUES}
+        completude={completude}
+        relancesActives={relances.isEnabled}
+        onLogo={handleLogoUpload}
+        lookupSirene={lookupSIRENE}
+        sireneEnCours={sireneLoading}
+        onCompleter={(mention) => { setShowSetupWizard(false); allerAuChamp(mention.onglet, mention.champ); }}
+        onOuvrirRelances={() => { setShowSetupWizard(false); ouvrirRubrique('relances'); }}
+        onOuvrirCatalogue={() => { setShowSetupWizard(false); setPage?.('catalogue'); }}
+        onTerminer={() => {
+          setShowSetupWizard(false);
+          try { localStorage.setItem('cp_wizard_done', '1'); } catch { /* préférence non enregistrée : quota plein ou navigation privée */ }
+          showToast('Configuration terminée !', 'success');
+        }}
+      />
     </div>
+    </EnregistrementContext.Provider>
   );
 }

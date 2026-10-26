@@ -1923,7 +1923,7 @@ export default function App() {
 
         {/* Trial / Downgrade Banner */}
         <ErrorBoundary fallback={null}>
-          <TrialBanner />
+          <TrialBanner page={page} />
         </ErrorBoundary>
 
         {/* Page content */}

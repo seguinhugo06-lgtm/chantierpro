@@ -95,7 +95,7 @@ function CircularProgress({ score, size = 120, strokeWidth = 10 }) {
  * - le test du fichier Factur-X (profil MINIMUM ou BASIC) sur une facture d'exemple ;
  * - ce que Mallettico fait, et ce qu'il ne fait pas (transmission, conservation).
  */
-export default function Facture2026Tab({ entreprise, isDark, couleur }) {
+export default function Facture2026Tab({ entreprise, isDark, couleur: _couleur }) {
   const cardBg = 'bg-surface border-bord';
   const textSecondary = 'text-encre-2';
 
@@ -218,12 +218,12 @@ export default function Facture2026Tab({ entreprise, isDark, couleur }) {
             Informations à vérifier pour vos factures
           </h3>
 
-          <h4 className="mt-4 text-xs font-semibold uppercase tracking-wide text-encre-3">Obligatoires</h4>
+          <h4 className="mt-4 text-sm font-semibold text-encre-2">Obligatoires</h4>
           <ul className="divide-y divide-bord">
             {liste.obligatoires.map((info) => <LigneInformation key={info.id} info={info} />)}
           </ul>
 
-          <h4 className="mt-4 text-xs font-semibold uppercase tracking-wide text-encre-3">Utiles</h4>
+          <h4 className="mt-4 text-sm font-semibold text-encre-2">Utiles</h4>
           <ul className="divide-y divide-bord">
             {liste.utiles.map((info) => <LigneInformation key={info.id} info={info} />)}
           </ul>
@@ -244,32 +244,32 @@ export default function Facture2026Tab({ entreprise, isDark, couleur }) {
           Ce que Mallettico fait, et ce qu'il vous reste à faire
         </h3>
         <div className="space-y-3">
-          <div className={`flex items-start gap-2.5 p-3 rounded-xl ${isDark ? 'bg-emerald-900/20' : 'bg-emerald-50'}`}>
-            <CheckCircle className="w-5 h-5 shrink-0 mt-0.5 text-emerald-600" />
+          <div className={`flex items-start gap-2.5 p-3 rounded-xl ${'bg-succes-fond'}`}>
+            <CheckCircle className="w-5 h-5 shrink-0 mt-0.5 text-succes-texte" aria-hidden="true" />
             <div>
-              <p className={`text-sm font-semibold ${isDark ? 'text-emerald-300' : 'text-emerald-800'}`}>
+              <p className={`text-sm font-semibold ${'text-succes-texte'}`}>
                 Vos factures PDF contiennent les données Factur-X
               </p>
-              <p className={`text-sm mt-0.5 ${isDark ? 'text-emerald-200' : 'text-emerald-700'}`}>
+              <p className={`text-sm mt-0.5 ${'text-succes-texte'}`}>
                 Chaque facture téléchargée en PDF contient un fichier XML structuré (Factur-X). Pour l'émission
                 obligatoire par une Plateforme Agréée (TPE : à partir du 1er septembre 2027), le raccordement est en préparation.
               </p>
             </div>
           </div>
 
-          <div className={`flex items-start gap-2.5 p-3 rounded-xl ${isDark ? 'bg-amber-900/20' : 'bg-amber-50'}`}>
-            <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5 text-amber-600" />
+          <div className={`flex items-start gap-2.5 p-3 rounded-xl ${'bg-alerte-fond'}`}>
+            <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5 text-alerte-texte" aria-hidden="true" />
             <div>
-              <p className={`text-sm font-semibold ${isDark ? 'text-amber-300' : 'text-amber-800'}`}>
+              <p className={`text-sm font-semibold ${'text-alerte-texte'}`}>
                 Mallettico ne transmet pas encore vos factures à votre place
               </p>
-              <p className={`text-sm mt-0.5 ${isDark ? 'text-amber-200' : 'text-amber-700'}`}>
+              <p className={`text-sm mt-0.5 ${'text-alerte-texte'}`}>
                 La réforme impose de passer par une Plateforme Agréée pour <strong>recevoir</strong> les
                 factures électroniques (depuis le 1er septembre 2026) puis pour les envoyer. Ce raccordement
                 est une démarche à faire de votre côté : choisissez une plateforme, déclarez-y
                 votre SIREN, et déposez-y les fichiers que Mallettico produit.
               </p>
-              <p className={`text-xs mt-2 ${isDark ? 'text-amber-200/80' : 'text-amber-700/80'}`}>
+              <p className={`text-xs mt-2 ${'text-alerte-texte/80'}`}>
                 Le calendrier de la réforme a déjà été reporté plusieurs fois. Vérifiez les dates
                 qui s'appliquent à votre entreprise auprès de votre expert-comptable ou sur
                 impots.gouv.fr avant de vous engager.
@@ -293,7 +293,7 @@ export default function Facture2026Tab({ entreprise, isDark, couleur }) {
           </p>
           <div className={`flex flex-wrap gap-3 mt-3 text-sm ${textSecondary}`}>
             <div className={`flex items-center gap-2 px-3 py-2 rounded-xl bg-fond`}>
-              <CheckCircle className="w-4 h-4 text-emerald-500" />
+              <CheckCircle className="w-4 h-4 text-succes-texte" aria-hidden="true" />
               <span>XML Factur-X joint au PDF</span>
             </div>
             <div className={`flex items-center gap-2 px-3 py-2 rounded-xl bg-fond`}>
@@ -301,7 +301,7 @@ export default function Facture2026Tab({ entreprise, isDark, couleur }) {
               <span>Profil : <strong>{achievableProfile === 'basic' ? 'BASIC' : 'MINIMUM'}</strong></span>
             </div>
             <div className={`flex items-center gap-2 px-3 py-2 rounded-xl bg-fond`}>
-              <Zap className="w-4 h-4 text-blue-500" />
+              <Zap className="w-4 h-4 text-encre-3" aria-hidden="true" />
               <span>Génération 100% automatique</span>
             </div>
           </div>
@@ -339,7 +339,7 @@ export default function Facture2026Tab({ entreprise, isDark, couleur }) {
             {/* Errors */}
             {testResult.errors.length > 0 && (
               <div className="mt-3 space-y-1.5">
-                <p className="text-xs font-semibold text-danger-texte uppercase tracking-wide">Erreurs</p>
+                <p className="text-sm font-semibold text-danger-texte">Erreurs</p>
                 {testResult.errors.map((err, i) => (
                   <div key={i} className="flex items-start gap-2 text-sm text-danger-texte">
                     <XCircle size={16} aria-hidden="true" className="shrink-0 mt-0.5" />
@@ -352,7 +352,7 @@ export default function Facture2026Tab({ entreprise, isDark, couleur }) {
             {/* Warnings */}
             {testResult.warnings.length > 0 && (
               <div className="mt-3 space-y-1.5">
-                <p className="text-xs font-semibold text-alerte-texte uppercase tracking-wide">Avertissements</p>
+                <p className="text-sm font-semibold text-alerte-texte">Avertissements</p>
                 {testResult.warnings.map((warn, i) => (
                   <div key={i} className="flex items-start gap-2 text-sm text-alerte-texte">
                     <AlertTriangle size={16} aria-hidden="true" className="shrink-0 mt-0.5" />
@@ -394,7 +394,7 @@ export default function Facture2026Tab({ entreprise, isDark, couleur }) {
 /**
  * Collapsible XML preview component
  */
-function XmlPreview({ xml, isDark }) {
+function XmlPreview({ xml }) {
   const [expanded, setExpanded] = useState(false);
 
   // Show first ~500 chars when collapsed

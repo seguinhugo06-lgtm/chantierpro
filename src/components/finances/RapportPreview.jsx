@@ -70,8 +70,7 @@ export default function RapportPreview({ blob, filename, onClose, onDownload, is
           <div className="flex items-center gap-2">
             <button
               onClick={onDownload}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium text-white transition-all hover:opacity-90"
-              style={{ backgroundColor: '#3b82f6' }}
+              className="flex items-center gap-1.5 h-11 px-4 rounded-full text-sm font-semibold bg-surface text-encre border border-bord-fort hover:bg-surface-2 transition-colors"
               title="Télécharger"
             >
               <Download size={16} />

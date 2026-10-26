@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { statutPrevision, normaliserPrevision, estPrevisionMiroir } from '../previsions';
+import { statutPrevision, normaliserPrevision, estPrevisionMiroir, seuilAlerteRegle } from '../previsions';
 
 describe('estPrevisionMiroir', () => {
   it('reconnaît les copies automatiques liées à un document', () => {
@@ -43,5 +43,19 @@ describe('normaliserPrevision', () => {
 
   it('corrige une prévision abîmée sans toucher au reste', () => {
     expect(normaliserPrevision({ id: 'b', montant: 450, statut: 'En retard' })).toEqual({ id: 'b', montant: 450, statut: 'prevu' });
+  });
+});
+
+describe('seuilAlerteRegle', () => {
+  it('le seuil par défaut (5 000 €), vide ou 0 : aucun seuil', () => {
+    expect(seuilAlerteRegle({ seuilAlerte: 5000 })).toBeNull();
+    expect(seuilAlerteRegle({ seuilAlerte: 0 })).toBeNull();
+    expect(seuilAlerteRegle({})).toBeNull();
+    expect(seuilAlerteRegle(null)).toBeNull();
+  });
+
+  it('un seuil choisi par l\'artisan est gardé', () => {
+    expect(seuilAlerteRegle({ seuilAlerte: 2000 })).toBe(2000);
+    expect(seuilAlerteRegle({ seuilAlerte: '8000' })).toBe(8000);
   });
 });

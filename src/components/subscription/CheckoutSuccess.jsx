@@ -5,9 +5,9 @@
  * Used after returning from Stripe Checkout with ?billing=success
  */
 
-import React, { useState, useEffect } from 'react';
-import { FONCTIONS } from '../../lib/fonctions';
-import { CheckCircle, ArrowRight, Sparkles, FileText, PenTool, Camera, Settings } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { CheckCircle, ArrowRight, Check } from 'lucide-react';
+import { Bouton } from '../ui/Bouton';
 import { useSubscriptionStore, PLANS } from '../../stores/subscriptionStore';
 import { dateLue } from '../../lib/dates';
 import { MENTION_TVA_ABONNEMENT, prixAbonnement } from '../../stores/prixAbonnement';
@@ -23,7 +23,7 @@ function Confetti() {
 
   if (!show) return null;
 
-  const colors = ['#F97316', '#3B82F6', '#8B5CF6', '#22C55E', '#EAB308', '#EC4899'];
+  const colors = ['#EE7B20', '#3B82F6', '#8B5CF6', '#22C55E', '#EAB308', '#EC4899'];
 
   return (
     <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden">
@@ -65,33 +65,13 @@ function Confetti() {
   );
 }
 
-const PLAN_SUGGESTIONS = {
-  artisan: [
-    { icon: FileText, emoji: '✨', text: 'Créer des devis illimités' },
-    { icon: PenTool, emoji: '🖊️', text: 'Utiliser les signatures électroniques' },
-    { icon: Camera, emoji: '🤖', text: 'Générer des devis avec l\'IA (20/mois)' }
-  ],
-  equipe: [
-    { icon: FileText, emoji: '✨', text: 'Tout le plan Artisan + équipe' },
-    { icon: PenTool, emoji: '👥', text: 'Inviter jusqu\'à 10 collaborateurs' },
-    { icon: Camera, emoji: '📊', text: 'Trésorerie, pointages et statistiques' }
-  ],
-  pro: [ // backward compat
-    { icon: FileText, emoji: '✨', text: 'Créer des devis illimités' },
-    { icon: PenTool, emoji: '🖊️', text: 'Utiliser les signatures électroniques' },
-    { icon: Camera, emoji: '🤖', text: 'Générer des devis avec l\'IA' }
-  ]
-};
-
-export default function CheckoutSuccess({ isDark, couleur, setPage }) {
+export default function CheckoutSuccess({ isDark: _isDark, couleur: _couleur, setPage }) {
   const planId = useSubscriptionStore((s) => s.planId);
   const sub = useSubscriptionStore((s) => s.subscription);
   const plan = PLANS[planId] || PLANS.gratuit;
 
-  // Les promesses « IA » sont masquées tant que FONCTIONS.ia est éteint.
-  const suggestions = (PLAN_SUGGESTIONS[planId] || PLAN_SUGGESTIONS.artisan)
-    .filter((s) => FONCTIONS.ia || !/\bIA\b/.test(s.text));
-  const userEmail = sub?.user_email || 'votre adresse email';
+  // La liste du plan, telle que PLANS la décrit (les lignes « IA » y sont déjà retirées quand FONCTIONS.ia est éteint).
+  const suggestions = (plan.featureLabels || []).filter((f) => f.included).slice(0, 4);
 
   const nextBilling = sub?.current_period_end
     ? dateLue(sub.current_period_end).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
@@ -103,13 +83,13 @@ export default function CheckoutSuccess({ isDark, couleur, setPage }) {
     : plan.priceMonthly ? `${prixAbonnement(plan)} par mois` : 'Gratuit';
 
   return (
-    <div className={`min-h-[80vh] flex flex-col items-center justify-center ${isDark ? '' : 'bg-gradient-to-b from-green-50 to-transparent'} rounded-2xl`}>
+    <div className="min-h-[80vh] flex flex-col items-center justify-center rounded-2xl">
       <Confetti />
 
       <div className="max-w-lg mx-auto text-center px-6 py-12">
         {/* Success icon */}
         <div className="mb-6 animate-bounce">
-          <CheckCircle size={80} className="text-green-500 mx-auto" />
+          <CheckCircle size={80} aria-hidden="true" className="text-succes-point mx-auto" />
         </div>
 
         {/* Title */}
@@ -135,7 +115,7 @@ export default function CheckoutSuccess({ isDark, couleur, setPage }) {
                 {price}
               </span>
             </div>
-            {plan.priceMonthly > 0 && <p className="text-xs text-right text-encre-3">{MENTION_TVA_ABONNEMENT}</p>}
+            {plan.priceMonthly > 0 && <p className="text-sm text-right text-encre-3">{MENTION_TVA_ABONNEMENT}</p>}
             {nextBilling && (
               <div className="flex justify-between text-sm">
                 <span className="text-encre-3">Prochaine facturation</span>
@@ -145,46 +125,39 @@ export default function CheckoutSuccess({ isDark, couleur, setPage }) {
               </div>
             )}
           </div>
-          <div className={`mt-4 pt-4 border-t text-xs border-bord text-encre-3`}>
+          <div className="mt-4 pt-4 border-t text-sm border-bord text-encre-3">
             Confirmation envoyée par email
           </div>
         </div>
 
         {/* Suggestions */}
         <div className="mb-10">
-          <h3 className={`text-sm font-semibold mb-4 text-encre-2`}>
-            Vos nouvelles fonctionnalités déverrouillées :
+          <h3 className="text-sm font-semibold mb-4 text-encre-2">
+            Ce que comprend le plan {plan.name} :
           </h3>
-          <div className="space-y-2 text-left max-w-sm mx-auto">
+          <ul className="space-y-2 text-left max-w-sm mx-auto">
             {suggestions.map((s, i) => (
-              <div key={i} className={`flex items-center gap-3 text-sm text-encre-2`}>
-                <span className="text-lg">{s.emoji}</span>
-                <span>{s.text}</span>
-              </div>
+              <li key={i} className="flex items-start gap-3 text-sm text-encre-2">
+                <Check size={16} aria-hidden="true" className="text-succes-point flex-shrink-0 mt-0.5" />
+                <span>{s.name}</span>
+              </li>
             ))}
-          </div>
+          </ul>
         </div>
 
         {/* Action buttons */}
         <div className="space-y-3">
-          <button
-            onClick={() => setPage && setPage('dashboard')}
-            className="w-full py-3 rounded-xl bg-accent text-sur-accent font-bold text-sm hover:opacity-90 hover:shadow-lg transition-all flex items-center justify-center gap-2"
-          >
-            Explorer mes nouvelles fonctionnalités
-            <ArrowRight size={16} />
-          </button>
-          <button
-            onClick={() => setPage && setPage('billing')}
-            className={`w-full py-2.5 rounded-xl border text-sm font-medium transition-colors border-bord text-encre-2 hover:bg-surface-2`}
-          >
-            Voir mes paramètres d'abonnement
-          </button>
+          <Bouton variante="principal" taille="grande" pleineLargeur iconeFin={ArrowRight} onClick={() => setPage && setPage('dashboard')}>
+            Revenir à l'accueil
+          </Bouton>
+          <Bouton pleineLargeur onClick={() => setPage && setPage('billing')}>
+            Voir mon abonnement
+          </Bouton>
         </div>
 
         {/* Help text */}
-        <p className={`text-xs mt-8 text-encre-3`}>
-          Questions ? Consultez notre aide ou contactez contact@mallettico.fr
+        <p className="text-sm mt-8 text-encre-3">
+          Une question ? Écrivez-nous à contact@mallettico.fr
         </p>
       </div>
     </div>

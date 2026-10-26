@@ -11,11 +11,13 @@ import supabase, { isDemo } from '../../supabaseClient';
 import RapportConfigModal from './RapportConfigModal';
 import RapportPreview from './RapportPreview';
 import { jourLocal, dateLue } from '../../lib/dates';
+// La couleur de l'entreprise, brute, ne sert plus qu'aux PDF (documents imprimés) ; l'écran suit le thème
+import { COULEUR_DOCUMENTS_DEFAUT } from '../../lib/theme';
 
 const TYPE_CONFIG = {
-  activite: { label: "Rapport d'activité", icon: TrendingUp, color: '#3b82f6', desc: 'CA, devis, conversion, pipeline, top clients' },
-  financier: { label: 'Rapport financier', icon: Wallet, color: '#8b5cf6', desc: 'Trésorerie, marges, TVA, dépenses, encaissements' },
-  chantier: { label: 'Rapport chantier', icon: HardHat, color: '#f97316', desc: 'Détail d\'un chantier : budget, avancement, dépenses' },
+  activite: { label: "Rapport d'activité", icon: TrendingUp, desc: 'CA, devis, conversion, suivi commercial, meilleurs clients' },
+  financier: { label: 'Rapport financier', icon: Wallet, desc: 'Trésorerie, marges, TVA, dépenses, encaissements' },
+  chantier: { label: 'Rapport chantier', icon: HardHat, desc: 'Détail d\'un chantier : budget, avancement, dépenses' },
 };
 
 const STATUS_ICONS = {
@@ -25,7 +27,7 @@ const STATUS_ICONS = {
   envoye: Send,
 };
 
-export default function RapportsTab({ devis = [], depenses = [], clients = [], chantiers = [], entreprise, equipe = [], paiements = [], pointages = [], isDark, couleur = '#f97316', modeDiscret, setPage }) {
+export default function RapportsTab({ devis = [], depenses = [], clients = [], chantiers = [], entreprise, equipe = [], paiements = [], pointages = [], isDark, couleur = COULEUR_DOCUMENTS_DEFAUT, modeDiscret, setPage }) {
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(null);
@@ -180,12 +182,12 @@ export default function RapportsTab({ devis = [], depenses = [], clients = [], c
             <button
               key={p.key}
               onClick={() => setSelectedPeriod(p.key)}
-              className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
+              aria-pressed={selectedPeriod === p.key}
+              className={`h-11 px-4 text-sm font-medium rounded-full transition-colors ${
                 selectedPeriod === p.key
-                  ? 'text-white shadow-sm'
-                  : isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  ? 'bg-encre text-surface'
+                  : 'bg-surface-2 text-encre-2 hover:bg-bord'
               }`}
-              style={selectedPeriod === p.key ? { backgroundColor: couleur } : undefined}
             >
               {p.label}
             </button>
@@ -202,8 +204,8 @@ export default function RapportsTab({ devis = [], depenses = [], clients = [], c
           return (
             <div key={type} className={`${cardBg} rounded-2xl border ${borderColor} p-5 flex flex-col`}>
               <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${cfg.color}20` }}>
-                  <Icon size={20} style={{ color: cfg.color }} />
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-surface-2 text-encre-2">
+                  <Icon size={20} aria-hidden="true" />
                 </div>
                 <div>
                   <h3 className={`font-semibold text-sm ${textPrimary}`}>{cfg.label}</h3>
@@ -227,8 +229,7 @@ export default function RapportsTab({ devis = [], depenses = [], clients = [], c
               <button
                 onClick={() => handleGenerate(type)}
                 disabled={isGenerating || (type === 'chantier' && !selectedChantier)}
-                className="w-full px-4 py-2.5 rounded-xl text-sm font-medium text-white transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-                style={{ backgroundColor: isGenerating ? '#94a3b8' : cfg.color }}
+                className="w-full h-11 px-4 rounded-full text-sm font-semibold border border-bord-fort bg-surface text-encre hover:bg-surface-2 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {isGenerating ? (
                   <><Loader2 size={16} className="animate-spin" /> Génération...</>
@@ -258,7 +259,7 @@ export default function RapportsTab({ devis = [], depenses = [], clients = [], c
           </div>
           <button
             onClick={() => setShowConfig(true)}
-            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${'bg-surface-2 text-encre-2 hover:bg-bord'}`}
           >
             <Settings size={14} className="inline mr-1" />
             Configurer
@@ -283,8 +284,8 @@ export default function RapportsTab({ devis = [], depenses = [], clients = [], c
               const StatusIcon = STATUS_ICONS[r.statut] || CheckCircle;
               return (
                 <div key={r.id} className={`${cardBg} rounded-xl border ${borderColor} px-4 py-3 flex items-center gap-3`}>
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${cfg.color}15` }}>
-                    <Icon size={16} style={{ color: cfg.color }} />
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 bg-surface-2 text-encre-2">
+                    <Icon size={16} aria-hidden="true" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className={`text-sm font-medium ${textPrimary} truncate`}>{r.titre}</p>

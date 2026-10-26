@@ -1,13 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
-  ComposedChart, BarChart, Bar, Area, Line, XAxis, YAxis, CartesianGrid,
+  ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, Cell,
 } from 'recharts';
 import {
   TrendingUp, Clock, ShoppingCart, Target, Users, AlertTriangle,
-  BarChart3, HardHat, Zap, RefreshCw, ChevronRight,
+  BarChart3, HardHat, Zap, RefreshCw, Copy,
 } from 'lucide-react';
 import { useAnalyticsPremium } from '../hooks/useAnalyticsPremium';
+import { Segmente } from './ui/Onglets';
+import Pastille, { PastilleStatut } from './ui/Pastille';
+import EtatVide from './ui/EtatVide';
+import { Bouton } from './ui/Bouton';
+import { statut } from '../lib/statuts';
 
 // ── Formatters ──────────────────────────────────────────────────
 // Mode discret : tous les montants de l'écran (tableaux, tuiles, axes des graphiques) passent par ces deux
@@ -27,86 +32,76 @@ const PERIOD_OPTIONS = [
   { key: 'all', label: 'Tout' },
 ];
 
-const STATUT_LABELS = {
-  en_cours: 'En cours',
-  termine: 'Terminé',
-  en_attente: 'En attente',
-  planifie: 'Planifié',
-};
 
-// ── Custom Tooltip ──────────────────────────────────────────────
-function ChartTooltip({ active, payload, label, isDark, formatter }) {
+// ── Couleurs du thème pour les graphiques (recharts écrit des attributs SVG) : lues sur <html>, elles suivent le clair, le
+// sombre et l'accent de l'entreprise (src/styles/theme.css). Avant : l'orange brut et des gris écrits à la main.
+function couleurTheme(nom, repli) {
+  try {
+    const v = getComputedStyle(document.documentElement).getPropertyValue(nom).trim();
+    return v ? `rgb(${v})` : repli;
+  } catch {
+    return repli;
+  }
+}
+
+// ── Info-bulle des graphiques ────────────────────────────────────
+function ChartTooltip({ active, payload, label, formatter }) {
   if (!active || !payload || !payload.length) return null;
   return (
-    <div
-      className={`rounded-xl border px-3 py-2 shadow-lg text-xs ${
-        isDark ? 'bg-slate-800 border-slate-600 text-slate-200' : 'bg-white border-gray-200 text-gray-800'
-      }`}
-    >
+    <div className="rounded-xl border px-3 py-2 shadow-e2 text-sm bg-surface border-bord text-encre">
       <p className="font-semibold mb-1">{label}</p>
       {payload.map((entry, i) => (
         <p key={i} className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full shrink-0" style={{ background: entry.color }} />
+          <span className="w-2 h-2 rounded-full shrink-0" style={{ background: entry.color }} aria-hidden="true" />
           <span className="text-encre-3">{entry.name} :</span>
-          <span className="font-medium">{formatter ? formatter(entry.value) : formatEUR(entry.value)}</span>
+          <span className="font-medium tabular-nums">{formatter ? formatter(entry.value) : formatEUR(entry.value)}</span>
         </p>
       ))}
     </div>
   );
 }
 
-// ── Circular Gauge (SVG) ────────────────────────────────────────
-function CircularGauge({ value, max = 100, size = 64, strokeWidth = 6, couleur, isDark }) {
+// ── Jauge circulaire ──────────────────────────────────────────────
+function CircularGauge({ value, max = 100, size = 64, strokeWidth = 6 }) {
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   const pct = Math.min(value / max, 1);
   const offset = circumference * (1 - pct);
   return (
-    <svg width={size} height={size} className="transform -rotate-90" role="img" aria-label={`Score : ${value}${max === 100 ? '%' : '/' + max}`}>
+    <svg width={size} height={size} className="transform -rotate-90" role="img" aria-label={`Score : ${value}${max === 100 ? ' %' : ' sur ' + max}`}>
+      <circle cx={size / 2} cy={size / 2} r={radius} fill="none" className="stroke-bord" strokeWidth={strokeWidth} />
       <circle
         cx={size / 2} cy={size / 2} r={radius}
         fill="none"
-        stroke={isDark ? '#334155' : '#e2e8f0'}
-        strokeWidth={strokeWidth}
-      />
-      <circle
-        cx={size / 2} cy={size / 2} r={radius}
-        fill="none"
-        stroke={couleur}
+        className="stroke-accent transition-all duration-1000 ease-out"
         strokeWidth={strokeWidth}
         strokeDasharray={circumference}
         strokeDashoffset={offset}
         strokeLinecap="round"
-        className="transition-all duration-1000 ease-out"
       />
     </svg>
   );
 }
 
-// ── KPI Card ────────────────────────────────────────────────────
-function KPICard({ icon: Icon, label, value, sub, couleur, isDark, gauge, gaugeValue }) {
-  const cardBg = isDark ? 'bg-slate-800 border-slate-700/50' : 'bg-white border-[#ebebeb]';
+// ── Tuile ─────────────────────────────────────────────────────────
+function KPICard({ icon: Icon, label, value, sub, gauge, gaugeValue }) {
   return (
-    <div className={`relative overflow-hidden rounded-xl border p-4 sm:p-5 ${cardBg} transition-all hover:shadow-lg`}>
-      <div className="flex items-start justify-between">
+    <div className="relative overflow-hidden rounded-2xl border p-4 sm:p-5 bg-surface border-bord shadow-e1">
+      <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-2">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: `${couleur}15` }}>
-              <Icon size={16} style={{ color: couleur }} />
-            </div>
-            <span className={`text-xs font-medium text-encre-3`}>{label}</span>
+            <span className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 bg-surface-2 text-encre-2">
+              <Icon size={16} aria-hidden="true" />
+            </span>
+            <span className="text-sm font-medium text-encre-2">{label}</span>
           </div>
-          <div className={`text-xl sm:text-2xl font-bold tracking-tight text-encre`}>
-            {value}
-          </div>
-          {sub && <p className={`text-[11px] mt-1 text-encre-3`}>{sub}</p>}
+          <div className="text-2xl font-bold tracking-tight tabular-nums text-encre">{value}</div>
+          {sub && <p className="text-sm mt-1 text-encre-3">{sub}</p>}
         </div>
         {gauge && (
           <div className="relative flex items-center justify-center">
-            <CircularGauge value={gaugeValue || 0} couleur={couleur} isDark={isDark} />
-            <span className={`absolute text-xs font-bold text-encre`}>
-              {gaugeValue}%
-            </span>
+            <CircularGauge value={gaugeValue || 0} />
+            <span className="absolute text-xs font-bold tabular-nums text-encre">{gaugeValue} %</span>
           </div>
         )}
       </div>
@@ -114,25 +109,29 @@ function KPICard({ icon: Icon, label, value, sub, couleur, isDark, gauge, gaugeV
   );
 }
 
-// ── Section wrapper ─────────────────────────────────────────────
-function Section({ title, icon: Icon, couleur, isDark, children, className = '' }) {
-  const cardBg = isDark ? 'bg-slate-800 border-slate-700/50' : 'bg-white border-[#ebebeb]';
+// ── Bloc ──────────────────────────────────────────────────────────
+function Section({ title, icon: Icon, children, className = '' }) {
   return (
-    <div className={`rounded-xl border ${cardBg} transition-all ${className}`}>
-      <div className="flex items-center gap-2.5 px-5 pt-5 pb-3">
-        <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: `${couleur}15` }}>
-          <Icon size={15} style={{ color: couleur }} />
-        </div>
-        <h2 className={`text-base sm:text-lg font-semibold text-encre`}>{title}</h2>
+    <section className={`rounded-2xl border bg-surface border-bord shadow-e1 ${className}`}>
+      <div className="flex items-center gap-2.5 px-4 sm:px-5 pt-5 pb-3">
+        <span className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 bg-surface-2 text-encre-2">
+          <Icon size={16} aria-hidden="true" />
+        </span>
+        <h2 className="text-lg font-semibold text-encre">{title}</h2>
       </div>
-      <div className="px-5 pb-5">
+      <div className="px-4 sm:px-5 pb-5">
         {children}
       </div>
-    </div>
+    </section>
   );
 }
 
-// ── Main component ──────────────────────────────────────────────
+// Marge d'un chantier : trois tons, le rouge est celui du retard (décision du 26 oct. 2026) — une marge négative est « à surveiller »
+const tonMarge = (pct) => (pct > 20 ? 'succes' : pct >= 0 ? 'neutre' : 'alerte');
+const TEXTE_TON = { succes: 'text-succes-texte', neutre: 'text-encre-2', alerte: 'text-alerte-texte', danger: 'text-danger-texte', info: 'text-info-texte' };
+const POINT_TON = { succes: 'bg-succes-point', neutre: 'bg-neutre-point', alerte: 'bg-alerte-point', danger: 'bg-danger-point', info: 'bg-info-point' };
+
+// ── Composant principal ───────────────────────────────────────────
 export default function AnalyticsPremium({
   devis = [],
   clients = [],
@@ -142,9 +141,10 @@ export default function AnalyticsPremium({
   paiements = [],
   pointages = [],
   isDark,
-  couleur = '#f97316',
+  // couleur reste acceptée : l'accent du thème suit la couleur de l'entreprise
+  couleur: _couleur,
   showToast,
-  setPage,
+  setPage: _setPage,
   modeDiscret = false,
 }) {
   montantsMasques = !!modeDiscret;
@@ -172,11 +172,16 @@ export default function AnalyticsPremium({
     retardMoyenPaiement,
   } = useAnalyticsPremium({ devis, clients, chantiers, depenses, equipe, paiements, pointages, period });
 
-  const textPrimary = 'text-encre';
-  const textSecondary = 'text-encre-3';
-  const textMuted = 'text-encre-3';
-  const gridColor = isDark ? '#334155' : '#f1f5f9';
-  const axisColor = isDark ? '#64748b' : '#94a3b8';
+  // Relues à chaque changement de thème (isDark) : recharts écrit des couleurs, pas des classes
+  const graphe = useMemo(() => ({
+    grille: couleurTheme('--bord', '#E1EBF3'),
+    axe: couleurTheme('--encre-3', '#64748B'),
+    accent: couleurTheme('--accent', '#12336F'),
+    depenses: couleurTheme('--bord-fort', '#C8D6E4'),
+    marge: couleurTheme('--succes-point', '#10B981'),
+    surface: couleurTheme('--surface', '#FFFFFF'),
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- isDark : le thème posé sur <html> a changé
+  }), [isDark]);
 
   // Max CA for proportional bars
   const maxClientCA = clientStats.length > 0 ? clientStats[0].ca : 1;
@@ -184,70 +189,23 @@ export default function AnalyticsPremium({
 
   return (
     <div className="space-y-5 sm:space-y-6">
-      {/* ── Header ──────────────────────────────────────────── */}
+      {/* ── Période (le titre est celui de Finances) ──────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-          <h1 className={`text-xl sm:text-2xl font-bold tracking-tight ${textPrimary}`}>Analytics</h1>
-          <p className={`text-xs sm:text-sm ${textSecondary} mt-0.5`}>Vue d'ensemble de votre performance commerciale</p>
-        </div>
-        <div className={`flex items-center gap-1 p-1 rounded-xl bg-surface-2`}>
-          {PERIOD_OPTIONS.map(opt => (
-            <button
-              key={opt.key}
-              onClick={() => setPeriod(opt.key)}
-              className={`min-h-[44px] px-4 py-2.5 text-xs font-medium rounded-lg transition-all ${
-                period === opt.key
-                  ? 'text-white shadow-sm'
-                  : 'text-encre-3 hover:text-encre'
-              }`}
-              style={period === opt.key ? { backgroundColor: couleur } : undefined}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
+        <p className="text-sm text-encre-3">Vue d’ensemble de votre activité commerciale</p>
+        <Segmente ariaLabel="Période" valeur={period} onChange={setPeriod} options={PERIOD_OPTIONS.map((o) => ({ valeur: o.key, libelle: o.label }))} />
       </div>
 
-      {/* ── Section 1: KPIs + Funnel ───────────────────────── */}
+      {/* ── Chiffres ─────────────────────────────────────────────────────── */}
       <div className="bandeau-chiffres grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <KPICard
-          icon={Target}
-          label="Taux de conversion"
-          value={`${tauxConversion}%`}
-          sub={`${tauxRefus}% refusés`}
-          couleur={couleur}
-          isDark={isDark}
-          gauge
-          gaugeValue={tauxConversion}
-        />
-        <KPICard
-          icon={Clock}
-          label="Délai moyen signature"
-          value={`${delaiMoyenSignature}j`}
-          sub={retardMoyenPaiement > 0 ? `Retard paiement : ${retardMoyenPaiement}j` : 'Paiements à temps'}
-          couleur={couleur}
-          isDark={isDark}
-        />
-        <KPICard
-          icon={ShoppingCart}
-          label="Panier moyen"
-          value={formatCompact(panierMoyen)}
-          sub={`Sur ${clientStats.length} clients`}
-          couleur={couleur}
-          isDark={isDark}
-        />
-        <KPICard
-          icon={TrendingUp}
-          label="CA prévisionnel"
-          value={formatCompact(caPrevisionnel)}
-          sub="Basé sur le taux de conversion"
-          couleur={couleur}
-          isDark={isDark}
-        />
+        <KPICard icon={Target} label="Taux de conversion" value={`${tauxConversion} %`} sub={`${tauxRefus} % refusés`} gauge gaugeValue={tauxConversion} />
+        <KPICard icon={Clock} label="Délai moyen de signature" value={`${delaiMoyenSignature} j`}
+          sub={retardMoyenPaiement > 0 ? `Retard de paiement : ${retardMoyenPaiement} j` : 'Paiements à temps'} />
+        <KPICard icon={ShoppingCart} label="Panier moyen" value={formatCompact(panierMoyen)} sub={`Sur ${clientStats.length} client${clientStats.length > 1 ? 's' : ''}`} />
+        <KPICard icon={TrendingUp} label="CA prévisionnel" value={formatCompact(caPrevisionnel)} sub="Estimé d’après le taux de conversion" />
       </div>
 
-      {/* Funnel de conversion */}
-      <Section title="Funnel de conversion" icon={Target} couleur={couleur} isDark={isDark}>
+      {/* Conversion des devis */}
+      <Section title="Conversion des devis" icon={Target}>
         <div className="space-y-3">
           {funnel.map((step, i) => {
             const widthPct = Math.max(step.pct, 8);
@@ -258,28 +216,18 @@ export default function AnalyticsPremium({
             return (
               <div key={step.etape}>
                 <div className="flex items-center justify-between mb-1">
-                  <span className={`text-xs font-medium ${textSecondary}`}>{step.etape}</span>
+                  <span className="text-sm font-medium text-encre-2">{step.etape}</span>
                   <div className="flex items-center gap-2">
-                    {convRate !== null && i > 0 && (
-                      <span className={`text-[11px] px-1.5 py-0.5 rounded-full bg-surface-2 text-encre-3`}>
-                        {convRate}%
-                      </span>
-                    )}
-                    <span className={`text-xs font-bold ${textPrimary}`}>{step.count}</span>
+                    {convRate !== null && i > 0 && <Pastille>{convRate} %</Pastille>}
+                    <span className="text-sm font-bold tabular-nums text-encre">{step.count}</span>
                   </div>
                 </div>
-                <div className={`h-8 rounded-lg overflow-hidden bg-surface-2`}>
+                <div className="h-8 rounded-lg overflow-hidden bg-surface-2">
                   <div
-                    className="h-full rounded-lg transition-all duration-1000 ease-out flex items-center px-3"
-                    style={{
-                      width: `${widthPct}%`,
-                      background: `linear-gradient(135deg, ${couleur}, ${couleur}cc)`,
-                      opacity: 1 - (i * 0.15),
-                    }}
+                    className="h-full rounded-lg transition-all duration-1000 ease-out flex items-center px-3 bg-accent"
+                    style={{ width: `${widthPct}%`, opacity: 1 - (i * 0.15) }}
                   >
-                    {widthPct > 20 && (
-                      <span className="text-[11px] font-semibold text-white">{step.pct}%</span>
-                    )}
+                    {widthPct > 20 && <span className="text-xs font-semibold text-sur-accent tabular-nums">{step.pct} %</span>}
                   </div>
                 </div>
               </div>
@@ -288,52 +236,33 @@ export default function AnalyticsPremium({
         </div>
       </Section>
 
-      {/* ── Section 2: CA & Marge mensuel ──────────────────── */}
-      <Section title="CA & Marge mensuel" icon={BarChart3} couleur={couleur} isDark={isDark}>
+      {/* ── Chiffre d'affaires et marge ──────────────────── */}
+      <Section title="Chiffre d’affaires et marge par mois" icon={BarChart3}>
         <div style={{ minHeight: 280 }}>
           <ResponsiveContainer width="100%" height={280}>
             <ComposedChart data={moisList} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
-              <XAxis
-                dataKey="label"
-                tick={{ fill: axisColor, fontSize: 11 }}
-                axisLine={false}
-                tickLine={false}
-              />
+              <CartesianGrid strokeDasharray="3 3" stroke={graphe.grille} vertical={false} />
+              <XAxis dataKey="label" tick={{ fill: graphe.axe, fontSize: 12 }} axisLine={false} tickLine={false} />
               <YAxis
-                tick={{ fill: axisColor, fontSize: 11 }}
+                tick={{ fill: graphe.axe, fontSize: 12 }}
                 axisLine={false}
                 tickLine={false}
-                tickFormatter={(v) => v >= 1000 ? `${Math.round(v / 1000)}k` : v}
+                tickFormatter={(v) => (montantsMasques ? '•••' : v >= 1000 ? `${Math.round(v / 1000)} k` : v)}
               />
-              <Tooltip content={<ChartTooltip isDark={isDark} />} />
-              <Bar
-                dataKey="depenses"
-                name="Dépenses"
-                fill={isDark ? '#f8717150' : '#fee2e250'}
-                stroke={isDark ? '#f87171' : '#fca5a5'}
-                strokeWidth={1}
-                radius={[4, 4, 0, 0]}
-                isAnimationActive={true}
-              />
-              <Bar
-                dataKey="ca"
-                name="CA"
-                fill={couleur}
-                radius={[4, 4, 0, 0]}
-                isAnimationActive={true}
-              >
+              <Tooltip content={<ChartTooltip />} />
+              <Bar dataKey="depenses" name="Dépenses" fill={graphe.depenses} radius={[4, 4, 0, 0]} isAnimationActive={true} />
+              <Bar dataKey="ca" name="CA" fill={graphe.accent} radius={[4, 4, 0, 0]} isAnimationActive={true}>
                 {moisList.map((_, idx) => (
-                  <Cell key={idx} fill={`${couleur}${idx === moisList.length - 1 ? 'ff' : 'cc'}`} />
+                  <Cell key={idx} fill={graphe.accent} fillOpacity={idx === moisList.length - 1 ? 1 : 0.8} />
                 ))}
               </Bar>
               <Line
                 type="monotone"
                 dataKey="marge"
                 name="Marge"
-                stroke="#22c55e"
+                stroke={graphe.marge}
                 strokeWidth={2.5}
-                dot={{ r: 3, fill: '#22c55e', stroke: isDark ? '#1e293b' : '#fff', strokeWidth: 2 }}
+                dot={{ r: 3, fill: graphe.marge, stroke: graphe.surface, strokeWidth: 2 }}
                 isAnimationActive={true}
               />
             </ComposedChart>
@@ -341,196 +270,137 @@ export default function AnalyticsPremium({
         </div>
       </Section>
 
-      {/* ── Section 3: Intelligence clients ────────────────── */}
+      {/* ── Clients ────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5">
-        {/* Top clients */}
-        <Section title="Top 10 clients" icon={Users} couleur={couleur} isDark={isDark}>
-          <div className="space-y-2.5">
+        <Section title="Les 10 meilleurs clients" icon={Users}>
+          <ol className="space-y-2.5">
             {clientStats.slice(0, 10).map((cl, i) => (
-              <div key={cl.id} className="flex items-center gap-3">
-                <span className={`w-5 text-xs font-bold text-center ${textMuted}`}>{i + 1}</span>
+              <li key={cl.id} className="flex items-center gap-3">
+                <span className="w-5 text-sm font-bold text-center tabular-nums text-encre-3">{i + 1}</span>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className={`text-xs font-medium truncate ${textPrimary}`}>{cl.nom}</span>
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <span className="text-sm font-medium truncate text-encre">{cl.nom}</span>
                     <div className="flex items-center gap-2 shrink-0">
-                      <span className={`text-[11px] px-1.5 py-0.5 rounded-full bg-surface-2 text-encre-3`}>
-                        {cl.tauxConversion}%
-                      </span>
-                      <span className={`text-xs font-semibold ${textPrimary}`}>{formatCompact(cl.ca)}</span>
+                      <Pastille>{cl.tauxConversion} %</Pastille>
+                      <span className="text-sm font-semibold tabular-nums text-encre">{formatCompact(cl.ca)}</span>
                     </div>
                   </div>
-                  <div className={`h-1.5 rounded-full overflow-hidden bg-surface-2`}>
-                    <div
-                      className="h-full rounded-full transition-all duration-700 bg-accent"
-                      style={{
-                        width: `${Math.max((cl.ca / maxClientCA) * 100, 3)}%`,
-                        opacity: 1 - (i * 0.07),
-                      }}
-                    />
+                  <div className="h-1.5 rounded-full overflow-hidden bg-surface-2">
+                    <div className="h-full rounded-full transition-all duration-700 bg-accent"
+                      style={{ width: `${Math.max((cl.ca / maxClientCA) * 100, 3)}%`, opacity: 1 - (i * 0.07) }} />
                   </div>
                 </div>
-              </div>
+              </li>
             ))}
-            {clientStats.length === 0 && (
-              <p className={`text-xs text-center py-6 ${textMuted}`}>Aucune donnée client disponible</p>
-            )}
-          </div>
+          </ol>
+          {clientStats.length === 0 && (
+            <p className="text-sm text-center py-6 text-encre-3">Aucune donnée client disponible</p>
+          )}
         </Section>
 
-        {/* Clients dormants */}
-        <Section title="Clients dormants" icon={AlertTriangle} couleur={couleur} isDark={isDark}>
-          <div className="space-y-2">
+        <Section title="Clients sans activité" icon={AlertTriangle}>
+          <ul className="space-y-2">
             {clientsDormants.map(cl => (
-              <div
-                key={cl.id}
-                className={`flex items-center justify-between p-3 rounded-lg bg-fond`}
-              >
+              <li key={cl.id} className="flex items-center justify-between gap-2 p-3 rounded-xl bg-surface-2">
                 <div className="min-w-0 flex-1">
-                  <p className={`text-sm font-medium truncate ${textPrimary}`}>{cl.nom}</p>
-                  <p className={`text-[11px] ${textMuted}`}>
-                    Inactif depuis {cl.joursSansActivite} jours
-                  </p>
+                  <p className="text-sm font-medium truncate text-encre">{cl.nom}</p>
+                  <p className="text-sm text-encre-3">Sans activité depuis {cl.joursSansActivite} jours</p>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${
-                    isDark ? 'bg-red-500/20 text-red-400' : 'bg-red-100 text-red-700'
-                  }`}>
-                    Dormant
-                  </span>
-                  <button
-                    onClick={() => {
-                      if (navigator.clipboard) {
-                        navigator.clipboard.writeText(cl.nom);
-                      }
-                      if (showToast) showToast(`${cl.nom} copié`, 'success');
-                    }}
-                    className={`text-[11px] min-h-[44px] px-3 py-2 rounded-lg font-medium transition-colors ${
-                      isDark ? 'bg-slate-600 text-slate-200 hover:bg-slate-500' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                    }`}
-                  >
-                    Relancer
-                  </button>
-                </div>
-              </div>
+                {/* Le bouton disait « Relancer » et copiait seulement le nom (audit UX § 2.6 : un libellé fait ce qu'il dit) */}
+                <Bouton taille="compacte" icone={Copy}
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard?.writeText(cl.nom);
+                      showToast?.(`${cl.nom} : nom copié`, 'success');
+                    } catch {
+                      showToast?.('Copie impossible sur cet appareil', 'error');
+                    }
+                  }}>
+                  Copier le nom
+                </Bouton>
+              </li>
             ))}
-            {clientsDormants.length === 0 && (
-              <div className={`text-center py-8 ${textMuted}`}>
-                <Users size={24} className="mx-auto mb-2 opacity-40" />
-                <p className="text-xs">Aucun client dormant</p>
-              </div>
-            )}
-          </div>
+          </ul>
+          {clientsDormants.length === 0 && (
+            <EtatVide icone={Users} titre="Aucun client sans activité" />
+          )}
         </Section>
       </div>
 
-      {/* ── Section 4: Top prestations ─────────────────────── */}
-      <Section title="Top prestations" icon={Zap} couleur={couleur} isDark={isDark}>
-        <div className="space-y-2.5">
+      {/* ── Prestations ─────────────────────── */}
+      <Section title="Prestations les plus vendues" icon={Zap}>
+        <ol className="space-y-2.5">
           {topPrestations.map((p, i) => (
-            <div key={i} className="flex items-center gap-3">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between mb-1">
-                  <span className={`text-xs font-medium truncate max-w-[60%] ${textPrimary}`}>{p.nom}</span>
-                  <div className="flex items-center gap-3 shrink-0">
-                    <span className={`text-[11px] ${textMuted}`}>{p.count}x</span>
-                    <span className={`text-xs font-semibold ${textPrimary}`}>{formatCompact(p.ca)}</span>
-                  </div>
-                </div>
-                <div className={`h-2 rounded-full overflow-hidden bg-surface-2`}>
-                  <div
-                    className="h-full rounded-full transition-all duration-700 bg-accent"
-                    style={{
-                      width: `${Math.max((p.ca / maxPrestCA) * 100, 3)}%`,
-                      opacity: 1 - (i * 0.08),
-                    }}
-                  />
+            <li key={i} className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <span className="text-sm font-medium truncate max-w-[60%] text-encre">{p.nom}</span>
+                <div className="flex items-center gap-3 shrink-0">
+                  <span className="text-sm tabular-nums text-encre-3">{p.count} fois</span>
+                  <span className="text-sm font-semibold tabular-nums text-encre">{formatCompact(p.ca)}</span>
                 </div>
               </div>
-            </div>
+              <div className="h-2 rounded-full overflow-hidden bg-surface-2">
+                <div className="h-full rounded-full transition-all duration-700 bg-accent"
+                  style={{ width: `${Math.max((p.ca / maxPrestCA) * 100, 3)}%`, opacity: 1 - (i * 0.08) }} />
+              </div>
+            </li>
           ))}
-          {topPrestations.length === 0 && (
-            <p className={`text-xs text-center py-6 ${textMuted}`}>Aucune prestation trouvée dans les devis</p>
-          )}
-        </div>
+        </ol>
+        {topPrestations.length === 0 && (
+          <p className="text-sm text-center py-6 text-encre-3">Aucune prestation trouvée dans les devis</p>
+        )}
       </Section>
 
-      {/* ── Section 5: Rentabilité chantiers ───────────────── */}
-      <Section title="Rentabilité chantiers" icon={HardHat} couleur={couleur} isDark={isDark}>
-        <div className="space-y-2">
+      {/* ── Rentabilité des chantiers ───────────────── */}
+      <Section title="Rentabilité des chantiers" icon={HardHat}>
+        <ul className="space-y-2">
           {rentabiliteChantiers.slice(0, 15).map(ch => {
-            const margeColor = ch.margePct > 20 ? '#22c55e' : ch.margePct >= 0 ? '#f59e0b' : '#ef4444';
+            const ton = tonMarge(ch.margePct);
             const margeLabel = ch.margePct > 20 ? 'Bonne marge' : ch.margePct >= 0 ? 'Marge faible' : 'Marge négative';
             return (
-              <div
-                key={ch.id}
-                className={`flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 p-3 rounded-lg bg-fond`}
-              >
+              <li key={ch.id} className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 p-3 rounded-xl bg-surface-2">
                 <div className="flex items-center gap-2 min-w-0 sm:w-1/3">
-                  <span
-                    className="text-[11px] font-semibold px-2 py-0.5 rounded-full shrink-0"
-                    style={{
-                      background: `${margeColor}20`,
-                      color: margeColor,
-                    }}
-                  >
-                    {STATUT_LABELS[ch.statut] || ch.statut}
-                  </span>
-                  <span className="sr-only">{margeLabel}</span>
-                  <span className={`text-sm font-medium truncate ${textPrimary}`}>{ch.nom}</span>
+                  <PastilleStatut genre="chantier" statut={ch.statut} className="shrink-0" />
+                  <span className="text-sm font-medium truncate text-encre">{ch.nom}</span>
                 </div>
                 <div className="flex items-center gap-3 sm:w-1/3">
                   <div className="flex-1">
                     <div className="flex items-center justify-between mb-1">
-                      <span className={`text-[11px] ${textMuted}`}>Marge</span>
-                      <span className="text-[11px] font-bold" style={{ color: margeColor }}>
-                        {ch.margePct}%
-                      </span>
+                      <span className="text-sm text-encre-3">Marge <span className="sr-only">({margeLabel})</span></span>
+                      <span className={`text-sm font-bold tabular-nums ${TEXTE_TON[ton]}`}>{ch.margePct} %</span>
                     </div>
-                    <div className={`h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-slate-600' : 'bg-gray-200'}`}>
-                      <div
-                        className="h-full rounded-full transition-all duration-700"
-                        style={{
-                          width: `${Math.min(Math.max(ch.margePct, 0), 100)}%`,
-                          background: margeColor,
-                        }}
-                      />
+                    <div className="h-1.5 rounded-full overflow-hidden bg-bord">
+                      <div className={`h-full rounded-full transition-all duration-700 ${POINT_TON[ton]}`}
+                        style={{ width: `${Math.min(Math.max(ch.margePct, 0), 100)}%` }} />
                     </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-4 sm:w-1/3 sm:justify-end text-xs">
+                <div className="flex items-center gap-4 sm:w-1/3 sm:justify-end text-sm">
                   <div className="text-center">
-                    <p className={textMuted}>CA</p>
-                    <p className={`font-semibold ${textPrimary}`}>{formatCompact(ch.ca)}</p>
+                    <p className="text-encre-3">CA</p>
+                    <p className="font-semibold tabular-nums text-encre">{formatCompact(ch.ca)}</p>
                   </div>
                   <div className="text-center">
-                    <p className={textMuted}>Dépenses</p>
-                    <p className={`font-semibold ${isDark ? 'text-red-400' : 'text-red-600'}`}>{formatCompact(ch.depenses)}</p>
+                    <p className="text-encre-3">Dépenses</p>
+                    <p className="font-semibold tabular-nums text-encre">{formatCompact(ch.depenses)}</p>
                   </div>
                   <div className="text-center">
-                    <p className={textMuted}>Marge</p>
-                    <p className="font-semibold" style={{ color: margeColor }}>{formatCompact(ch.marge)}</p>
+                    <p className="text-encre-3">Marge</p>
+                    <p className={`font-semibold tabular-nums ${TEXTE_TON[ton]}`}>{formatCompact(ch.marge)}</p>
                   </div>
                 </div>
-              </div>
+              </li>
             );
           })}
-          {rentabiliteChantiers.length === 0 && (
-            <p className={`text-xs text-center py-6 ${textMuted}`}>Aucun chantier avec données financières</p>
-          )}
-        </div>
+        </ul>
+        {rentabiliteChantiers.length === 0 && (
+          <p className="text-sm text-center py-6 text-encre-3">Aucun chantier avec données financières</p>
+        )}
       </Section>
 
-      {/* ── Section 5b: Répartition statuts chantiers ─────── */}
+      {/* ── Répartition des chantiers : un statut = un mot et un ton (src/lib/statuts.js) ─────── */}
       {chantiers.length > 0 && (() => {
         const statusMap = {};
-        const STATUS_CONFIG = {
-          en_cours: { label: 'En cours', color: '#3b82f6' },
-          termine: { label: 'Terminé', color: '#22c55e' },
-          en_attente: { label: 'En attente', color: '#f59e0b' },
-          planifie: { label: 'Planifié', color: '#8b5cf6' },
-          archive: { label: 'Archivé', color: '#94a3b8' },
-          abandonne: { label: 'Abandonné', color: '#ef4444' },
-        };
         chantiers.forEach(ch => {
           const s = ch.statut || 'en_attente';
           statusMap[s] = (statusMap[s] || 0) + 1;
@@ -538,77 +408,60 @@ export default function AnalyticsPremium({
         const total = chantiers.length;
         const entries = Object.entries(statusMap).sort((a, b) => b[1] - a[1]);
         return (
-          <Section title="Répartition chantiers" icon={HardHat} couleur={couleur} isDark={isDark}>
-            <div className="space-y-2">
+          <Section title="Répartition des chantiers" icon={HardHat}>
+            <ul className="space-y-2">
               {entries.map(([status, count]) => {
-                const cfg = STATUS_CONFIG[status] || { label: status, color: '#94a3b8' };
+                const { libelle, ton } = statut('chantier', status);
                 const pct = total > 0 ? Math.round((count / total) * 100) : 0;
                 return (
-                  <div key={status} className="flex items-center gap-3">
-                    <div className="w-24 sm:w-28 shrink-0">
-                      <p className={`text-xs font-medium ${textPrimary}`}>{cfg.label}</p>
+                  <li key={status} className="flex items-center gap-3">
+                    <p className="w-24 sm:w-28 shrink-0 text-sm font-medium text-encre">{libelle}</p>
+                    <div className="flex-1 h-5 rounded-full overflow-hidden bg-surface-2">
+                      <div className={`h-full rounded-full transition-all ${POINT_TON[ton] || POINT_TON.neutre}`} style={{ width: `${pct}%` }} />
                     </div>
-                    <div className="flex-1">
-                      <div className={`h-5 rounded-full overflow-hidden bg-surface-2`}>
-                        <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: cfg.color }} />
-                      </div>
-                    </div>
-                    <span className={`text-xs font-bold w-16 text-right ${textPrimary}`}>{count} ({pct}%)</span>
-                  </div>
+                    <span className="text-sm font-bold w-20 text-right tabular-nums text-encre">{count} ({pct} %)</span>
+                  </li>
                 );
               })}
-              {entries.length === 0 && (
-                <p className={`text-xs text-center py-4 ${textMuted}`}>Aucun chantier</p>
-              )}
-            </div>
+            </ul>
           </Section>
         );
       })()}
 
-      {/* ── Section 6: Productivité équipe ─────────────────── */}
-      <Section title="Productivité équipe" icon={RefreshCw} couleur={couleur} isDark={isDark}>
-        <div className="space-y-3">
+      {/* ── Charge de l'équipe ─────────────────── */}
+      <Section title="Charge de l’équipe" icon={RefreshCw}>
+        <ul className="space-y-3">
           {productivite.map(m => {
-            const barColor = m.taux > 100 ? '#ef4444' : m.taux >= 80 ? '#f59e0b' : '#22c55e';
+            // Au-delà de la capacité : « à surveiller » (ambre) ; le rouge reste celui du retard
+            const ton = m.taux > 100 ? 'alerte' : 'neutre';
             const chargeLabel = m.taux > 100 ? 'Surcharge' : 'Charge normale';
             return (
-              <div key={m.id} className="flex items-center gap-3">
+              <li key={m.id} className="flex items-center gap-3">
                 <div className="w-24 sm:w-32 shrink-0">
-                  <p className={`text-xs font-medium truncate ${textPrimary}`}>{m.nom}</p>
-                  <p className={`text-[11px] ${textMuted}`}>{m.role}</p>
+                  <p className="text-sm font-medium truncate text-encre">{m.nom}</p>
+                  <p className="text-sm text-encre-3 truncate">{m.role}</p>
                 </div>
-                <div className="flex-1">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className={`text-[11px] ${textMuted}`}>{m.heures}h / {m.capacite}h</span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <span className="text-sm tabular-nums text-encre-3">{m.heures} h sur {m.capacite} h</span>
                     <div className="flex items-center gap-2">
-                      <span className="text-[11px] font-bold" style={{ color: barColor }}>{m.taux}%</span>
+                      <span className={`text-sm font-bold tabular-nums ${TEXTE_TON[ton]}`}>{m.taux} %</span>
                       <span className="sr-only">{chargeLabel}</span>
-                      {m.cout > 0 && (
-                        <span className={`text-[11px] ${textMuted}`}>{formatCompact(m.cout)}</span>
-                      )}
+                      {m.cout > 0 && <span className="text-sm tabular-nums text-encre-3">{formatCompact(m.cout)}</span>}
                     </div>
                   </div>
-                  <div className={`h-2 rounded-full overflow-hidden bg-surface-2`}>
-                    <div
-                      className="h-full rounded-full transition-all duration-700"
-                      style={{
-                        width: `${Math.min(m.taux, 120)}%`,
-                        background: barColor,
-                      }}
-                    />
+                  <div className="h-2 rounded-full overflow-hidden bg-surface-2">
+                    <div className={`h-full rounded-full transition-all duration-700 ${ton === 'alerte' ? 'bg-alerte-point' : 'bg-accent'}`}
+                      style={{ width: `${Math.min(m.taux, 100)}%` }} />
                   </div>
                 </div>
-              </div>
+              </li>
             );
           })}
-          {productivite.length === 0 && (
-            <div className={`text-center py-8 ${textMuted}`}>
-              <Zap size={24} className="mx-auto mb-2 opacity-40" />
-              <p className="text-xs">Aucun pointage enregistré</p>
-              <p className="text-[11px] mt-1">Les données apparaîtront quand l'équipe pointera ses heures</p>
-            </div>
-          )}
-        </div>
+        </ul>
+        {productivite.length === 0 && (
+          <EtatVide icone={Zap} titre="Aucun pointage enregistré" texte="Les données apparaîtront quand l’équipe pointera ses heures." />
+        )}
       </Section>
     </div>
   );

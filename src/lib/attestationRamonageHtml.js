@@ -14,6 +14,7 @@ import { echapperHtml as h, couleurCss } from './echapperHtml';
 import { nomImprime, formeImprimee } from './identiteEntreprise';
 import { marquerDocumentFictif, estDonneesFictives } from './donneesFictives';
 import { dateLue } from './dates';
+import { adresseComplete } from './adresseEntreprise';
 import { PAGE_CSS } from './devisHtmlBuilder';
 import {
   TYPES_APPAREIL, COMBUSTIBLES, CONDUITS, METHODES, QUALITES, CONSTATS, CONSEILS, libelleDe, estFoyerFermeSolide, jourDe,
@@ -67,7 +68,8 @@ export function buildAttestationRamonageHtml({ ramonage: r, entreprise, preceden
   const e = {
     nom: h(nom),
     forme: h(`${formeImprimee(source)}${source.capital ? ` au capital de ${source.capital} €` : ''}`),
-    adresse: h([source.adresse, [source.codePostal || source.code_postal, source.ville].filter(Boolean).join(' ')].filter(Boolean).join(', ')),
+    // L'adresse complète contient déjà « code postal ville » quand Paramètres l'a enregistrée en trois champs
+    adresse: h(adresseComplete(source).split('\n').join(', ')),
     tel: h(source.tel || source.telephone),
     email: h(source.email),
     site: h(source.siteWeb || source.site_web),

@@ -20,8 +20,29 @@ export const MENTION_TVA_ABONNEMENT = 'TVA non applicable, art. 293 B du CGI';
  * @param {'mois' | 'an'} [periode='mois']
  */
 export function prixAbonnement(plan, periode = 'mois') {
-  const montant = periode === 'an' ? plan?.priceYearly : plan?.priceMonthly;
+  const montant = periode === 'an' ? plan?.priceYearly
+    // L'équivalent mensuel de l'offre annuelle : le prix annuel divisé par douze, arrondi au centime.
+    : periode === 'mois-a-l-annee' ? (Number.isFinite(plan?.priceYearly) ? Math.round(plan.priceYearly * 100 / 12) / 100 : 0)
+    : plan?.priceMonthly;
   return formatMoney(Number.isFinite(montant) ? montant : 0);
+}
+
+/**
+ * La période que paie un abonné : `'an'` si son abonnement est annuel (`subscriptions.billing_interval`, écrit par le
+ * webhook Stripe depuis la migration 071), sinon `'mois'`.
+ * @param {{ billing_interval?: string } | null | undefined} abonnement
+ */
+export function periodeAbonne(abonnement) {
+  return abonnement?.billing_interval === 'yearly' ? 'an' : 'mois';
+}
+
+/**
+ * Ce que paie un abonné, avec sa période : « 9,90 € par mois », ou « 99 € par an » pour un abonné annuel (qui ne lit
+ * jamais un prix « par mois » qu'il ne paie pas).
+ */
+export function prixAbonne(plan, abonnement) {
+  const periode = periodeAbonne(abonnement);
+  return `${prixAbonnement(plan, periode)} par ${periode}`;
 }
 
 /**

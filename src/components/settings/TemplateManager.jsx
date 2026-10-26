@@ -1,7 +1,11 @@
-import React, { useState, useMemo } from 'react';
-import { Plus, Trash2, Edit3, X, Check, Star, ChevronDown, ChevronUp, Search, Copy, FileText, TrendingUp } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Trash2, Edit3, X, Check, Star, ChevronDown, ChevronUp, Search, Copy, FileText, TrendingUp } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 import { formatMoney } from '../../lib/formatters';
+import { achatConnu, niveauMarge, CLASSES_TON_MARGE } from '../../lib/margeArticle';
+import { useConfirm } from '../../context/AppContext';
+import { BoutonIcone } from '../ui/Bouton';
+import Pastille from '../ui/Pastille';
 import EmptyState from '../ui/EmptyState';
 
 /**
@@ -10,6 +14,7 @@ import EmptyState from '../ui/EmptyState';
  */
 export default function TemplateManager({ isDark, couleur, modeDiscret }) {
   const { customTemplates, addTemplate, updateTemplate, deleteTemplate, toggleTemplateFavori } = useData();
+  const { confirm } = useConfirm();
 
   const [editingId, setEditingId] = useState(null);
   const [expandedId, setExpandedId] = useState(null);
@@ -17,7 +22,7 @@ export default function TemplateManager({ isDark, couleur, modeDiscret }) {
   const [editForm, setEditForm] = useState({ nom: '', categorie: '', notes: '' });
 
   const cardBg = 'bg-surface border-bord';
-  const inputBg = isDark ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400' : 'bg-white border-slate-300';
+  const inputBg = 'bg-surface border-bord-fort';
   const textPrimary = 'text-encre';
   const textSecondary = 'text-encre-2';
   const textMuted = 'text-encre-3';
@@ -46,10 +51,20 @@ export default function TemplateManager({ isDark, couleur, modeDiscret }) {
     return (t.lignes || []).reduce((sum, l) => sum + ((l.quantite || 0) * (l.prixUnitaire || 0)), 0);
   };
 
+  // Marge du modèle : seulement si chaque ligne a un prix d'achat connu (src/lib/margeArticle.js) ; avant, un prix d'achat
+  // absent comptait 0 € et le modèle affichait « 100 % » de marge
   const getTemplateMarge = (t) => {
-    const total = (t.lignes || []).reduce((sum, l) => sum + ((l.quantite || 0) * (l.prixUnitaire || 0)), 0);
-    const cout = (t.lignes || []).reduce((sum, l) => sum + ((l.prixAchat || 0) * (l.quantite || 0)), 0);
-    return total > 0 ? Math.round(((total - cout) / total) * 100) : 0;
+    const lignes = t.lignes || [];
+    const total = lignes.reduce((sum, l) => sum + ((l.quantite || 0) * (l.prixUnitaire || 0)), 0);
+    if (total <= 0 || lignes.some((l) => achatConnu(l.prixAchat) === null)) return null;
+    const cout = lignes.reduce((sum, l) => sum + (achatConnu(l.prixAchat) * (l.quantite || 0)), 0);
+    return Math.round(((total - cout) / total) * 100);
+  };
+
+  const supprimer = async (t) => {
+    if (await confirm({ title: 'Supprimer ce modèle ?', message: `« ${t.nom} » ne sera plus proposé pour vos nouveaux devis. Les devis déjà faits ne changent pas.` })) {
+      await deleteTemplate(t.id);
+    }
   };
 
   const startEdit = (t) => {
@@ -100,7 +115,7 @@ export default function TemplateManager({ isDark, couleur, modeDiscret }) {
 
         <p className={`text-sm ${textSecondary} mb-4`}>
           Vos modèles personnalisés sont créés depuis vos devis existants (bouton "Sauvegarder comme modèle" dans le menu d'un devis).
-          Ils sont synchronisés entre tous vos appareils et disponibles dans Devis Express et le sélecteur de modèles.
+          Ils sont enregistrés avec votre compte et proposés dans Devis Express et le sélecteur de modèles.
         </p>
 
         {/* Search */}
@@ -115,8 +130,8 @@ export default function TemplateManager({ isDark, couleur, modeDiscret }) {
               className={`flex-1 bg-transparent text-sm outline-none ${textPrimary}`}
             />
             {searchQuery && (
-              <button onClick={() => setSearchQuery('')} className={`p-0.5 rounded ${isDark ? 'hover:bg-slate-600' : 'hover:bg-slate-200'}`}>
-                <X size={14} className={textMuted} />
+              <button onClick={() => setSearchQuery('')} aria-label="Effacer la recherche" className="-my-2 w-9 h-9 flex items-center justify-center rounded-lg hover:bg-bord">
+                <X size={16} className={textMuted} aria-hidden="true" />
               </button>
             )}
           </div>
@@ -154,29 +169,32 @@ export default function TemplateManager({ isDark, couleur, modeDiscret }) {
                     /* Editing form */
                     <div className="space-y-3">
                       <div>
-                        <label className={`block text-xs font-medium mb-1 ${textMuted}`}>Nom</label>
+                        <label htmlFor={`modele-nom-${t.id}`} className="block text-sm font-medium mb-1.5 text-encre-2">Nom</label>
                         <input
+                          id={`modele-nom-${t.id}`}
                           value={editForm.nom}
                           onChange={e => setEditForm(f => ({ ...f, nom: e.target.value }))}
-                          className={`w-full px-3 py-2 border rounded-lg text-sm ${inputBg}`}
+                          className={`w-full h-11 px-3 border rounded-xl text-base sm:text-sm ${inputBg}`}
                           autoFocus
                         />
                       </div>
                       <div>
-                        <label className={`block text-xs font-medium mb-1 ${textMuted}`}>Catégorie</label>
+                        <label htmlFor={`modele-categorie-${t.id}`} className="block text-sm font-medium mb-1.5 text-encre-2">Catégorie</label>
                         <input
+                          id={`modele-categorie-${t.id}`}
                           value={editForm.categorie}
                           onChange={e => setEditForm(f => ({ ...f, categorie: e.target.value }))}
-                          className={`w-full px-3 py-2 border rounded-lg text-sm ${inputBg}`}
+                          className={`w-full h-11 px-3 border rounded-xl text-base sm:text-sm ${inputBg}`}
                           placeholder="Mes modèles"
                         />
                       </div>
                       <div>
-                        <label className={`block text-xs font-medium mb-1 ${textMuted}`}>Notes</label>
+                        <label htmlFor={`modele-notes-${t.id}`} className="block text-sm font-medium mb-1.5 text-encre-2">Notes</label>
                         <textarea
+                          id={`modele-notes-${t.id}`}
                           value={editForm.notes}
                           onChange={e => setEditForm(f => ({ ...f, notes: e.target.value }))}
-                          className={`w-full px-3 py-2 border rounded-lg text-sm ${inputBg}`}
+                          className={`w-full px-3 py-2 border rounded-xl text-base sm:text-sm ${inputBg}`}
                           rows={2}
                           placeholder="Notes optionnelles..."
                         />
@@ -184,14 +202,14 @@ export default function TemplateManager({ isDark, couleur, modeDiscret }) {
                       <div className="flex items-center justify-end gap-2">
                         <button
                           onClick={() => setEditingId(null)}
-                          className={`px-3 py-1.5 rounded-lg text-sm hover:bg-surface-2 ${textSecondary}`}
+                          className={`h-11 px-3 rounded-full text-sm font-medium hover:bg-surface-2 ${textSecondary}`}
                         >
                           Annuler
                         </button>
                         <button
                           onClick={saveEdit}
                           disabled={!editForm.nom.trim()}
-                          className="px-4 py-1.5 rounded-lg text-sm font-medium disabled:opacity-50 bg-accent text-sur-accent"
+                          className="h-11 px-4 rounded-full text-sm font-semibold disabled:opacity-50 bg-accent text-sur-accent"
                         >
                           <Check size={14} className="inline mr-1" /> Enregistrer
                         </button>
@@ -203,31 +221,27 @@ export default function TemplateManager({ isDark, couleur, modeDiscret }) {
                       {/* Favori star */}
                       <button
                         onClick={() => toggleTemplateFavori(t.id)}
-                        className={`mt-0.5 p-1 rounded-lg transition-colors ${
-                          t.favori
-                            ? 'text-amber-500'
-                            : isDark ? 'text-slate-500 hover:text-slate-300' : 'text-slate-300 hover:text-slate-500'
-                        }`}
+                        aria-pressed={!!t.favori}
+                        aria-label={t.favori ? `Retirer ${t.nom} des favoris` : `Mettre ${t.nom} en favori`}
+                        className={`-mt-2 -ml-2 w-11 h-11 flex items-center justify-center rounded-xl transition-colors ${t.favori ? 'text-encre' : 'text-encre-3 hover:text-encre-2'}`}
                       >
-                        <Star size={16} fill={t.favori ? 'currentColor' : 'none'} />
+                        <Star size={18} fill={t.favori ? 'currentColor' : 'none'} aria-hidden="true" />
                       </button>
 
                       {/* Content */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <h4 className={`font-medium ${textPrimary} truncate`}>{t.nom}</h4>
-                          <span className={`text-xs px-2 py-0.5 rounded-full shrink-0 bg-surface-2 text-encre-3`}>
-                            {t.categorie || t.category || 'Mes modèles'}
-                          </span>
+                          <Pastille className="shrink-0">{t.categorie || t.category || 'Mes modèles'}</Pastille>
                         </div>
-                        <div className="flex items-center gap-3 text-xs">
-                          <span className={textMuted}>{(t.lignes || []).length} lignes</span>
-                          <span className="font-medium text-accent-texte">
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                          <span className={textMuted}>{(t.lignes || []).length} ligne{(t.lignes || []).length > 1 ? 's' : ''}</span>
+                          <span className="font-semibold tabular-nums text-encre">
                             {fmt(total)} HT
                           </span>
-                          <span className={`flex items-center gap-0.5 ${marge >= 30 ? 'text-emerald-500' : 'text-amber-500'}`}>
-                            <TrendingUp size={12} />
-                            {modeDiscret ? '•••' : `${marge}%`}
+                          <span className={`flex items-center gap-1 ${CLASSES_TON_MARGE[niveauMarge(marge).ton].texte}`}>
+                            <TrendingUp size={14} aria-hidden="true" />
+                            {modeDiscret ? '•••' : marge === null ? 'Marge non calculée' : `Marge ${marge} %`}
                           </span>
                           {t.usage_count > 0 && (
                             <span className={textMuted}>
@@ -236,40 +250,17 @@ export default function TemplateManager({ isDark, couleur, modeDiscret }) {
                           )}
                         </div>
                         {t.description && (
-                          <p className={`text-xs mt-1 ${textMuted} truncate`}>{t.description}</p>
+                          <p className={`text-sm mt-1 ${textMuted} truncate`}>{t.description}</p>
                         )}
                       </div>
 
                       {/* Actions */}
                       <div className="flex items-center gap-1 shrink-0">
-                        <button
-                          onClick={() => setExpandedId(isExpanded ? null : t.id)}
-                          className={`p-1.5 rounded-lg transition-colors hover:bg-surface-2`}
-                          title="Aperçu des lignes"
-                        >
-                          {isExpanded ? <ChevronUp size={14} className={textMuted} /> : <ChevronDown size={14} className={textMuted} />}
-                        </button>
-                        <button
-                          onClick={() => startEdit(t)}
-                          className={`p-1.5 rounded-lg transition-colors hover:bg-surface-2`}
-                          title="Modifier"
-                        >
-                          <Edit3 size={14} className={textMuted} />
-                        </button>
-                        <button
-                          onClick={() => handleDuplicate(t)}
-                          className={`p-1.5 rounded-lg transition-colors hover:bg-surface-2`}
-                          title="Dupliquer"
-                        >
-                          <Copy size={14} className={textMuted} />
-                        </button>
-                        <button
-                          onClick={() => deleteTemplate(t.id)}
-                          className={`p-1.5 rounded-lg transition-colors ${isDark ? 'hover:bg-red-900/30 text-red-400' : 'hover:bg-red-50 text-red-400'}`}
-                          title="Supprimer"
-                        >
-                          <Trash2 size={14} />
-                        </button>
+                        <BoutonIcone icone={isExpanded ? ChevronUp : ChevronDown} taille={18} aria-expanded={isExpanded}
+                          libelle={isExpanded ? 'Masquer les lignes' : 'Aperçu des lignes'} onClick={() => setExpandedId(isExpanded ? null : t.id)} />
+                        <BoutonIcone icone={Edit3} taille={18} libelle="Modifier" onClick={() => startEdit(t)} />
+                        <BoutonIcone icone={Copy} taille={18} libelle="Dupliquer" onClick={() => handleDuplicate(t)} />
+                        <BoutonIcone icone={Trash2} taille={18} libelle="Supprimer" className="!text-danger-texte hover:!bg-danger-fond" onClick={() => supprimer(t)} />
                       </div>
                     </div>
                   )}
@@ -278,13 +269,13 @@ export default function TemplateManager({ isDark, couleur, modeDiscret }) {
                 {/* Expanded lines preview */}
                 {isExpanded && !isEditing && (
                   <div className={`px-4 sm:px-5 pb-4 pt-0 border-t border-bord`}>
-                    <p className={`text-xs font-medium mb-2 mt-3 ${textMuted}`}>Aperçu des lignes :</p>
+                    <p className={`text-sm font-medium mb-2 mt-3 ${textMuted}`}>Aperçu des lignes :</p>
                     <div className="space-y-1.5">
                       {(t.lignes || []).map((ligne, idx) => (
-                        <div key={idx} className="flex items-center justify-between text-xs gap-2">
+                        <div key={idx} className="flex items-center justify-between text-sm gap-2">
                           <span className={`truncate flex-1 ${textSecondary}`}>{ligne.description}</span>
                           <span className={`${textMuted} shrink-0`}>
-                            {ligne.quantite} {ligne.unite} × {modeDiscret ? '•••' : `${ligne.prixUnitaire} €`}
+                            {ligne.quantite} {ligne.unite} × {fmt(ligne.prixUnitaire)}
                           </span>
                           <span className={`font-medium shrink-0 ${textPrimary}`}>
                             {fmt(ligne.quantite * ligne.prixUnitaire)}

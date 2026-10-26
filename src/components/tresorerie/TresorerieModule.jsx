@@ -17,27 +17,30 @@
  * @module TresorerieModule
  */
 
-import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { toast } from '../../stores/toastStore';
 import {
-  Wallet, TrendingUp, Plus, X,
-  AlertTriangle, Info, ArrowDown, ArrowUp, Clock, BarChart3, Save, Settings, Filter,
+  Wallet, TrendingUp, Plus,
+  AlertTriangle, Info, ArrowDown, ArrowUp, Clock, BarChart3, Save, Settings,
   Check, Edit3, Trash2, Zap,
   FileText, Receipt, Percent, Link2, Sliders, Target, TrendingDown, Activity,
-  MessageCircle, ChevronDown, ChevronUp, ChevronRight, HardHat, Download,
+  MessageCircle, ChevronDown, ChevronUp, ChevronRight, ChevronLeft, HardHat, Download,
 } from 'lucide-react';
 import { useTresorerie } from '../../hooks/useTresorerie';
 import { useTVA } from '../../hooks/useTVA';
 import { useExportComptable } from '../../hooks/useExportComptable';
 import useKeepInViewport from '../../hooks/useKeepInViewport';
 import { formatClientName } from '../../lib/formatters';
-import { statutPrevision, estPrevisionMiroir } from '../../lib/previsions';
-import KPICard from '../ui/KPICard';
+import { statutPrevision, estPrevisionMiroir, seuilAlerteRegle } from '../../lib/previsions';
 import TuileChiffre from '../ui/TuileChiffre';
+import Modal from '../ui/Modal';
+import Champ from '../ui/Champ';
+import ChampChoix from '../ui/ChampChoix';
 import { TitreSection } from '../ui/EnTete';
 import LigneListe, { GroupeListe } from '../ui/LigneListe';
 import Pastille, { PastilleStatut } from '../ui/Pastille';
 import { Segmente, Onglets } from '../ui/Onglets';
+import EtatVide from '../ui/EtatVide';
 import Carte from '../ui/Carte';
 import { Bouton, BoutonIcone } from '../ui/Bouton';
 import { remettreFichier } from '../../lib/natif';
@@ -99,17 +102,6 @@ const CATEGORIES_PREVISION = [
   'Salaires', 'Materiaux', 'Sous-traitance', 'Divers',
 ];
 
-/** Category colors for badges */
-const CATEGORY_COLORS = {
-  Client: { bg: 'bg-blue-100 text-blue-700', dark: 'bg-blue-900/30 text-blue-400' },
-  Fournisseur: { bg: 'bg-orange-100 text-orange-700', dark: 'bg-orange-900/30 text-orange-400' },
-  Loyer: { bg: 'bg-purple-100 text-purple-700', dark: 'bg-purple-900/30 text-purple-400' },
-  Assurance: { bg: 'bg-green-100 text-green-700', dark: 'bg-green-900/30 text-green-400' },
-  Salaires: { bg: 'bg-amber-100 text-amber-700', dark: 'bg-amber-900/30 text-amber-400' },
-  Materiaux: { bg: 'bg-cyan-100 text-cyan-700', dark: 'bg-cyan-900/30 text-cyan-400' },
-  'Sous-traitance': { bg: 'bg-indigo-100 text-indigo-700', dark: 'bg-indigo-900/30 text-indigo-400' },
-  Divers: { bg: 'bg-gray-100 text-gray-600', dark: 'bg-gray-700 text-gray-300' },
-};
 
 /** Charges courantes BTP (Feature 6) */
 const BTP_CHARGES = [
@@ -178,23 +170,6 @@ const genId = () => typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.
 // Sub-components
 // ---------------------------------------------------------------------------
 
-// Délègue à la tuile KPICard partagée (design system « énergique & coloré »).
-function KpiCard({ label, value, icon, trend, trendLabel, color, isDark }) {
-  const trendProps = (trend !== undefined && trend !== null && isFinite(trend) && trend !== 0)
-    ? { trend: trend > 0 ? 'up' : 'down', trendValue: `${trend > 0 ? '+' : ''}${Math.round(trend)}%` }
-    : {};
-  return (
-    <KPICard
-      icon={icon}
-      label={label}
-      value={value}
-      sublabel={trendLabel}
-      color={color}
-      isDark={isDark}
-      {...trendProps}
-    />
-  );
-}
 
 /**
  * SVG-based bar chart showing monthly entrées / sorties with a cumulative balance line.
@@ -286,11 +261,12 @@ function CashFlowChart({ data, compact = false }) {
  * SVG-based projection chart showing scenario balance over 12 months.
  * Shows baseline vs adjusted scenario with colored fill area.
  */
-function ProjectionChart({ baseline, scenario, isDark, couleur }) {
+function ProjectionChart({ baseline, scenario }) {
   const width = 800, height = 280;
-  const padTop = 30, padBottom = 40, padLeft = 65, padRight = 20;
+  const padTop = 34, padBottom = 40, padLeft = 70, padRight = 20;
   const chartW = width - padLeft - padRight;
   const chartH = height - padTop - padBottom;
+  const taille = 14; // rendu ≥ 12 px : le graphique garde 700 px de large au moins (défilement au téléphone)
 
   const allVals = [...baseline.map(d => d.balance), ...scenario.map(d => d.balance)];
   const minVal = Math.min(...allVals, 0);
@@ -301,8 +277,12 @@ function ProjectionChart({ baseline, scenario, isDark, couleur }) {
   const toY = (v) => padTop + chartH - ((v - bottom) / range) * chartH;
   const toX = (i) => padLeft + (chartW / (baseline.length - 1 || 1)) * i;
 
-  const gridColor = isDark ? '#334155' : '#e5e7eb';
-  const textColor = isDark ? '#94a3b8' : '#6b7280';
+  // Jetons du thème (clair et sombre) : la tendance en encre discrète, le scénario à l'accent, un solde négatif en ambre
+  const gridColor = 'rgb(var(--bord))';
+  const textColor = 'rgb(var(--encre-3))';
+  const tendance = 'rgb(var(--encre-3))';
+  const accent = 'rgb(var(--accent))';
+  const negatif = 'rgb(var(--alerte-point))';
 
   const baselinePoints = baseline.map((d, i) => `${toX(i)},${toY(d.balance)}`).join(' ');
   const scenarioPoints = scenario.map((d, i) => `${toX(i)},${toY(d.balance)}`).join(' ');
@@ -321,53 +301,72 @@ function ProjectionChart({ baseline, scenario, isDark, couleur }) {
   const zeroY = toY(0);
 
   return (
-    <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto" preserveAspectRatio="xMidYMid meet">
-      {/* Grid */}
+    <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Évolution du solde projeté">
       {ticks.map((t) => {
         const y = toY(t);
         return (
           <g key={`grid-${t}`}>
-            <line x1={padLeft} y1={y} x2={width - padRight} y2={y} stroke={gridColor} strokeDasharray="4 4" />
-            <text x={padLeft - 8} y={y + 4} textAnchor="end" fill={textColor} fontSize={11}>{formatCompact(t)}</text>
+            <line x1={padLeft} y1={y} x2={width - padRight} y2={y} style={{ stroke: gridColor }} strokeDasharray="4 4" />
+            <text x={padLeft - 8} y={y + 4} textAnchor="end" style={{ fill: textColor }} fontSize={taille}>{formatCompact(t)}</text>
           </g>
         );
       })}
-      {/* Zero line */}
-      {minVal < 0 && <line x1={padLeft} y1={zeroY} x2={width - padRight} y2={zeroY} stroke={isDark ? '#64748b' : '#9ca3af'} strokeWidth={1.5} />}
-      {/* Fill area */}
-      <polygon points={fillPath} fill={couleur} opacity={0.08} />
-      {/* Baseline */}
-      <polyline points={baselinePoints} fill="none" stroke={isDark ? '#64748b' : '#9ca3af'} strokeWidth={2} strokeDasharray="6 4" strokeLinejoin="round" />
-      {/* Scenario */}
-      <polyline points={scenarioPoints} fill="none" stroke={couleur} strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />
-      {/* Dots */}
+      {minVal < 0 && <line x1={padLeft} y1={zeroY} x2={width - padRight} y2={zeroY} style={{ stroke: tendance }} strokeWidth={1.5} />}
+      <polygon points={fillPath} style={{ fill: accent }} opacity={0.08} />
+      <polyline points={baselinePoints} fill="none" style={{ stroke: tendance }} strokeWidth={2} strokeDasharray="6 4" strokeLinejoin="round" />
+      <polyline points={scenarioPoints} fill="none" style={{ stroke: accent }} strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />
       {scenario.map((d, i) => (
-        <circle key={`dot-${i}`} cx={toX(i)} cy={toY(d.balance)} r={4} fill={d.balance < 0 ? '#ef4444' : couleur} stroke={isDark ? '#1e293b' : '#fff'} strokeWidth={2} />
+        <circle key={`dot-${i}`} cx={toX(i)} cy={toY(d.balance)} r={4} style={{ fill: d.balance < 0 ? negatif : accent, stroke: 'rgb(var(--surface))' }} strokeWidth={2} />
       ))}
-      {/* Month labels */}
       {scenario.map((d, i) => (
-        <text key={`label-${i}`} x={toX(i)} y={height - 8} textAnchor="middle" fill={textColor} fontSize={11} fontWeight={i === 0 ? 700 : 400}>{d.mois}</text>
+        <text key={`label-${i}`} x={toX(i)} y={height - 10} textAnchor="middle" style={{ fill: textColor }} fontSize={taille} fontWeight={i === 0 ? 700 : 400}>{d.mois}</text>
       ))}
-      {/* Legend */}
       <g transform={`translate(${padLeft}, 12)`}>
-        <line x1={0} y1={6} x2={20} y2={6} stroke={isDark ? '#64748b' : '#9ca3af'} strokeWidth={2} strokeDasharray="6 4" />
-        <text x={24} y={10} fill={textColor} fontSize={11}>Tendance actuelle</text>
-        <line x1={160} y1={6} x2={180} y2={6} stroke={couleur} strokeWidth={2.5} />
-        <text x={184} y={10} fill={textColor} fontSize={11}>Scénario ajusté</text>
+        <line x1={0} y1={6} x2={20} y2={6} style={{ stroke: tendance }} strokeWidth={2} strokeDasharray="6 4" />
+        <text x={26} y={11} style={{ fill: textColor }} fontSize={taille}>Tendance actuelle</text>
+        <line x1={180} y1={6} x2={200} y2={6} style={{ stroke: accent }} strokeWidth={2.5} />
+        <text x={206} y={11} style={{ fill: textColor }} fontSize={taille}>Scénario ajusté</text>
       </g>
     </svg>
   );
 }
 
+const OPTIONS_RECURRENCE = [
+  { valeur: 'unique', libelle: 'Unique' },
+  { valeur: 'mensuel', libelle: 'Mensuel' },
+  { valeur: 'trimestriel', libelle: 'Trimestriel' },
+  { valeur: 'annuel', libelle: 'Annuel' },
+];
+const OPTIONS_CATEGORIE = CATEGORIES_PREVISION.map((c) => ({ valeur: c, libelle: c === 'Materiaux' ? 'Matériaux' : c }));
+const OPTIONS_TAUX = [
+  { valeur: 20, libelle: '20 %' },
+  { valeur: 10, libelle: '10 %' },
+  { valeur: 5.5, libelle: '5,5 %' },
+  { valeur: 2.1, libelle: '2,1 %' },
+  { valeur: 0, libelle: '0 % (exonéré)' },
+];
+
+/** Un choix (menu de l'app) avec son libellé, dans une fenêtre. */
+function ChoixFenetre({ id, libelle, options, valeur, onChange }) {
+  return (
+    <div>
+      <label id={`${id}-libelle`} htmlFor={id} className="block mb-1.5 text-sm font-medium text-encre-2">{libelle}</label>
+      <ChampChoix id={id} idLibelle={`${id}-libelle`} titre={libelle} options={options} valeur={valeur} onChange={onChange} />
+    </div>
+  );
+}
+
 /**
- * Modal for adding / editing a cash-flow prevision.
+ * Fenêtre d'ajout / de modification d'une prévision (ui/Modal : rôle dialogue, focus gardé, feuille du bas au téléphone).
+ * La fenêtre ne se ferme qu'une fois la prévision enregistrée : refusée, la saisie reste (le refus est dit par le hook).
  */
-function PrevisionModal({ isOpen, onClose, onSave, editItem, isDark, couleur }) {
+function PrevisionModal({ isOpen, onClose, onSave, editItem }) {
   const [form, setForm] = useState({
     type: 'entree', description: '', montant: '',
     date: jourLocal(),
     categorie: 'Client', recurrence: 'unique',
   });
+  const [enCours, setEnCours] = useState(false);
 
   useEffect(() => {
     if (editItem) {
@@ -385,97 +384,58 @@ function PrevisionModal({ isOpen, onClose, onSave, editItem, isDark, couleur }) 
   }, [editItem, isOpen]);
 
   const handleChange = (field, value) => setForm((prev) => ({ ...prev, [field]: value }));
+  const montant = parseFloat(String(form.montant).replace(',', '.'));
+  const valide = form.description.trim() && Number.isFinite(montant) && montant > 0;
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!form.description.trim() || !form.montant) return;
-    onSave({
+  const handleSubmit = async (e) => {
+    e?.preventDefault?.();
+    if (!valide || enCours) return;
+    setEnCours(true);
+    const ok = await onSave({
       ...form,
       description: form.description.trim(),
-      montant: parseFloat(form.montant) || 0,
+      montant,
       id: editItem?.id || genId(),
       createdAt: editItem?.createdAt || new Date().toISOString(),
       statut: statutPrevision(editItem?.statut),
     });
-    onClose();
+    setEnCours(false);
+    if (ok) onClose();
   };
 
-  if (!isOpen) return null;
-
-  const inputCls = `w-full rounded-xl px-3 py-2.5 text-sm border transition-colors focus:outline-none focus:ring-2 ${isDark ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400 focus:ring-blue-500/40' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400 focus:ring-blue-500/30'}`;
-  const labelCls = `block text-xs font-semibold mb-1 text-encre-2`;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label={editItem ? 'Modifier la prévision' : 'Nouvelle prévision'}>
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" role="presentation" onClick={onClose} />
-      <form onSubmit={handleSubmit} className={`relative w-full max-w-md rounded-2xl border shadow-2xl bg-surface border-bord`}>
-        <div className={`flex items-center justify-between px-5 py-4 border-b border-bord`}>
-          <h3 className={`text-base font-bold text-encre`}>
-            {editItem ? 'Modifier la prévision' : 'Nouvelle prévision'}
-          </h3>
-          <button type="button" onClick={onClose} aria-label="Fermer" className={`min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg transition-colors hover:bg-surface-2 text-encre-3`}>
-            <X size={18} />
-          </button>
+    <Modal isOpen={isOpen} onClose={onClose} size="md" title={editItem ? 'Modifier la prévision' : 'Nouvelle prévision'}
+      footer={(
+        <>
+          <Bouton variante="discret" onClick={onClose}>Annuler</Bouton>
+          <Bouton variante="principal" icone={Save} chargement={enCours} disabled={!valide} onClick={handleSubmit}>{editItem ? 'Enregistrer' : 'Ajouter'}</Bouton>
+        </>
+      )}>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <Segmente ariaLabel="Type" pleineLargeur valeur={form.type} onChange={(v) => handleChange('type', v)}
+          options={[{ valeur: 'entree', libelle: 'Entrée' }, { valeur: 'sortie', libelle: 'Sortie' }]} />
+        <Champ id="prevision-description" libelle="Description" value={form.description} placeholder="Ex. : facture chantier Dupont"
+          onChange={(e) => handleChange('description', e.target.value)} />
+        <div className="grid grid-cols-2 gap-3">
+          <Champ id="prevision-montant" libelle="Montant (€)" type="text" inputMode="decimal" value={form.montant} placeholder="0"
+            onChange={(e) => handleChange('montant', e.target.value)} />
+          <Champ id="prevision-date" libelle="Date prévue" type="date" value={form.date} onChange={(e) => handleChange('date', e.target.value)} />
         </div>
-        <div className="px-5 py-4 space-y-4">
-          <div>
-            <label className={labelCls}>Type</label>
-            <div className={`inline-flex rounded-xl p-1 bg-surface-2`}>
-              {['entree', 'sortie'].map((t) => (
-                <button key={t} type="button" onClick={() => handleChange('type', t)}
-                  className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${form.type === t ? t === 'entree' ? 'bg-emerald-500 text-white shadow-md' : 'bg-red-500 text-white shadow-md' : 'text-encre-3 hover:text-encre'}`}>
-                  {t === 'entree' ? 'Entrée' : 'Sortie'}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div>
-            <label className={labelCls}>Description</label>
-            <input type="text" autoFocus className={inputCls} placeholder="Ex: Facture chantier Dupont" value={form.description} onChange={(e) => handleChange('description', e.target.value)} required />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className={labelCls}>Montant (€)</label>
-              <input type="number" className={inputCls} placeholder="0" min="0" step="0.01" value={form.montant} onChange={(e) => handleChange('montant', e.target.value)} required />
-            </div>
-            <div>
-              <label className={labelCls}>Date prévue</label>
-              <input type="date" className={inputCls} value={form.date} onChange={(e) => handleChange('date', e.target.value)} required />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className={labelCls}>Catégorie</label>
-              <select className={inputCls} value={form.categorie} onChange={(e) => handleChange('categorie', e.target.value)}>
-                {CATEGORIES_PREVISION.map((c) => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className={labelCls}>Récurrence</label>
-              <select className={inputCls} value={form.recurrence} onChange={(e) => handleChange('recurrence', e.target.value)}>
-                <option value="unique">Unique</option>
-                <option value="mensuel">Mensuel</option>
-                <option value="trimestriel">Trimestriel</option>
-                <option value="annuel">Annuel</option>
-              </select>
-            </div>
-          </div>
+        <div className="grid grid-cols-2 gap-3">
+          <ChoixFenetre id="prevision-categorie" libelle="Catégorie" options={OPTIONS_CATEGORIE} valeur={form.categorie} onChange={(v) => handleChange('categorie', v)} />
+          <ChoixFenetre id="prevision-recurrence" libelle="Récurrence" options={OPTIONS_RECURRENCE} valeur={form.recurrence} onChange={(v) => handleChange('recurrence', v)} />
         </div>
-        <div className={`flex items-center justify-end gap-3 px-5 py-4 border-t border-bord`}>
-          <button type="button" onClick={onClose} className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors text-encre-3 hover:text-encre`}>Annuler</button>
-          <button type="submit" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90 active:scale-[0.98] shadow-md" style={{ backgroundColor: couleur || '#3b82f6' }}>
-            <Save size={16} /> {editItem ? 'Enregistrer' : 'Ajouter'}
-          </button>
-        </div>
+        <button type="submit" className="sr-only" tabIndex={-1} aria-hidden="true">Enregistrer</button>
       </form>
-    </div>
+    </Modal>
   );
 }
 
 /**
- * Modal for adding / editing a treasury mouvement (actual transaction with TVA).
+ * Fenêtre d'ajout / de modification d'un mouvement (transaction réelle, TVA ventilée). Même règle : fermée seulement
+ * une fois le mouvement enregistré.
  */
-function MouvementModal({ isOpen, onClose, onSave, editItem, isDark, couleur }) {
+function MouvementModal({ isOpen, onClose, onSave, editItem }) {
   const [form, setForm] = useState({
     type: 'sortie', description: '', montant: '',
     date: jourLocal(),
@@ -483,6 +443,7 @@ function MouvementModal({ isOpen, onClose, onSave, editItem, isDark, couleur }) 
     isRecurring: false, recurringFrequency: 'mensuel',
     notes: '',
   });
+  const [enCours, setEnCours] = useState(false);
 
   useEffect(() => {
     if (editItem) {
@@ -505,14 +466,16 @@ function MouvementModal({ isOpen, onClose, onSave, editItem, isDark, couleur }) 
 
   const handleChange = (field, value) => setForm((prev) => ({ ...prev, [field]: value }));
 
-  const montantNum = parseFloat(form.montant) || 0;
+  const montantNum = parseFloat(String(form.montant).replace(',', '.')) || 0;
   const montantHt = form.autoliquidation ? montantNum : montantNum / (1 + form.tauxTva / 100);
   const montantTva = form.autoliquidation ? 0 : montantNum - montantHt;
+  const valide = form.description.trim() && montantNum > 0;
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!form.description.trim() || !form.montant) return;
-    onSave({
+  const handleSubmit = async (e) => {
+    e?.preventDefault?.();
+    if (!valide || enCours) return;
+    setEnCours(true);
+    const ok = await onSave({
       ...form,
       description: form.description.trim(),
       montant: montantNum,
@@ -522,125 +485,67 @@ function MouvementModal({ isOpen, onClose, onSave, editItem, isDark, couleur }) 
       createdAt: editItem?.createdAt || new Date().toISOString(),
       statut: editItem?.statut || 'prevu',
     });
-    onClose();
+    setEnCours(false);
+    if (ok) onClose();
   };
 
-  if (!isOpen) return null;
-
-  const inputCls = `w-full rounded-xl px-3 py-2.5 text-sm border transition-colors focus:outline-none focus:ring-2 ${isDark ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400 focus:ring-blue-500/40' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400 focus:ring-blue-500/30'}`;
-  const labelCls = `block text-xs font-semibold mb-1 text-encre-2`;
-  const textSecondaryLocal = 'text-encre-3';
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label={editItem ? 'Modifier le mouvement' : 'Nouveau mouvement'}>
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" role="presentation" onClick={onClose} />
-      <form onSubmit={handleSubmit} className={`relative w-full max-w-lg rounded-2xl border shadow-2xl bg-surface border-bord`}>
-        <div className={`flex items-center justify-between px-5 py-4 border-b border-bord`}>
-          <h3 className={`text-base font-bold text-encre`}>
-            {editItem ? 'Modifier le mouvement' : 'Nouveau mouvement'}
-          </h3>
-          <button type="button" onClick={onClose} aria-label="Fermer" className={`min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg transition-colors hover:bg-surface-2 text-encre-3`}>
-            <X size={18} />
-          </button>
+    <Modal isOpen={isOpen} onClose={onClose} size="lg" title={editItem ? 'Modifier le mouvement' : 'Nouveau mouvement'}
+      footer={(
+        <>
+          <Bouton variante="discret" onClick={onClose}>Annuler</Bouton>
+          <Bouton variante="principal" icone={Save} chargement={enCours} disabled={!valide} onClick={handleSubmit}>{editItem ? 'Enregistrer' : 'Ajouter'}</Bouton>
+        </>
+      )}>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <Segmente ariaLabel="Type" pleineLargeur valeur={form.type} onChange={(v) => handleChange('type', v)}
+          options={[{ valeur: 'entree', libelle: 'Entrée' }, { valeur: 'sortie', libelle: 'Sortie' }]} />
+        <Champ id="mouvement-description" libelle="Description" value={form.description} placeholder="Ex. : paiement facture n° 124"
+          onChange={(e) => handleChange('description', e.target.value)} />
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <Champ id="mouvement-montant" libelle="Montant TTC (€)" type="text" inputMode="decimal" value={form.montant} placeholder="0"
+            onChange={(e) => handleChange('montant', e.target.value)} />
+          <ChoixFenetre id="mouvement-taux" libelle="Taux de TVA" options={OPTIONS_TAUX} valeur={form.tauxTva} onChange={(v) => handleChange('tauxTva', v)} />
+          <Champ id="mouvement-date" libelle="Date" type="date" value={form.date} onChange={(e) => handleChange('date', e.target.value)} />
         </div>
-        <div className="px-5 py-4 space-y-4">
-          <div>
-            <label className={labelCls}>Type</label>
-            <div className={`inline-flex rounded-xl p-1 bg-surface-2`}>
-              {['entree', 'sortie'].map((t) => (
-                <button key={t} type="button" onClick={() => handleChange('type', t)}
-                  className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${form.type === t ? t === 'entree' ? 'bg-emerald-500 text-white shadow-md' : 'bg-red-500 text-white shadow-md' : 'text-encre-3 hover:text-encre'}`}>
-                  {t === 'entree' ? 'Entrée' : 'Sortie'}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div>
-            <label className={labelCls}>Description</label>
-            <input type="text" autoFocus className={inputCls} placeholder="Ex: Paiement facture #124" value={form.description} onChange={(e) => handleChange('description', e.target.value)} required />
-          </div>
-          <div className="grid grid-cols-3 gap-3">
-            <div>
-              <label className={labelCls}>Montant TTC (€)</label>
-              <input type="number" className={inputCls} placeholder="0" min="0" step="0.01" value={form.montant} onChange={(e) => handleChange('montant', e.target.value)} required />
-            </div>
-            <div>
-              <label className={labelCls}>Taux TVA (%)</label>
-              <select className={inputCls} value={form.tauxTva} onChange={(e) => handleChange('tauxTva', parseFloat(e.target.value))}>
-                <option value={20}>20%</option>
-                <option value={10}>10%</option>
-                <option value={5.5}>5,5%</option>
-                <option value={2.1}>2,1%</option>
-                <option value={0}>0% (exonéré)</option>
-              </select>
-            </div>
-            <div>
-              <label className={labelCls}>Date</label>
-              <input type="date" className={inputCls} value={form.date} onChange={(e) => handleChange('date', e.target.value)} required />
-            </div>
-          </div>
-          {/* TVA decomposition display */}
-          {montantNum > 0 && (
-            <div className={`flex items-center gap-4 p-3 rounded-xl text-xs bg-surface-2 border border-bord`}>
-              <span className={textSecondaryLocal}>HT : <strong>{formatCurrency(montantHt)}</strong></span>
-              <span className={textSecondaryLocal}>TVA : <strong>{formatCurrency(montantTva)}</strong></span>
-              <span className={textSecondaryLocal}>TTC : <strong>{formatCurrency(montantNum)}</strong></span>
-            </div>
-          )}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className={labelCls}>Catégorie</label>
-              <select className={inputCls} value={form.categorie} onChange={(e) => handleChange('categorie', e.target.value)}>
-                {CATEGORIES_PREVISION.map((c) => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
-            <div className="flex flex-col gap-2">
-              <label className={`flex items-center gap-2 mt-5 cursor-pointer select-none`}>
-                <input type="checkbox" checked={form.autoliquidation} onChange={(e) => handleChange('autoliquidation', e.target.checked)}
-                  className="w-4 h-4 rounded" />
-                <span className={`text-xs text-encre-2`}>Autoliquidation TVA</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer select-none">
-                <input type="checkbox" checked={form.isRecurring} onChange={(e) => handleChange('isRecurring', e.target.checked)}
-                  className="w-4 h-4 rounded" />
-                <span className={`text-xs text-encre-2`}>Récurrent</span>
-              </label>
-            </div>
-          </div>
-          {form.isRecurring && (
-            <div>
-              <label className={labelCls}>Fréquence</label>
-              <select className={inputCls} value={form.recurringFrequency} onChange={(e) => handleChange('recurringFrequency', e.target.value)}>
-                <option value="mensuel">Mensuel</option>
-                <option value="trimestriel">Trimestriel</option>
-                <option value="annuel">Annuel</option>
-              </select>
-            </div>
-          )}
-          <div>
-            <label className={labelCls}>Notes (optionnel)</label>
-            <input type="text" className={inputCls} placeholder="Référence, détails..." value={form.notes} onChange={(e) => handleChange('notes', e.target.value)} />
-          </div>
+        {montantNum > 0 && (
+          <p className="flex flex-wrap items-center gap-x-4 gap-y-1 p-3 rounded-xl text-sm bg-surface-2 text-encre-2 tabular-nums">
+            <span>HT : <strong className="text-encre">{formatCurrency(montantHt)}</strong></span>
+            <span>TVA : <strong className="text-encre">{formatCurrency(montantTva)}</strong></span>
+            <span>TTC : <strong className="text-encre">{formatCurrency(montantNum)}</strong></span>
+          </p>
+        )}
+        <ChoixFenetre id="mouvement-categorie" libelle="Catégorie" options={OPTIONS_CATEGORIE} valeur={form.categorie} onChange={(v) => handleChange('categorie', v)} />
+        <div className="flex flex-col gap-1">
+          <label className="flex items-center gap-3 min-h-[44px] cursor-pointer select-none text-sm text-encre-2">
+            <input type="checkbox" checked={form.autoliquidation} onChange={(e) => handleChange('autoliquidation', e.target.checked)} className="w-5 h-5 rounded accent-accent" />
+            Autoliquidation de la TVA
+          </label>
+          <label className="flex items-center gap-3 min-h-[44px] cursor-pointer select-none text-sm text-encre-2">
+            <input type="checkbox" checked={form.isRecurring} onChange={(e) => handleChange('isRecurring', e.target.checked)} className="w-5 h-5 rounded accent-accent" />
+            Récurrent
+          </label>
         </div>
-        <div className={`flex items-center justify-end gap-3 px-5 py-4 border-t border-bord`}>
-          <button type="button" onClick={onClose} className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors text-encre-3 hover:text-encre`}>Annuler</button>
-          <button type="submit" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90 active:scale-[0.98] shadow-md" style={{ backgroundColor: couleur || '#3b82f6' }}>
-            <Save size={16} /> {editItem ? 'Enregistrer' : 'Ajouter'}
-          </button>
-        </div>
+        {form.isRecurring && (
+          <ChoixFenetre id="mouvement-frequence" libelle="Fréquence" options={OPTIONS_RECURRENCE.filter((o) => o.valeur !== 'unique')}
+            valeur={form.recurringFrequency} onChange={(v) => handleChange('recurringFrequency', v)} />
+        )}
+        <Champ id="mouvement-notes" libelle="Notes" facultatif value={form.notes} placeholder="Référence, détails…" onChange={(e) => handleChange('notes', e.target.value)} />
+        <button type="submit" className="sr-only" tabIndex={-1} aria-hidden="true">Enregistrer</button>
       </form>
-    </div>
+    </Modal>
   );
 }
-
 // ---------------------------------------------------------------------------
 // Main Component
 // ---------------------------------------------------------------------------
 
+// isDark et couleur restent acceptés : jetons du thème (clair, sombre, accent de l'entreprise)
+// peutModifier : faux en lecture seule (rôle « readonly », Finances en consultation) — rien à ajouter, modifier ni supprimer
 export default function TresorerieModule({
-  devis = [], depenses = [], chantiers = [], clients = [],
-  entreprise, isDark = false, couleur = '#3b82f6', setPage, ouvrirDocument,
-  modeDiscret = false, paiements = [],
+  devis = [], depenses = [], chantiers: _chantiers = [], clients = [],
+  entreprise, isDark: _isDark = false, couleur: _couleur, setPage: _setPage, ouvrirDocument,
+  modeDiscret = false, paiements = [], peutModifier = true,
 }) {
   // Helper: mask financial amounts when modeDiscret is active
   const formatMoney = useCallback((amount) => modeDiscret ? '••••\u00a0€' : formatCurrency(amount), [modeDiscret]);
@@ -649,7 +554,7 @@ export default function TresorerieModule({
     previsions, setPrevisions, loading: tresorerieLoading,
     addPrevision, updatePrevision, deletePrevision: hookDeletePrevision, markAsPaid: hookMarkAsPaid,
     settings: reglagesTresorerie, updateSettings,
-    reglements, addReglement, deleteReglement,
+    reglements,
     mouvements, addMouvement, updateMouvement, deleteMouvement, validerMouvement,
     mouvementsKPIs,
     getSyncedIds, saveSyncedIds,
@@ -669,7 +574,7 @@ export default function TresorerieModule({
   const tvaHook = useTVA({ devis, depenses, mouvements, settings });
 
   // -- Hook: Export comptable ──────────────────────────────────────
-  const { exportJournalVentes, exportJournalAchats, exportReglements: exportReglementsCSV, exportMouvements: exportMouvementsCSV } = useExportComptable({
+  const { exportJournalVentes, exportJournalAchats, exportMouvements: exportMouvementsCSV } = useExportComptable({
     devis, depenses, reglements, mouvements, clients, entreprise,
   });
 
@@ -1005,11 +910,13 @@ export default function TresorerieModule({
   const handleSavePrevision = useCallback(async (prev) => {
     const existing = previsions.find(p => p.id === prev.id);
     if (existing) {
-      await updatePrevision(prev.id, prev);
+      const modifiee = await updatePrevision(prev.id, prev);
+      if (!modifiee) return false; // refusée : dite par le hook, la fenêtre et la saisie restent
     } else {
       const creee = await addPrevision(prev);
+      if (!creee) return false;
       // Échéances suivantes seulement si la première est enregistrée (sinon : refusée, déjà signalée)
-      if (creee && prev.recurrence && prev.recurrence !== 'unique') {
+      if (prev.recurrence && prev.recurrence !== 'unique') {
         const instances = generateRecurring(prev);
         for (const inst of instances) {
           await addPrevision(inst);
@@ -1017,6 +924,7 @@ export default function TresorerieModule({
       }
     }
     setEditingItem(null);
+    return true;
   }, [previsions, addPrevision, updatePrevision]);
 
   const handleDeletePrevision = useCallback(async (id) => {
@@ -1093,12 +1001,10 @@ export default function TresorerieModule({
 
   // ── Mouvement handlers ─────────────────────────────────────────────
   const handleSaveMouvement = useCallback(async (mouv) => {
-    if (editingMouv) {
-      await updateMouvement(mouv.id, mouv);
-    } else {
-      await addMouvement(mouv);
-    }
+    const ecrit = editingMouv ? await updateMouvement(mouv.id, mouv) : await addMouvement(mouv);
+    if (!ecrit) return false; // refusé : dit par le hook, la fenêtre et la saisie restent
     setEditingMouv(null);
+    return true;
   }, [editingMouv, addMouvement, updateMouvement]);
 
   const handleEditMouvement = useCallback((item) => {
@@ -1174,10 +1080,9 @@ export default function TresorerieModule({
   const previsionsComptees = useMemo(() => previsions.filter((p) => !estPrevisionMiroir(p)), [previsions]);
 
   const {
-    soldeActuel, totalEncaisse, totalDepense,
+    soldeActuel,
     entreesPrevues, sortiesPrevues, projectionFinMois,
     monthlyData, upcomingPayments,
-    alertNegativeBalance, alertLargePayment,
     autoSyncCount,
     projections, negativeMonth, thresholdMonth, avgMonthlyEntrees, avgMonthlySorties,
     recurringSummary,
@@ -1428,6 +1333,7 @@ export default function TresorerieModule({
 
       projections.push({
         mois: MONTH_NAMES[d.getMonth()],
+        moisLong: d.toLocaleDateString('fr-FR', d.getFullYear() === now.getFullYear() ? { month: 'long' } : { month: 'long', year: 'numeric' }),
         entrees,
         sorties,
         balance: projBalance,
@@ -1438,8 +1344,9 @@ export default function TresorerieModule({
 
     // When balance will go negative
     const negativeMonth = projections.find(p => p.balance < 0);
-    // When balance will go below threshold
-    const thresholdMonth = projections.find(p => p.balance < (settings.seuilAlerte || 5000));
+    // When balance will go below threshold (seulement si l'artisan en a réglé un : src/lib/previsions.js)
+    const seuil = seuilAlerteRegle(settings);
+    const thresholdMonth = seuil === null ? null : projections.find(p => p.balance >= 0 && p.balance < seuil);
 
     // 7. Recurring summary
     const recurringParents = previsionsComptees.filter(p => p.recurrence && p.recurrence !== 'unique' && !p.recurrenceParentId);
@@ -1470,7 +1377,7 @@ export default function TresorerieModule({
       projections, negativeMonth, thresholdMonth, avgMonthlyEntrees, avgMonthlySorties,
       recurringSummary,
     };
-  }, [devis, paiements, depenses, clients, previsionsComptees, now, period, settings.soldeInitial, settings.soldeDate, settings.seuilAlerte, franchiseImposee]);
+  }, [devis, paiements, depenses, clients, previsionsComptees, now, period, settings, franchiseImposee]);
 
   // TVA data from hook (replaces inline computation)
   const { tvaMonthly, tvaTotal, tvaByRate, tvaQuarterly, tvaNextDeadline, depensesSansTva } = tvaHook;
@@ -1534,8 +1441,9 @@ export default function TresorerieModule({
     const scenarioEndBalance = scenario[scenario.length - 1]?.balance || 0;
     const baseNegMonth = baseline.find(b => b.balance < 0);
     const scenNegMonth = scenario.find(b => b.balance < 0);
-    const baseThreshMonth = baseline.find(b => b.balance < (settings.seuilAlerte || 5000));
-    const scenThreshMonth = scenario.find(b => b.balance < (settings.seuilAlerte || 5000));
+    const seuil = seuilAlerteRegle(settings);
+    const baseThreshMonth = seuil === null ? null : baseline.find(b => b.balance < seuil);
+    const scenThreshMonth = seuil === null ? null : scenario.find(b => b.balance < seuil);
 
     return {
       baselineProjections: baseline,
@@ -1548,296 +1456,243 @@ export default function TresorerieModule({
         baseThreshMonth, scenThreshMonth,
       },
     };
-  }, [soldeActuel, avgMonthlyEntrees, avgMonthlySorties, previsionsComptees, now, scenarioParams, settings.seuilAlerte]);
+  }, [soldeActuel, avgMonthlyEntrees, avgMonthlySorties, previsionsComptees, now, scenarioParams, settings]);
 
   // -- Render ---------------------------------------------------------------
-  const cardBg = 'bg-surface border-bord';
   const textPrimary = 'text-encre';
   const textSecondary = 'text-encre-3';
-  const borderColor = 'border-bord';
-  const inputCls = `w-full px-3 py-2 rounded-lg border text-sm bg-surface border-bord-fort`;
+  const CHAMP_PANNEAU = 'w-full h-11 px-3 rounded-xl border text-base sm:text-sm bg-surface border-bord-fort text-encre placeholder:text-encre-3 focus:outline-none focus:border-accent focus:ring-4 focus:ring-accent/20 disabled:opacity-60';
+  const TETE_TABLEAU = `text-sm ${textSecondary} border-b border-bord`;
+  const [projectionOuverte, setProjectionOuverte] = useState(false);
+
+  // Solde estimé (audit UX du 20 oct. 2026, P1) : ce n'est pas le compte en banque, c'est un calcul depuis le solde de
+  // départ saisi ; on le dit. Un seul bandeau au plus, et seulement si l'artisan doit agir.
+  const seuil = seuilAlerteRegle(settings);
+  const departRegle = Number(settings.soldeInitial) !== 0 && settings.soldeInitial !== undefined && settings.soldeInitial !== null;
+  const dateDepart = settings.soldeDate ? dateLue(settings.soldeDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : null;
+  const contexteSolde = departRegle && dateDepart
+    ? `Calculé depuis votre solde de départ du ${dateDepart}`
+    : 'Calculé sans solde de départ : réglez-le dans les paramètres de trésorerie';
+  const libelleProjection = period === '1m' ? 'Solde estimé fin de mois' : `Solde estimé dans ${periodMonths(period)} mois`;
+  const horsAssistant = !showWizard || wizardStep >= 2;
+  const ignorerSeuil = () => { setAlertDismissed(true); try { localStorage.setItem('cp_treso_alert_dismissed', '1'); } catch { /* préférence non enregistrée : quota plein ou navigation privée */ } };
+  const bandeau = !horsAssistant ? null
+    : negativeMonth ? {
+      id: 'negatif',
+      titre: 'Solde estimé négatif prévu',
+      ligne: `${negativeMonth.moisLong} : ${formatMoney(negativeMonth.balance)}`,
+      texte: 'D’après vos factures à encaisser, vos prévisions et la moyenne de vos derniers mois. Relancez vos factures impayées ou décalez une dépense.',
+    }
+      : (seuil !== null && soldeActuel < seuil && !alertDismissed) ? {
+        id: 'seuil',
+        titre: `Solde estimé sous votre seuil d’alerte (${formatMoney(seuil)})`,
+        ligne: null,
+        texte: `Votre solde estimé est de ${formatMoney(soldeActuel)}.`,
+      }
+        : null;
+  const ajouter = () => {
+    if (activeTab === 'mouvements') { setEditingMouv(null); setShowMouvModal(true); } else { setEditingItem(null); setShowAddModal(true); }
+  };
+  const libelleAjouter = activeTab === 'mouvements' ? 'Ajouter un mouvement' : 'Ajouter une prévision';
 
   return (
     <div className="space-y-6">
-      {/* ── En-tête (refonte du 9 oct. 2026) : « Finances › Trésorerie » faisait doublon. La période,
-          les réglages, puis le solde en tuile héros. ─────────────────────────────── */}
+      {/* ── En-tête : la période, l'ajout (au bureau), les réglages ─────────────────────────────── */}
       <div className="flex items-center justify-between gap-2">
         <Segmente ariaLabel="Période" valeur={period} onChange={setPeriod} options={PERIOD_OPTIONS.map((o) => ({ valeur: o.key, libelle: o.label }))} />
-        <div className="relative">
-          <BoutonIcone icone={Settings} libelle="Paramètres de trésorerie" variante="secondaire" onClick={() => setShowSettingsPanel(!showSettingsPanel)} aria-expanded={showSettingsPanel} />
+        <div className="flex items-center gap-2">
+          {/* Au bureau, l'ajout est dans l'en-tête (audit UX : le bouton flottant cachait « Encaisser ») */}
+          {peutModifier && (
+            <Bouton variante={horsAssistant ? 'principal' : 'secondaire'} icone={Plus} onClick={ajouter} className="hidden md:inline-flex">{libelleAjouter}</Bouton>
+          )}
+          <div className="relative">
+            <BoutonIcone icone={Settings} libelle="Paramètres de trésorerie" variante="secondaire" onClick={() => setShowSettingsPanel(!showSettingsPanel)} aria-expanded={showSettingsPanel} />
             {showSettingsPanel && (
-              <div ref={settingsPanelRef} className={`absolute right-0 top-full mt-2 z-30 p-4 rounded-xl border shadow-lg bg-surface border-bord`} style={{ minWidth: 260 }}>
-                <h4 className={`text-sm font-bold mb-3 ${textPrimary}`}>Paramètres trésorerie</h4>
+              <div ref={settingsPanelRef} className="absolute right-0 top-full mt-2 z-30 p-4 w-[19rem] max-w-[calc(100vw-2rem)] rounded-2xl border shadow-e3 bg-surface border-bord">
+                <h4 className="text-base font-bold mb-3 text-encre">Paramètres de trésorerie</h4>
                 <div className="space-y-3">
                   <div>
-                    <label className={`block text-xs font-medium mb-1 ${textSecondary}`}>Solde initial (€)</label>
-                    <input type="number" value={settings.soldeInitial || ''} placeholder="0"
+                    <label htmlFor="treso-solde-initial" className="block text-sm font-medium mb-1 text-encre-2">Solde de départ (€)</label>
+                    <input id="treso-solde-initial" type="number" inputMode="decimal" value={settings.soldeInitial || ''} placeholder="0" disabled={!peutModifier}
                       onChange={(e) => updateSettings({ soldeInitial: parseFloat(e.target.value) || 0 })}
-                      className={inputCls} />
-                    <p className={`text-xs mt-0.5 ${textSecondary}`}>Votre solde bancaire au démarrage</p>
+                      className={CHAMP_PANNEAU} />
+                    <p className="text-sm mt-1 text-encre-3">Le solde de votre compte en banque à cette date</p>
                   </div>
                   <div>
-                    <label className={`block text-xs font-medium mb-1 ${textSecondary}`}>Date du solde initial</label>
-                    <input type="date" value={settings.soldeDate || ''}
+                    <label htmlFor="treso-solde-date" className="block text-sm font-medium mb-1 text-encre-2">Date du solde de départ</label>
+                    <input id="treso-solde-date" type="date" value={settings.soldeDate || ''} disabled={!peutModifier}
                       onChange={(e) => updateSettings({ soldeDate: e.target.value })}
-                      className={inputCls} />
+                      className={CHAMP_PANNEAU} />
                   </div>
                   <div>
-                    <label className={`block text-xs font-medium mb-1 ${textSecondary}`}>Seuil d'alerte (€)</label>
-                    <input type="number" value={settings.seuilAlerte || ''} placeholder="5000"
-                      onChange={(e) => updateSettings({ seuilAlerte: parseInt(e.target.value) || 0 })}
-                      className={inputCls} />
-                    <p className={`text-xs mt-0.5 ${textSecondary}`}>Alerte si le solde passe sous ce montant</p>
+                    <label htmlFor="treso-seuil" className="block text-sm font-medium mb-1 text-encre-2">Seuil d’alerte (€) <span className="font-normal text-encre-3">(facultatif)</span></label>
+                    <input id="treso-seuil" type="number" inputMode="numeric" value={seuil ?? ''} placeholder="Aucun" disabled={!peutModifier}
+                      onChange={(e) => updateSettings({ seuilAlerte: parseInt(e.target.value, 10) || 0 })}
+                      className={CHAMP_PANNEAU} />
+                    <p className="text-sm mt-1 text-encre-3">Une alerte si le solde estimé passe sous ce montant. Vide : aucune alerte.</p>
                   </div>
-                  <div className={`pt-3 mt-1 border-t border-bord`}>
-                    <label className={`block text-xs font-medium mb-1 ${textSecondary}`}>Régime TVA</label>
+                  <div className="pt-3 mt-1 border-t border-bord">
                     {franchiseImposee ? (
-                      <p className="text-sm text-encre">Franchise en base de TVA (art. 293 B du CGI) : pas de TVA facturée ni déductible. Mallettico l’applique d’après la forme « Micro-entreprise » indiquée dans Paramètres.</p>
-                    ) : (<>
-                    <select value={settings.regimeTva || 'trimestriel'}
-                      onChange={(e) => updateSettings({ regimeTva: e.target.value })}
-                      className={inputCls}>
-                      <option value="mensuel">Réel normal (mensuel)</option>
-                      <option value="trimestriel">Réel simplifié (trimestriel)</option>
-                      <option value="franchise">Franchise en base</option>
-                    </select>
-                    <p className={`text-xs mt-0.5 ${textSecondary}`}>
-                      {(settings.regimeTva || 'trimestriel') === 'mensuel' ? 'Déclaration le 24 de chaque mois' :
-                       (settings.regimeTva || 'trimestriel') === 'trimestriel' ? 'Déclaration trimestrielle' :
-                       'TVA non applicable (art. 293 B du CGI)'}
-                    </p>
-                    </>)}
+                      <>
+                        <p className="text-sm font-medium mb-1 text-encre-2">Régime de TVA</p>
+                        <p className="text-sm text-encre">Franchise en base de TVA (art. 293 B du CGI) : pas de TVA facturée ni déductible. Mallettico l’applique d’après la forme « Micro-entreprise » indiquée dans Paramètres.</p>
+                      </>
+                    ) : (
+                      <>
+                        <label id="treso-regime-libelle" htmlFor="treso-regime" className="block text-sm font-medium mb-1 text-encre-2">Régime de TVA</label>
+                        <ChampChoix id="treso-regime" idLibelle="treso-regime-libelle" titre="Régime de TVA" disabled={!peutModifier}
+                          options={[
+                            { valeur: 'mensuel', libelle: 'Réel normal (mensuel)', detail: 'Déclaration chaque mois' },
+                            { valeur: 'trimestriel', libelle: 'Réel simplifié', detail: 'Déclaration trimestrielle' },
+                            { valeur: 'franchise', libelle: 'Franchise en base', detail: 'TVA non applicable (art. 293 B du CGI)' },
+                          ]}
+                          valeur={settings.regimeTva || 'trimestriel'} onChange={(v) => updateSettings({ regimeTva: v })} className="!h-11" />
+                      </>
+                    )}
                   </div>
                   <div>
-                    <label className={`block text-xs font-medium mb-1 ${textSecondary}`}>N° TVA intracommunautaire</label>
-                    <input type="text" value={settings.numeroTva || ''} placeholder="FR XX XXXXXXXXX"
+                    <label htmlFor="treso-numero-tva" className="block text-sm font-medium mb-1 text-encre-2">N° de TVA intracommunautaire</label>
+                    <input id="treso-numero-tva" type="text" value={settings.numeroTva || ''} placeholder="FR XX XXXXXXXXX" disabled={!peutModifier}
                       onChange={(e) => updateSettings({ numeroTva: e.target.value })}
-                      className={inputCls} />
+                      className={CHAMP_PANNEAU} />
                   </div>
                 </div>
-                <button onClick={() => setShowSettingsPanel(false)}
-                  className="mt-3 text-xs font-medium w-full py-2 rounded-lg bg-accent text-sur-accent">
-                  Fermer
-                </button>
+                <Bouton pleineLargeur className="mt-3" onClick={() => setShowSettingsPanel(false)}>Fermer</Bouton>
               </div>
             )}
+          </div>
         </div>
       </div>
+
       <TuileChiffre
         heros
-        libelle="Solde aujourd'hui"
+        libelle="Solde estimé"
         valeur={formatMoney(soldeActuel)}
-        contexte={settings.seuilAlerte ? `Seuil d'alerte : ${formatMoney(settings.seuilAlerte)}` : 'Réglez votre solde de départ dans les paramètres'}
+        contexte={contexteSolde}
+        alerte={soldeActuel < 0 ? `Négatif. ${contexteSolde}` : undefined}
+        tonAlerte="alerte"
       />
 
-      {/* ── Threshold Alert (hidden during wizard) ─────────────────── */}
-      {(!showWizard || wizardStep >= 2) && soldeActuel < (settings.seuilAlerte || 5000) && !alertDismissed && (
-        <div className={`flex items-start gap-3 p-4 rounded-2xl border ${soldeActuel < 0 ? isDark ? 'bg-red-500/10 border-red-500/30' : 'bg-red-50 border-red-200' : isDark ? 'bg-amber-500/10 border-amber-500/30' : 'bg-amber-50 border-amber-200'}`}>
-          <AlertTriangle size={20} className={`flex-shrink-0 mt-0.5 ${soldeActuel < 0 ? ('text-danger-texte') : ('text-alerte-texte')}`} />
-          <div className="flex-1">
-            <p className={`text-sm font-semibold ${soldeActuel < 0 ? (isDark ? 'text-red-300' : 'text-red-800') : (isDark ? 'text-amber-300' : 'text-amber-800')}`}>
-              Solde en dessous du seuil d'alerte ({formatMoney(settings.seuilAlerte || 5000)})
-            </p>
-            <p className={`text-xs mt-0.5 ${soldeActuel < 0 ? ('text-danger-texte') : ('text-alerte-texte')}`}>
-              Votre solde actuel de {formatMoney(soldeActuel)} est inférieur au seuil configuré.
-            </p>
-            <div className="flex items-center gap-3 mt-2">
-              <button onClick={() => setShowSettingsPanel(true)}
-                className={`text-xs font-medium px-3 py-1.5 rounded-lg transition-colors ${soldeActuel < 0 ? isDark ? 'bg-red-500/20 text-red-300 hover:bg-red-500/30' : 'bg-red-100 text-red-700 hover:bg-red-200' : isDark ? 'bg-amber-500/20 text-amber-300 hover:bg-amber-500/30' : 'bg-amber-100 text-amber-700 hover:bg-amber-200'}`}>
-                Modifier le seuil
-              </button>
-              <button onClick={() => { setAlertDismissed(true); try { localStorage.setItem('cp_treso_alert_dismissed', '1'); } catch { /* préférence non enregistrée : quota plein ou navigation privée */ } }}
-                className={`text-xs ${soldeActuel < 0 ? ('text-danger-texte') : ('text-alerte-texte')} hover:underline`}>
-                Ne plus afficher
-              </button>
-            </div>
-          </div>
-          <button onClick={() => { setAlertDismissed(true); try { localStorage.setItem('cp_treso_alert_dismissed', '1'); } catch { /* préférence non enregistrée : quota plein ou navigation privée */ } }}
-            aria-label="Fermer" className={`flex-shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg transition-colors hover:bg-surface-2`}>
-            <X size={16} className={soldeActuel < 0 ? ('text-danger-texte') : ('text-alerte-texte')} />
-          </button>
-        </div>
-      )}
-
-      {(!showWizard || wizardStep >= 2) && alertNegativeBalance && (
-        <div className={`flex items-start gap-3 p-4 rounded-2xl border ${isDark ? 'bg-amber-500/10 border-amber-500/30' : 'bg-amber-50 border-amber-200'}`}>
-          <AlertTriangle size={20} className={'text-alerte-texte'} />
-          <div>
-            <p className={`text-sm font-semibold ${isDark ? 'text-amber-300' : 'text-amber-800'}`}>Attention : solde négatif prévu</p>
-            <p className={`text-xs mt-0.5 text-alerte-texte`}>La projection indique un solde négatif dans les 30 prochains jours. Pensez à relancer vos factures impayées.</p>
+      {/* ── Un bandeau au plus : seulement si l'artisan doit agir ─────────────────────────────── */}
+      {bandeau && (
+        <div role="status" data-bandeau-tresorerie={bandeau.id} className="flex items-start gap-3 p-4 rounded-2xl bg-alerte-fond text-alerte-texte">
+          <AlertTriangle size={20} aria-hidden="true" className="flex-shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold">{bandeau.titre}</p>
+            {bandeau.ligne ? <p className="text-base font-bold tabular-nums mt-0.5">{bandeau.ligne}</p> : null}
+            <p className="text-sm mt-1">{bandeau.texte}</p>
+            {bandeau.id === 'seuil' && (
+              <div className="flex flex-wrap items-center gap-2 mt-2">
+                <Bouton taille="compacte" onClick={() => setShowSettingsPanel(true)}>Modifier le seuil</Bouton>
+                <Bouton taille="compacte" variante="discret" className="!text-alerte-texte" onClick={ignorerSeuil}>Ne plus afficher</Bouton>
+              </div>
+            )}
           </div>
         </div>
       )}
 
-      {(!showWizard || wizardStep >= 2) && alertLargePayment && (
-        <div className={`flex items-start gap-3 p-4 rounded-2xl border ${isDark ? 'bg-blue-500/10 border-blue-500/30' : 'bg-blue-50 border-blue-200'}`}>
-          <Info size={20} className={'text-info-texte'} />
-          <div>
-            <p className={`text-sm font-semibold ${isDark ? 'text-blue-300' : 'text-blue-800'}`}>Paiement important attendu</p>
-            <p className={`text-xs mt-0.5 text-info-texte`}>Facture {alertLargePayment.numero || ''} de {formatMoney(alertLargePayment.total_ttc)} attendue dans les 7 prochains jours.</p>
-          </div>
-        </div>
-      )}
-
-      {/* ── Wizard bootstrapping (Feature 4) ─────────────────────── */}
-      {showWizard && wizardStep < 2 && (
-        <div className={`rounded-2xl border overflow-hidden transition-all ${isDark ? 'bg-gradient-to-br from-slate-800 to-slate-800/80 border-slate-700' : 'bg-gradient-to-br from-white to-blue-50/30 border-blue-200'}`}>
-          {/* Minimized bar */}
+      {/* ── Assistant de démarrage de la trésorerie ─────────────────────── */}
+      {peutModifier && showWizard && wizardStep < 2 && (
+        <Carte marge="aucun" className="overflow-hidden">
           {wizardMinimized ? (
             <button
+              type="button"
               onClick={() => setWizardMinimized(false)}
-              className={`w-full flex items-center justify-between px-5 py-3 transition-colors ${isDark ? 'hover:bg-slate-700/50' : 'hover:bg-blue-50/50'}`}
+              className="w-full min-h-[64px] flex items-center justify-between px-5 py-3 transition-colors hover:bg-surface-2"
             >
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center text-accent-texte" style={{ backgroundColor: `${couleur}20` }}>
-                  <Wallet size={16} />
-                </div>
-                <div className="text-left">
-                  <p className={`text-sm font-semibold ${textPrimary}`}>Configuration trésorerie</p>
-                  <p className={`text-xs ${textSecondary}`}>Étape {wizardStep + 1}/2 — Cliquez pour continuer</p>
-                </div>
-              </div>
-              <ChevronDown size={18} className={textSecondary} />
+              <span className="flex items-center gap-3">
+                <span className="w-10 h-10 rounded-xl flex items-center justify-center bg-surface-2 text-encre-2">
+                  <Wallet size={18} aria-hidden="true" />
+                </span>
+                <span className="text-left">
+                  <span className="block text-sm font-semibold text-encre">Configuration de la trésorerie</span>
+                  <span className="block text-sm text-encre-3">Étape {wizardStep + 1} sur 2 : touchez pour continuer</span>
+                </span>
+              </span>
+              <ChevronDown size={18} aria-hidden="true" className="text-encre-3" />
             </button>
           ) : (
           <>
-          {/* Progress */}
-          <div className="flex items-center gap-0 px-5 pt-4 pb-2">
-            <div className="flex items-center gap-0 flex-1">
-            {[0, 1].map(s => (
-              <React.Fragment key={s}>
-                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
-                  wizardStep >= s ? 'text-white' : 'bg-bord text-encre-3'
-                }`} style={wizardStep >= s ? { backgroundColor: couleur } : undefined}>
-                  {wizardStep > s ? <Check size={14} /> : s + 1}
-                </div>
-                {s < 1 && <div className={`flex-1 h-0.5 mx-2 rounded ${wizardStep > s ? '' : 'bg-bord'}`} style={wizardStep > s ? { backgroundColor: couleur } : undefined} />}
-              </React.Fragment>
-            ))}
-            </div>
-            <button onClick={() => setWizardMinimized(true)} className={`min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg ml-2 hover:bg-surface-2 text-encre-3`} title="Réduire" aria-label="Réduire">
-              <ChevronUp size={16} />
-            </button>
+          {/* Étapes : un trait par étape, à l'accent pour les étapes faites et la courante */}
+          <div className="flex items-center gap-2 px-5 pt-4 pb-2">
+            <ol className="flex items-center gap-1.5 flex-1" aria-label="Étapes de la configuration">
+              {[0, 1].map((s) => (
+                <li key={s} className="flex-1" aria-current={wizardStep === s ? 'step' : undefined}>
+                  <span aria-hidden="true" className={`block h-1.5 rounded-full ${wizardStep >= s ? 'bg-accent' : 'bg-bord'}`} />
+                  <span className="sr-only">Étape {s + 1}{wizardStep > s ? ' (faite)' : ''}</span>
+                </li>
+              ))}
+            </ol>
+            <BoutonIcone icone={ChevronUp} taille={16} libelle="Réduire" onClick={() => setWizardMinimized(true)} />
           </div>
 
           {wizardStep === 0 && (
             <div className="px-5 pb-5">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-accent-texte" style={{ backgroundColor: `${couleur}20` }}>
-                  <Wallet size={20} />
-                </div>
-                <div>
-                  <h3 className={`text-base font-bold ${textPrimary}`}>Bienvenue dans la Trésorerie</h3>
-                  <p className={`text-sm ${textSecondary}`}>Étape 1/2 : Votre solde bancaire actuel</p>
-                </div>
+              <div className="mb-4">
+                <h3 className="text-base font-bold text-encre">Bienvenue dans la trésorerie</h3>
+                <p className="text-sm text-encre-3">Étape 1 sur 2 : le solde de votre compte aujourd’hui</p>
               </div>
               <div className="space-y-3">
-                <div>
-                  <label className={`block text-xs font-medium mb-1 ${textSecondary}`}>Solde actuel de votre compte (€)</label>
-                  <input type="number" placeholder="ex: 15000"
-                    value={settings.soldeInitial || ''}
-                    onChange={(e) => updateSettings({ soldeInitial: parseFloat(e.target.value) || 0 })}
-                    className={`w-full px-4 py-3 rounded-xl border text-lg font-bold bg-surface border-bord-fort`}
-                  />
-                  <p className={`text-xs mt-1 ${textSecondary}`}>Ce sera votre point de départ pour les projections</p>
-                </div>
-                <button onClick={() => setWizardStep(1)}
-                  className="w-full py-3 rounded-xl text-sm font-semibold transition-all hover:opacity-90 bg-accent text-sur-accent">
-                  Suivant →
-                </button>
-                {/* UX-010: bouton pour passer le wizard */}
-                <button onClick={() => { try { localStorage.setItem('cp_treso_wizard_done', '1'); } catch { /* préférence non enregistrée : quota plein ou navigation privée */ } setWizardStep(2); }}
-                  className={`w-full py-2 text-xs font-medium transition-colors text-encre-3 hover:text-encre`}>
-                  Passer cette étape →
-                </button>
+                <Champ id="treso-assistant-solde" libelle="Solde actuel de votre compte (€)" type="number" inputMode="decimal" placeholder="Ex. : 15000"
+                  value={settings.soldeInitial || ''} onChange={(e) => updateSettings({ soldeInitial: parseFloat(e.target.value) || 0 })}
+                  aide="Ce sera votre point de départ pour les projections." />
+                <Bouton variante="principal" pleineLargeur iconeFin={ChevronRight} onClick={() => setWizardStep(1)}>Suivant</Bouton>
+                <Bouton variante="discret" pleineLargeur onClick={() => { try { localStorage.setItem('cp_treso_wizard_done', '1'); } catch { /* préférence non enregistrée : quota plein ou navigation privée */ } setWizardStep(2); }}>
+                  Passer cette étape
+                </Bouton>
               </div>
             </div>
           )}
 
           {wizardStep === 1 && (
             <div className="px-5 pb-5">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-accent-texte" style={{ backgroundColor: `${couleur}20` }}>
-                  <Zap size={20} />
-                </div>
-                <div>
-                  <h3 className={`text-base font-bold ${textPrimary}`}>Vos charges mensuelles</h3>
-                  <p className={`text-sm ${textSecondary}`}>Étape 2/2 : Sélectionnez et ajustez</p>
-                </div>
+              <div className="mb-4">
+                <h3 className="text-base font-bold text-encre">Vos charges mensuelles</h3>
+                <p className="text-sm text-encre-3">Étape 2 sur 2 : cochez et ajustez</p>
               </div>
-              <div className="space-y-2 max-h-64 overflow-y-auto">
+              <ul className="space-y-2 max-h-72 overflow-y-auto">
                 {STARTER_TEMPLATES.map((tmpl) => {
                   const isSelected = wizardCharges[tmpl.description] !== undefined;
+                  const basculer = () => {
+                    if (isSelected) setWizardCharges(prev => { const n = { ...prev }; delete n[tmpl.description]; return n; });
+                    else setWizardCharges(prev => ({ ...prev, [tmpl.description]: tmpl.montant }));
+                  };
                   return (
-                    <div key={tmpl.description}
-                      role="button" tabIndex={0}
-                      className={`flex items-center gap-3 px-3 py-2 rounded-xl border transition-colors cursor-pointer ${
-                        isSelected
-                          ? isDark ? 'border-blue-500/50 bg-blue-500/10' : 'border-blue-300 bg-blue-50'
-                          : 'border-bord bg-surface hover:bg-surface-2'
-                      }`}
-                      onClick={() => {
-                        if (isSelected) {
-                          setWizardCharges(prev => { const n = { ...prev }; delete n[tmpl.description]; return n; });
-                        } else {
-                          setWizardCharges(prev => ({ ...prev, [tmpl.description]: tmpl.montant }));
-                        }
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault();
-                          if (isSelected) {
-                            setWizardCharges(prev => { const n = { ...prev }; delete n[tmpl.description]; return n; });
-                          } else {
-                            setWizardCharges(prev => ({ ...prev, [tmpl.description]: tmpl.montant }));
-                          }
-                        }
-                      }}>
-                      <span className="min-w-[44px] min-h-[44px] flex items-center justify-center flex-shrink-0" role="checkbox" aria-checked={isSelected} aria-label={tmpl.description}>
-                        <span className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${
-                          isSelected ? 'border-blue-500 bg-blue-500' : 'border-bord-fort'
-                        }`}>
-                          {isSelected && <Check size={12} className="text-white" />}
-                        </span>
-                      </span>
-                      <span className={`flex-1 text-sm ${textPrimary}`}>{tmpl.description}</span>
+                    <li key={tmpl.description} className={`flex items-center gap-2 pr-3 rounded-xl border transition-colors ${isSelected ? 'border-accent bg-accent/10' : 'border-bord bg-surface'}`}>
+                      <label className="flex flex-1 items-center gap-3 min-h-[48px] pl-3 cursor-pointer">
+                        <input type="checkbox" checked={isSelected} onChange={basculer} className="w-5 h-5 rounded accent-accent flex-shrink-0" />
+                        <span className="flex-1 text-sm text-encre">{tmpl.description}</span>
+                      </label>
                       {isSelected ? (
-                        <input type="number" value={wizardCharges[tmpl.description]}
-                          onClick={(e) => e.stopPropagation()}
+                        <input type="number" inputMode="decimal" value={wizardCharges[tmpl.description]} aria-label={`Montant de ${tmpl.description} par mois`}
                           onChange={(e) => setWizardCharges(prev => ({ ...prev, [tmpl.description]: Number(e.target.value) || 0 }))}
-                          className={`w-24 px-2 py-1 rounded-lg border text-sm text-right font-semibold bg-surface border-bord`}
-                        />
+                          className="w-24 h-11 px-2 rounded-lg border text-base sm:text-sm text-right font-semibold bg-surface border-bord-fort text-encre" />
                       ) : (
-                        <span className={`text-xs ${textSecondary}`}>{formatCurrency(tmpl.montant)}/mois</span>
+                        <span className="text-sm text-encre-3 tabular-nums">{formatCurrency(tmpl.montant)} par mois</span>
                       )}
-                    </div>
+                    </li>
                   );
                 })}
-              </div>
+              </ul>
               <div className="flex items-center gap-3 mt-4">
-                <button onClick={() => setWizardStep(0)}
-                  className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-colors text-encre-3 hover:text-encre`}>
-                  {'\u2190'} Retour
-                </button>
-                <button onClick={handleWizardFinish}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all hover:opacity-90 bg-accent text-sur-accent">
+                <Bouton variante="discret" icone={ChevronLeft} onClick={() => setWizardStep(0)}>Retour</Bouton>
+                <Bouton variante="principal" className="flex-1" onClick={handleWizardFinish}>
                   {Object.keys(wizardCharges).length > 0
                     ? `Ajouter ${Object.keys(wizardCharges).length} charge${Object.keys(wizardCharges).length > 1 ? 's' : ''} et commencer`
                     : 'Commencer sans charges'}
-                </button>
+                </Bouton>
               </div>
             </div>
           )}
           </>
           )}
-        </div>
+        </Carte>
       )}
 
-      {/* ── Widget "À encaisser maintenant" (hidden during wizard) ── */}
-      {(!showWizard || wizardStep >= 2) && encaisserData.items.length > 0 && showEncaisserWidget && (
+      {/* ── « À encaisser » ─────────────────────────────────────────────── */}
+      {horsAssistant && encaisserData.items.length > 0 && showEncaisserWidget && (
         <section aria-label="À encaisser maintenant">
-          {/* Refonte du 9 oct. 2026 : une ligne par facture (client, n°, retard ou échéance, reste dû),
-              relancer et encaisser en un geste, cibles de 44 px. Avant : 26 px, pastilles « F-… » de 10 px. */}
+          {/* Une ligne par facture (client, n°, retard ou échéance, reste dû), relancer et encaisser en un geste. */}
           <TitreSection
             titre="À encaisser"
             compte={encaisserData.items.length}
@@ -1860,7 +1715,7 @@ export default function TresorerieModule({
                 montant={formatMoney(item.montant)}
                 meta={`${item.numero}${item.isOverdue ? ` · ${item.joursRetard} j de retard` : item.echeance ? ` · échéance ${dateLue(item.echeance).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}` : ''}`}
                 pastille={<PastilleStatut genre="facture" statut={item.statutVu} />}
-                pied={(
+                pied={peutModifier ? (
                   <>
                     <span />
                     <span className="flex items-center gap-2">
@@ -1870,7 +1725,7 @@ export default function TresorerieModule({
                       {ouvrirDocument && <Bouton taille="compacte" icone={Check} onClick={() => ouvrirDocument(item.id)}>Encaisser</Bouton>}
                     </span>
                   </>
-                )}
+                ) : null}
               />
             ))}
             {encaisserData.items.length > 5 && (
@@ -1882,43 +1737,53 @@ export default function TresorerieModule({
         </section>
       )}
 
-      {/* ── KPI Cards ──────────────────────────────────────────────── */}
-      {/* Le solde est dans la tuile héros ; ici ce qui va entrer, sortir, et où l'on finit le mois. */}
+      {/* ── Ce qui va entrer, sortir, et où l'on arrive au bout de la période ──────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 [&>*:last-child]:col-span-2 lg:[&>*:last-child]:col-span-1">
-        <KpiCard label="Entrées prévues" value={formatMoney(entreesPrevues)} icon={ArrowDown}
-          color="#10b981" trendLabel="Factures impayées + prévisions" isDark={isDark} />
-        <KpiCard label="Sorties prévues" value={formatMoney(sortiesPrevues)} icon={ArrowUp}
-          color="#ef4444" trendLabel="Charges + prévisions" isDark={isDark} />
-        <KpiCard label="Projection fin de mois" value={formatMoney(projectionFinMois)} icon={TrendingUp}
-          color={projectionFinMois < 0 ? '#ef4444' : projectionFinMois < (settings.seuilAlerte || 5000) ? '#f97316' : couleur} trendLabel="Solde + entrées - sorties" isDark={isDark} />
+        <TuileChiffre libelle="Entrées prévues" valeur={formatMoney(entreesPrevues)} contexte="Factures à encaisser et prévisions" />
+        <TuileChiffre libelle="Sorties prévues" valeur={formatMoney(sortiesPrevues)} contexte="Charges et prévisions" />
+        <TuileChiffre libelle={libelleProjection} valeur={formatMoney(projectionFinMois)}
+          contexte="Solde estimé, plus les entrées, moins les sorties"
+          alerte={projectionFinMois < 0 ? 'Négatif' : (seuil !== null && projectionFinMois < seuil) ? 'Sous votre seuil d’alerte' : undefined}
+          tonAlerte="alerte" />
       </div>
 
-      {/* ── TVA déductible auto-calculée (Feature 5 — Aperçu only) ──── */}
+      {/* ── Graphique ─────────────────────────────────────────────────────────── */}
+      <Carte>
+        <div className="flex items-baseline justify-between gap-3 mb-3">
+          <h2 className="text-lg font-semibold text-encre">Flux de trésorerie</h2>
+          <span className="text-sm text-encre-3 tabular-nums">{monthlyData.length} mois</span>
+        </div>
+        {monthlyData.length > 0 && monthlyData.some(d => d.entrees > 0 || d.sorties > 0) ? (
+          <>
+            <div className="sm:hidden"><CashFlowChart data={monthlyData} compact /></div>
+            <div className="hidden sm:block"><CashFlowChart data={monthlyData} /></div>
+          </>
+        ) : (
+          <EtatVide icone={BarChart3} titre="Pas encore de données"
+            texte="Ajoutez votre première entrée ou sortie pour voir votre flux de trésorerie."
+            action={peutModifier ? <Bouton icone={Plus} onClick={() => setShowAddModal(true)}>Ajouter une prévision</Bouton> : null} />
+        )}
+      </Carte>
+
+      {/* ── Repliés (audit UX : la page faisait 4 860 px au téléphone, tout ouvert) ─────────────── */}
       {activeTab === 'apercu' && (settings.regimeTva || 'trimestriel') !== 'franchise' && (tvaTotal.collectee > 0 || tvaTotal.deductible > 0) && (
-        <Carte as="button" onClick={() => setActiveTab('tva')} aria-label="TVA : voir le détail">
-          <span className="flex items-center justify-between gap-3">
-            <span className="text-base font-semibold text-encre">TVA</span>
-            <span className="flex items-center gap-0.5 text-sm font-semibold text-accent-texte">Détail <ChevronRight size={16} aria-hidden="true" /></span>
-          </span>
-          <span className="mt-3 grid grid-cols-3 gap-3">
-            <span className="min-w-0">
-              <span className="block text-sm text-encre-2">Facturée</span>
-              <span className="block text-base font-bold text-encre tabular-nums truncate">{formatMoney(tvaTotal.collectee)}</span>
+        <Carte as="button" marge="aucun" onClick={() => setActiveTab('tva')} className="overflow-hidden" aria-label="TVA de l’année : voir le détail">
+          <span className="min-h-[64px] flex items-center gap-3 px-4 py-3">
+            <span className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 bg-surface-2 text-encre-2">
+              <Percent size={20} aria-hidden="true" />
             </span>
-            <span className="min-w-0">
-              <span className="block text-sm text-encre-2">Déductible</span>
-              <span className="block text-base font-bold text-encre tabular-nums truncate">{formatMoney(tvaTotal.deductible)}</span>
+            <span className="flex-1 min-w-0">
+              <span className="block text-base font-semibold text-encre">TVA de l’année</span>
+              <span className="block text-sm text-encre-2 tabular-nums truncate">
+                {tvaTotal.net >= 0 ? 'Solde estimé' : 'Crédit estimé'} : {formatMoney(Math.abs(tvaTotal.net))}
+              </span>
             </span>
-            <span className="min-w-0">
-              <span className="block text-sm text-encre-2">{tvaTotal.net >= 0 ? 'Solde estimé' : 'Crédit estimé'}</span>
-              <span className="block text-base font-bold text-encre tabular-nums truncate">{formatMoney(Math.abs(tvaTotal.net))}</span>
-            </span>
+            <ChevronRight size={18} aria-hidden="true" className="flex-shrink-0 text-encre-3" />
           </span>
         </Carte>
       )}
 
-      {/* ── Widget Charges courantes BTP (Feature 6) ────────────────── */}
-      {activeTab === 'apercu' && (
+      {activeTab === 'apercu' && peutModifier && (
         <Carte marge="aucun" className="overflow-hidden">
           <button
             type="button"
@@ -1975,6 +1840,55 @@ export default function TresorerieModule({
         </Carte>
       )}
 
+      {activeTab !== 'tva' && activeTab !== 'projections' && activeTab !== 'mouvements' && projections.length > 0 && (
+        <Carte marge="aucun" className="overflow-hidden" data-projection-6-mois>
+          <button type="button" aria-expanded={projectionOuverte} onClick={() => setProjectionOuverte((o) => !o)}
+            className="w-full min-h-[64px] flex items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-surface-2/60">
+            <span className="flex items-center gap-3 min-w-0">
+              <span className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 bg-surface-2 text-encre-2">
+                <TrendingUp size={20} aria-hidden="true" />
+              </span>
+              <span className="min-w-0">
+                <span className="block text-base font-semibold text-encre">Projection à 6 mois</span>
+                <span className="block text-sm text-encre-2 tabular-nums truncate">
+                  {projections[projections.length - 1].moisLong} : {formatMoney(projections[projections.length - 1].balance)}
+                </span>
+              </span>
+            </span>
+            {projectionOuverte ? <ChevronUp size={20} aria-hidden="true" className="flex-shrink-0 text-encre-3" /> : <ChevronDown size={20} aria-hidden="true" className="flex-shrink-0 text-encre-3" />}
+          </button>
+          {projectionOuverte && (
+            <div className="px-4 pb-4 border-t border-bord">
+              {thresholdMonth && !negativeMonth ? (
+                <Pastille ton="alerte" icone={AlertTriangle} className="mt-3">Sous votre seuil en {thresholdMonth.moisLong}</Pastille>
+              ) : null}
+              <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                {projections.map((p, i) => {
+                  const isNeg = p.balance < 0;
+                  const isBelowThreshold = seuil !== null && p.balance < seuil;
+                  return (
+                    <div key={i} title={p.items?.length > 0 ? p.items.map(it => `${it.type === 'entree' ? '+' : '-'} ${it.label}: ${formatCompact(it.montant)}`).join('\n') : 'Basé sur la moyenne'}
+                      className="p-3 rounded-xl bg-surface-2 cursor-default">
+                      <p className="text-sm font-semibold text-encre-2 capitalize">{p.mois}</p>
+                      <p className={`mt-0.5 text-lg font-bold tabular-nums ${isNeg || isBelowThreshold ? 'text-alerte-texte' : 'text-encre'}`}>
+                        {formatMoney(p.balance)}
+                      </p>
+                      <p className="text-sm text-encre-3 tabular-nums">
+                        +{modeDiscret ? '···' : formatCompact(p.entrees)} / −{modeDiscret ? '···' : formatCompact(p.sorties)}
+                      </p>
+                      {p.isScheduled && <p className="text-sm text-encre-3">avec vos prévisions</p>}
+                    </div>
+                  );
+                })}
+              </div>
+              <p className="text-sm mt-3 text-encre-3">
+                Basé sur la moyenne des {period === '6m' ? '6' : '3'} derniers mois ({formatMoney(avgMonthlyEntrees)} entrées / {formatMoney(avgMonthlySorties)} sorties par mois) et les prévisions planifiées.
+              </p>
+            </div>
+          )}
+        </Carte>
+      )}
+
       {/* ── Mouvements ce mois (Aperçu) ─────────────────────────────── */}
       {activeTab === 'apercu' && mouvements.length > 0 && (
         <Carte as="button" marge="aucun" onClick={() => setActiveTab('mouvements')} className="overflow-hidden">
@@ -1996,65 +1910,8 @@ export default function TresorerieModule({
         </Carte>
       )}
 
-      {/* ── Cash Flow Chart ────────────────────────────────────────── */}
-      <Carte>
-        <div className="flex items-baseline justify-between gap-3 mb-3">
-          <h2 className="text-lg font-semibold text-encre">Flux de trésorerie</h2>
-          <span className="text-sm text-encre-3 tabular-nums">{monthlyData.length} mois</span>
-        </div>
-        {monthlyData.length > 0 && monthlyData.some(d => d.entrees > 0 || d.sorties > 0) ? (
-          <>
-            <div className="sm:hidden"><CashFlowChart data={monthlyData} compact /></div>
-            <div className="hidden sm:block"><CashFlowChart data={monthlyData} /></div>
-          </>
-        ) : (
-          <div className="flex flex-col items-center justify-center py-10 px-4 text-center">
-            <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4 bg-surface-2 text-encre-3">
-              <BarChart3 size={28} aria-hidden="true" />
-            </div>
-            <p className="text-base font-semibold mb-1 text-encre">Pas encore de données</p>
-            <p className="text-sm max-w-sm text-encre-2">Ajoutez votre première entrée ou sortie pour voir votre flux de trésorerie.</p>
-            <Bouton className="mt-4" icone={Plus} onClick={() => setShowAddModal(true)}>Ajouter un mouvement</Bouton>
-          </div>
-        )}
-      </Carte>
-
-      {/* ── Cash Flow Projections ──────────────────────────────────── */}
-      {activeTab !== 'tva' && activeTab !== 'projections' && activeTab !== 'mouvements' && projections.length > 0 && (
-        <Carte>
-          <h2 className="text-lg font-semibold text-encre">Projection à 6 mois</h2>
-          {negativeMonth ? (
-            <Pastille ton="danger" icone={AlertTriangle} className="mt-2">Solde négatif prévu en {negativeMonth.mois}</Pastille>
-          ) : thresholdMonth ? (
-            <Pastille ton="alerte" icone={AlertTriangle} className="mt-2">Sous le seuil en {thresholdMonth.mois}</Pastille>
-          ) : null}
-          <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-            {projections.map((p, i) => {
-              const isNeg = p.balance < 0;
-              const isBelowThreshold = p.balance < (settings.seuilAlerte || 5000);
-              return (
-                <div key={i} title={p.items?.length > 0 ? p.items.map(it => `${it.type === 'entree' ? '+' : '-'} ${it.label}: ${formatCompact(it.montant)}`).join('\n') : 'Basé sur la moyenne'}
-                  className="p-3 rounded-xl bg-surface-2 cursor-default">
-                  <p className="text-sm font-semibold text-encre-2 capitalize">{p.mois}</p>
-                  <p className={`mt-0.5 text-lg font-bold tabular-nums ${isNeg ? 'text-danger-texte' : isBelowThreshold ? 'text-alerte-texte' : 'text-encre'}`}>
-                    {formatMoney(p.balance)}
-                  </p>
-                  <p className="text-sm text-encre-3 tabular-nums">
-                    +{modeDiscret ? '···' : formatCompact(p.entrees)} / −{modeDiscret ? '···' : formatCompact(p.sorties)}
-                  </p>
-                  {p.isScheduled && <p className="text-xs text-encre-3">avec vos prévisions</p>}
-                </div>
-              );
-            })}
-          </div>
-          <p className="text-sm mt-3 text-encre-3">
-            Basé sur la moyenne des {period === '6m' ? '6' : '3'} derniers mois ({formatMoney(avgMonthlyEntrees)} entrées / {formatMoney(avgMonthlySorties)} sorties par mois) et les prévisions planifiées.
-          </p>
-        </Carte>
-      )}
-
-      {/* ── Tabs ───────────────────────────────────────────────────── */}
-      <div className={`rounded-2xl border ${cardBg}`}>
+      {/* ── Onglets ───────────────────────────────────────────────────── */}
+      <Carte marge="aucun">
         <Onglets
           onglets={TABS.map((t) => ({ id: t.key, libelle: t.label }))}
           actif={activeTab}
@@ -2064,48 +1921,34 @@ export default function TresorerieModule({
         />
         <div className="flex flex-wrap items-center gap-2 px-4 sm:px-5 pt-3">
           {activeTab !== 'tva' && activeTab !== 'projections' && activeTab !== 'mouvements' && (
-            <div className="flex items-center gap-2">
-              <Filter size={16} aria-hidden="true" className="text-encre-3" />
-              <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} aria-label="Catégorie"
-                className="h-11 sm:h-9 text-sm px-3 rounded-xl border bg-surface border-bord-fort text-encre">
-                <option value="all">Toutes catégories</option>
-                {CATEGORIES_PREVISION.map(cat => <option key={cat} value={cat}>{cat}</option>)}
-              </select>
+            <div className="w-full sm:w-56">
+              <ChampChoix id="treso-filtre-categorie" titre="Catégorie" className="!h-11"
+                options={[{ valeur: 'all', libelle: 'Toutes catégories' }, ...OPTIONS_CATEGORIE]}
+                valeur={categoryFilter} onChange={setCategoryFilter} />
             </div>
           )}
           {activeTab === 'mouvements' && (
-            <div className="flex flex-wrap items-center gap-2">
-              <Filter size={16} aria-hidden="true" className="text-encre-3" />
-              <select value={mouvFilter} onChange={(e) => setMouvFilter(e.target.value)} aria-label="Type de mouvement"
-                className="h-11 sm:h-9 text-sm px-3 rounded-xl border bg-surface border-bord-fort text-encre">
-                <option value="all">Tous types</option>
-                <option value="entree">Entrées</option>
-                <option value="sortie">Sorties</option>
-              </select>
-              <select value={mouvStatutFilter} onChange={(e) => setMouvStatutFilter(e.target.value)} aria-label="Statut du mouvement"
-                className="h-11 sm:h-9 text-sm px-3 rounded-xl border bg-surface border-bord-fort text-encre">
-                <option value="all">Tous statuts</option>
-                <option value="prevu">Prévu</option>
-                <option value="paye">Payé</option>
-              </select>
+            <div className="flex flex-wrap items-center gap-2 w-full">
+              <div className="flex-1 min-w-[9rem] sm:flex-none sm:w-44">
+                <ChampChoix id="treso-filtre-type" titre="Type de mouvement" className="!h-11"
+                  options={[{ valeur: 'all', libelle: 'Tous types' }, { valeur: 'entree', libelle: 'Entrées' }, { valeur: 'sortie', libelle: 'Sorties' }]}
+                  valeur={mouvFilter} onChange={setMouvFilter} />
+              </div>
+              <div className="flex-1 min-w-[9rem] sm:flex-none sm:w-44">
+                <ChampChoix id="treso-filtre-statut" titre="Statut du mouvement" className="!h-11"
+                  options={[{ valeur: 'all', libelle: 'Tous statuts' }, { valeur: 'prevu', libelle: 'Prévu' }, { valeur: 'paye', libelle: 'Payé' }]}
+                  valeur={mouvStatutFilter} onChange={setMouvStatutFilter} />
+              </div>
               <Bouton taille="compacte" icone={FileText} onClick={() => exportMouvementsCSV()}>Export CSV</Bouton>
             </div>
           )}
         </div>
 
-        <div className="px-5 py-4">
+        <div className="px-4 sm:px-5 py-4">
           {activeTab === 'tva' || activeTab === 'projections' || activeTab === 'mouvements' ? null : filteredPayments.length === 0 ? (
-            <div className={`text-center py-10 ${textSecondary}`}>
-              <Clock size={36} className="mx-auto mb-3 opacity-30" />
-              <p className="text-sm font-medium mb-2">Aucune prévision pour cette vue</p>
-              <p className="text-xs mb-4">Ajoutez vos charges récurrentes et entrées prévues pour suivre votre trésorerie.</p>
-              {previsions.length === 0 && (
-                <button onClick={() => setShowPrefillConfirm(true)}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium shadow-md bg-accent text-sur-accent">
-                  <Zap size={16} /> Pré-remplir les charges courantes BTP
-                </button>
-              )}
-            </div>
+            <EtatVide icone={Clock} titre="Aucune prévision pour cette vue"
+              texte="Ajoutez vos charges récurrentes et vos entrées prévues pour suivre votre trésorerie."
+              action={peutModifier && previsions.length === 0 ? <Bouton icone={Zap} onClick={() => setShowPrefillConfirm(true)}>Pré-remplir les charges courantes BTP</Bouton> : null} />
           ) : (
             <>
             {/* Téléphone : une ligne par échéance ; toucher pour modifier une prévision. */}
@@ -2114,7 +1957,7 @@ export default function TresorerieModule({
                 const isEntree = p.type === 'entree';
                 const isPrevision = p.source === 'prevision';
                 const dateStr = p.date ? dateLue(p.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
-                const aRegler = isPrevision && p.statut !== 'Payé' && p.date && new Date(p.date) <= new Date(Date.now() + 7 * 86400000);
+                const aRegler = peutModifier && isPrevision && p.statut !== 'Payé' && p.date && new Date(p.date) <= new Date(Date.now() + 7 * 86400000);
                 return (
                   <LigneListe
                     key={p.id}
@@ -2122,7 +1965,7 @@ export default function TresorerieModule({
                     montant={<span className={isEntree ? 'text-succes-texte' : ''}>{isEntree ? '+' : '−'}{formatMoney(p.montant)}</span>}
                     meta={[dateStr, p.categorie || 'Divers', p.recurrence && p.recurrence !== 'unique' ? p.recurrence : null].filter(Boolean).join(' · ')}
                     pastille={p.statut !== 'Prévu' ? <Pastille ton={TON_STATUT_PAIEMENT[p.statut] || 'neutre'}>{p.statut === 'Signé' ? 'Devis signé' : p.statut}</Pastille> : null}
-                    onClick={isPrevision ? () => handleEditPrevision(p) : undefined}
+                    onClick={isPrevision && peutModifier ? () => handleEditPrevision(p) : undefined}
                     pied={aRegler ? (
                       confirmingPaidId === p.id ? (
                         <>
@@ -2146,14 +1989,14 @@ export default function TresorerieModule({
             <div className="hidden sm:block overflow-x-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
               <table className="w-full text-sm min-w-[640px]" aria-label="Prévisions de trésorerie">
                 <thead>
-                  <tr className={`text-xs uppercase tracking-wide ${textSecondary} border-b ${borderColor}`}>
+                  <tr className={TETE_TABLEAU}>
                     <th className="text-left py-3 pr-4 font-semibold">Échéance</th>
                     <th className="text-left py-3 pr-4 font-semibold">Description</th>
                     <th className="text-left py-3 pr-4 font-semibold">Type</th>
                     <th className="text-left py-3 pr-4 font-semibold">Catégorie</th>
                     <th className="text-right py-3 pr-4 font-semibold">Montant</th>
                     <th className="text-left py-3 font-semibold">Statut</th>
-                    <th className="text-right py-3 font-semibold w-24">Actions</th>
+                    <th className="text-right py-3 font-semibold w-36"><span className="sr-only">Actions</span></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -2163,26 +2006,19 @@ export default function TresorerieModule({
                     const isPrevision = p.source === 'prevision';
 
                     return (
-                      <tr key={p.id} className={`border-b last:border-b-0 transition-colors border-bord hover:bg-surface-2`}>
+                      <tr key={p.id} className="border-b last:border-b-0 transition-colors border-bord hover:bg-surface-2">
                         <td className={`py-3 pr-4 ${textSecondary} whitespace-nowrap`}>{dateStr}</td>
                         <td className={`py-3 pr-4 ${textPrimary} font-medium max-w-[150px] sm:max-w-xs truncate`} title={p.description}>
                           {p.description}
                           {p.recurrence && p.recurrence !== 'unique' && (
-                            <span className="ml-1.5 text-xs font-normal text-encre-3">· {p.recurrence}</span>
+                            <span className="ml-1.5 text-sm font-normal text-encre-3">· {p.recurrence}</span>
                           )}
                         </td>
                         <td className="py-3 pr-4">
-                          <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-full ${isEntree ? 'bg-succes-fond text-succes-texte' : 'bg-danger-fond text-danger-texte'}`}>
-                            {isEntree ? <ArrowDown size={12} /> : <ArrowUp size={12} />}
-                            {isEntree ? 'Entrée' : 'Sortie'}
-                          </span>
+                          <Pastille ton={isEntree ? 'succes' : 'neutre'} icone={isEntree ? ArrowDown : ArrowUp}>{isEntree ? 'Entrée' : 'Sortie'}</Pastille>
                         </td>
                         <td className="py-3 pr-4">
-                          {(() => {
-                            const cat = p.categorie || 'Divers';
-                            const colors = CATEGORY_COLORS[cat] || CATEGORY_COLORS.Divers;
-                            return <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${isDark ? colors.dark : colors.bg}`}>{cat}</span>;
-                          })()}
+                          <Pastille>{p.categorie === 'Materiaux' ? 'Matériaux' : (p.categorie || 'Divers')}</Pastille>
                         </td>
                         <td className={`py-3 pr-4 text-right font-bold whitespace-nowrap tabular-nums ${isEntree ? 'text-succes-texte' : 'text-encre'}`}>
                           {isEntree ? '+' : '−'}{formatMoney(p.montant)}
@@ -2190,47 +2026,27 @@ export default function TresorerieModule({
                         <td className="py-3">
                           <Pastille ton={TON_STATUT_PAIEMENT[p.statut] || 'neutre'}>{p.statut === 'Signé' ? 'Devis signé' : p.statut}</Pastille>
                         </td>
-                        <td className="py-3 text-right">
-                          <div className="flex items-center justify-end gap-1 relative">
-                            {isPrevision && p.statut !== 'Payé' && (
-                              <>
-                                <button onClick={() => setConfirmingPaidId(confirmingPaidId === p.id ? null : p.id)}
-                                  className="p-2 rounded-lg transition-colors text-encre-3 hover:bg-succes-fond hover:text-succes-texte"
-                                  title="Marquer comme payé" aria-label="Marquer comme payé">
-                                  <Check size={14} />
-                                </button>
-                                {confirmingPaidId === p.id && (
-                                  <div className={`absolute right-0 top-full z-30 mt-1 rounded-xl border shadow-xl p-3 w-52 bg-surface border-bord`}>
-                                    <p className={`text-xs font-medium mb-2 ${textPrimary}`}>Marquer comme payé ?</p>
-                                    <div className="flex gap-1.5">
-                                      <button onClick={() => { handleMarkAsPaid(p.id); setConfirmingPaidId(null); }}
-                                        className="flex-1 px-3 py-1.5 rounded-lg text-xs font-medium text-white bg-emerald-500 hover:bg-emerald-600 transition-colors flex items-center justify-center gap-1">
-                                        <Check size={12} /> Oui
-                                      </button>
-                                      <button onClick={() => setConfirmingPaidId(null)}
-                                        className={`flex-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors bg-surface-2 text-encre-2 hover:bg-bord`}>
-                                        Non
-                                      </button>
+                        <td className="py-2 text-right">
+                          {peutModifier && isPrevision ? (
+                            <div className="flex items-center justify-end gap-0.5 relative">
+                              {p.statut !== 'Payé' && (
+                                <>
+                                  <BoutonIcone icone={Check} taille={16} libelle="Marquer comme payé" onClick={() => setConfirmingPaidId(confirmingPaidId === p.id ? null : p.id)} />
+                                  {confirmingPaidId === p.id && (
+                                    <div className="absolute right-0 top-full z-30 mt-1 rounded-2xl border shadow-e3 p-3 w-56 bg-surface border-bord text-left">
+                                      <p className="text-sm font-semibold mb-2 text-encre">Marquer comme payé ?</p>
+                                      <div className="flex gap-2">
+                                        <Bouton taille="compacte" onClick={() => setConfirmingPaidId(null)} className="flex-1">Non</Bouton>
+                                        <Bouton taille="compacte" icone={Check} onClick={() => { handleMarkAsPaid(p.id); setConfirmingPaidId(null); }} className="flex-1">Oui</Bouton>
+                                      </div>
                                     </div>
-                                  </div>
-                                )}
-                              </>
-                            )}
-                            {isPrevision && (
-                              <>
-                                <button onClick={() => handleEditPrevision(p)}
-                                  className="p-2 rounded-lg transition-colors text-encre-3 hover:bg-surface-2 hover:text-encre"
-                                  title="Modifier" aria-label="Modifier">
-                                  <Edit3 size={14} />
-                                </button>
-                                <button onClick={() => handleDeletePrevision(p.id)}
-                                  className="p-2 rounded-lg transition-colors text-encre-3 hover:bg-danger-fond hover:text-danger-texte"
-                                  title="Supprimer" aria-label="Supprimer">
-                                  <Trash2 size={14} />
-                                </button>
-                              </>
-                            )}
-                          </div>
+                                  )}
+                                </>
+                              )}
+                              <BoutonIcone icone={Edit3} taille={16} libelle="Modifier" onClick={() => handleEditPrevision(p)} />
+                              <BoutonIcone icone={Trash2} taille={16} libelle="Supprimer" className="hover:!bg-danger-fond hover:!text-danger-texte" onClick={() => handleDeletePrevision(p.id)} />
+                            </div>
+                          ) : null}
                         </td>
                       </tr>
                     );
@@ -2249,70 +2065,42 @@ export default function TresorerieModule({
           )}
 
           {/* Footer: prefill hint */}
-          {activeTab !== 'tva' && activeTab !== 'projections' && activeTab !== 'mouvements' && previsions.length === 0 && filteredPayments.length > 0 && (
-            <div className={`mt-4 pt-4 border-t ${borderColor} text-center`}>
-              <button onClick={() => setShowPrefillConfirm(true)}
-                className={`inline-flex items-center gap-2 text-sm font-medium text-encre-3 hover:text-encre`}>
-                <Zap size={14} /> Ajouter les charges courantes BTP
-              </button>
+          {peutModifier && activeTab !== 'tva' && activeTab !== 'projections' && activeTab !== 'mouvements' && previsions.length === 0 && filteredPayments.length > 0 && (
+            <div className="mt-4 pt-4 border-t border-bord text-center">
+              <Bouton variante="discret" icone={Zap} onClick={() => setShowPrefillConfirm(true)}>Ajouter les charges courantes BTP</Bouton>
             </div>
           )}
         </div>
-      </div>
+      </Carte>
 
-      {/* ── Mouvements Tab ─────────────────────────────────────────── */}
+      {/* ── Mouvements ─────────────────────────────────────────── */}
       {activeTab === 'mouvements' && (
-        <div className={`rounded-2xl border ${cardBg} p-5`}>
-          {/* Mouvements KPI summary */}
+        <Carte>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
-            <div className={`p-3 rounded-xl border ${isDark ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-emerald-50 border-emerald-100'}`}>
-              <p className={`text-xs font-semibold uppercase tracking-wide text-succes-texte`}>Entrées payées</p>
-              <p className={`text-lg font-bold text-succes-texte`}>{formatMoney(mouvementsKPIs.totalEntrees)}</p>
-            </div>
-            <div className={`p-3 rounded-xl border ${isDark ? 'bg-red-500/5 border-red-500/20' : 'bg-red-50 border-red-100'}`}>
-              <p className={`text-xs font-semibold uppercase tracking-wide text-danger-texte`}>Sorties payées</p>
-              <p className={`text-lg font-bold text-danger-texte`}>{formatMoney(mouvementsKPIs.totalSorties)}</p>
-            </div>
-            <div className={`p-3 rounded-xl border ${isDark ? 'bg-blue-500/5 border-blue-500/20' : 'bg-blue-50 border-blue-100'}`}>
-              <p className={`text-xs font-semibold uppercase tracking-wide text-info-texte`}>Entrées prévues</p>
-              <p className={`text-lg font-bold text-info-texte`}>{formatMoney(mouvementsKPIs.entreesPrevu)}</p>
-            </div>
-            <div className={`p-3 rounded-xl border bg-surface-2 border-bord`}>
-              <p className={`text-xs font-semibold uppercase tracking-wide ${textSecondary}`}>Solde net mouvements</p>
-              <p className={`text-lg font-bold ${mouvementsKPIs.soldeNet >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>{formatMoney(mouvementsKPIs.soldeNet)}</p>
-            </div>
+            <TuileChiffre libelle="Entrées payées" valeur={formatMoney(mouvementsKPIs.totalEntrees)} />
+            <TuileChiffre libelle="Sorties payées" valeur={formatMoney(mouvementsKPIs.totalSorties)} />
+            <TuileChiffre libelle="Entrées prévues" valeur={formatMoney(mouvementsKPIs.entreesPrevu)} />
+            <TuileChiffre libelle="Solde net" valeur={formatMoney(mouvementsKPIs.soldeNet)}
+              alerte={mouvementsKPIs.soldeNet < 0 ? 'Négatif' : undefined} tonAlerte="alerte" />
           </div>
 
-          {/* Add mouvement button */}
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <Wallet size={18} className="text-accent-texte" />
-              <h2 className={`text-base font-bold ${textPrimary}`}>Mouvements de trésorerie</h2>
-              <span className={`text-xs font-medium px-2 py-0.5 rounded-full bg-surface-2 text-encre-3`}>
-                {filteredMouvements.length}
-              </span>
-            </div>
-            <button onClick={() => { setEditingMouv(null); setShowMouvModal(true); }}
-              className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-all hover:opacity-90 shadow-md bg-accent text-sur-accent">
-              <Plus size={14} /> Nouveau mouvement
-            </button>
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+            <h2 className="flex items-center gap-2 text-base font-bold text-encre">
+              Mouvements de trésorerie
+              <Pastille>{filteredMouvements.length}</Pastille>
+            </h2>
+            {peutModifier && <Bouton taille="compacte" icone={Plus} onClick={() => { setEditingMouv(null); setShowMouvModal(true); }}>Nouveau mouvement</Bouton>}
           </div>
 
           {filteredMouvements.length === 0 ? (
-            <div className={`text-center py-10 ${textSecondary}`}>
-              <Wallet size={36} className="mx-auto mb-3 opacity-30" />
-              <p className="text-sm font-medium mb-2">Aucun mouvement enregistré</p>
-              <p className="text-xs mb-4">Les mouvements représentent vos transactions réelles (encaissements, décaissements) avec ventilation TVA.</p>
-              <button onClick={() => { setEditingMouv(null); setShowMouvModal(true); }}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium shadow-md bg-accent text-sur-accent">
-                <Plus size={16} /> Créer un mouvement
-              </button>
-            </div>
+            <EtatVide icone={Wallet} titre="Aucun mouvement enregistré"
+              texte="Les mouvements sont vos transactions réelles (encaissements, décaissements), avec la TVA ventilée."
+              action={peutModifier ? <Bouton icone={Plus} onClick={() => { setEditingMouv(null); setShowMouvModal(true); }}>Créer un mouvement</Bouton> : null} />
           ) : (
             <div className="overflow-x-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
               <table className="w-full text-sm min-w-[640px]" aria-label="Mouvements de trésorerie">
                 <thead>
-                  <tr className={`text-xs uppercase tracking-wide ${textSecondary} border-b ${borderColor}`}>
+                  <tr className={TETE_TABLEAU}>
                     <th className="text-left py-3 pr-4 font-semibold">Date</th>
                     <th className="text-left py-3 pr-4 font-semibold">Description</th>
                     <th className="text-left py-3 pr-4 font-semibold">Type</th>
@@ -2320,7 +2108,7 @@ export default function TresorerieModule({
                     <th className="text-right py-3 pr-4 font-semibold">TVA</th>
                     <th className="text-right py-3 pr-4 font-semibold">TTC</th>
                     <th className="text-left py-3 font-semibold">Statut</th>
-                    <th className="text-right py-3 font-semibold w-28">Actions</th>
+                    <th className="text-right py-3 font-semibold w-36"><span className="sr-only">Actions</span></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -2328,71 +2116,48 @@ export default function TresorerieModule({
                     const isEntree = m.type === 'entree';
                     const dateStr = m.date ? dateLue(m.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
                     return (
-                      <tr key={m.id} className={`border-b last:border-b-0 transition-colors border-bord hover:bg-surface-2`}>
+                      <tr key={m.id} className="border-b last:border-b-0 transition-colors border-bord hover:bg-surface-2">
                         <td className={`py-3 pr-4 ${textSecondary} whitespace-nowrap`}>{dateStr}</td>
-                        <td className={`py-3 pr-4 ${textPrimary} font-medium max-w-[150px] sm:max-w-xs truncate`} title={m.description}>
-                          {m.description}
-                          {m.isRecurring && (
-                            <span className={`ml-1.5 text-xs px-1.5 py-0.5 rounded font-medium ${isDark ? 'bg-purple-900/30 text-purple-400' : 'bg-purple-50 text-purple-600'}`}>
-                              🔄 {m.recurringFrequency || 'récurrent'}
-                            </span>
-                          )}
-                          {m.autoliquidation && (
-                            <span className={`ml-1.5 text-xs px-1.5 py-0.5 rounded font-medium bg-alerte-fond text-alerte-texte`}>
-                              Autoliq.
-                            </span>
-                          )}
+                        <td className={`py-3 pr-4 ${textPrimary} font-medium max-w-[150px] sm:max-w-xs`} title={m.description}>
+                          <span className="block truncate">{m.description}</span>
+                          <span className="flex flex-wrap gap-1 mt-0.5">
+                            {m.isRecurring && <Pastille>{m.recurringFrequency || 'récurrent'}</Pastille>}
+                            {m.autoliquidation && <Pastille ton="alerte">Autoliquidation</Pastille>}
+                          </span>
                           {m.notes && (
-                            <span className={`block text-xs mt-0.5 ${textSecondary}`}>{m.notes}</span>
+                            <span className={`block text-sm mt-0.5 font-normal ${textSecondary}`}>{m.notes}</span>
                           )}
                         </td>
                         <td className="py-3 pr-4">
-                          <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-full ${isEntree ? 'bg-succes-fond text-succes-texte' : 'bg-danger-fond text-danger-texte'}`}>
-                            {isEntree ? <ArrowDown size={12} /> : <ArrowUp size={12} />}
-                            {isEntree ? 'Entrée' : 'Sortie'}
-                          </span>
+                          <Pastille ton={isEntree ? 'succes' : 'neutre'} icone={isEntree ? ArrowDown : ArrowUp}>{isEntree ? 'Entrée' : 'Sortie'}</Pastille>
                         </td>
-                        <td className={`py-3 pr-4 text-right whitespace-nowrap ${textSecondary}`}>{formatMoney(m.montantHt || 0)}</td>
-                        <td className={`py-3 pr-4 text-right whitespace-nowrap ${textSecondary}`}>
+                        <td className={`py-3 pr-4 text-right whitespace-nowrap tabular-nums ${textSecondary}`}>{formatMoney(m.montantHt || 0)}</td>
+                        <td className={`py-3 pr-4 text-right whitespace-nowrap tabular-nums ${textSecondary}`}>
                           {m.autoliquidation ? '—' : formatMoney(m.montantTva || 0)}
-                          <span className={`block text-xs ${textSecondary}`}>{m.tauxTva || 20}%</span>
+                          <span className={`block text-sm ${textSecondary}`}>{String(m.tauxTva ?? 20).replace('.', ',')} %</span>
                         </td>
-                        <td className={`py-3 pr-4 text-right font-bold whitespace-nowrap ${isEntree ? 'text-emerald-500' : 'text-red-500'}`}>
-                          {isEntree ? '+' : '-'}{formatMoney(m.montant)}
+                        <td className={`py-3 pr-4 text-right font-bold whitespace-nowrap tabular-nums ${isEntree ? 'text-succes-texte' : 'text-encre'}`}>
+                          {isEntree ? '+' : '−'}{formatMoney(m.montant)}
                         </td>
                         <td className="py-3">
                           {m.statut === 'paye' ? (
-                            <span className={`text-xs font-medium px-2 py-1 rounded-lg bg-succes-fond text-succes-texte`}>Payé</span>
+                            <Pastille ton="succes">Payé</Pastille>
                           ) : m.statut === 'annule' ? (
-                            <span className={`text-xs font-medium px-2 py-1 rounded-lg bg-danger-fond text-danger-texte`}>Annulé</span>
+                            <Pastille>Annulé</Pastille>
                           ) : (
-                            <button onClick={() => handleValiderMouvement(m.id)}
-                              className={`text-xs font-medium px-2 py-1 rounded-lg transition-colors cursor-pointer hover:opacity-80 bg-info-fond text-info-texte`}
-                              title="Cliquez pour valider (marquer comme payé)">
-                              Prévu
-                            </button>
+                            <Pastille ton="info">Prévu</Pastille>
                           )}
                         </td>
-                        <td className="py-3 text-right">
-                          <div className="flex items-center justify-end gap-1">
-                            {m.statut !== 'paye' && (
-                              <button onClick={() => handleValiderMouvement(m.id)}
-                                className={`p-1.5 rounded-lg transition-colors ${isDark ? 'hover:bg-emerald-500/20 text-gray-500 hover:text-emerald-400' : 'hover:bg-emerald-50 text-gray-400 hover:text-emerald-500'}`}
-                                title="Marquer comme payé">
-                                <Check size={14} />
-                              </button>
-                            )}
-                            <button onClick={() => handleEditMouvement(m)}
-                              className={`p-1.5 rounded-lg transition-colors ${isDark ? 'hover:bg-blue-500/20 text-gray-500 hover:text-blue-400' : 'hover:bg-blue-50 text-gray-400 hover:text-blue-500'}`}
-                              title="Modifier">
-                              <Edit3 size={14} />
-                            </button>
-                            <button onClick={() => handleDeleteMouvement(m.id)}
-                              className={`p-1.5 rounded-lg transition-colors ${isDark ? 'hover:bg-red-500/20 text-gray-500 hover:text-red-400' : 'hover:bg-red-50 text-gray-400 hover:text-red-500'}`}
-                              title="Supprimer">
-                              <Trash2 size={14} />
-                            </button>
-                          </div>
+                        <td className="py-2 text-right">
+                          {peutModifier ? (
+                            <div className="flex items-center justify-end gap-0.5">
+                              {m.statut !== 'paye' && (
+                                <BoutonIcone icone={Check} taille={16} libelle="Marquer comme payé" onClick={() => handleValiderMouvement(m.id)} />
+                              )}
+                              <BoutonIcone icone={Edit3} taille={16} libelle="Modifier" onClick={() => handleEditMouvement(m)} />
+                              <BoutonIcone icone={Trash2} taille={16} libelle="Supprimer" className="hover:!bg-danger-fond hover:!text-danger-texte" onClick={() => handleDeleteMouvement(m.id)} />
+                            </div>
+                          ) : null}
                         </td>
                       </tr>
                     );
@@ -2401,192 +2166,100 @@ export default function TresorerieModule({
               </table>
             </div>
           )}
-        </div>
+        </Carte>
       )}
 
-      {/* ── Projections Interactives ─────────────────────────────────── */}
+      {/* ── Projections interactives ─────────────────────────────────── */}
       {activeTab === 'projections' && (
         <div className="space-y-5">
-          {/* Scenario Presets */}
-          <div className={`rounded-2xl border ${cardBg} p-5`}>
+          <Carte>
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center text-accent-texte" style={{ backgroundColor: `${couleur}20` }}>
-                <Sliders size={20} />
-              </div>
+              <span className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 bg-surface-2 text-encre-2">
+                <Sliders size={20} aria-hidden="true" />
+              </span>
               <div>
-                <h2 className={`text-base font-bold ${textPrimary}`}>Projections interactives — 12 mois</h2>
-                <p className={`text-xs ${textSecondary}`}>Ajustez les hypothèses pour simuler différents scénarios de trésorerie</p>
+                <h2 className="text-base font-bold text-encre">Projections interactives sur 12 mois</h2>
+                <p className="text-sm text-encre-3">Ajustez les hypothèses pour simuler différents scénarios de trésorerie</p>
               </div>
             </div>
 
-            {/* Preset buttons */}
-            <div className="flex flex-wrap gap-2 mb-5">
+            <div className="flex flex-wrap gap-2 mb-5" role="group" aria-label="Scénario">
               {SCENARIO_PRESETS.map(preset => {
                 const Icon = preset.icon;
                 const isActive = scenarioPreset === preset.key;
                 return (
-                  <button key={preset.key} onClick={() => handleScenarioPreset(preset.key)}
-                    className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-all ${
-                      isActive
-                        ? 'text-white shadow-md'
-                        : 'bg-surface-2 border border-bord text-encre-2 hover:bg-surface-2'
-                    }`}
-                    style={isActive ? { backgroundColor: couleur } : {}}>
-                    <Icon size={14} />
+                  <button key={preset.key} type="button" onClick={() => handleScenarioPreset(preset.key)} aria-pressed={isActive}
+                    className={`h-11 inline-flex items-center gap-2 px-4 rounded-full border text-sm font-medium transition-colors ${
+                      isActive ? 'bg-encre text-surface border-encre' : 'bg-surface border-bord text-encre-2 hover:bg-surface-2'
+                    }`}>
+                    <Icon size={15} aria-hidden="true" />
                     {preset.label}
                   </button>
                 );
               })}
-              {scenarioPreset === 'custom' && (
-                <span className={`inline-flex items-center gap-1 px-3 py-2 rounded-xl text-sm font-medium ${isDark ? 'bg-purple-500/15 text-purple-400 border border-purple-500/30' : 'bg-purple-50 text-purple-700 border border-purple-200'}`}>
-                  <Sliders size={14} /> Personnalisé
-                </span>
-              )}
+              {scenarioPreset === 'custom' && <Pastille icone={Sliders} className="self-center">Personnalisé</Pastille>}
             </div>
 
-            {/* Sliders */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* Entrées adjustment */}
-              <div className={`p-4 rounded-xl border bg-surface-2 border-bord`}>
-                <div className="flex items-center justify-between mb-2">
-                  <label className={`text-xs font-semibold ${textSecondary}`}>Variation des entrées</label>
-                  <span className={`text-sm font-bold ${scenarioParams.entreesAdj >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                    {scenarioParams.entreesAdj >= 0 ? '+' : ''}{scenarioParams.entreesAdj}%
-                  </span>
+              {[
+                { cle: 'entreesAdj', libelle: 'Variation des entrées', min: -50, max: 100, pas: 5, valeur: `${scenarioParams.entreesAdj >= 0 ? '+' : ''}${scenarioParams.entreesAdj} %`, bornes: ['−50 %', '0 %', '+100 %'] },
+                { cle: 'sortiesAdj', libelle: 'Variation des sorties', min: -50, max: 100, pas: 5, valeur: `${scenarioParams.sortiesAdj >= 0 ? '+' : ''}${scenarioParams.sortiesAdj} %`, bornes: ['−50 %', '0 %', '+100 %'] },
+                { cle: 'extraEntree', libelle: 'Entrée supplémentaire par mois', min: 0, max: 50000, pas: 1000, valeur: `+${formatMoney(scenarioParams.extraEntree)}`, bornes: ['0 €', '25 000 €', '50 000 €'] },
+                { cle: 'extraSortie', libelle: 'Charge supplémentaire par mois', min: 0, max: 30000, pas: 500, valeur: `−${formatMoney(scenarioParams.extraSortie)}`, bornes: ['0 €', '15 000 €', '30 000 €'] },
+              ].map((r) => (
+                <div key={r.cle} className="p-4 rounded-xl bg-surface-2">
+                  <div className="flex items-center justify-between mb-2">
+                    <label htmlFor={`scenario-${r.cle}`} className="text-sm font-semibold text-encre-2">{r.libelle}</label>
+                    <span className="text-sm font-bold tabular-nums text-encre">{r.valeur}</span>
+                  </div>
+                  <input id={`scenario-${r.cle}`} type="range" min={r.min} max={r.max} step={r.pas} value={scenarioParams[r.cle]}
+                    onChange={(e) => handleScenarioSlider(r.cle, parseInt(e.target.value, 10))}
+                    className="w-full h-11 cursor-pointer accent-accent" />
+                  <div className="flex justify-between text-sm text-encre-3" aria-hidden="true">
+                    {r.bornes.map((b) => <span key={b}>{b}</span>)}
+                  </div>
                 </div>
-                <input type="range" min={-50} max={100} step={5} value={scenarioParams.entreesAdj}
-                  onChange={(e) => handleScenarioSlider('entreesAdj', parseInt(e.target.value))}
-                  className="w-full h-2 rounded-lg appearance-none cursor-pointer accent-emerald-500"
-                  style={{ accentColor: '#10b981' }} />
-                <div className={`flex justify-between text-xs mt-1 ${textSecondary}`}>
-                  <span>-50%</span><span>0%</span><span>+100%</span>
-                </div>
-              </div>
-
-              {/* Sorties adjustment */}
-              <div className={`p-4 rounded-xl border bg-surface-2 border-bord`}>
-                <div className="flex items-center justify-between mb-2">
-                  <label className={`text-xs font-semibold ${textSecondary}`}>Variation des sorties</label>
-                  <span className={`text-sm font-bold ${scenarioParams.sortiesAdj <= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                    {scenarioParams.sortiesAdj >= 0 ? '+' : ''}{scenarioParams.sortiesAdj}%
-                  </span>
-                </div>
-                <input type="range" min={-50} max={100} step={5} value={scenarioParams.sortiesAdj}
-                  onChange={(e) => handleScenarioSlider('sortiesAdj', parseInt(e.target.value))}
-                  className="w-full h-2 rounded-lg appearance-none cursor-pointer"
-                  style={{ accentColor: '#ef4444' }} />
-                <div className={`flex justify-between text-xs mt-1 ${textSecondary}`}>
-                  <span>-50%</span><span>0%</span><span>+100%</span>
-                </div>
-              </div>
-
-              {/* Extra monthly entrée */}
-              <div className={`p-4 rounded-xl border bg-surface-2 border-bord`}>
-                <div className="flex items-center justify-between mb-2">
-                  <label className={`text-xs font-semibold ${textSecondary}`}>Entrée supplémentaire / mois</label>
-                  <span className={`text-sm font-bold text-emerald-500`}>+{formatMoney(scenarioParams.extraEntree)}</span>
-                </div>
-                <input type="range" min={0} max={50000} step={1000} value={scenarioParams.extraEntree}
-                  onChange={(e) => handleScenarioSlider('extraEntree', parseInt(e.target.value))}
-                  className="w-full h-2 rounded-lg appearance-none cursor-pointer"
-                  style={{ accentColor: '#10b981' }} />
-                <div className={`flex justify-between text-xs mt-1 ${textSecondary}`}>
-                  <span>0 €</span><span>25k €</span><span>50k €</span>
-                </div>
-              </div>
-
-              {/* Extra monthly sortie */}
-              <div className={`p-4 rounded-xl border bg-surface-2 border-bord`}>
-                <div className="flex items-center justify-between mb-2">
-                  <label className={`text-xs font-semibold ${textSecondary}`}>Charge supplémentaire / mois</label>
-                  <span className={`text-sm font-bold text-red-500`}>-{formatMoney(scenarioParams.extraSortie)}</span>
-                </div>
-                <input type="range" min={0} max={30000} step={500} value={scenarioParams.extraSortie}
-                  onChange={(e) => handleScenarioSlider('extraSortie', parseInt(e.target.value))}
-                  className="w-full h-2 rounded-lg appearance-none cursor-pointer"
-                  style={{ accentColor: '#ef4444' }} />
-                <div className={`flex justify-between text-xs mt-1 ${textSecondary}`}>
-                  <span>0 €</span><span>15k €</span><span>30k €</span>
-                </div>
-              </div>
+              ))}
             </div>
-          </div>
+          </Carte>
 
-          {/* Projection Chart */}
           {baselineProjections.length > 0 && (
-            <div className={`rounded-2xl border ${cardBg} p-5`}>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className={`text-sm font-bold ${textPrimary}`}>Évolution du solde projeté</h3>
-                <div className="flex items-center gap-4">
-                  {scenarioSummary.scenNegMonth && (
-                    <span className={`text-xs font-medium px-2 py-1 rounded-lg bg-danger-fond text-danger-texte`}>
-                      <AlertTriangle size={12} className="inline mr-1" />Négatif en {scenarioSummary.scenNegMonth.mois}
-                    </span>
-                  )}
+            <Carte>
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+                <h3 className="text-base font-bold text-encre">Évolution du solde projeté</h3>
+                {scenarioSummary.scenNegMonth && (
+                  <Pastille ton="alerte" icone={AlertTriangle}>Négatif en {scenarioSummary.scenNegMonth.mois}</Pastille>
+                )}
+              </div>
+              <div className="overflow-x-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
+                <div style={{ minWidth: 700 }}>
+                  <ProjectionChart baseline={baselineProjections} scenario={scenarioProjections} />
                 </div>
               </div>
-              <div className="overflow-x-auto" style={{ minHeight: 180, WebkitOverflowScrolling: 'touch' }}>
-                <div style={{ minWidth: 500 }}>
-                  <ProjectionChart
-                    baseline={baselineProjections}
-                    scenario={scenarioProjections}
-                    isDark={isDark}
-                    couleur={couleur}
-                  />
-                </div>
-              </div>
-            </div>
+            </Carte>
           )}
 
-          {/* Scenario Summary Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className={`p-4 rounded-xl border bg-surface-2 border-bord`}>
-              <p className={`text-xs font-semibold uppercase tracking-wide mb-1 ${textSecondary}`}>Solde final (12 mois)</p>
-              <p className={`text-xl font-bold ${scenarioSummary.scenarioEndBalance >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                {formatMoney(scenarioSummary.scenarioEndBalance)}
-              </p>
-              <p className={`text-xs mt-0.5 ${textSecondary}`}>
-                Tendance actuelle : {formatMoney(scenarioSummary.baselineEndBalance)}
-              </p>
-            </div>
-            <div className={`p-4 rounded-xl border bg-surface-2 border-bord`}>
-              <p className={`text-xs font-semibold uppercase tracking-wide mb-1 ${textSecondary}`}>Impact du scénario</p>
-              <p className={`text-xl font-bold ${scenarioSummary.delta >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                {scenarioSummary.delta >= 0 ? '+' : ''}{formatMoney(scenarioSummary.delta)}
-              </p>
-              <p className={`text-xs mt-0.5 ${textSecondary}`}>Différence vs tendance actuelle</p>
-            </div>
-            <div className={`p-4 rounded-xl border bg-surface-2 border-bord`}>
-              <p className={`text-xs font-semibold uppercase tracking-wide mb-1 ${textSecondary}`}>Entrées totales (12 mois)</p>
-              <p className={`text-xl font-bold text-succes-texte`}>
-                {formatMoney(scenarioSummary.totalScenEntrees)}
-              </p>
-              <p className={`text-xs mt-0.5 ${textSecondary}`}>
-                {scenarioSummary.totalScenEntrees !== scenarioSummary.totalBaseEntrees
-                  ? `Tendance : ${formatMoney(scenarioSummary.totalBaseEntrees)} (${scenarioSummary.totalScenEntrees > scenarioSummary.totalBaseEntrees ? '+' : ''}${formatMoney(scenarioSummary.totalScenEntrees - scenarioSummary.totalBaseEntrees)})`
-                  : 'Identique à la tendance'}
-              </p>
-            </div>
-            <div className={`p-4 rounded-xl border bg-surface-2 border-bord`}>
-              <p className={`text-xs font-semibold uppercase tracking-wide mb-1 ${textSecondary}`}>Sorties totales (12 mois)</p>
-              <p className={`text-xl font-bold text-danger-texte`}>
-                {formatMoney(scenarioSummary.totalScenSorties)}
-              </p>
-              <p className={`text-xs mt-0.5 ${textSecondary}`}>
-                {scenarioSummary.totalScenSorties !== scenarioSummary.totalBaseSorties
-                  ? `Tendance : ${formatMoney(scenarioSummary.totalBaseSorties)} (${scenarioSummary.totalScenSorties > scenarioSummary.totalBaseSorties ? '+' : ''}${formatMoney(scenarioSummary.totalScenSorties - scenarioSummary.totalBaseSorties)})`
-                  : 'Identique à la tendance'}
-              </p>
-            </div>
+            <TuileChiffre libelle="Solde final (12 mois)" valeur={formatMoney(scenarioSummary.scenarioEndBalance)}
+              contexte={`Tendance actuelle : ${formatMoney(scenarioSummary.baselineEndBalance)}`}
+              alerte={scenarioSummary.scenarioEndBalance < 0 ? `Négatif. Tendance actuelle : ${formatMoney(scenarioSummary.baselineEndBalance)}` : undefined} tonAlerte="alerte" />
+            <TuileChiffre libelle="Effet du scénario" valeur={`${scenarioSummary.delta >= 0 ? '+' : ''}${formatMoney(scenarioSummary.delta)}`} contexte="Écart avec la tendance actuelle" />
+            <TuileChiffre libelle="Entrées sur 12 mois" valeur={formatMoney(scenarioSummary.totalScenEntrees)}
+              contexte={scenarioSummary.totalScenEntrees !== scenarioSummary.totalBaseEntrees
+                ? `Tendance : ${formatMoney(scenarioSummary.totalBaseEntrees)}`
+                : 'Identique à la tendance'} />
+            <TuileChiffre libelle="Sorties sur 12 mois" valeur={formatMoney(scenarioSummary.totalScenSorties)}
+              contexte={scenarioSummary.totalScenSorties !== scenarioSummary.totalBaseSorties
+                ? `Tendance : ${formatMoney(scenarioSummary.totalBaseSorties)}`
+                : 'Identique à la tendance'} />
           </div>
 
-          {/* Monthly Breakdown Table */}
-          <div className={`rounded-2xl border ${cardBg} p-5`}>
-            <h3 className={`text-sm font-bold mb-4 ${textPrimary}`}>Détail mensuel du scénario</h3>
+          <Carte>
+            <h3 className="text-base font-bold mb-4 text-encre">Détail mensuel du scénario</h3>
             <div className="overflow-x-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
               <table className="w-full text-sm min-w-[640px]" aria-label="Projections mensuelles">
                 <thead>
-                  <tr className={`text-xs uppercase tracking-wide ${textSecondary} border-b ${borderColor}`}>
+                  <tr className={TETE_TABLEAU}>
                     <th className="text-left py-3 pr-4 font-semibold">Mois</th>
                     <th className="text-right py-3 pr-4 font-semibold">Entrées</th>
                     <th className="text-right py-3 pr-4 font-semibold">Sorties</th>
@@ -2595,25 +2268,20 @@ export default function TresorerieModule({
                   </tr>
                 </thead>
                 <tbody>
-                  {scenarioProjections.map((p, i) => {
+                  {scenarioProjections.map((p) => {
                     const flux = p.entrees - p.sorties;
-                    const isNeg = p.balance < 0;
-                    const isBelowThreshold = p.balance < (settings.seuilAlerte || 5000);
+                    const aSurveiller = p.balance < 0 || (seuil !== null && p.balance < seuil);
                     return (
-                      <tr key={p.mois} className={`border-b last:border-b-0 transition-colors ${
-                        isNeg ? isDark ? 'bg-red-900/10' : 'bg-red-50/50'
-                        : isBelowThreshold ? isDark ? 'bg-amber-900/10' : 'bg-amber-50/50'
-                        : ''
-                      } border-bord hover:bg-surface-2`}>
-                        <td className={`py-2.5 pr-4 font-medium ${textPrimary}`}>{p.mois}</td>
-                        <td className={`py-2.5 pr-4 text-right text-succes-texte`}>{formatMoney(p.entrees)}</td>
-                        <td className="py-2.5 pr-4 text-right text-red-500">{formatMoney(p.sorties)}</td>
-                        <td className={`py-2.5 pr-4 text-right font-semibold ${flux >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                      <tr key={p.mois} className={`border-b last:border-b-0 border-bord ${aSurveiller ? 'bg-alerte-fond/60' : 'hover:bg-surface-2'}`}>
+                        <td className="py-2.5 pr-4 font-medium text-encre">{p.mois}</td>
+                        <td className="py-2.5 pr-4 text-right tabular-nums text-succes-texte">{formatMoney(p.entrees)}</td>
+                        <td className="py-2.5 pr-4 text-right tabular-nums text-encre-2">{formatMoney(p.sorties)}</td>
+                        <td className="py-2.5 pr-4 text-right font-semibold tabular-nums text-encre">
                           {flux >= 0 ? '+' : ''}{formatMoney(flux)}
                         </td>
-                        <td className={`py-2.5 text-right font-bold ${isNeg ? 'text-red-500' : isBelowThreshold ? 'text-alerte-texte' : 'text-succes-texte'}`}>
+                        <td className={`py-2.5 text-right font-bold tabular-nums ${aSurveiller ? 'text-alerte-texte' : 'text-encre'}`}>
                           {formatMoney(p.balance)}
-                          {isNeg && <AlertTriangle size={12} className="inline ml-1 text-red-500" />}
+                          {p.balance < 0 && <AlertTriangle size={14} aria-label="négatif" className="inline ml-1" />}
                         </td>
                       </tr>
                     );
@@ -2621,85 +2289,70 @@ export default function TresorerieModule({
                 </tbody>
               </table>
             </div>
-          </div>
+          </Carte>
 
-          {/* Disclaimer */}
-          <div className={`p-3 rounded-xl border text-xs ${isDark ? 'bg-blue-500/5 border-blue-500/20 text-blue-400' : 'bg-blue-50 border-blue-100 text-blue-600'}`}>
-            <Info size={14} className="inline mr-1.5" />
+          <p className="flex items-start gap-2 p-3.5 rounded-2xl text-sm bg-info-fond text-info-texte">
+            <Info size={16} aria-hidden="true" className="flex-shrink-0 mt-0.5" />
             Ces projections sont indicatives et basées sur les moyennes historiques et vos prévisions planifiées. Elles ne constituent pas un conseil financier.
-          </div>
+          </p>
         </div>
       )}
 
-      {/* ── TVA Dashboard ───────────────────────────────────────────── */}
+      {/* ── TVA ───────────────────────────────────────────── */}
       {activeTab === 'tva' && (
-        <div className={`rounded-2xl border ${cardBg} p-5`}>
-          <div className="flex items-center justify-between mb-5">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-purple-100 text-purple-600" style={isDark ? { backgroundColor: 'rgba(168,85,247,0.15)', color: '#c084fc' } : {}}>
-                <Percent size={20} />
-              </div>
-              <div>
-                <h2 className={`text-base font-bold ${textPrimary}`}>Tableau de TVA — {new Date().getFullYear()}</h2>
-                <p className={`text-xs ${textSecondary}`}>
+        <Carte>
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
+            <div className="flex items-center gap-3 min-w-0">
+              <span className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 bg-surface-2 text-encre-2">
+                <Percent size={20} aria-hidden="true" />
+              </span>
+              <div className="min-w-0">
+                <h2 className="text-base font-bold text-encre">Tableau de TVA {new Date().getFullYear()}</h2>
+                <p className="text-sm text-encre-3">
                   {(settings.regimeTva || 'trimestriel') === 'franchise'
                     ? 'Franchise en base de TVA'
-                    : `TVA facturée (débits) vs déductible — Régime ${(settings.regimeTva || 'trimestriel') === 'mensuel' ? 'réel normal' : 'réel simplifié'}`}
-                  {settings.numeroTva && <span className="ml-2 opacity-60">| {settings.numeroTva}</span>}
+                    : `TVA facturée (débits) et déductible · régime ${(settings.regimeTva || 'trimestriel') === 'mensuel' ? 'réel normal' : 'réel simplifié'}`}
+                  {settings.numeroTva && <span className="ml-1">· {settings.numeroTva}</span>}
                 </p>
               </div>
             </div>
-            {/* Export buttons */}
             {(settings.regimeTva || 'trimestriel') !== 'franchise' && (
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 {/* Export « CA3 » retiré (relecture juridique du 10 oct. 2026) : une seule colonne au lieu de « base hors
                     taxe » et « taxe due », une année au lieu d'un mois ou d'un trimestre, lignes du millésime 2026
                     non suivies — l'artisan aurait recopié la taxe dans la colonne de la base. */}
-                <button onClick={() => exportJournalVentes()}
-                  className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-colors bg-surface-2 hover:bg-bord text-encre-2`}
-                  title="Export des ventes avec TVA ventilée">
-                  <Receipt size={14} /> Ventes
-                </button>
-                <button onClick={() => exportJournalAchats()}
-                  className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-colors bg-surface-2 hover:bg-bord text-encre-2`}
-                  title="Export des achats avec TVA déductible">
-                  <Receipt size={14} /> Achats
-                </button>
+                <Bouton taille="compacte" icone={Receipt} onClick={() => exportJournalVentes()} title="Export des ventes avec TVA ventilée">Ventes</Bouton>
+                <Bouton taille="compacte" icone={Receipt} onClick={() => exportJournalAchats()} title="Export des achats avec TVA déductible">Achats</Bouton>
                 {/* Le FEC se fait depuis l'onglet « Export comptable » (un seul générateur) : celui-ci comptait des
                     devis comme des ventes, oubliait les factures non payées, et séparait par des virgules. */}
-                <button onClick={() => {
+                <Bouton taille="compacte" icone={Download} title="Exporter le résumé TVA en CSV" onClick={() => {
                   const isQuarterly = (settings.regimeTva || 'trimestriel') === 'trimestriel';
                   const rows = isQuarterly
                     ? tvaQuarterly.map(q => `${q.label};${q.collectee.toFixed(2)};${q.deductible.toFixed(2)};${q.net.toFixed(2)}`)
                     : tvaMonthly.map(m => `${m.mois};${m.collectee.toFixed(2)};${m.deductible.toFixed(2)};${(m.collectee - m.deductible).toFixed(2)}`);
                   const csv = 'Période;TVA facturée (débits);TVA déductible;Solde estimé (débits)\n' + rows.join('\n');
-                  const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+                  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
                   remettreFichier(blob, `resume_tva_${new Date().getFullYear()}.csv`)
                     .then((r) => { if (r !== 'annule') toast.success('Résumé TVA exporté', 'Le fichier CSV est prêt.'); });
-                }}
-                  className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-colors ${isDark ? 'bg-emerald-900/30 hover:bg-emerald-900/50 text-emerald-300' : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700'}`}
-                  title="Exporter le résumé TVA en CSV">
-                  <Download size={14} /> Résumé TVA
-                </button>
+                }}>Résumé TVA</Bouton>
               </div>
             )}
           </div>
 
-          {/* Franchise banner */}
           {(settings.regimeTva || 'trimestriel') === 'franchise' ? (
-            <div className={`flex items-center gap-3 p-5 rounded-xl border bg-surface-2 border-bord`}>
-              <Info size={20} className={textSecondary} />
+            <div className="flex items-start gap-3 p-4 rounded-xl bg-surface-2">
+              <Info size={20} aria-hidden="true" className="flex-shrink-0 text-encre-3" />
               <div>
-                <p className={`text-sm font-semibold ${textPrimary}`}>Franchise en base de TVA</p>
-                <p className={`text-xs mt-0.5 ${textSecondary}`}>
-                  En franchise en base de TVA, vous n'avez pas de TVA à collecter ni à déduire.
+                <p className="text-sm font-semibold text-encre">Franchise en base de TVA</p>
+                <p className="text-sm mt-0.5 text-encre-2">
+                  En franchise en base de TVA, vous n’avez pas de TVA à collecter ni à déduire.
                   Mention obligatoire sur vos factures : « TVA non applicable, art. 293 B du CGI ».
                 </p>
                 {/* Une facture émise par erreur avec de la TVA la rend due (relecture juriste-btp du 17 oct. 2026) */}
                 {(() => {
                   const n = devis.filter(d => d.type === 'facture' && tvaARegulariser(d, entreprise)).length;
                   return n > 0 && (
-                    <p role="status" className="text-xs mt-2 text-alerte-texte">
+                    <p role="status" className="text-sm mt-2 text-alerte-texte">
                       {n === 1 ? '1 facture émise porte de la TVA : cette TVA est due du seul fait de la facture (art. 283, 3 du CGI). Faites un avoir puis une nouvelle facture sans TVA.' : `${n} factures émises portent de la TVA : cette TVA est due du seul fait de la facture (art. 283, 3 du CGI). Faites un avoir puis une nouvelle facture sans TVA.`}
                     </p>
                   );
@@ -2708,31 +2361,13 @@ export default function TresorerieModule({
             </div>
           ) : (
             <>
-              {/* TVA Summary KPIs */}
-              <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6`}>
-                <div className={`p-4 rounded-xl border ${isDark ? 'bg-slate-700/50 border-slate-600' : 'bg-blue-50 border-blue-100'}`}>
-                  <p className={`text-xs font-semibold uppercase tracking-wide mb-1 text-info-texte`}>TVA facturée</p>
-                  <p className={`text-xl font-bold text-info-texte`}>{formatMoney(tvaTotal.collectee)}</p>
-                  <p className={`text-xs mt-0.5 ${textSecondary}`}>Sur vos factures émises (régime des débits)</p>
-                </div>
-                <div className={`p-4 rounded-xl border bg-surface-2 border-bord`}>
-                  <p className={`text-xs font-semibold uppercase tracking-wide mb-1 text-encre-3`}>TVA Déductible</p>
-                  <p className={`text-xl font-bold text-encre-2`}>{formatMoney(tvaTotal.deductible)}</p>
-                  <p className={`text-xs mt-0.5 ${textSecondary}`}>Sur vos achats / dépenses</p>
-                </div>
-                <div className={`p-4 rounded-xl border ${isDark ? 'bg-slate-700/50 border-slate-600' : tvaTotal.net >= 0 ? 'bg-red-50 border-red-100' : 'bg-green-50 border-green-100'}`}>
-                  <p className={`text-xs font-semibold uppercase tracking-wide mb-1 ${tvaTotal.net >= 0 ? 'text-danger-texte' : 'text-succes-texte'}`}>
-                    {tvaTotal.net >= 0 ? 'Solde estimé (débits)' : 'Crédit estimé (débits)'}
-                  </p>
-                  <p className={`text-xl font-bold ${tvaTotal.net >= 0 ? 'text-red-500' : 'text-green-500'}`}>{formatMoney(Math.abs(tvaTotal.net))}</p>
-                  <p className={`text-xs mt-0.5 ${textSecondary}`}>Sans option pour les débits, la TVA de vos travaux est due à l’encaissement (art. 269 du CGI) : le montant à déclarer peut différer.</p>
-                </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <TuileChiffre libelle="TVA facturée" valeur={formatMoney(tvaTotal.collectee)} contexte="Sur vos factures émises (régime des débits)" />
+                <TuileChiffre libelle="TVA déductible" valeur={formatMoney(tvaTotal.deductible)} contexte="Sur vos achats et dépenses" />
+                <TuileChiffre libelle={tvaTotal.net >= 0 ? 'Solde estimé (débits)' : 'Crédit estimé (débits)'} valeur={formatMoney(Math.abs(tvaTotal.net))}
+                  contexte="Sans option pour les débits, la TVA de vos travaux est due à l’encaissement (art. 269 du CGI) : le montant à déclarer peut différer." />
                 {tvaNextDeadline && (
-                  <div className={`p-4 rounded-xl border ${isDark ? 'bg-slate-700/50 border-slate-600' : 'bg-purple-50 border-purple-100'}`}>
-                    <p className={`text-xs font-semibold uppercase tracking-wide mb-1 ${isDark ? 'text-purple-400' : 'text-purple-600'}`}>Prochaine échéance</p>
-                    <p className={`text-xl font-bold ${isDark ? 'text-purple-300' : 'text-purple-700'}`}>{tvaNextDeadline.label}</p>
-                    <p className={`text-xs mt-0.5 ${textSecondary}`}>Déclaration {tvaNextDeadline.period}</p>
-                  </div>
+                  <TuileChiffre libelle="Prochaine échéance" valeur={tvaNextDeadline.label} contexte={`Déclaration ${tvaNextDeadline.period}`} />
                 )}
               </div>
 
@@ -2747,94 +2382,68 @@ export default function TresorerieModule({
                 </div>
               )}
 
-              {/* TVA Table — quarterly or monthly based on regime */}
               <div className="overflow-x-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
                 <table className="w-full text-sm min-w-[640px]" aria-label="TVA par période">
                   <thead>
-                    <tr className={`text-xs uppercase tracking-wide ${textSecondary} border-b ${borderColor}`}>
+                    <tr className={TETE_TABLEAU}>
                       <th className="text-left py-3 pr-4 font-semibold">Période</th>
                       <th className="text-right py-3 pr-4 font-semibold">TVA facturée (débits)</th>
-                      <th className="text-right py-3 pr-4 font-semibold">TVA Déductible</th>
-                      <th className="text-right py-3 font-semibold">Solde TVA</th>
+                      <th className="text-right py-3 pr-4 font-semibold">TVA déductible</th>
+                      <th className="text-right py-3 font-semibold">Solde de TVA</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {(settings.regimeTva || 'trimestriel') === 'trimestriel' ? (
-                      // Quarterly view
-                      tvaQuarterly.map((q, qi) => {
-                        const hasData = q.collectee > 0 || q.deductible > 0;
-                        const currentQuarter = Math.floor(new Date().getMonth() / 3);
-                        const isCurrent = qi === currentQuarter;
-                        return (
-                          <tr key={q.label} className={`border-b last:border-b-0 transition-colors ${isCurrent ? isDark ? 'bg-slate-700/30' : 'bg-blue-50/50' : ''} border-bord hover:bg-surface-2`}>
-                            <td className={`py-3 pr-4 font-medium ${isCurrent ? 'font-bold' : ''} ${hasData ? textPrimary : textSecondary}`}>
-                              {q.label} {isCurrent && <span className="text-xs ml-1 px-1.5 py-0.5 rounded font-medium text-accent-texte" style={{ backgroundColor: `${couleur}20` }}>actuel</span>}
-                            </td>
-                            <td className={`py-3 pr-4 text-right ${hasData ? 'text-info-texte' : textSecondary}`}>{hasData ? formatMoney(q.collectee) : '—'}</td>
-                            <td className={`py-3 pr-4 text-right ${hasData ? 'text-alerte-texte' : textSecondary}`}>{hasData ? formatMoney(q.deductible) : '—'}</td>
-                            <td className={`py-3 text-right font-semibold ${!hasData ? textSecondary : q.net >= 0 ? 'text-red-500' : 'text-green-500'}`}>
-                              {hasData ? (q.net >= 0 ? '+' : '') + formatMoney(q.net) : '—'}
-                            </td>
-                          </tr>
-                        );
-                      })
-                    ) : (
-                      // Monthly view
-                      tvaMonthly.map((m, i) => {
-                        const hasData = m.collectee > 0 || m.deductible > 0;
-                        const isCurrent = i === new Date().getMonth();
-                        return (
-                          <tr key={m.mois} className={`border-b last:border-b-0 transition-colors ${isCurrent ? isDark ? 'bg-slate-700/30' : 'bg-blue-50/50' : ''} border-bord hover:bg-surface-2`}>
-                            <td className={`py-2.5 pr-4 font-medium ${isCurrent ? 'font-bold' : ''} ${hasData ? textPrimary : textSecondary}`}>
-                              {m.mois} {isCurrent && <span className="text-xs ml-1 px-1.5 py-0.5 rounded font-medium text-accent-texte" style={{ backgroundColor: `${couleur}20` }}>actuel</span>}
-                            </td>
-                            <td className={`py-2.5 pr-4 text-right ${hasData ? 'text-info-texte' : textSecondary}`}>{hasData ? formatMoney(m.collectee) : '—'}</td>
-                            <td className={`py-2.5 pr-4 text-right ${hasData ? 'text-alerte-texte' : textSecondary}`}>{hasData ? formatMoney(m.deductible) : '—'}</td>
-                            <td className={`py-2.5 text-right font-semibold ${!hasData ? textSecondary : m.net >= 0 ? 'text-red-500' : 'text-green-500'}`}>
-                              {hasData ? (m.net >= 0 ? '+' : '') + formatMoney(m.net) : '—'}
-                            </td>
-                          </tr>
-                        );
-                      })
-                    )}
+                    {((settings.regimeTva || 'trimestriel') === 'trimestriel'
+                      ? tvaQuarterly.map((q, qi) => ({ cle: q.label, libelle: q.label, collectee: q.collectee, deductible: q.deductible, net: q.net, courant: qi === Math.floor(new Date().getMonth() / 3) }))
+                      : tvaMonthly.map((m, i) => ({ cle: m.mois, libelle: m.mois, collectee: m.collectee, deductible: m.deductible, net: m.net, courant: i === new Date().getMonth() }))
+                    ).map((r) => {
+                      const hasData = r.collectee > 0 || r.deductible > 0;
+                      return (
+                        <tr key={r.cle} className={`border-b last:border-b-0 transition-colors border-bord ${r.courant ? 'bg-surface-2' : 'hover:bg-surface-2'}`}>
+                          <td className={`py-3 pr-4 ${r.courant ? 'font-bold' : 'font-medium'} ${hasData ? textPrimary : textSecondary}`}>
+                            {r.libelle} {r.courant && <Pastille ton="info" className="ml-1">actuel</Pastille>}
+                          </td>
+                          <td className={`py-3 pr-4 text-right tabular-nums ${hasData ? 'text-encre' : textSecondary}`}>{hasData ? formatMoney(r.collectee) : '—'}</td>
+                          <td className={`py-3 pr-4 text-right tabular-nums ${hasData ? 'text-encre' : textSecondary}`}>{hasData ? formatMoney(r.deductible) : '—'}</td>
+                          <td className={`py-3 text-right font-semibold tabular-nums ${hasData ? 'text-encre' : textSecondary}`}>
+                            {hasData ? (r.net >= 0 ? '+' : '') + formatMoney(r.net) : '—'}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                   <tfoot>
-                    <tr className={`border-t-2 border-bord-fort`}>
-                      <td className={`py-3 pr-4 font-bold ${textPrimary}`}>Total annuel</td>
-                      <td className={`py-3 pr-4 text-right font-bold text-info-texte`}>{formatMoney(tvaTotal.collectee)}</td>
-                      <td className={`py-3 pr-4 text-right font-bold text-alerte-texte`}>{formatMoney(tvaTotal.deductible)}</td>
-                      <td className={`py-3 text-right font-bold ${tvaTotal.net >= 0 ? 'text-red-500' : 'text-green-500'}`}>{(tvaTotal.net >= 0 ? '+' : '') + formatMoney(tvaTotal.net)}</td>
+                    <tr className="border-t-2 border-bord-fort">
+                      <td className="py-3 pr-4 font-bold text-encre">Total annuel</td>
+                      <td className="py-3 pr-4 text-right font-bold tabular-nums text-encre">{formatMoney(tvaTotal.collectee)}</td>
+                      <td className="py-3 pr-4 text-right font-bold tabular-nums text-encre">{formatMoney(tvaTotal.deductible)}</td>
+                      <td className="py-3 text-right font-bold tabular-nums text-encre">{(tvaTotal.net >= 0 ? '+' : '') + formatMoney(tvaTotal.net)}</td>
                     </tr>
                   </tfoot>
                 </table>
               </div>
 
-              {/* TVA by Rate breakdown */}
               {Object.keys(tvaByRate).length > 0 && (
-                <div className={`mt-6 pt-5 border-t ${borderColor}`}>
-                  <h3 className={`text-sm font-bold mb-3 ${textPrimary}`}>Ventilation par taux</h3>
+                <div className="mt-6 pt-5 border-t border-bord">
+                  <h3 className="text-base font-bold mb-3 text-encre">Ventilation par taux</h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                     {Object.entries(tvaByRate).sort(([a], [b]) => Number(b) - Number(a)).map(([rate, data]) => {
                       // Les clés de TVA_RATES sont en dixièmes de point (200 = 20 %, 55 = 5,5 %)
-                      const info = TVA_RATES[Math.round(Number(rate) * 10)] || { label: `${String(rate).replace('.', ',')}%`, desc: '' };
+                      const info = TVA_RATES[Math.round(Number(rate) * 10)] || { label: `${String(rate).replace('.', ',')} %`, desc: '' };
                       return (
-                        <div key={rate} className={`p-3 rounded-xl border bg-surface-2 border-bord`}>
-                          <div className="flex items-center justify-between mb-1">
-                            <span className={`text-sm font-bold ${textPrimary}`}>{info.label}</span>
-                            <span className={`text-xs px-1.5 py-0.5 rounded bg-bord text-encre-2`}>{info.desc}</span>
+                        <div key={rate} className="p-3 rounded-xl bg-surface-2">
+                          <div className="flex items-center justify-between gap-2 mb-1">
+                            <span className="text-sm font-bold text-encre">{info.label}</span>
+                            {info.desc ? <span className="text-sm text-encre-3">{info.desc}</span> : null}
                           </div>
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className={`text-xs ${textSecondary}`}>Base HT ventes : {formatMoney(data.base)}</p>
-                              <p className={`text-sm font-semibold text-info-texte`}>Collectée : {formatMoney(data.collectee)}</p>
-                            </div>
-                            {(data.deductible || 0) > 0 && (
-                              <div className="text-right">
-                                <p className={`text-xs ${textSecondary}`}>Base HT achats : {formatMoney(data.baseDeductible || 0)}</p>
-                                <p className={`text-sm font-semibold text-alerte-texte`}>Déductible : {formatMoney(data.deductible)}</p>
-                              </div>
-                            )}
-                          </div>
+                          <p className="text-sm text-encre-3 tabular-nums">Base HT des ventes : {formatMoney(data.base)}</p>
+                          <p className="text-sm font-semibold text-encre tabular-nums">Facturée : {formatMoney(data.collectee)}</p>
+                          {(data.deductible || 0) > 0 && (
+                            <>
+                              <p className="text-sm text-encre-3 tabular-nums mt-1">Base HT des achats : {formatMoney(data.baseDeductible || 0)}</p>
+                              <p className="text-sm font-semibold text-encre tabular-nums">Déductible : {formatMoney(data.deductible)}</p>
+                            </>
+                          )}
                         </div>
                       );
                     })}
@@ -2842,19 +2451,18 @@ export default function TresorerieModule({
                 </div>
               )}
 
-              {/* Disclaimer */}
-              <div className={`mt-5 p-3 rounded-xl border text-xs ${isDark ? 'bg-blue-500/5 border-blue-500/20 text-blue-400' : 'bg-blue-50 border-blue-100 text-blue-600'}`}>
-                <Info size={14} className="inline mr-1.5" />
+              <p className="mt-5 flex items-start gap-2 p-3.5 rounded-xl text-sm bg-info-fond text-info-texte">
+                <Info size={16} aria-hidden="true" className="flex-shrink-0 mt-0.5" />
                 Ces données sont indicatives. La TVA d’un achat de services (location de matériel, entretien, honoraires) se déduit en
                 principe au paiement, sauf si le fournisseur a opté pour les débits (mention sur sa facture), et la sous-traitance en
                 autoliquidation n’est pas prise en compte. Consultez votre expert-comptable pour la déclaration officielle.
-              </div>
+              </p>
             </>
           )}
-        </div>
+        </Carte>
       )}
 
-      {/* ── Recurring Charges Summary ──────────────────────────────── */}
+      {/* ── Charges récurrentes ──────────────────────────────── */}
       {activeTab === 'apercu' && recurringSummary.count > 0 && (
         <section>
           <TitreSection titre="Charges récurrentes" compte={recurringSummary.count} />
@@ -2863,13 +2471,10 @@ export default function TresorerieModule({
             Sorties <span className="font-semibold text-encre">−{formatMoney(recurringSummary.totalSorties)}</span> par mois
             {' · '}soit <span className="font-semibold text-encre">{recurringSummary.net >= 0 ? '+' : '−'}{formatMoney(Math.abs(recurringSummary.net * 12))}</span> sur un an
           </p>
-
-          {/* Recurring items list */}
           <GroupeListe>
             {recurringSummary.parents.map(p => {
               const isEntree = p.type === 'entree';
               const freqLabel = p.recurrence === 'mensuel' ? 'par mois' : p.recurrence === 'trimestriel' ? 'par trimestre' : 'par an';
-              // Count future pending instances
               const pendingCount = previsions.filter(ch =>
                 (ch.recurrenceParentId === p.id || ch.id === p.id) && ch.statut === 'prevu'
               ).length;
@@ -2880,7 +2485,7 @@ export default function TresorerieModule({
                   montant={<span className={isEntree ? 'text-succes-texte' : ''}>{isEntree ? '+' : '−'}{formatMoney(p.montant)}</span>}
                   meta={`${p.categorie || 'Divers'} · ${pendingCount} échéance${pendingCount > 1 ? 's' : ''} à venir`}
                   pastille={<span className="text-sm text-encre-3">{freqLabel}</span>}
-                  onClick={() => handleEditPrevision(p)}
+                  onClick={peutModifier ? () => handleEditPrevision(p) : undefined}
                 />
               );
             })}
@@ -2888,89 +2493,59 @@ export default function TresorerieModule({
         </section>
       )}
 
-      {/* ── Auto-sync indicator ──────────────────────────────────────── */}
+      {/* ── Liens automatiques ──────────────────────────────────────── */}
       {(autoSyncCount.factures > 0 || autoSyncCount.depenses > 0) && (activeTab === 'apercu') && (
-        <div className={`flex items-center gap-3 p-3 pr-20 rounded-xl border text-xs bg-surface-2 border-bord text-encre-3`}>
-          <Link2 size={14} className="flex-shrink-0" />
+        <p className="flex items-center gap-3 p-3 rounded-xl text-sm bg-surface-2 text-encre-3">
+          <Link2 size={16} aria-hidden="true" className="flex-shrink-0" />
           <span>
-            Synchronisation auto : <strong>{autoSyncCount.factures}</strong> facture{autoSyncCount.factures > 1 ? 's' : ''} et <strong>{autoSyncCount.depenses}</strong> dépense{autoSyncCount.depenses > 1 ? 's' : ''} liées aux prévisions
+            Repris automatiquement : <strong>{autoSyncCount.factures}</strong> facture{autoSyncCount.factures > 1 ? 's' : ''} et <strong>{autoSyncCount.depenses}</strong> dépense{autoSyncCount.depenses > 1 ? 's' : ''}
           </span>
-        </div>
+        </p>
       )}
 
-      {/* Spacer to avoid FAB overlap */}
-      <div className="h-20" />
+      {/* Au téléphone, la marge sous le bouton flottant (88 px : audit UX du 20 oct. 2026) ; au bureau, rien */}
+      {peutModifier && <div className="h-[88px] md:hidden" aria-hidden="true" />}
 
-      {/* ── Quick Add FAB ──────────────────────────────────────────── */}
-      {activeTab === 'mouvements' ? (
-        <button onClick={() => { setEditingMouv(null); setShowMouvModal(true); }}
-          className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom,0px))] right-4 md:bottom-6 md:right-6 z-40 w-14 h-14 rounded-full flex items-center justify-center shadow-e3 bg-accent text-sur-accent transition-transform hover:scale-110 active:scale-95" title="Ajouter un mouvement">
-          <Plus size={24} />
-        </button>
-      ) : (
-        <button onClick={() => { setEditingItem(null); setShowAddModal(true); }}
-          className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom,0px))] right-4 md:bottom-6 md:right-6 z-40 w-14 h-14 rounded-full flex items-center justify-center shadow-e3 bg-accent text-sur-accent transition-transform hover:scale-110 active:scale-95" title="Ajouter une prévision">
-          <Plus size={24} />
+      {/* ── Bouton flottant d'ajout : téléphone seulement ─────────────────────────────────────── */}
+      {peutModifier && (
+        <button type="button" onClick={ajouter}
+          className="md:hidden fixed bottom-[calc(5rem+env(safe-area-inset-bottom,0px))] right-4 z-40 w-14 h-14 rounded-full flex items-center justify-center shadow-e3 bg-accent text-sur-accent transition-transform active:scale-95"
+          aria-label={libelleAjouter} title={libelleAjouter}>
+          <Plus size={24} aria-hidden="true" />
         </button>
       )}
 
-      {/* ── Prefill Confirmation Modal ──────────────────────────────── */}
-      {showPrefillConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label="Pré-remplir les charges BTP">
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" role="presentation" onClick={() => setShowPrefillConfirm(false)} />
-          <div className={`relative w-full max-w-md rounded-2xl border shadow-2xl p-6 bg-surface border-bord`}>
-            <div className="flex items-start gap-3 mb-4">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 text-accent-texte" style={{ backgroundColor: `${couleur}20` }}>
-                <Zap size={20} />
-              </div>
-              <div>
-                <h3 className={`text-base font-bold ${textPrimary}`}>Pré-remplir les charges BTP ?</h3>
-                <p className={`text-sm mt-1 ${textSecondary}`}>
-                  Cette action va ajouter {STARTER_TEMPLATES.length} charges récurrentes courantes du BTP (loyer, assurance, salaires, etc.).
-                </p>
-              </div>
-            </div>
-            <div className={`p-3 rounded-xl border mb-4 bg-surface-2 border-bord`}>
-              <p className={`text-xs font-semibold mb-2 ${textSecondary}`}>Charges ajoutées :</p>
-              {STARTER_TEMPLATES.map((t, i) => (
-                <div key={i} className={`flex items-center justify-between py-1 text-xs ${textSecondary}`}>
-                  <span>{t.description}</span>
-                  <span className="font-semibold text-red-500">-{formatMoney(t.montant)}/mois</span>
-                </div>
-              ))}
-            </div>
-            <div className="flex items-center justify-end gap-3">
-              <button autoFocus onClick={() => setShowPrefillConfirm(false)}
-                className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors text-encre-3 hover:text-encre`}>
-                Annuler
-              </button>
-              <button onClick={handlePrefill}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all hover:opacity-90 active:scale-[0.98] shadow-md bg-accent text-sur-accent">
-                <Zap size={16} /> Confirmer
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* ── Pré-remplir les charges ──────────────────────────────── */}
+      <Modal isOpen={showPrefillConfirm} onClose={() => setShowPrefillConfirm(false)} size="md" title="Pré-remplir les charges BTP ?"
+        description={`Ajoute ${STARTER_TEMPLATES.length} charges récurrentes courantes du BTP (loyer, assurance, salaires…). Vous pourrez les modifier ou les supprimer.`}
+        footer={(
+          <>
+            <Bouton variante="discret" onClick={() => setShowPrefillConfirm(false)}>Annuler</Bouton>
+            <Bouton variante="principal" icone={Zap} onClick={handlePrefill}>Ajouter ces charges</Bouton>
+          </>
+        )}>
+        <ul className="divide-y divide-bord">
+          {STARTER_TEMPLATES.map((t) => (
+            <li key={t.description} className="flex items-center justify-between gap-3 py-2 text-sm">
+              <span className="text-encre-2">{t.description}</span>
+              <span className="font-semibold tabular-nums text-encre whitespace-nowrap">−{formatCurrency(t.montant)} par mois</span>
+            </li>
+          ))}
+        </ul>
+      </Modal>
 
-      {/* ── Prevision Modal ────────────────────────────────────────── */}
       <PrevisionModal
         isOpen={showAddModal}
         onClose={() => { setShowAddModal(false); setEditingItem(null); }}
         onSave={handleSavePrevision}
         editItem={editingItem}
-        isDark={isDark}
-        couleur={couleur}
       />
 
-      {/* ── Mouvement Modal ────────────────────────────────────────── */}
       <MouvementModal
         isOpen={showMouvModal}
         onClose={() => { setShowMouvModal(false); setEditingMouv(null); }}
         onSave={handleSaveMouvement}
         editItem={editingMouv}
-        isDark={isDark}
-        couleur={couleur}
       />
     </div>
   );
