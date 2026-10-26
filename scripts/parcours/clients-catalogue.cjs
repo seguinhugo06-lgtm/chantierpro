@@ -56,6 +56,61 @@ const boutonsPleins = (page) => page.evaluate(() => [...document.querySelectorAl
 const libellesBoutons = (page) => page.evaluate(() => [...document.querySelectorAll('button, a')]
   .filter((b) => b.getBoundingClientRect().width > 0).map((b) => (b.innerText || b.getAttribute('aria-label') || b.title || '').replace(/\s+/g, ' ').trim()));
 
+
+// ---- Tournée de correction 1 (Task 7) : réglages posés AVANT le chargement de la page. Chacun est autonome : puppeteer le
+// recopie tel quel dans la page, il ne voit pas les constantes de ce fichier.
+const avecSuiviLocal = () => {
+  try {
+    localStorage.setItem('pwa-install-dismissed', String(Date.now()));
+    localStorage.setItem('mallettico_fournisseurs', JSON.stringify([{ id: 'f1', nom: 'Établissements Dupont-Lefèvre Matériaux Électriques et Plomberie du Sud-Ouest', email: 'commandes.professionnels@dupont-lefevre-materiaux-electriques.example.fr', telephone: '0600000099', delaiLivraison: '3', conditions: '30 jours fin de mois avec escompte de 2 % pour règlement comptant à la commande' }]));
+    localStorage.setItem('mallettico_article_fournisseurs', JSON.stringify([{ id: 'l1', articleId: 'a0a0a0a0-0000-4000-8000-000000000001', fournisseurId: 'f1', prixAchat: 1.1 }]));
+    localStorage.setItem('mallettico_packs', JSON.stringify([{ id: 'p1', nom: 'Kit tableau électrique monophasé complet avec différentiel et parafoudre', description: '', prixVente: 25, articles: [{ articleId: 'a0a0a0a0-0000-4000-8000-000000000001', quantite: 10, label: 'Câble R2V 3G2,5', prixSnapshot: 1.8, prixAchatSnapshot: 1.1, unite: 'ml' }] }]));
+    localStorage.setItem('mallettico_mouvements', JSON.stringify([{ id: 'm1', articleId: 'a0a0a0a0-0000-4000-8000-000000000001', type: 'in', quantite: 50, date: '2026-09-05T08:00:00Z', raison: 'Livraison de la semaine, bon de livraison 4521 du fournisseur principal' }]));
+  } catch { /* */ }
+};
+const premierUsageCatalogue = () => {
+  try { localStorage.setItem('pwa-install-dismissed', String(Date.now())); localStorage.removeItem('cp_catalogue_onboarding_dismissed'); } catch { /* */ }
+};
+const avecContacts = () => {
+  try { localStorage.setItem('pwa-install-dismissed', String(Date.now())); } catch { /* */ }
+  window.ContactsManager = function ContactsManager() { /* l'API existe */ };
+  Object.defineProperty(navigator, 'contacts', {
+    configurable: true,
+    value: {
+      getProperties: async () => ['name', 'tel', 'email'],
+      select: async () => [
+        { name: ['Alice Martin'], tel: ['0611111111'], email: ['alice@exemple.fr'] },
+        { name: ['Bruno Durand'], tel: ['0622222222'], email: ['bruno@exemple.fr'] },
+        { name: ['Chloé Leroy'], tel: ['0633333333'], email: ['chloe@exemple.fr'] },
+      ],
+    },
+  });
+};
+const avecCamera = () => {
+  try { localStorage.setItem('pwa-install-dismissed', String(Date.now())); } catch { /* */ }
+  Object.defineProperty(navigator, 'userAgent', { configurable: true, get: () => 'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 Mobile Safari/537.36' });
+  Object.defineProperty(HTMLMediaElement.prototype, 'readyState', { configurable: true, get: () => 4 });
+  navigator.mediaDevices.getUserMedia = async () => new MediaStream();
+  window.BarcodeDetector = class { async detect() { return [{ rawValue: '3017620422003' }]; } };
+};
+const avecCoefficients = () => {
+  try { localStorage.setItem('pwa-install-dismissed', String(Date.now())); localStorage.setItem('mallettico_coefficients', JSON.stringify({ 'Électricité': 3.2, Plomberie: 2.1 })); } catch { /* */ }
+};
+
+/** Clique, dans la fenêtre ouverte, le premier bouton qui contient ce texte (les cartes portent aussi une icône dans leur texte). */
+const cliquerContenant = (page, texte) => page.evaluate((t) => {
+  const d = document.querySelector('[role="dialog"]');
+  const b = [...(d?.querySelectorAll('button') || [])].find((x) => x.innerText.includes(t) && x.getBoundingClientRect().width > 0);
+  b?.click();
+  return !!b;
+}, texte);
+
+const premierBoutonDeListe = (page) => page.evaluate(() => {
+  const b = [...document.querySelectorAll('[role="dialog"] [data-ui="LigneListe"] > button')].find((x) => x.getBoundingClientRect().width > 0);
+  b?.click();
+  return b ? b.innerText.replace(/\s+/g, ' ').trim() : null;
+});
+
 module.exports = [
   {
     // Le point imposé par la relecture de la Task 6 : la page Clients montrait « Encaissé », « En cours », « à encaisser » à un chef de chantier.
@@ -128,7 +183,7 @@ module.exports = [
           verifier(/Câble R2V/.test(article) && /Stock/.test(article), 'chef : la fiche de l’article montre son stock');
           verifier(!/€|Marge|Prix de vente|Prix d.achat|Fournisseurs/.test(article), `chef : sans aucun prix, marge ni fournisseur (« ${article.slice(0, 260)} »)`);
         } else {
-          verifier(/1,8\s?€/.test(cat), 'gérant : les prix sont dans le catalogue');
+          verifier(/1,80\s?€/.test(cat), 'gérant : les prix sont dans le catalogue, au format unique de l’app : « 1,80 € »');
           for (const o of ['Référentiel', 'Fournisseurs', 'Packs', 'Coefficients']) verifier(onglets.includes(o), `gérant : l’onglet « ${o} » est là (${onglets.join(', ')})`);
         }
       }
@@ -162,7 +217,7 @@ module.exports = [
     },
   },
   {
-    nom: 'liste des clients : la liste d’abord, sans tuiles ; « devis du … » dans la méta ; pas de pastille « Actif » (375 px)',
+    nom: 'liste des clients : la liste d’abord, sans tuiles ; « devis 5 sept. » en tête de la méta ; pas de pastille « Actif » (375 px)',
     reel: true,
     async executer({ ouvrir, attendre, verifier, sessionFactice }) {
       const base = creerBase(donnees());
@@ -181,7 +236,7 @@ module.exports = [
       verifier(mesure.hautPremiereLigne !== null && mesure.hautPremiereLigne < 400, `la première ligne arrive haut dans l’écran (${mesure.hautPremiereLigne} px sur 812)`);
       verifier(!mesure.pastilles.includes('Actif') && !mesure.pastilles.includes('Inactif'), `aucune pastille « Actif » ni « Inactif » (${JSON.stringify(mesure.pastilles)})`);
       verifier(mesure.pastilles.includes('Prospect'), `un client sans document, créé aujourd’hui, est « Prospect » (${JSON.stringify(mesure.pastilles)})`);
-      verifier(/Nantes · devis du/.test(mesure.texte), `la date du dernier devis est dans la méta (« ${mesure.texte.slice(0, 240)} »)`);
+      verifier(/devis \d{1,2} [^\s·]+ · Nantes/.test(mesure.texte), `la date du dernier devis ouvre la méta, abrégée (« ${mesure.texte.slice(0, 240)} »)`);
       // La rangée de statuts dit sa règle
       await page.evaluate(() => [...document.querySelectorAll('[data-ui="SegmentDefilant"] button')].find((b) => /^Inactifs/.test(b.innerText))?.click());
       await attendre(400);
@@ -329,7 +384,7 @@ module.exports = [
       await cliquer(page, 'Valider', { dans: '[role="dialog"]' });
       await attendre(1800);
       const apres = await page.evaluate(() => document.body.innerText);
-      verifier(/Mouvement enregistré — stock mis à jour/.test(apres), 'accepté : le mouvement est annoncé');
+      verifier(/Mouvement enregistré sur cet appareil — stock mis à jour/.test(apres), 'accepté : le mouvement est annoncé, et dit qu’il est gardé sur cet appareil');
       verifier(base.tables.catalogue.find((a) => a.id === ARTICLES[0].id).stock_actuel === 150, `accepté : le stock en base suit (${base.tables.catalogue.find((a) => a.id === ARTICLES[0].id).stock_actuel})`);
       verifier(!(await page.evaluate(() => !!document.querySelector('[role="dialog"]'))), 'accepté : la fenêtre se ferme');
     },
@@ -373,6 +428,247 @@ module.exports = [
       verifier(chantier.asterisques === 0, `aucun astérisque (${chantier.asterisques})`);
       verifier(!chantier.cadreVert, 'l’encadré du budget n’est pas vert');
       verifier(chantier.indicationTactile, 'l’indication « Entrée » porte la classe qui la cache sur écran tactile');
+    },
+  },
+  {
+    // Relecture 1 : l'onglet Fournisseurs faisait 457 px sur 375 (grille sans colonne explicite : un contenu long l'élargissait).
+    nom: 'catalogue : aucun onglet ne déborde à 375 px ; Fournisseurs, Mouvements et Packs disent qu’ils sont gardés sur cet appareil (375 px)',
+    reel: true,
+    async executer({ ouvrir, attendre, verifier, sessionFactice }) {
+      const base = creerBase(donnees());
+      const { page } = await ouvrir({ reel: true, largeur: 375, page: 'catalogue', session: sessionFactice(UID), supabase: base.reponse, avantChargement: avecSuiviLocal });
+      await attendre(2500);
+      const onglets = await nomsOnglets(page);
+      for (const nom of ['Articles', 'Référentiel', 'Fournisseurs', 'Mouvements', 'Packs', 'Inventaire', 'Coefficients']) {
+        verifier(onglets.includes(nom), `l’onglet « ${nom} » est là (${onglets.join(', ')})`);
+        await page.evaluate((n) => [...document.querySelectorAll('[role="tab"]')].find((t) => t.innerText.replace(/\s+\d+$/, '').trim() === n)?.click(), nom);
+        await attendre(900);
+        const m = await page.evaluate(() => ({
+          vue: window.innerWidth, doc: document.documentElement.scrollWidth, contenu: document.querySelector('#main-content')?.scrollWidth,
+          texte: (document.querySelector('#main-content')?.innerText || '').replace(/\s+/g, ' '),
+        }));
+        verifier(m.doc <= m.vue && m.contenu <= m.vue, `« ${nom} » ne déborde pas : page ${m.doc} px, contenu ${m.contenu} px, écran ${m.vue} px`);
+        if (['Fournisseurs', 'Mouvements', 'Packs'].includes(nom)) verifier(/Gardé sur cet appareil uniquement/.test(m.texte), `« ${nom} » dit qu’il est gardé sur cet appareil uniquement (« ${m.texte.slice(0, 120)} »)`);
+        if (nom === 'Packs') verifier(!/d’un clic à vos devis|d'un clic à vos devis/.test(m.texte), 'les packs ne promettent plus de les ajouter d’un clic aux devis');
+      }
+    },
+  },
+  {
+    // Relecture 1 : le sélecteur du référentiel créait l'article avec un prix d'achat inventé (60 % du prix de vente) et la TVA 20 par défaut.
+    nom: 'référentiel BTP : le prix d’achat n’est jamais inventé (« Marge non calculée »), la TVA choisie est celle de l’article (375 px)',
+    reel: true,
+    async executer({ ouvrir, attendre, verifier, cliquer, saisir, sessionFactice }) {
+      for (const achatSaisi of [false, true]) {
+        const base = creerBase(donnees());
+        const { page } = await ouvrir({ reel: true, largeur: 375, page: 'catalogue', session: sessionFactice(UID), supabase: base.reponse, avantChargement: sansInstallation });
+        await attendre(2500);
+        await cliquer(page, "Plus d'actions");
+        await cliquer(page, 'Ajouter depuis le référentiel BTP', { dans: '[role="dialog"]' });
+        await attendre(600);
+        verifier(await cliquerContenant(page, 'Électricité'), 'le métier « Électricité » est proposé');
+        await attendre(500);
+        verifier(!!(await premierBoutonDeListe(page)), 'une sous-catégorie est proposée');
+        await attendre(500);
+        const article = await premierBoutonDeListe(page);
+        verifier(!!article, `un article est proposé (${article})`);
+        await attendre(600);
+        const etape = await page.evaluate(() => ({ achat: document.querySelector('#picker-achat')?.value, tva: document.querySelector('#picker-tva')?.value, texte: document.querySelector('[role="dialog"]')?.innerText.replace(/\s+/g, ' ') || '' }));
+        verifier(etape.achat === '', `le prix d’achat n’est pas pré-rempli (« ${etape.achat} »)`);
+        verifier(etape.tva === '10', `la TVA annoncée est 10 % (« ${etape.tva} »)`);
+        verifier(!/Marge brute/.test(etape.texte), 'sans prix d’achat, aucune marge n’est affichée');
+        await page.select('#picker-tva', '5.5');
+        if (achatSaisi) {
+          await saisir(page, '#picker-achat', '3');
+          await attendre(400);
+          const avecMarge = await page.evaluate(() => document.querySelector('[role="dialog"]')?.innerText.replace(/\s+/g, ' ') || '');
+          verifier(/Marge brute/.test(avecMarge), 'contre-essai : avec un prix d’achat saisi, la marge est calculée');
+        }
+        await cliquer(page, 'Ajouter au catalogue', { dans: '[role="dialog"]' });
+        await attendre(1500);
+        const nouveau = base.tables.catalogue.find((a) => !ARTICLES.some((x) => x.id === a.id));
+        verifier(!!nouveau, 'l’article est enregistré en base');
+        if (achatSaisi) verifier(Number(nouveau.prix_achat) === 3, `contre-essai : le prix d’achat saisi est enregistré (${nouveau.prix_achat})`);
+        else verifier(nouveau.prix_achat === null, `le prix d’achat reste inconnu en base : null, pas 60 % (${JSON.stringify(nouveau.prix_achat)})`);
+        verifier(Number(nouveau.tva_rate) === 5.5, `la TVA choisie est celle de l’article (${nouveau.tva_rate})`);
+        if (!achatSaisi) {
+          // La fiche de l'article : « Marge non calculée », pas « Marge 100 % »
+          await page.evaluate((nom) => [...document.querySelectorAll('[data-ui="LigneListe"] > button')].find((b) => b.innerText.includes(nom))?.click(), nouveau.designation);
+          await attendre(800);
+          const fiche = await texteContenu(page);
+          verifier(/Marge non calculée/.test(fiche) && /Non renseigné/.test(fiche), `la fiche dit « Marge non calculée » et « Non renseigné » (« ${fiche.slice(0, 260)} »)`);
+          verifier(!/100 %/.test(fiche), 'jamais « 100 % » pour un achat inconnu');
+        }
+      }
+    },
+  },
+  {
+    // Relecture 1 : le premier usage et le scanner offraient la création à qui n'a pas le droit de créer un article.
+    nom: 'catalogue vide, sans le droit de créer : un état vide sans action ni promesse de tarifs ; avec le droit, les actions sont là (375 px)',
+    reel: true,
+    async executer({ ouvrir, attendre, verifier, sessionFactice }) {
+      for (const role of ['chef_chantier', 'owner']) {
+        const base = creerBase({ clients: [CLIENT], catalogue: [] }, { role });
+        const { page } = await ouvrir({ reel: true, largeur: 375, page: 'catalogue', session: sessionFactice(UID), supabase: base.reponse, avantChargement: premierUsageCatalogue });
+        await attendre(2500);
+        const texte = await texteContenu(page);
+        const boutons = await libellesBoutons(page);
+        if (role === 'chef_chantier') {
+          verifier(/Le catalogue est vide/.test(texte), `chef : « Le catalogue est vide » (« ${texte.slice(0, 160)} »)`);
+          verifier(!/tarifs|marges/.test(texte), 'chef : aucune promesse de « tarifs » ni de « marges »');
+          verifier(!boutons.some((b) => /^Importer le référentiel BTP|^Ajouter un article|^Importer un fichier CSV|^Passer/.test(b)), `chef : aucune action de création (${boutons.slice(0, 14).join(' | ')})`);
+        } else {
+          verifier(/Votre catalogue est vide/.test(texte) && /tarifs et vos marges/.test(texte), `gérant : l’accueil du premier usage (« ${texte.slice(0, 160)} »)`);
+          verifier(boutons.includes('Importer le référentiel BTP') && boutons.includes('Ajouter un article'), `gérant : ses actions sont là (${boutons.slice(0, 14).join(' | ')})`);
+        }
+      }
+      // Le même catalogue vide, l'accueil déjà passé : la page elle-même ne promet rien non plus au chef
+      const base = creerBase({ clients: [CLIENT], catalogue: [] }, { role: 'chef_chantier' });
+      const { page } = await ouvrir({ reel: true, largeur: 375, page: 'catalogue', session: sessionFactice(UID), supabase: base.reponse, avantChargement: sansInstallation });
+      await attendre(2500);
+      const texte = await texteContenu(page);
+      verifier(/Le catalogue est vide/.test(texte) && !/Créez votre catalogue|tarifs/.test(texte), `chef, accueil passé : « Le catalogue est vide », sans « Créez votre catalogue » (« ${texte.slice(0, 160)} »)`);
+    },
+  },
+  {
+    nom: 'scanner : sans le droit de créer un article, « Produit non trouvé » n’offre pas « Créer l’article » ; avec le droit, il l’offre (375 px)',
+    reel: true,
+    async executer({ ouvrir, attendre, verifier, cliquer, sessionFactice }) {
+      for (const role of ['chef_chantier', 'owner']) {
+        const base = creerBase(donnees(), { role });
+        const { page } = await ouvrir({ reel: true, largeur: 375, page: 'catalogue', session: sessionFactice(UID), supabase: base.reponse, avantChargement: avecCamera });
+        await attendre(2500);
+        await cliquer(page, "Plus d'actions");
+        await cliquer(page, 'Scanner un code-barres', { dans: '[role="dialog"]' });
+        await attendre(3500);
+        const dialogue = await page.evaluate(() => (document.querySelector('[role="dialog"]')?.innerText || '').replace(/\s+/g, ' '));
+        verifier(/Produit non trouvé/.test(dialogue), `${role} : le code inconnu donne « Produit non trouvé » (« ${dialogue.slice(0, 200)} »)`);
+        const boutons = await page.evaluate(() => [...document.querySelectorAll('[role="dialog"] button')].map((b) => b.innerText.trim()));
+        if (role === 'chef_chantier') verifier(!boutons.includes('Créer l’article') && !boutons.includes('Créer l\'article'), `chef : pas de « Créer l’article » (${boutons.join(' | ')})`);
+        else verifier(boutons.some((b) => /^Créer l.article$/.test(b)), `gérant : « Créer l’article » est proposé (${boutons.join(' | ')})`);
+      }
+    },
+  },
+  {
+    // Relecture 1 : le menu « + » ouvrait le formulaire de création d'un client à qui n'a pas le droit d'en créer.
+    nom: 'menu « + » : « Nouveau client » n’ouvre pas le formulaire sans le droit de créer un client ; le gérant l’obtient (375 px)',
+    reel: true,
+    async executer({ ouvrir, attendre, verifier, sessionFactice }) {
+      for (const role of ['chef_chantier', 'owner']) {
+        const base = creerBase(donnees(), { role });
+        const { page } = await ouvrir({ reel: true, largeur: 375, page: 'dashboard', session: sessionFactice(UID), supabase: base.reponse, avantChargement: sansInstallation });
+        await attendre(2500);
+        await page.evaluate(() => document.querySelector('button[aria-label="Créer nouveau"]')?.click());
+        await attendre(500);
+        await page.evaluate(() => [...document.querySelectorAll('[role="menuitem"]')].find((b) => /Nouveau client/.test(b.innerText))?.click());
+        await attendre(1500);
+        const etat = await page.evaluate(() => ({ formulaire: !!document.querySelector('#client-nom'), rapide: !!document.querySelector('#qc-nom') }));
+        if (role === 'chef_chantier') verifier(!etat.formulaire && !etat.rapide, `chef : aucun formulaire de création ne s’ouvre (${JSON.stringify(etat)})`);
+        else verifier(etat.formulaire || etat.rapide, `gérant : un formulaire de création s’ouvre (${JSON.stringify(etat)})`);
+      }
+    },
+  },
+  {
+    // Relecture 1 : « N contacts importés » après un arrêt, qui remplaçait le message de refus (une notification en remplace une autre).
+    nom: 'import depuis les contacts : arrêté en route, il dit « 1 sur 3 » sans effacer le refus ; accepté, il l’annonce (375 px)',
+    reel: true,
+    async executer({ ouvrir, attendre, verifier, cliquer, sessionFactice }) {
+      for (const refus of [true, false]) {
+        let postes = 0;
+        const base = creerBase({ clients: [CLIENT] }, { refuser: (m, table) => (m === 'POST' && table === 'clients' && refus && ++postes >= 2 ? REFUS('clients') : null) });
+        const { page } = await ouvrir({ reel: true, largeur: 375, page: 'clients', session: sessionFactice(UID), supabase: base.reponse, avantChargement: avecContacts });
+        await attendre(2500);
+        await cliquer(page, "Plus d'actions");
+        await cliquer(page, 'Importer depuis mes contacts', { dans: '[role="dialog"]' });
+        await attendre(3500);
+        const corps = await page.evaluate(() => document.body.innerText.replace(/\s+/g, ' '));
+        const dialogue = await page.evaluate(() => (document.querySelector('[role="dialog"]')?.innerText || '').replace(/\s+/g, ' '));
+        if (refus) {
+          verifier(/Importation incomplète/.test(dialogue) && /1 contact importé sur 3/.test(dialogue), `arrêté au 2e : le bilan dit 1 sur 3 (« ${dialogue.slice(0, 200)} »)`);
+          verifier(!/3 contacts importés/.test(corps), 'et n’annonce jamais « 3 contacts importés »');
+          verifier(/Non enregistré/.test(corps), `le message de refus de la base est toujours à l’écran (« ${corps.slice(0, 300)} »)`);
+          verifier(base.tables.clients.length === 2, `un seul contact de plus en base (${base.tables.clients.length - 1})`);
+        } else {
+          verifier(/3 contacts importés/.test(corps) && !/Importation incomplète/.test(corps), `accepté : « 3 contacts importés », sans bilan d’arrêt (« ${corps.slice(0, 300)} »)`);
+          verifier(base.tables.clients.length === 4, `les trois contacts sont en base (${base.tables.clients.length - 1})`);
+        }
+      }
+    },
+  },
+  {
+    // Relecture 1 : une ligne sans nom devenait un client sans nom ; aucun cas « aucune ligne exploitable ».
+    nom: 'import de clients : « Aucune ligne exploitable » tant qu’aucune colonne ne donne un nom ; associée, l’import redevient possible (1440 px)',
+    reel: true,
+    async executer({ ouvrir, attendre, verifier, cliquer, sessionFactice }) {
+      const dossier = path.join(__dirname, '..', '..', 'audit-ui');
+      fs.mkdirSync(dossier, { recursive: true });
+      const csv = path.join(dossier, 'parcours-import-sans-nom.csv');
+      fs.writeFileSync(csv, 'Prénom;Email\nAlice;alice@exemple.fr\nBruno;bruno@exemple.fr\n');
+      const base = creerBase({ clients: [CLIENT] });
+      const { page } = await ouvrir({ reel: true, largeur: 1440, page: 'clients', session: sessionFactice(UID), supabase: base.reponse, avantChargement: sansInstallation });
+      await attendre(2500);
+      await cliquer(page, "Plus d'actions");
+      await cliquer(page, 'Importer un fichier (CSV)', { dans: '[role="dialog"]' });
+      await attendre(600);
+      await (await page.$('[role="dialog"] input[type="file"]')).uploadFile(csv);
+      await attendre(1200);
+      const lire = () => page.evaluate(() => {
+        const d = document.querySelector('[role="dialog"]');
+        const b = [...(d?.querySelectorAll('button') || [])].find((x) => /^Importer \d+ ligne/.test(x.innerText.trim()));
+        return { texte: (d?.innerText || '').replace(/\s+/g, ' '), bouton: b ? { libelle: b.innerText.trim(), desactive: b.disabled } : null };
+      });
+      const sans = await lire();
+      verifier(/Aucune ligne exploitable/.test(sans.texte), `sans colonne de nom : « Aucune ligne exploitable » (« ${sans.texte.slice(0, 260)} »)`);
+      verifier(sans.bouton?.desactive === true && /Importer 0 ligne/.test(sans.bouton.libelle), `et l’import est impossible (${JSON.stringify(sans.bouton)})`);
+      // Contre-essai : la colonne « Prénom » associée au nom rend les deux lignes importables
+      await page.select('[role="dialog"] select[aria-label="Colonne « Prénom »"]', 'nom');
+      await attendre(500);
+      const avec = await lire();
+      verifier(!/Aucune ligne exploitable/.test(avec.texte) && avec.bouton?.desactive === false && /Importer 2 lignes/.test(avec.bouton.libelle), `contre-essai : avec un nom associé, « Importer 2 lignes » est possible (${JSON.stringify(avec.bouton)})`);
+    },
+  },
+  {
+    // Relecture 1 : « Réinitialiser par défaut » effaçait d'un geste tous les coefficients de l'artisan.
+    nom: 'coefficients : la remise à zéro demande confirmation ; refusée, rien ne change ; confirmée, les valeurs par défaut reviennent (1440 px)',
+    reel: true,
+    async executer({ ouvrir, attendre, verifier, cliquer, sessionFactice }) {
+      const base = creerBase(donnees());
+      const { page } = await ouvrir({ reel: true, largeur: 1440, page: 'catalogue', session: sessionFactice(UID), supabase: base.reponse, avantChargement: avecCoefficients });
+      await attendre(2500);
+      await page.evaluate(() => [...document.querySelectorAll('[role="tab"]')].find((t) => t.innerText.trim() === 'Coefficients')?.click());
+      await attendre(700);
+      const lireCoef = () => page.evaluate(() => { try { return JSON.parse(localStorage.getItem('mallettico_coefficients')); } catch { return null; } });
+      verifier((await lireCoef())?.['Électricité'] === 3.2, 'départ : le coefficient personnalisé est gardé (× 3,2)');
+      await page.evaluate(() => [...document.querySelectorAll('button')].find((b) => /Réinitialiser par défaut/.test(b.innerText))?.click());
+      await attendre(600);
+      const demande = await page.evaluate(() => (document.querySelector('[role="dialog"]')?.innerText || '').replace(/\s+/g, ' '));
+      verifier(/Remettre tous les coefficients à leur valeur par défaut/.test(demande), `une confirmation est demandée (« ${demande.slice(0, 200)} »)`);
+      await cliquer(page, 'Annuler', { dans: '[role="dialog"]' });
+      await attendre(600);
+      verifier((await lireCoef())?.['Électricité'] === 3.2, 'annulée : le coefficient n’a pas bougé');
+      await page.evaluate(() => [...document.querySelectorAll('button')].find((b) => /Réinitialiser par défaut/.test(b.innerText))?.click());
+      await attendre(600);
+      await cliquer(page, 'Réinitialiser', { dans: '[role="dialog"]' });
+      await attendre(800);
+      const apres = await lireCoef();
+      verifier(apres?.['Électricité'] === 1.5 && apres?.Plomberie === 1.6, `confirmée : les valeurs par défaut reviennent (${JSON.stringify(apres)})`);
+    },
+  },
+  {
+    // Relecture 1 : les boutons d'appel et de WhatsApp du tableau des clients faisaient 36 px.
+    nom: 'tableau des clients : les boutons d’appel et de WhatsApp font 44 px (1440 px)',
+    reel: true,
+    async executer({ ouvrir, attendre, verifier, cliquer, sessionFactice }) {
+      const base = creerBase(donnees());
+      const { page } = await ouvrir({ reel: true, largeur: 1440, page: 'clients', session: sessionFactice(UID), supabase: base.reponse, avantChargement: sansInstallation });
+      await attendre(2500);
+      // Le choix Liste / Tableau est dans le volet « Trier »
+      await page.evaluate(() => [...document.querySelectorAll('button')].find((b) => /^Trier/.test(b.innerText.trim()) && b.getBoundingClientRect().width > 0)?.click());
+      await attendre(500);
+      await cliquer(page, 'Tableau', { dans: '[role="dialog"]' });
+      await attendre(800);
+      const tailles = await page.evaluate(() => [...document.querySelectorAll('button[aria-label^="Appeler"], button[aria-label$="sur WhatsApp"]')]
+        .filter((b) => b.getBoundingClientRect().width > 0).map((b) => Math.round(Math.min(b.getBoundingClientRect().width, b.getBoundingClientRect().height))));
+      verifier(tailles.length >= 2 && tailles.every((t) => t >= 44), `boutons d’appel et de WhatsApp d’au moins 44 px (${JSON.stringify(tailles)})`);
     },
   },
 ];

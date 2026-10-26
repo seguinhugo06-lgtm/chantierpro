@@ -4,7 +4,8 @@ import { Bouton, BoutonIcone } from '../ui/Bouton';
 import Carte from '../ui/Carte';
 import Champ from '../ui/Champ';
 import Pastille from '../ui/Pastille';
-import { margeBrute, niveauMarge, CLASSES_TON_MARGE } from '../../lib/margeArticle';
+import { achatConnu, margeBrute, niveauMarge, CLASSES_TON_MARGE } from '../../lib/margeArticle';
+import { formatMoney } from '../../lib/formatters';
 
 export const UNITES = [
   { value: 'u', label: 'u (unité)' }, { value: 'm²', label: 'm² (mètre carré)' },
@@ -24,7 +25,6 @@ const TAUX_TVA = [
   { value: '0', label: '0 % (exonéré)' },
 ];
 
-const euros = (n) => `${Number(n).toFixed(2).replace('.', ',')} €`;
 
 /**
  * Le formulaire d'un article du catalogue (création ou modification). `Champ` partout (libellé au-dessus, 48 px, « facultatif »
@@ -39,7 +39,8 @@ export default function FormulaireArticle({
   const [stockOuvert, setStockOuvert] = useState(() => form.stock_actuel !== '' || form.stock_seuil_alerte !== '');
   const coef = coefficients[form.categorie] || 1.5;
   const tva = parseFloat(form.tva_rate || 20);
-  const marge = form.prix && form.prixAchat && parseFloat(form.prixAchat) > 0 ? margeBrute(form.prix, form.prixAchat) : null;
+  const marge = form.prix && achatConnu(form.prixAchat) > 0 ? margeBrute(form.prix, form.prixAchat) : null;
+  const achatInconnu = !!form.prix && achatConnu(form.prixAchat) === null;
   const niveau = niveauMarge(marge);
   const classes = CLASSES_TON_MARGE[niveau.ton];
 
@@ -60,7 +61,7 @@ export default function FormulaireArticle({
             {similaires.length > 0 && (
               <div className="mt-2 p-3 rounded-xl text-sm bg-alerte-fond text-alerte-texte">
                 <p className="font-semibold flex items-center gap-1.5 mb-1"><AlertTriangle size={14} aria-hidden="true" /> Articles similaires :</p>
-                {similaires.map((s) => <p key={s.id} className="ml-5">• {s.nom} ({s.categorie}, {s.prix} €/{s.unite})</p>)}
+                {similaires.map((s) => <p key={s.id} className="ml-5">• {s.nom} ({s.categorie}, {formatMoney(s.prix)}/{s.unite})</p>)}
               </div>
             )}
           </div>
@@ -92,7 +93,7 @@ export default function FormulaireArticle({
             <Champ id="article-tva" as="select" libelle="Taux de TVA" value={form.tva_rate} onChange={(e) => setForm((p) => ({ ...p, tva_rate: e.target.value }))}>
               {TAUX_TVA.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
             </Champ>
-            <p className="text-base text-encre-2 pb-3 tabular-nums">{form.prix ? `Soit ${euros(parseFloat(form.prix) * (1 + tva / 100))} TTC` : ''}</p>
+            <p className="text-base text-encre-2 pb-3 tabular-nums">{form.prix ? `Soit ${formatMoney(parseFloat(form.prix) * (1 + tva / 100), 2)} TTC` : ''}</p>
           </div>
 
           <label className="flex items-start gap-3 text-sm text-encre-2 cursor-pointer min-h-[44px]">
@@ -100,7 +101,8 @@ export default function FormulaireArticle({
             <span>Calculer le prix de vente avec le coefficient (× {coef} pour {form.categorie})</span>
           </label>
 
-          {/* La marge en direct */}
+          {/* La marge en direct : sans prix d'achat, elle n'est pas calculée (jamais « 100 % ») */}
+          {achatInconnu && <p className="text-sm text-encre-3">Marge non calculée : renseignez le prix d'achat pour la voir.</p>}
           {marge !== null && (
             <div className="p-4 rounded-xl border border-bord bg-surface-2">
               <div className="flex items-center justify-between mb-2">
@@ -110,7 +112,7 @@ export default function FormulaireArticle({
               <div className="flex items-end gap-4 mb-2">
                 <div>
                   <p className={`text-2xl font-bold tabular-nums ${classes.texte}`}>{marge.toFixed(1).replace('.', ',')} %</p>
-                  <p className="text-sm text-encre-3">{modeDiscret ? '·····' : `${euros(parseFloat(form.prix) - parseFloat(form.prixAchat))} par ${form.unite}`}</p>
+                  <p className="text-sm text-encre-3">{modeDiscret ? '·····' : `${formatMoney(parseFloat(form.prix) - parseFloat(form.prixAchat), 2)} par ${form.unite}`}</p>
                 </div>
                 <div className="text-sm text-encre-3">
                   <p>Coefficient réel : <strong className="text-encre">× {(parseFloat(form.prix) / parseFloat(form.prixAchat)).toFixed(2).replace('.', ',')}</strong></p>

@@ -29,8 +29,8 @@ const ilYa = (dernier) => {
   return `il y a ${Math.floor(jours / 365)} a`;
 };
 
-const COLONNES_AVEC_CA = 'sm:grid-cols-[40px_1fr_100px_100px_140px_80px_80px_70px]';
-const COLONNES_SANS_CA = 'sm:grid-cols-[40px_1fr_100px_100px_140px_80px_70px]';
+const COLONNES_AVEC_CA = 'sm:grid-cols-[40px_1fr_100px_100px_140px_80px_80px_96px]';
+const COLONNES_SANS_CA = 'sm:grid-cols-[40px_1fr_100px_100px_140px_80px_96px]';
 
 /**
  * La vue « Tableau » de la liste des clients : une ligne par client avec ses colonnes (type ou activité, téléphone, e-mail,
@@ -89,10 +89,10 @@ export default function TableauClients({
               <div className="flex items-center gap-1 justify-end">
                 {c.telephone && (
                   <>
-                    <button type="button" onClick={() => onAppeler(c.telephone)} aria-label={`Appeler ${nom}`} title="Appeler" className="w-9 h-9 rounded-lg flex items-center justify-center text-encre-2 hover:bg-bord">
+                    <button type="button" onClick={() => onAppeler(c.telephone)} aria-label={`Appeler ${nom}`} title="Appeler" className="w-11 h-11 rounded-lg flex items-center justify-center text-encre-2 hover:bg-bord">
                       <Phone size={15} aria-hidden="true" />
                     </button>
-                    <button type="button" onClick={() => onWhatsApp(c.telephone, c.prenom)} aria-label={`Écrire à ${nom} sur WhatsApp`} title="WhatsApp" className="w-9 h-9 rounded-lg flex items-center justify-center text-encre-2 hover:bg-bord">
+                    <button type="button" onClick={() => onWhatsApp(c.telephone, c.prenom)} aria-label={`Écrire à ${nom} sur WhatsApp`} title="WhatsApp" className="w-11 h-11 rounded-lg flex items-center justify-center text-encre-2 hover:bg-bord">
                       <MessageCircle size={15} aria-hidden="true" />
                     </button>
                   </>

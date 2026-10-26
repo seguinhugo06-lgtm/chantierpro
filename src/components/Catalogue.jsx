@@ -23,7 +23,8 @@ import { jourLocal } from '../lib/dates';
 import { devisAvecLigneAjoutee } from '../lib/ajoutLigneDevis';
 import { estFranchiseTva } from '../lib/franchiseTva';
 import { lireCsv, nombreFr, associerColonnes } from '../lib/csvImport';
-import { margeBrute, niveauMarge, CLASSES_TON_MARGE } from '../lib/margeArticle';
+import { achatConnu, margeBrute, niveauMarge, CLASSES_TON_MARGE } from '../lib/margeArticle';
+import { formatMoney } from '../lib/formatters';
 import ArticleDetail from './catalogue/ArticleDetail';
 import FormulaireArticle from './catalogue/FormulaireArticle';
 import Demarrage from './catalogue/Demarrage';
@@ -78,9 +79,6 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
   const peutModifier = canPerform('catalogue', 'edit');
   const peutSupprimer = canPerform('catalogue', 'delete');
   const peutAjouterAuDevis = canPerform('devis', 'edit');
-
-  // Prix au format français (« 2,5 € », pas « 2.5€ »), masqué en mode discret
-  const fmtPrix = (n) => (modeDiscret ? '·····' : `${Number(n || 0).toLocaleString('fr-FR', { maximumFractionDigits: 2 })} €`);
 
   // ====== ÉTAT ======
   const [activeTab, setActiveTab] = useState('catalogue');
@@ -271,10 +269,9 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
       const meta = CATEGORIES_METIERS.find((c) => c.id === catId);
       Object.values(cat.sousCategories).forEach((sousCat) => {
         sousCat.articles.forEach((article) => {
-          const coef = coefficients[meta?.nom] || coefficients[cat.nom] || 1.5;
           aImporter.push({
-            nom: article.nom, prix: article.prixDefaut, prixAchat: Math.round(article.prixDefaut / coef * 100) / 100,
-            unite: article.unite, categorie: meta?.nom || 'Autre', favori: false, coefAuto: true,
+            nom: article.nom, prix: article.prixDefaut, prixAchat: null, // le référentiel ne connaît pas votre prix d'achat : inconnu, pas déduit du prix de vente
+            unite: article.unite, categorie: meta?.nom || 'Autre', favori: false,
             reference: `REF-${article.id.toUpperCase().slice(0, 10)}`,
           });
         });
@@ -293,14 +290,14 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
     else showToast(`${importes} articles importés sur ${aImporter.length} : l'import s'est arrêté`, 'error');
     if (importes === aImporter.length) setTimeout(() => setEtapeDemarrage(null), 2000);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [addCatalogueItemProp, setCatalogue, coefficients, showToast]);
+  }, [addCatalogueItemProp, setCatalogue, showToast]);
 
   // Un article choisi dans le référentiel BTP
   const ajouterDepuisReferentiel = async (item) => {
-    const coef = coefficients[item.categorie] || 1.5;
     const nouveau = {
       nom: item.nom, prix: item.prixUnitaire,
-      prixAchat: item.prixAchat || Math.round(item.prixUnitaire / coef * 100) / 100,
+      prixAchat: achatConnu(item.prixAchat), // saisi dans le sélecteur, sinon inconnu (null)
+      tva: item.tva, tva_rate: item.tva, // le taux annoncé par le sélecteur, pas 20 par défaut
       unite: item.unite, categorie: item.categorie, favori: false,
       stock_actuel: undefined, stock_seuil_alerte: undefined,
     };
@@ -321,7 +318,7 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
     }
     setFormErrors({});
     const prixVente = parseFloat(form.prix);
-    const prixAchat = parseFloat(form.prixAchat) || 0;
+    const prixAchat = achatConnu(form.prixAchat); // vide = inconnu (null), jamais 0
     // 0 % est un vrai taux (autoliquidation, franchise) : `|| 20` le remplaçait par 20 %
     const tva = nombreDe(form.tva_rate) ?? 20;
     const donnees = {
@@ -341,7 +338,7 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
       const ancien = catalogue.find((c) => c.id === editId);
       if (!(await modifierArticle(editId, donnees))) { setEnregistrement(false); return; }
       // L'historique des prix ne retient que ce que la base a accepté
-      if (ancien && (ancien.prix !== prixVente || ancien.prixAchat !== prixAchat)) {
+      if (ancien && (ancien.prix !== prixVente || (ancien.prixAchat ?? null) !== prixAchat)) {
         setPriceHistory((prev) => [...prev, { id: generateId(), articleId: editId, prixVente: ancien.prix, prixAchat: ancien.prixAchat, date: new Date().toISOString() }]);
       }
       showToast('Article modifié', 'success');
@@ -403,10 +400,10 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
   const lierFournisseur = (articleId, fournisseurId, prixAchat) => {
     setLiens((prev) => {
       const existant = prev.find((l) => l.articleId === articleId && l.fournisseurId === fournisseurId);
-      if (existant) return prev.map((l) => (l.id === existant.id ? { ...l, prixAchat: parseFloat(prixAchat) || 0, updatedAt: new Date().toISOString() } : l));
-      return [...prev, { id: generateId(), articleId, fournisseurId, prixAchat: parseFloat(prixAchat) || 0, createdAt: new Date().toISOString() }];
+      if (existant) return prev.map((l) => (l.id === existant.id ? { ...l, prixAchat: achatConnu(prixAchat), updatedAt: new Date().toISOString() } : l));
+      return [...prev, { id: generateId(), articleId, fournisseurId, prixAchat: achatConnu(prixAchat), createdAt: new Date().toISOString() }];
     });
-    showToast(`Lié à ${fournisseurs.find((f) => f.id === fournisseurId)?.nom || 'ce fournisseur'}`, 'success');
+    showToast(`Lié à ${fournisseurs.find((f) => f.id === fournisseurId)?.nom || 'ce fournisseur'} sur cet appareil`, 'success');
   };
 
   // Mouvement de stock : la base prend le nouveau stock AVANT que le mouvement soit noté et annoncé
@@ -419,7 +416,7 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
     else if (article && f.type === 'out') nouveauStock = Math.max(0, (article.stock_actuel || 0) - quantite);
     if (nouveauStock !== null && !(await modifierArticle(article.id, { stock_actuel: nouveauStock }))) return false;
     setMouvements((prev) => [{ id: generateId(), ...f, quantite, date: new Date().toISOString(), articleNom: article?.nom }, ...prev]);
-    showToast(nouveauStock !== null ? 'Mouvement enregistré — stock mis à jour' : 'Mouvement enregistré', 'success');
+    showToast(nouveauStock !== null ? 'Mouvement enregistré sur cet appareil — stock mis à jour' : 'Mouvement enregistré sur cet appareil', 'success');
     return true;
   };
 
@@ -505,7 +502,7 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
     const lignes = [['Référence', 'Nom', 'Description', 'Catégorie', 'Unité', 'TVA %', 'Prix vente HT', 'Prix achat HT', 'Marge %', 'Stock', 'Seuil alerte', 'Favori']];
     catalogue.forEach((c) => {
       const marge = margeBrute(c.prix, c.prixAchat);
-      lignes.push([c.reference || '', c.nom, c.description || '', c.categorie, c.unite, c.tva_rate || c.tva || 20, c.prix, c.prixAchat || '', marge !== null ? marge.toFixed(1) : '', c.stock_actuel ?? '', c.stock_seuil_alerte ?? '', c.favori ? 'Oui' : '']);
+      lignes.push([c.reference || '', c.nom, c.description || '', c.categorie, c.unite, c.tva_rate || c.tva || 20, c.prix, c.prixAchat ?? '', marge !== null ? marge.toFixed(1) : '', c.stock_actuel ?? '', c.stock_seuil_alerte ?? '', c.favori ? 'Oui' : '']);
     });
     const csv = lignes.map((r) => r.map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`).join(';')).join('\n');
     remettreFichier(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' }), `catalogue_${jourLocal()}.csv`)
@@ -564,7 +561,7 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
         const tva = tvaDe(row[importMapping.tva_rate], 20);
         const nouveau = {
           nom, reference: ref, description: row[importMapping.description] || '', prix,
-          prixAchat: Number.isFinite(achatLu) ? achatLu : 0, unite: row[importMapping.unite] || 'u', categorie: row[importMapping.categorie] || 'Autre',
+          prixAchat: Number.isFinite(achatLu) ? achatLu : null, unite: row[importMapping.unite] || 'u', categorie: row[importMapping.categorie] || 'Autre',
           tva_rate: tva, tva, favori: false, stock_actuel: Number.isFinite(stockLu) ? Math.round(stockLu) : undefined, stock_seuil_alerte: undefined,
         };
         if (await creerArticle(nouveau)) importes++; else refuses++;
@@ -589,7 +586,7 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
       <FenetreImportCsv donnees={importData} mapping={importMapping} setMapping={setImportMapping} onFermer={() => setImportData(null)} onImporter={importerCsv} enCours={importEnCours} />
       {scannerOuvert && (
         <FenetreScanner
-          catalogue={catalogue} onFermer={() => setScannerOuvert(false)}
+          peutCreer={peutCreer} catalogue={catalogue} onFermer={() => setScannerOuvert(false)}
           onVoirFiche={(id) => { setScannerOuvert(false); setArticleDetail(id); }}
           onCreer={(prerempli) => { setScannerOuvert(false); ouvrirNouvelArticle(prerempli); }}
         />
@@ -677,6 +674,7 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
     return (
       <>
         <Demarrage
+          peutCreer={peutCreer}
           etape={etapeDemarrage} setEtape={setEtapeDemarrage} metiersChoisis={metiersChoisis} setMetiersChoisis={setMetiersChoisis}
           progression={progression} resultat={resultatDemarrage} onImporter={importerReferentiel}
           onNouveau={() => ouvrirNouvelArticle()} onPasser={passerLeDemarrage} onCsv={() => fileInputRef.current?.click()}
@@ -718,7 +716,7 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
   const effacerFiltres = () => { setOnlyInStock(false); setPriceRange([0, 10000]); setCatFilter('Tous'); setOnlyFavoris(false); setOnlyLowStock(false); };
   const puces = [
     onlyInStock && { cle: 'enstock', libelle: 'En stock', onRetirer: () => setOnlyInStock(false) },
-    prixActif && { cle: 'prix', libelle: `Prix ${priceRange[0] > 0 ? `dès ${priceRange[0]} €` : ''}${priceRange[0] > 0 && priceRange[1] < 10000 ? ' ' : ''}${priceRange[1] < 10000 ? `jusqu'à ${priceRange[1]} €` : ''}`.trim(), onRetirer: () => setPriceRange([0, 10000]) },
+    prixActif && { cle: 'prix', libelle: `Prix ${priceRange[0] > 0 ? `dès ${formatMoney(priceRange[0])}` : ''}${priceRange[0] > 0 && priceRange[1] < 10000 ? ' ' : ''}${priceRange[1] < 10000 ? `jusqu'à ${formatMoney(priceRange[1])}` : ''}`.trim(), onRetirer: () => setPriceRange([0, 10000]) },
   ].filter(Boolean);
   const aucunFiltre = !debouncedSearch && vueRangee === 'tous' && nbFiltres === 0;
   const lignes = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
@@ -817,7 +815,7 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
                 )}
                 {canViewPrices && (
                   <fieldset>
-                    <legend className="text-xs font-semibold uppercase tracking-wider mb-2.5 text-encre-3">Prix de vente</legend>
+                    <legend className="text-sm font-semibold mb-2.5 text-encre-2">Prix de vente</legend>
                     <div className="grid grid-cols-2 gap-3">
                       <Champ id="filtre-prix-min" libelle="Prix minimum (€)" type="number" inputMode="numeric" min="0" placeholder="0" value={priceRange[0] || ''} onChange={(e) => setPriceRange([parseInt(e.target.value, 10) || 0, priceRange[1]])} />
                       <Champ id="filtre-prix-max" libelle="Prix maximum (€)" type="number" inputMode="numeric" min="0" placeholder="Aucun" value={priceRange[1] < 10000 ? priceRange[1] : ''} onChange={(e) => setPriceRange([priceRange[0], parseInt(e.target.value, 10) || 10000])} />
@@ -837,7 +835,8 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
             <Carte marge="aucun">
               {vide || aucunFiltre ? (
                 <EtatVide
-                  icone={Package} titre="Créez votre catalogue" texte="Centralisez vos matériaux, vos tarifs et vos stocks."
+                  icone={Package} titre={peutCreer ? 'Créez votre catalogue' : 'Le catalogue est vide'}
+                  texte={peutCreer ? 'Centralisez vos matériaux, vos tarifs et vos stocks.' : 'Aucun article n\'a encore été ajouté.'}
                   action={peutCreer ? (
                     <div className="flex flex-col items-center gap-2">
                       <Bouton variante="principal" icone={Sparkles} onClick={() => setShowArticlePicker(true)}>Importer depuis le référentiel BTP</Bouton>
@@ -875,7 +874,7 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
                         onClick={() => setArticleDetail(item.id)}
                         titre={item.nom}
                         meta={[item.reference, item.categorie, item.unite].filter(Boolean).join(' · ')}
-                        montant={canViewPrices ? fmtPrix(item.prix) : undefined}
+                        montant={canViewPrices ? (modeDiscret ? '·····' : formatMoney(item.prix)) : undefined}
                         pastille={bas ? <Pastille ton="alerte">Stock bas</Pastille> : stockVal != null ? <span className="text-sm text-encre-2 tabular-nums">Stock {stockVal}</span> : undefined}
                       />
                     </div>
@@ -927,8 +926,8 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
                               </div>
                             </div>
                           </td>
-                          {canViewPrices && <td className="px-4 py-3 text-right font-semibold tabular-nums text-encre">{fmtPrix(item.prix)}</td>}
-                          {canViewPrices && <td className="px-4 py-3 text-right tabular-nums text-encre-3">{item.prixAchat != null ? fmtPrix(item.prixAchat) : '—'}</td>}
+                          {canViewPrices && <td className="px-4 py-3 text-right font-semibold tabular-nums text-encre">{modeDiscret ? '·····' : formatMoney(item.prix)}</td>}
+                          {canViewPrices && <td className="px-4 py-3 text-right tabular-nums text-encre-3">{achatConnu(item.prixAchat) !== null ? (modeDiscret ? '·····' : formatMoney(item.prixAchat)) : '—'}</td>}
                           {canViewPrices && (
                             <td className="px-4 py-3 text-right tabular-nums">
                               <span className={marge !== null ? CLASSES_TON_MARGE[niveau.ton].texte : 'text-encre-3'}>{modeDiscret ? '·····' : (marge !== null ? `${marge.toFixed(0)} %` : '—')}</span>

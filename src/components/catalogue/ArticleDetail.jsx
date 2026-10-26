@@ -8,11 +8,11 @@ import Modal, { ModalHeader, ModalTitle, ModalDescription, ModalBody, ModalFoote
 import MenuActions from '../ui/MenuActions';
 import Pastille from '../ui/Pastille';
 import TuileChiffre from '../ui/TuileChiffre';
-import { margeBrute, niveauMarge } from '../../lib/margeArticle';
+import { achatConnu, margeBrute, niveauMarge } from '../../lib/margeArticle';
+import { formatMoney } from '../../lib/formatters';
 import { dateLue } from '../../lib/dates';
 
 const LIBELLE_MOUVEMENT = { in: 'Entrée', out: 'Sortie', return: 'Retour', adjustment: 'Ajustement' };
-const euros = (n) => `${Number(n || 0).toLocaleString('fr-FR', { maximumFractionDigits: 2 })} €`;
 
 /**
  * La fiche d'un article du catalogue : qui il est, ce qu'il rapporte, ce qu'il en reste, où l'acheter. Refonte du 26 oct. 2026
@@ -29,6 +29,7 @@ export default function ArticleDetail({
   const [fournisseurId, setFournisseurId] = useState('');
   const [prix, setPrix] = useState('');
 
+  const achat = achatConnu(item.prixAchat); // null = inconnu : jamais « Achat 0 € / Marge 100 % »
   const marge = margeBrute(item.prix, item.prixAchat);
   const niveau = niveauMarge(marge);
   const stock = item.stock_actuel ?? item.stock;
@@ -39,7 +40,7 @@ export default function ArticleDetail({
     .filter((l) => l.articleId === item.id)
     .map((l) => ({ ...l, fournisseur: fournisseurs.find((f) => f.id === l.fournisseurId) }))
     .filter((l) => l.fournisseur)
-    .sort((a, b) => a.prixAchat - b.prixAchat);
+    .sort((a, b) => (achatConnu(a.prixAchat) ?? Infinity) - (achatConnu(b.prixAchat) ?? Infinity));
   const dejaLies = liensDeLArticle.map((l) => l.fournisseurId);
   const fournisseursLibres = fournisseurs.filter((f) => !dejaLies.includes(f.id));
   const mouvementsDeLArticle = mouvements.filter((m) => m.articleId === item.id).slice(0, 15);
@@ -74,13 +75,13 @@ export default function ArticleDetail({
 
       {/* Les chiffres : les prix seulement pour qui les voit ; le stock pour tous */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {voitPrix && <TuileChiffre libelle="Prix de vente" valeur={masque(euros(item.prix))} contexte={`/ ${item.unite}`} />}
-        {voitPrix && <TuileChiffre libelle="Prix d'achat" valeur={masque(item.prixAchat ? euros(item.prixAchat) : '—')} contexte={item.prixAchat ? `/ ${item.unite}` : undefined} />}
+        {voitPrix && <TuileChiffre libelle="Prix de vente" valeur={masque(formatMoney(item.prix))} contexte={`/ ${item.unite}`} />}
+        {voitPrix && <TuileChiffre libelle="Prix d'achat" valeur={masque(achat !== null ? formatMoney(achat) : '—')} contexte={achat !== null ? `/ ${item.unite}` : 'Non renseigné'} />}
         {voitPrix && (
           <TuileChiffre
             libelle="Marge" valeur={masque(marge !== null ? `${marge.toFixed(0)} %` : '—')}
-            contexte={marge !== null && niveau.ton !== 'alerte' ? `${masque(euros(item.prix - (item.prixAchat || 0)))} / ${item.unite} · ${niveau.libelle}` : undefined}
-            alerte={marge !== null && niveau.ton === 'alerte' ? `${niveau.libelle} : ${masque(euros(item.prix - (item.prixAchat || 0)))} / ${item.unite}` : undefined} tonAlerte="alerte"
+            contexte={marge === null ? 'Marge non calculée' : niveau.ton !== 'alerte' ? `${masque(formatMoney(item.prix - achat))} / ${item.unite} · ${niveau.libelle}` : undefined}
+            alerte={marge !== null && niveau.ton === 'alerte' ? `${niveau.libelle} : ${masque(formatMoney(item.prix - achat))} / ${item.unite}` : undefined} tonAlerte="alerte"
           />
         )}
         <TuileChiffre
@@ -109,7 +110,7 @@ export default function ArticleDetail({
                 <LigneListe
                   key={l.id} titre={l.fournisseur.nom}
                   meta={`${l.fournisseur.telephone || l.fournisseur.email || '—'} · délai ${l.fournisseur.delaiLivraison || '?'} j`}
-                  montant={masque(euros(l.prixAchat))} pastille={i === 0 && liensDeLArticle.length > 1 ? <Pastille ton="succes">Meilleur prix</Pastille> : undefined}
+                  montant={masque(achatConnu(l.prixAchat) !== null ? formatMoney(l.prixAchat) : '—')} pastille={i === 0 && liensDeLArticle.length > 1 && achatConnu(l.prixAchat) !== null ? <Pastille ton="succes">Meilleur prix</Pastille> : undefined}
                 />
               ))}
             </GroupeListe>
@@ -124,7 +125,7 @@ export default function ArticleDetail({
             {historique.map((h) => (
               <li key={h.id} className="flex items-center justify-between gap-3 py-2 text-sm">
                 <span className="text-encre-3">{dateLue(h.date).toLocaleDateString('fr-FR')}</span>
-                <span className="text-encre tabular-nums">Vente : {masque(euros(h.prixVente))} · Achat : {masque(euros(h.prixAchat))}</span>
+                <span className="text-encre tabular-nums">Vente : {masque(formatMoney(h.prixVente))} · Achat : {masque(achatConnu(h.prixAchat) !== null ? formatMoney(h.prixAchat) : '—')}</span>
               </li>
             ))}
           </ul>

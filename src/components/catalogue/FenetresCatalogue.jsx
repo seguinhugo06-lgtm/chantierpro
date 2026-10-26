@@ -76,7 +76,7 @@ export function FenetreImportCsv({ donnees, mapping, setMapping, onFermer, onImp
  * Scanner de code-barres : la caméra arrière, le code lu cherché d'abord dans le catalogue (référence, EAN), puis dans la
  * base ouverte Open Food Facts ; sans détecteur dans le navigateur, saisie du code à la main.
  */
-export function FenetreScanner({ catalogue, onFermer, onVoirFiche, onCreer }) {
+export function FenetreScanner({ peutCreer = true, catalogue, onFermer, onVoirFiche, onCreer }) {
   const { showToast } = useToast();
   const videoRef = useRef(null);
   const fluxRef = useRef(null);
@@ -96,7 +96,7 @@ export function FenetreScanner({ catalogue, onFermer, onVoirFiche, onCreer }) {
         const flux = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } } });
         if (annule) { flux.getTracks().forEach((t) => t.stop()); return; }
         fluxRef.current = flux;
-        if (videoRef.current) { videoRef.current.srcObject = flux; videoRef.current.play?.(); }
+        if (videoRef.current) { videoRef.current.srcObject = flux; videoRef.current.play?.()?.catch(() => { /* la vidéo a quitté l’écran avant de démarrer : rien à lancer */ }); }
       } catch {
         if (!annule) { showToast('Impossible d\'accéder à la caméra', 'error'); onFermer(); }
       }
@@ -131,7 +131,7 @@ export function FenetreScanner({ catalogue, onFermer, onVoirFiche, onCreer }) {
 
   // La vidéo revient à l'écran quand on rescanne : on lui redonne la caméra
   useEffect(() => {
-    if (!resultat && videoRef.current && fluxRef.current) { videoRef.current.srcObject = fluxRef.current; videoRef.current.play?.(); }
+    if (!resultat && videoRef.current && fluxRef.current) { videoRef.current.srcObject = fluxRef.current; videoRef.current.play?.()?.catch(() => { /* la vidéo a quitté l’écran avant de démarrer : rien à lancer */ }); }
   }, [resultat]);
 
   // Détection (API BarcodeDetector : Chrome, Edge) tant qu'aucun résultat n'est affiché
@@ -210,7 +210,9 @@ export function FenetreScanner({ catalogue, onFermer, onVoirFiche, onCreer }) {
                 {resultat.produit.marque && <p className="text-sm text-encre-2">{resultat.produit.marque}</p>}
                 <p className="text-sm text-encre-3">Code : {resultat.produit.code}</p>
               </div>
-              <Bouton variante="principal" icone={Plus} pleineLargeur onClick={() => onCreer({ nom: resultat.produit.nom, reference: resultat.produit.code })}>Ajouter au catalogue</Bouton>
+              {peutCreer
+                ? <Bouton variante="principal" icone={Plus} pleineLargeur onClick={() => onCreer({ nom: resultat.produit.nom, reference: resultat.produit.code })}>Ajouter au catalogue</Bouton>
+                : <Bouton variante="secondaire" pleineLargeur onClick={() => setResultat(null)}>Scanner encore</Bouton>}
             </div>
           )}
           {!resultat.trouve && !resultat.sansDetecteur && (
@@ -221,8 +223,8 @@ export function FenetreScanner({ catalogue, onFermer, onVoirFiche, onCreer }) {
                 <p className="text-sm text-encre-3">Code : {resultat.code}</p>
               </div>
               <div className="flex gap-2">
-                <Bouton variante="principal" className="flex-1" onClick={() => onCreer({ reference: resultat.code })}>Créer l'article</Bouton>
-                <Bouton variante="secondaire" className="flex-1" onClick={() => setResultat(null)}>Réessayer</Bouton>
+                {peutCreer && <Bouton variante="principal" className="flex-1" onClick={() => onCreer({ reference: resultat.code })}>Créer l'article</Bouton>}
+                <Bouton variante={peutCreer ? 'secondaire' : 'principal'} className="flex-1" onClick={() => setResultat(null)}>Réessayer</Bouton>
               </div>
             </div>
           )}

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Upload, FileSpreadsheet, Check, AlertCircle, ArrowRight, ChevronDown, Loader2 } from 'lucide-react';
 import Modal, { ModalHeader, ModalTitle, ModalDescription, ModalBody } from './ui/Modal';
 import { Bouton } from './ui/Bouton';
@@ -87,6 +87,30 @@ function autoMapColumns(csvHeaders, fields) {
 
 export { parseCSV, autoMapColumns };
 
+// Une ligne n'est importable que si elle dit QUI ou QUOI : un nom (ou une entreprise) pour un client, une désignation pour un article.
+const CHAMPS_IDENTITE = { clients: ['nom', 'entreprise'], articles: ['designation'], ouvrages: ['designation'] };
+
+/** Les lignes du fichier, vues par l'association des colonnes (une ligne sans aucune donnée associée n'en est pas une). */
+function lignesAssociees(rows, mapping) {
+  const lignes = [];
+  for (const row of rows) {
+    const obj = {};
+    let aDesDonnees = false;
+    Object.entries(mapping).forEach(([colIndex, fieldKey]) => {
+      if (fieldKey && row[parseInt(colIndex, 10)] !== undefined) {
+        let value = row[parseInt(colIndex, 10)];
+        if (['prixUnitaire', 'tva'].includes(fieldKey)) {
+          const lu = parseFloat(value.replace(',', '.'));
+          value = Number.isNaN(lu) ? 0 : lu;
+        }
+        if (value !== '' && value !== undefined) { obj[fieldKey] = value; aDesDonnees = true; }
+      }
+    });
+    if (aDesDonnees) lignes.push(obj);
+  }
+  return lignes;
+}
+
 const ETAPES = { upload: [1, 'Choisir le fichier'], mapping: [2, 'Associer les colonnes'], importing: [3, 'Importation'], done: [3, 'Terminé'] };
 
 export default function ImportModal({ isOpen, onClose, type = 'clients', onImport }) {
@@ -165,45 +189,39 @@ export default function ImportModal({ isOpen, onClose, type = 'clients', onImpor
   }, [processFile]);
 
   const mappedCount = Object.values(mapping).filter((v) => v !== '').length;
+  // Ce qu'on peut importer, et ce qu'on laisse de côté (sans nom ni désignation)
+  const { exploitables, ignorees } = useMemo(() => {
+    const cles = CHAMPS_IDENTITE[type] || CHAMPS_IDENTITE.clients;
+    const toutes = lignesAssociees(csvRows, mapping);
+    const bonnes = toutes.filter((l) => cles.some((k) => String(l[k] ?? '').trim() !== ''));
+    return { exploitables: bonnes, ignorees: toutes.length - bonnes.length };
+  }, [csvRows, mapping, type]);
+  const champIdentite = (CHAMPS_IDENTITE[type] || CHAMPS_IDENTITE.clients).map((k) => fields.find((f) => f.key === k)?.label).filter(Boolean).join(' ou ');
 
   const handleImport = async () => {
     setStep('importing');
-    const lignes = [];
-    for (const row of csvRows) {
-      const obj = {};
-      let aDesDonnees = false;
-      Object.entries(mapping).forEach(([colIndex, fieldKey]) => {
-        if (fieldKey && row[parseInt(colIndex, 10)] !== undefined) {
-          let value = row[parseInt(colIndex, 10)];
-          if (['prixUnitaire', 'tva'].includes(fieldKey)) {
-            const lu = parseFloat(value.replace(',', '.'));
-            value = Number.isNaN(lu) ? 0 : lu;
-          }
-          if (value !== '' && value !== undefined) { obj[fieldKey] = value; aDesDonnees = true; }
-        }
-      });
-      if (aDesDonnees) lignes.push(obj);
-    }
+    const lignes = exploitables;
     // Le résultat dit ce qui a VRAIMENT été enregistré : un import arrêté en route (limite de l'offre, refus de la base) n'est pas un succès
     try {
       const res = await onImport(lignes);
       const importes = typeof res?.importes === 'number' ? res.importes : lignes.length;
       const total = typeof res?.total === 'number' ? res.total : lignes.length;
-      setImportResult({ ok: importes === total, importes, total });
+      setImportResult({ ok: importes === total, importes, total, ignorees });
     } catch (err) {
-      setImportResult({ ok: false, importes: 0, total: lignes.length, erreur: err.message || 'Erreur lors de l\'importation' });
+      setImportResult({ ok: false, importes: 0, total: lignes.length, ignorees, erreur: err.message || 'Erreur lors de l\'importation' });
     }
     setStep('done');
   };
 
   const [numero, etiquette] = ETAPES[step];
   const apercu = csvRows.slice(0, 5);
+  const phraseIgnorees = importResult?.ignorees > 0 ? ` ${importResult.ignorees} ligne${importResult.ignorees > 1 ? 's' : ''} sans ${champIdentite.toLowerCase()} ${importResult.ignorees > 1 ? 'ont' : 'a'} été laissée${importResult.ignorees > 1 ? 's' : ''} de côté.` : '';
   const resume = importResult
     ? importResult.erreur
       ? importResult.erreur
       : importResult.ok
-        ? `${importResult.importes} ${nomDuType} importé${importResult.importes > 1 ? 's' : ''}.`
-        : `${importResult.importes} ${nomDuType} importé${importResult.importes > 1 ? 's' : ''} sur ${importResult.total} : l'import s'est arrêté. Les autres lignes n'ont pas été enregistrées.`
+        ? `${importResult.importes} ${nomDuType} importé${importResult.importes > 1 ? 's' : ''}.${phraseIgnorees}`
+        : `${importResult.importes} ${nomDuType} importé${importResult.importes > 1 ? 's' : ''} sur ${importResult.total} : l'import s'est arrêté. Les autres lignes n'ont pas été enregistrées.${phraseIgnorees}`
     : '';
 
   return (
@@ -307,10 +325,19 @@ export default function ImportModal({ isOpen, onClose, type = 'clients', onImpor
               </div>
             </div>
 
+            {exploitables.length === 0 && (
+              <p role="alert" className="flex items-start gap-2 p-3 rounded-xl text-sm font-medium bg-alerte-fond text-alerte-texte">
+                <AlertCircle size={16} aria-hidden="true" className="shrink-0 mt-0.5" />
+                <span>Aucune ligne exploitable : associez la colonne « {champIdentite} » à une colonne du fichier qui contient des données.</span>
+              </p>
+            )}
+            {exploitables.length > 0 && ignorees > 0 && (
+              <p className="text-sm text-encre-2">{ignorees} ligne{ignorees > 1 ? 's' : ''} sans {champIdentite.toLowerCase()} ne {ignorees > 1 ? 'seront' : 'sera'} pas importée{ignorees > 1 ? 's' : ''}.</p>
+            )}
             <div className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-3 sm:justify-end pt-1">
               <Bouton variante="secondaire" onClick={onClose} className="w-full sm:w-auto">Annuler</Bouton>
-              <Bouton variante="principal" icone={Upload} onClick={handleImport} disabled={mappedCount === 0} className="w-full sm:w-auto">
-                Importer {csvRows.length} ligne{csvRows.length > 1 ? 's' : ''}
+              <Bouton variante="principal" icone={Upload} onClick={handleImport} disabled={exploitables.length === 0} className="w-full sm:w-auto">
+                Importer {exploitables.length} ligne{exploitables.length > 1 ? 's' : ''}
               </Bouton>
             </div>
           </>
@@ -321,7 +348,7 @@ export default function ImportModal({ isOpen, onClose, type = 'clients', onImpor
           <div role="status" className="py-10 text-center">
             <Loader2 size={40} aria-hidden="true" className="animate-spin mx-auto mb-4 text-accent-texte" />
             <p className="text-base font-semibold text-encre">Importation en cours…</p>
-            <p className="text-sm mt-1 text-encre-3">{csvRows.length} ligne{csvRows.length > 1 ? 's' : ''} à enregistrer. Gardez cette fenêtre ouverte.</p>
+            <p className="text-sm mt-1 text-encre-3">{exploitables.length} ligne{exploitables.length > 1 ? 's' : ''} à enregistrer. Gardez cette fenêtre ouverte.</p>
           </div>
         )}
 

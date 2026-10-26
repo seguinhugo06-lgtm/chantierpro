@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { margeBrute, niveauMarge, CLASSES_TON_MARGE } from '../margeArticle';
+import { achatConnu, margeBrute, niveauMarge, CLASSES_TON_MARGE } from '../margeArticle';
 
 describe('marge brute d’un article : une définition pour la liste, la fiche et le sélecteur', () => {
   it('calcule la marge en % du prix de vente', () => {
@@ -7,11 +7,23 @@ describe('marge brute d’un article : une définition pour la liste, la fiche e
     expect(margeBrute('150', '100')).toBeCloseTo(33.33, 1);
   });
 
-  it('un achat à 0 (main d’œuvre) donne 100 %, un achat vide ou illisible donne « pas de marge »', () => {
+  it('100 % seulement pour un achat réellement à 0 (main d’œuvre) ; un achat inconnu (null, vide, illisible) ne donne pas de marge', () => {
     expect(margeBrute(45, 0)).toBe(100);
+    expect(margeBrute(45, '0')).toBe(100);
+    expect(margeBrute(45, null)).toBeNull();
     expect(margeBrute(45, undefined)).toBeNull();
     expect(margeBrute(45, '')).toBeNull();
     expect(margeBrute(45, 'abc')).toBeNull();
+  });
+
+  it('le prix d’achat connu : un nombre ; la virgule est lue ; vide ou négatif = inconnu', () => {
+    expect(achatConnu('2,5')).toBe(2.5);
+    expect(achatConnu(12)).toBe(12);
+    expect(achatConnu(0)).toBe(0);
+    expect(achatConnu(null)).toBeNull();
+    expect(achatConnu('')).toBeNull();
+    expect(achatConnu(-3)).toBeNull();
+    expect(achatConnu(NaN)).toBeNull();
   });
 
   it('sans prix de vente, pas de marge', () => {
@@ -34,9 +46,9 @@ describe('niveau de marge : trois tons, jamais le rouge du retard', () => {
     expect(niveauMarge(-5)).toEqual({ libelle: 'Négative', ton: 'alerte' });
   });
 
-  it('sans marge : un tiret, ton neutre', () => {
-    expect(niveauMarge(null)).toEqual({ libelle: '—', ton: 'neutre' });
-    expect(niveauMarge(undefined)).toEqual({ libelle: '—', ton: 'neutre' });
+  it('sans marge : « Marge non calculée », ton neutre (jamais « Excellente »)', () => {
+    expect(niveauMarge(null)).toEqual({ libelle: 'Marge non calculée', ton: 'neutre' });
+    expect(niveauMarge(undefined)).toEqual({ libelle: 'Marge non calculée', ton: 'neutre' });
   });
 
   it('chaque ton a ses classes du thème, aucune couleur du rouge', () => {

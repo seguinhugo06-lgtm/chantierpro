@@ -13,7 +13,7 @@ const nbArticles = (metierId) => getSousCategories(metierId).reduce((s, sc) => s
  *
  * @param {null|'metiers'|'importing'|'done'} etape
  */
-export default function Demarrage({ etape, setEtape, metiersChoisis, setMetiersChoisis, progression, resultat, onImporter, onNouveau, onPasser, onCsv, onRetour }) {
+export default function Demarrage({ peutCreer = true, etape, setEtape, metiersChoisis, setMetiersChoisis, progression, resultat, onImporter, onNouveau, onPasser, onCsv, onRetour }) {
   const total = metiersChoisis.reduce((s, id) => s + nbArticles(id), 0);
   return (
     <div className="space-y-5 max-w-3xl">
@@ -22,7 +22,14 @@ export default function Demarrage({ etape, setEtape, metiersChoisis, setMetiersC
         <h1 className="text-2xl font-bold text-encre">Catalogue</h1>
       </div>
 
-      {!etape && (
+      {/* Sans le droit de créer un article : un état vide qui le dit, sans action ni promesse de tarifs ou de marges */}
+      {!etape && !peutCreer && (
+        <Carte marge="aucun">
+          <EtatVide icone={Package} titre="Le catalogue est vide" texte="Aucun article n'a encore été ajouté." />
+        </Carte>
+      )}
+
+      {!etape && peutCreer && (
         <>
           <Carte marge="aucun">
             <EtatVide

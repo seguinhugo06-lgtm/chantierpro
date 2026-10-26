@@ -7,19 +7,29 @@
  * (en dessous, ou négative : à surveiller). Le rouge reste celui du retard, jamais d'une marge (décision du 26 oct. 2026).
  */
 
-/** Marge brute en % du prix de vente ; `null` sans prix de vente ou sans prix d'achat renseigné ; 100 pour un achat à 0 (main d'œuvre). */
+/**
+ * Prix d'achat connu : un nombre. `null`, `undefined`, un champ vide ou illisible = INCONNU, jamais 0 (avant, un achat laissé vide
+ * devenait « Achat 0 € / Marge 100 % » ; les articles du référentiel recevaient un achat inventé à 60 % du prix de vente).
+ */
+export function achatConnu(prixAchat) {
+  if (prixAchat === null || prixAchat === undefined || prixAchat === '') return null;
+  const achat = typeof prixAchat === 'number' ? prixAchat : parseFloat(String(prixAchat).replace(',', '.'));
+  return Number.isFinite(achat) && achat >= 0 ? achat : null;
+}
+
+/** Marge brute en % du prix de vente ; `null` sans prix de vente ou sans prix d'achat connu ; 100 seulement pour un achat réellement à 0 (main d'œuvre). */
 export function margeBrute(prix, prixAchat) {
   const vente = parseFloat(prix) || 0;
-  const achat = parseFloat(prixAchat);
+  const achat = achatConnu(prixAchat);
   if (vente === 0) return null;
-  if (Number.isNaN(achat)) return null;
+  if (achat === null) return null;
   if (achat === 0) return 100;
   return ((vente - achat) / vente) * 100;
 }
 
 /** @returns {{ libelle: string, ton: 'succes'|'neutre'|'alerte' }} */
 export function niveauMarge(marge) {
-  if (marge === null || marge === undefined || Number.isNaN(marge)) return { libelle: '—', ton: 'neutre' };
+  if (marge === null || marge === undefined || Number.isNaN(marge)) return { libelle: 'Marge non calculée', ton: 'neutre' };
   if (marge >= 60) return { libelle: 'Excellente', ton: 'succes' };
   if (marge >= 40) return { libelle: 'Bonne', ton: 'succes' };
   if (marge >= 25) return { libelle: 'Correcte', ton: 'neutre' };

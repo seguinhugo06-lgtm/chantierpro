@@ -15,7 +15,8 @@ import { ChampRecherche } from './ui/Filtres';
 import LigneListe, { GroupeListe } from './ui/LigneListe';
 import Carte from './ui/Carte';
 import Champ from './ui/Champ';
-import { margeBrute, niveauMarge, CLASSES_TON_MARGE } from '../lib/margeArticle';
+import { achatConnu, margeBrute, niveauMarge, CLASSES_TON_MARGE } from '../lib/margeArticle';
+import { formatMoney } from '../lib/formatters';
 import { CATEGORIES_METIERS, getSousCategories, getArticlesBySousCategorie, searchAllArticles } from '../lib/data';
 
 const CONSIGNES = { 1: 'Sélectionnez votre type d\'activité', 2: 'Sélectionnez une sous-catégorie', 3: 'Sélectionnez un article', 4: 'Ajustez les prix et la quantité' };
@@ -28,7 +29,9 @@ export default function ArticlePicker({ isOpen, onClose, onSelect }) {
   const [selectedArticle, setSelectedArticle] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [customPrix, setCustomPrix] = useState(null);
-  const [customPrixAchat, setCustomPrixAchat] = useState(null);
+  // Prix d'achat : un texte, vide tant que l'artisan ne l'a pas saisi (inconnu, jamais déduit du prix de vente)
+  const [customPrixAchat, setCustomPrixAchat] = useState('');
+  const [tva, setTva] = useState('10');
   const [quantite, setQuantite] = useState(1);
 
   // Fermer remet tout à zéro
@@ -39,7 +42,8 @@ export default function ArticlePicker({ isOpen, onClose, onSelect }) {
     setSelectedArticle(null);
     setSearchQuery('');
     setCustomPrix(null);
-    setCustomPrixAchat(null);
+    setCustomPrixAchat('');
+    setTva('10');
     setQuantite(1);
     onClose();
   };
@@ -49,7 +53,7 @@ export default function ArticlePicker({ isOpen, onClose, onSelect }) {
     if (step === 4) {
       setStep(3);
       setCustomPrix(null);
-      setCustomPrixAchat(null);
+      setCustomPrixAchat('');
     } else if (step === 3) {
       setStep(2);
       setSelectedArticle(null);
@@ -64,7 +68,7 @@ export default function ArticlePicker({ isOpen, onClose, onSelect }) {
   const handleSelectArticle = (article) => {
     setSelectedArticle(article);
     setCustomPrix(article.prixDefaut);
-    setCustomPrixAchat(Math.round(article.prixDefaut * 0.6));
+    setCustomPrixAchat('');
     setStep(4);
   };
 
@@ -79,8 +83,8 @@ export default function ArticlePicker({ isOpen, onClose, onSelect }) {
       unite: selectedArticle.unite,
       prixUnitaire: customPrix || selectedArticle.prixDefaut,
       prix_unitaire_ht: customPrix || selectedArticle.prixDefaut,
-      prixAchat: customPrixAchat || Math.round((customPrix || selectedArticle.prixDefaut) * 0.6),
-      tva: 10,
+      prixAchat: achatConnu(customPrixAchat), // null = inconnu (avant : 60 % du prix de vente, inventé)
+      tva: parseFloat(tva),
       categorie: selectedCategorie?.nom || 'Autre',
       favori: false,
       actif: true,
@@ -98,6 +102,7 @@ export default function ArticlePicker({ isOpen, onClose, onSelect }) {
   );
 
   const marge = margeBrute(customPrix, customPrixAchat);
+  const achatSaisi = achatConnu(customPrixAchat) !== null;
   const niveau = niveauMarge(marge);
   const classes = CLASSES_TON_MARGE[niveau.ton];
   const titre = { 1: 'Choisir une catégorie', 2: selectedCategorie?.nom, 3: selectedSousCategorie?.nom, 4: 'Configurer l\'article' }[step];
@@ -146,7 +151,7 @@ export default function ArticlePicker({ isOpen, onClose, onSelect }) {
                     }}
                     titre={article.nom}
                     meta={`${article.categorieNom} → ${article.sousCategorieNom}`}
-                    montant={`${article.prixDefaut} € / ${article.unite}`}
+                    montant={`${formatMoney(article.prixDefaut)} / ${article.unite}`}
                   />
                 ))}
               </GroupeListe>
@@ -191,8 +196,8 @@ export default function ArticlePicker({ isOpen, onClose, onSelect }) {
                 key={article.id}
                 onClick={() => handleSelectArticle(article)}
                 titre={article.nom}
-                meta={`${article.prixMin} € - ${article.prixMax} € / ${article.unite}`}
-                montant={<span className="flex flex-col items-end leading-tight"><span>{article.prixDefaut} €</span><span className="text-xs font-medium text-encre-3">prix conseillé</span></span>}
+                meta={`${formatMoney(article.prixMin)} - ${formatMoney(article.prixMax)} / ${article.unite}`}
+                montant={<span className="flex flex-col items-end leading-tight"><span>{formatMoney(article.prixDefaut)}</span><span className="text-xs font-medium text-encre-3">prix conseillé</span></span>}
               />
             ))}
           </GroupeListe>
@@ -209,7 +214,7 @@ export default function ArticlePicker({ isOpen, onClose, onSelect }) {
                   <p className="text-sm text-encre-3">{selectedCategorie?.nom} → {selectedSousCategorie?.nom}</p>
                   <p className="flex items-center gap-2 mt-2 text-sm text-encre-3">
                     <Info size={14} aria-hidden="true" className="flex-shrink-0" />
-                    Prix marché : {selectedArticle.prixMin} € - {selectedArticle.prixMax} € / {selectedArticle.unite}
+                    Prix marché : {formatMoney(selectedArticle.prixMin)} - {formatMoney(selectedArticle.prixMax)} / {selectedArticle.unite}
                   </p>
                 </div>
               </div>
@@ -227,22 +232,28 @@ export default function ArticlePicker({ isOpen, onClose, onSelect }) {
                     className={`flex-1 min-h-[52px] px-3 rounded-xl text-sm font-medium transition-colors ${customPrix === prix ? 'bg-encre text-surface' : 'bg-surface-2 text-encre-2 hover:bg-bord'}`}
                   >
                     {['Min', 'Moyen', 'Max'][i]}
-                    <span className="block font-bold tabular-nums">{prix} €</span>
+                    <span className="block font-bold tabular-nums">{formatMoney(prix)}</span>
                   </button>
                 ))}
               </div>
             </div>
 
             <Champ
-              id="picker-achat" libelle="Prix d'achat HT" facultatif type="number" inputMode="decimal" min="0" step="0.01" placeholder="Pour calculer votre marge"
-              value={customPrixAchat || ''} onChange={(e) => setCustomPrixAchat(parseFloat(e.target.value) || 0)}
+              id="picker-achat" libelle="Prix d'achat HT" facultatif type="number" inputMode="decimal" min="0" step="0.01" placeholder="Vide si inconnu"
+              value={customPrixAchat} onChange={(e) => setCustomPrixAchat(e.target.value)}
             />
+            <Champ id="picker-tva" as="select" libelle="TVA" value={tva} onChange={(e) => setTva(e.target.value)}>
+              <option value="20">20 %</option>
+              <option value="10">10 %</option>
+              <option value="5.5">5,5 %</option>
+              <option value="0">0 %</option>
+            </Champ>
             <Champ
               id="picker-quantite" libelle="Quantité par défaut" type="number" inputMode="decimal" min="0.01" step="0.01"
               value={quantite} onChange={(e) => setQuantite(parseFloat(e.target.value) || 1)}
             />
 
-            {customPrixAchat > 0 && (
+            {achatSaisi && marge !== null && (
               <Carte>
                 <div className="flex items-center justify-between">
                   <span className="text-base text-encre-2">Marge brute</span>

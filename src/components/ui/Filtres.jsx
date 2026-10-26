@@ -208,7 +208,7 @@ export function Volet({ ouvert, onFermer, titre, ancreRef, children, pied, isDar
 
 /** Titre de section dans un volet. */
 function TitreSection({ children, isDark }) {
-  return <legend className={`text-xs font-semibold uppercase tracking-wider mb-2.5 ${theme(isDark).texteDoux}`}>{children}</legend>;
+  return <legend className={`text-sm font-semibold mb-2.5 ${theme(isDark).texteDoux}`}>{children}</legend>;
 }
 
 /**

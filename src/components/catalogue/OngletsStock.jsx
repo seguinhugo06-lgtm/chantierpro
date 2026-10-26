@@ -13,7 +13,8 @@ import { SegmentDefilant, ChampRecherche } from '../ui/Filtres';
 import { useConfirm, useToast } from '../../context/AppContext';
 import { remettreFichier } from '../../lib/natif';
 import { jourLocal, dateLue } from '../../lib/dates';
-import { niveauMarge, CLASSES_TON_MARGE } from '../../lib/margeArticle';
+import { achatConnu, margeBrute, niveauMarge, CLASSES_TON_MARGE } from '../../lib/margeArticle';
+import { formatMoney } from '../../lib/formatters';
 import { generateId } from '../../lib/utils';
 
 /**
@@ -55,6 +56,22 @@ const TYPES_MOUVEMENT = [
   { valeur: 'return', libelle: 'Retour' },
   { valeur: 'adjustment', libelle: 'Ajustement' },
 ];
+/** Ces onglets vivent dans le stockage de CET appareil (voir plus haut) : le dire en tête, toujours la même phrase. */
+function NoteAppareil() {
+  return <p className="text-sm text-encre-3">Gardé sur cet appareil uniquement.</p>;
+}
+
+/** Coût d'un pack : seulement si le prix d'achat de CHAQUE article est connu (sinon il serait sous-estimé et la marge fausse). */
+function coutPack(articles, catalogue) {
+  let total = 0;
+  for (const a of articles) {
+    const achat = achatConnu(catalogue.find((c) => c.id === a.articleId)?.prixAchat ?? a.prixAchatSnapshot);
+    if (achat === null) return null;
+    total += achat * (a.quantite || 1);
+  }
+  return articles.length > 0 ? total : null;
+}
+
 const normaliserType = (t) => (t === 'entree' ? 'in' : t === 'sortie' ? 'out' : t);
 const LIBELLE_TYPE = { in: 'Entrée', out: 'Sortie', return: 'Retour', adjustment: 'Ajustement' };
 const TON_TYPE = { in: 'succes', out: 'info', return: 'neutre', adjustment: 'alerte' };
@@ -77,7 +94,7 @@ export function OngletFournisseurs({ fournisseurs, setFournisseurs, liens, setLi
     const { id, ...champs } = formulaire;
     if (id) setFournisseurs((prev) => prev.map((f) => (f.id === id ? { ...f, ...champs } : f)));
     else setFournisseurs((prev) => [...prev, { id: generateId(), ...champs, createdAt: new Date().toISOString() }]);
-    showToast(id ? 'Fournisseur modifié' : 'Fournisseur ajouté', 'success');
+    showToast(id ? 'Fournisseur modifié sur cet appareil' : 'Fournisseur ajouté sur cet appareil', 'success');
     setFormulaire(null);
   };
 
@@ -85,13 +102,13 @@ export function OngletFournisseurs({ fournisseurs, setFournisseurs, liens, setLi
     if (!(await confirm({ title: 'Supprimer le fournisseur', message: `Supprimer "${f.nom}" et ses liaisons avec des articles ?` }))) return;
     setFournisseurs((prev) => prev.filter((x) => x.id !== f.id));
     setLiens((prev) => prev.filter((l) => l.fournisseurId !== f.id));
-    showToast('Fournisseur supprimé', 'success');
+    showToast('Fournisseur supprimé de cet appareil', 'success');
   };
 
   const delier = async (lien, article, f) => {
     if (!(await confirm({ title: 'Retirer la liaison', message: `Retirer "${article.nom}" de la liste de ${f.nom} ?` }))) return;
     setLiens((prev) => prev.filter((x) => x.id !== lien.id));
-    showToast('Liaison retirée', 'info');
+    showToast('Liaison retirée sur cet appareil', 'info');
   };
 
   const dejaLies = lier ? liens.filter((l) => l.fournisseurId === lier.fournisseurId).map((l) => l.articleId) : [];
@@ -102,6 +119,7 @@ export function OngletFournisseurs({ fournisseurs, setFournisseurs, liens, setLi
 
   return (
     <div className="space-y-4">
+      <NoteAppareil />
       <div className="flex items-center justify-between gap-2">
         <p className="text-sm text-encre-2">{fournisseurs.length} fournisseur{fournisseurs.length > 1 ? 's' : ''}</p>
         {peutModifier && fournisseurs.length > 0 && <Bouton variante="secondaire" icone={Plus} onClick={() => setFormulaire({ id: null, ...FOURNISSEUR_VIDE })}>Ajouter un fournisseur</Bouton>}
@@ -120,21 +138,22 @@ export function OngletFournisseurs({ fournisseurs, setFournisseurs, liens, setLi
           />
         </Carte>
       ) : (
-        <div className="grid gap-3">
+        <div className="grid grid-cols-1 gap-3">
           {fournisseurs.map((f) => {
             const fLiens = liens.filter((l) => l.fournisseurId === f.id);
             return (
-              <Carte key={f.id}>
+              <Carte key={f.id} className="min-w-0">
                 <div className="flex items-start gap-3">
                   <span className="w-11 h-11 rounded-full bg-surface-2 text-encre-2 flex items-center justify-center font-semibold flex-shrink-0" aria-hidden="true">{f.nom.charAt(0).toUpperCase()}</span>
                   <div className="flex-1 min-w-0">
-                    <p className="text-base font-semibold text-encre">{f.nom}</p>
+                    <p className="text-base font-semibold text-encre break-words">{f.nom}</p>
                     <p className="text-sm text-encre-2 break-words">{[f.telephone, f.email || f.contact].filter(Boolean).join(' · ')}</p>
                     <div className="flex items-center gap-2 mt-2 flex-wrap">
                       {f.delaiLivraison && <Pastille ton="neutre">Délai {f.delaiLivraison} j</Pastille>}
-                      {f.conditions && <Pastille ton="neutre">{f.conditions}</Pastille>}
                       <Pastille ton={fLiens.length > 0 ? 'succes' : 'neutre'}>{fLiens.length} article{fLiens.length > 1 ? 's' : ''}</Pastille>
                     </div>
+                    {/* Texte libre : une phrase à la ligne, pas une pastille qui ne se coupe pas */}
+                    {f.conditions && <p className="mt-2 text-sm text-encre-2 break-words">Paiement : {f.conditions}</p>}
                   </div>
                   {peutModifier && (
                     <div className="flex items-center -mr-2">
@@ -153,7 +172,7 @@ export function OngletFournisseurs({ fournisseurs, setFournisseurs, liens, setLi
                           <li key={l.id} className="flex items-center justify-between gap-2 py-1.5 text-sm">
                             <span className="min-w-0 truncate text-encre-2">{article.nom} <span className="text-encre-3">{article.reference || ''}</span></span>
                             <span className="flex items-center gap-1 flex-shrink-0">
-                              <span className="font-semibold tabular-nums text-encre">{(l.prixAchat || article.prixAchat || 0).toFixed(2).replace('.', ',')} €</span>
+                              <span className="font-semibold tabular-nums text-encre">{achatConnu(l.prixAchat) !== null ? formatMoney(l.prixAchat, 2) : '—'}</span>
                               {peutModifier && <BoutonIcone icone={X} taille={16} libelle={`Retirer ${article.nom} de ${f.nom}`} onClick={() => delier(l, article, f)} />}
                             </span>
                           </li>
@@ -210,9 +229,9 @@ export function OngletFournisseurs({ fournisseurs, setFournisseurs, liens, setLi
                 <GroupeListe>
                   {candidats.map((a) => (
                     <LigneListe
-                      key={a.id} onClick={() => { setChoisi(a); setPrix(a.prixAchat?.toString() || '0'); }}
+                      key={a.id} onClick={() => { setChoisi(a); setPrix(achatConnu(a.prixAchat) !== null ? String(a.prixAchat) : ''); }}
                       titre={a.nom} meta={[a.reference, a.categorie].filter(Boolean).join(' · ')}
-                      montant={`${Number(a.prixAchat || a.prix || 0).toLocaleString('fr-FR', { maximumFractionDigits: 2 })} €`}
+                      montant={achatConnu(a.prixAchat) !== null ? formatMoney(a.prixAchat) : undefined}
                     />
                   ))}
                 </GroupeListe>
@@ -227,7 +246,7 @@ export function OngletFournisseurs({ fournisseurs, setFournisseurs, liens, setLi
                 </div>
                 <Bouton variante="secondaire" taille="compacte" onClick={() => { setChoisi(null); setPrix(''); }}>Changer</Bouton>
               </div>
-              <Champ id="lier-prix" libelle={`Prix d'achat chez ${lier?.fournisseurNom} (€ HT)`} type="number" inputMode="decimal" min="0" step="0.01" autoFocus value={prix} onChange={(e) => setPrix(e.target.value)} />
+              <Champ id="lier-prix" libelle={`Prix d'achat chez ${lier?.fournisseurNom} (€ HT)`} facultatif type="number" inputMode="decimal" min="0" step="0.01" autoFocus value={prix} onChange={(e) => setPrix(e.target.value)} />
             </>
           )}
         </ModalBody>
@@ -239,10 +258,10 @@ export function OngletFournisseurs({ fournisseurs, setFournisseurs, liens, setLi
               onClick={() => {
                 setLiens((prev) => {
                   const existant = prev.find((l) => l.articleId === choisi.id && l.fournisseurId === lier.fournisseurId);
-                  if (existant) return prev.map((l) => (l.id === existant.id ? { ...l, prixAchat: parseFloat(prix) || 0, updatedAt: new Date().toISOString() } : l));
-                  return [...prev, { id: generateId(), articleId: choisi.id, fournisseurId: lier.fournisseurId, prixAchat: parseFloat(prix) || 0, createdAt: new Date().toISOString() }];
+                  if (existant) return prev.map((l) => (l.id === existant.id ? { ...l, prixAchat: achatConnu(prix), updatedAt: new Date().toISOString() } : l));
+                  return [...prev, { id: generateId(), articleId: choisi.id, fournisseurId: lier.fournisseurId, prixAchat: achatConnu(prix), createdAt: new Date().toISOString() }];
                 });
-                showToast(`"${choisi.nom}" lié à ${lier.fournisseurNom}`, 'success');
+                showToast(`"${choisi.nom}" lié à ${lier.fournisseurNom} sur cet appareil`, 'success');
                 setLier(null);
               }}
             >
@@ -300,6 +319,7 @@ export function OngletMouvements({ mouvements, catalogue, chantiers, peutModifie
 
   return (
     <div className="space-y-4">
+      <NoteAppareil />
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <p className="text-sm text-encre-2">
           {filtres.length} mouvement{filtres.length > 1 ? 's' : ''}{typeFiltre !== 'all' || articleFiltre ? ` sur ${mouvements.length}` : ''}
@@ -395,42 +415,43 @@ export function OngletPacks({ packs, setPacks, catalogue, peutModifier, modeDisc
   const { showToast } = useToast();
   const { confirm } = useConfirm();
   const [formulaire, setFormulaire] = useState(null); // null | { id|null, ...champs }
-  const prix = (n) => (modeDiscret ? '·····' : `${Number(n).toLocaleString('fr-FR', { maximumFractionDigits: 0 })} €`);
+  const prix = (n) => (modeDiscret ? '·····' : formatMoney(Number(n)));
 
   const enregistrer = () => {
     if (!formulaire.nom.trim() || formulaire.articles.length === 0) { showToast('Nom et articles requis', 'error'); return; }
     // Chaque article garde un instantané (nom, prix, unité) : le pack résiste à la suppression d'un article
     const enrichis = formulaire.articles.map((a) => {
       const item = catalogue.find((c) => c.id === a.articleId);
-      return { ...a, label: item?.nom || a.label || '?', prixSnapshot: item?.prix || a.prixSnapshot || 0, prixAchatSnapshot: item?.prixAchat || a.prixAchatSnapshot || 0, unite: item?.unite || a.unite || 'u' };
+      return { ...a, label: item?.nom || a.label || '?', prixSnapshot: item?.prix || a.prixSnapshot || 0, prixAchatSnapshot: achatConnu(item?.prixAchat) ?? achatConnu(a.prixAchatSnapshot), unite: item?.unite || a.unite || 'u' };
     });
-    const coutTotal = enrichis.reduce((s, a) => s + ((catalogue.find((c) => c.id === a.articleId)?.prixAchat ?? a.prixAchatSnapshot) || 0) * (a.quantite || 1), 0);
+    const coutTotal = coutPack(enrichis, catalogue); // null : un prix d'achat manque
     const venteTotale = enrichis.reduce((s, a) => s + ((catalogue.find((c) => c.id === a.articleId)?.prix ?? a.prixSnapshot) || 0) * (a.quantite || 1), 0);
     const { id, ...champs } = formulaire;
     const donnees = { ...champs, articles: enrichis, totalCost: coutTotal, totalVenteSuggere: venteTotale, prixVente: parseFloat(formulaire.prixVente) || venteTotale };
     if (id) setPacks((prev) => prev.map((p) => (p.id === id ? { ...p, ...donnees, updatedAt: new Date().toISOString() } : p)));
     else setPacks((prev) => [...prev, { id: generateId(), ...donnees, createdAt: new Date().toISOString() }]);
-    showToast(id ? 'Pack modifié' : 'Pack créé', 'success');
+    showToast(id ? 'Pack modifié sur cet appareil' : 'Pack créé sur cet appareil', 'success');
     setFormulaire(null);
   };
 
   const dupliquer = (pack) => {
     setPacks((prev) => [...prev, { ...pack, id: generateId(), nom: `${pack.nom} (copie)`, createdAt: new Date().toISOString() }]);
-    showToast(`Pack "${pack.nom}" dupliqué`, 'success');
+    showToast(`Pack "${pack.nom}" dupliqué sur cet appareil`, 'success');
   };
 
   const supprimer = async (pack) => {
     if (!(await confirm({ title: 'Supprimer le pack', message: `Supprimer le pack "${pack.nom}" ? Les articles du catalogue ne sont pas touchés.` }))) return;
     setPacks((prev) => prev.filter((p) => p.id !== pack.id));
-    showToast('Pack supprimé', 'success');
+    showToast('Pack supprimé de cet appareil', 'success');
   };
 
   const majArticle = (i, champs) => setFormulaire((p) => ({ ...p, articles: p.articles.map((a, j) => (j === i ? { ...a, ...champs } : a)) }));
-  const coutForm = formulaire ? formulaire.articles.reduce((s, a) => s + (catalogue.find((c) => c.id === a.articleId)?.prixAchat || 0) * (a.quantite || 1), 0) : 0;
+  const coutForm = formulaire ? coutPack(formulaire.articles.filter((a) => a.articleId), catalogue) : null;
   const venteForm = formulaire ? formulaire.articles.reduce((s, a) => s + (catalogue.find((c) => c.id === a.articleId)?.prix || 0) * (a.quantite || 1), 0) : 0;
 
   return (
     <div className="space-y-4">
+      <NoteAppareil />
       <div className="flex items-center justify-between gap-2">
         <p className="text-sm text-encre-2">{packs.length} pack{packs.length > 1 ? 's' : ''}</p>
         {peutModifier && packs.length > 0 && <Bouton variante="secondaire" icone={PackagePlus} onClick={() => setFormulaire({ id: null, ...PACK_VIDE })}>Nouveau pack</Bouton>}
@@ -439,21 +460,21 @@ export function OngletPacks({ packs, setPacks, catalogue, peutModifier, modeDisc
       {packs.length === 0 ? (
         <Carte marge="aucun">
           <EtatVide
-            icone={Layers} titre="Créez des packs ou des kits" texte="Regroupez les articles qui vont ensemble (kit salle de bain, pack électricité cuisine…) pour les ajouter d'un clic à vos devis."
+            icone={Layers} titre="Créez des packs ou des kits" texte="Regroupez les articles qui vont ensemble (kit salle de bain, pack électricité cuisine…)."
             action={peutModifier ? <Bouton variante="principal" icone={PackagePlus} onClick={() => setFormulaire({ id: null, ...PACK_VIDE })}>Créer un pack</Bouton> : null}
           />
         </Carte>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {packs.map((pack) => {
             const totalVente = pack.articles.reduce((s, a) => s + ((catalogue.find((c) => c.id === a.articleId)?.prix ?? a.prixSnapshot) || 0) * (a.quantite || 1), 0);
-            const totalCout = pack.articles.reduce((s, a) => s + ((catalogue.find((c) => c.id === a.articleId)?.prixAchat ?? a.prixAchatSnapshot) || 0) * (a.quantite || 1), 0);
+            const totalCout = coutPack(pack.articles, catalogue); // null : un prix d'achat manque, ni coût ni marge
             const prixVente = pack.prixVente || totalVente;
-            const marge = totalCout > 0 ? ((prixVente - totalCout) / prixVente) * 100 : null;
+            const marge = totalCout !== null ? margeBrute(prixVente, totalCout) : null;
             const niveau = niveauMarge(marge);
             const unites = pack.articles.reduce((s, a) => s + (a.quantite || 1), 0);
             return (
-              <Carte key={pack.id}>
+              <Carte key={pack.id} className="min-w-0">
                 <div className="flex items-start justify-between gap-2 mb-2">
                   <div className="min-w-0">
                     <h4 className="text-base font-bold text-encre">{pack.nom}</h4>
@@ -482,9 +503,11 @@ export function OngletPacks({ packs, setPacks, catalogue, peutModifier, modeDisc
                 <div className="pt-3 border-t border-bord flex items-center justify-between gap-2">
                   <div>
                     <span className="text-lg font-bold tabular-nums text-encre">{prix(prixVente)}</span>
-                    {totalCout > 0 && <span className="text-sm ml-2 text-encre-3">Coût : {prix(totalCout)}</span>}
+                    {totalCout !== null && totalCout > 0 && <span className="text-sm ml-2 text-encre-3">Coût : {prix(totalCout)}</span>}
                   </div>
-                  {marge !== null && !modeDiscret && <span className={`text-sm font-semibold tabular-nums ${CLASSES_TON_MARGE[niveau.ton].texte}`}>Marge {marge.toFixed(0)} %</span>}
+                  {!modeDiscret && (marge !== null
+                    ? <span className={`text-sm font-semibold tabular-nums ${CLASSES_TON_MARGE[niveau.ton].texte}`}>Marge {marge.toFixed(0)} %</span>
+                    : <span className="text-sm text-encre-3">Marge non calculée</span>)}
                 </div>
               </Carte>
             );
@@ -504,7 +527,7 @@ export function OngletPacks({ packs, setPacks, catalogue, peutModifier, modeDisc
                 <div key={i} className="flex gap-2 items-center">
                   <select aria-label={`Article ${i + 1}`} className="flex-1 min-w-0 h-12 px-3 rounded-xl border border-bord-fort bg-surface text-base sm:text-sm text-encre" value={a.articleId} onChange={(e) => majArticle(i, { articleId: e.target.value })}>
                     <option value="">Choisir un article</option>
-                    {catalogue.map((c) => <option key={c.id} value={c.id}>{c.nom} ({c.prix} €)</option>)}
+                    {catalogue.map((c) => <option key={c.id} value={c.id}>{c.nom} ({formatMoney(c.prix)})</option>)}
                   </select>
                   <input aria-label={`Quantité de l'article ${i + 1}`} type="number" inputMode="numeric" min="1" className="w-20 h-12 px-2 rounded-xl border border-bord-fort bg-surface text-center text-base text-encre" value={a.quantite} onChange={(e) => majArticle(i, { quantite: parseInt(e.target.value, 10) || 1 })} />
                   <BoutonIcone icone={X} libelle={`Retirer l'article ${i + 1}`} onClick={() => setFormulaire((p) => ({ ...p, articles: p.articles.filter((_, j) => j !== i) }))} />
@@ -515,8 +538,8 @@ export function OngletPacks({ packs, setPacks, catalogue, peutModifier, modeDisc
           </div>
           {formulaire?.articles.length > 0 && (
             <div className="p-3 rounded-xl bg-surface-2 text-sm text-encre-2 space-y-0.5">
-              <p>Coût total : <strong className="text-encre">{coutForm.toFixed(2).replace('.', ',')} €</strong></p>
-              <p>Prix de vente suggéré : <strong className="text-encre">{venteForm.toFixed(2).replace('.', ',')} €</strong></p>
+              <p>Coût total : <strong className="text-encre">{coutForm !== null ? formatMoney(coutForm, 2) : 'non calculé (un prix d\'achat manque)'}</strong></p>
+              <p>Prix de vente suggéré : <strong className="text-encre">{formatMoney(venteForm, 2)}</strong></p>
             </div>
           )}
           <Champ id="pack-prix" libelle="Prix de vente du pack (€)" facultatif type="number" inputMode="decimal" value={formulaire?.prixVente || ''} onChange={(e) => setFormulaire((p) => ({ ...p, prixVente: e.target.value }))} />
@@ -536,7 +559,7 @@ export function OngletInventaire({ catalogue, mouvements, alertesStock, voitPrix
   const { confirm } = useConfirm();
   const suivis = catalogue.filter((c) => (c.stock_actuel ?? c.stock) != null || (c.stock_seuil_alerte ?? c.stockMin) > 0);
   const dernier = mouvements.find((m) => m.type === 'adjustment' && m.raison?.startsWith('Inventaire'));
-  const avecPrix = suivis.filter((c) => c.prixAchat > 0);
+  const avecPrix = suivis.filter((c) => achatConnu(c.prixAchat) > 0);
   const valeur = avecPrix.reduce((s, c) => s + c.prixAchat * (c.stock_actuel ?? c.stock ?? 0), 0);
 
   const demarrer = async () => {
@@ -548,7 +571,7 @@ export function OngletInventaire({ catalogue, mouvements, alertesStock, voitPrix
       {suivis.length > 0 && (
         <p className="text-sm text-encre-2">
           {suivis.length} article{suivis.length > 1 ? 's' : ''} suivi{suivis.length > 1 ? 's' : ''}
-          {voitPrix && valeur > 0 && ` · valeur du stock au prix d'achat : ${modeDiscret ? '·····' : `${valeur.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} €`}`}
+          {voitPrix && valeur > 0 && ` · valeur du stock au prix d'achat : ${modeDiscret ? '·····' : formatMoney(valeur, 0)}`}
           {' · '}{dernier ? `dernier inventaire le ${dateLue(dernier.date).toLocaleDateString('fr-FR')}` : 'aucun inventaire fait'}
         </p>
       )}
@@ -626,6 +649,7 @@ export function ModeInventaire({ articles, comptes, setComptes, enCours, onTermi
 
 export function OngletCoefficients({ coefficients, setCoefficients, categories, valeursParDefaut, modeDiscret, peutModifier, onAppliquer }) {
   const { showToast } = useToast();
+  const { confirm } = useConfirm();
   const [enregistre, setEnregistre] = useState(false);
   const change = (cat, val) => {
     setCoefficients((prev) => ({ ...prev, [cat]: val }));
@@ -660,7 +684,16 @@ export function OngletCoefficients({ coefficients, setCoefficients, categories, 
       {peutModifier && (
         <div className="flex flex-wrap gap-3">
           <Bouton variante="secondaire" icone={Check} onClick={onAppliquer}>Appliquer à tous les articles</Bouton>
-          <Bouton variante="discret" icone={RefreshCw} onClick={() => { setCoefficients(valeursParDefaut); showToast('Coefficients réinitialisés', 'info'); }}>Réinitialiser par défaut</Bouton>
+          <Bouton
+            variante="discret" icone={RefreshCw}
+            onClick={async () => {
+              if (!(await confirm({ title: 'Réinitialiser les coefficients', message: 'Remettre tous les coefficients à leur valeur par défaut ? Vos réglages actuels, gardés sur cet appareil, seront perdus.', confirmText: 'Réinitialiser', variant: 'warning' }))) return;
+              setCoefficients(valeursParDefaut);
+              showToast('Coefficients réinitialisés sur cet appareil', 'info');
+            }}
+          >
+            Réinitialiser par défaut
+          </Bouton>
         </div>
       )}
     </div>

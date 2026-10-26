@@ -1,26 +1,30 @@
 import { useState, useMemo } from 'react';
-import { Star, Package, Plus, Check, ArrowLeft } from 'lucide-react';
+import { Star, Package, Plus, Check, ArrowLeft, LayoutGrid, Paintbrush, Wrench, Zap, Construction, Axe, HardHat, Hammer, Truck, Tag } from 'lucide-react';
 import Modal, { ModalHeader, ModalTitle, ModalDescription, ModalBody } from './ui/Modal';
 import { BoutonIcone } from './ui/Bouton';
 import { ChampRecherche } from './ui/Filtres';
 import EtatVide from './ui/EtatVide';
 import { useDebounce } from '../hooks/useDebounce';
+import { formatMoney } from '../lib/formatters';
 
-// Une icône par catégorie : le mot et l'icône disent la catégorie, pas une couleur
+// Une icône par catégorie (lucide, comme partout) : le mot et l'icône disent la catégorie, pas une couleur
 const ICONES_CATEGORIE = {
-  Carrelage: '🔲',
-  Peinture: '🎨',
-  Plomberie: '🔧',
-  'Électricité': '⚡',
-  'Maçonnerie': '🧱',
-  Menuiserie: '🪵',
-  'Matériaux': '📦',
-  "Main d'oeuvre": '👷',
-  Outillage: '🔨',
-  Location: '🚛',
-  Autre: '📋',
+  Carrelage: LayoutGrid,
+  Peinture: Paintbrush,
+  Plomberie: Wrench,
+  'Électricité': Zap,
+  'Maçonnerie': Construction,
+  Menuiserie: Axe,
+  'Matériaux': Package,
+  "Main d'oeuvre": HardHat,
+  Outillage: Hammer,
+  Location: Truck,
+  Autre: Tag,
 };
-const iconeDe = (categorie) => ICONES_CATEGORIE[categorie] || ICONES_CATEGORIE.Autre;
+function IconeCategorie({ categorie, size = 20, className = '' }) {
+  const Icone = ICONES_CATEGORIE[categorie] || ICONES_CATEGORIE.Autre;
+  return <Icone size={size} aria-hidden="true" className={`text-encre-2 ${className}`} />;
+}
 
 /**
  * CatalogBrowser — grille du catalogue par catégories, pour choisir un article d'un geste dans un devis.
@@ -55,7 +59,7 @@ export default function CatalogBrowser({ catalogue = [], onSelectItem, onClose, 
   }, [catalogue, groupedItems, selectedCategory, debouncedSearch]);
 
   const categories = useMemo(
-    () => Object.keys(groupedItems).map((cat) => ({ name: cat, count: groupedItems[cat].length, icon: iconeDe(cat) })),
+    () => Object.keys(groupedItems).map((cat) => ({ name: cat, count: groupedItems[cat].length })),
     [groupedItems],
   );
 
@@ -105,7 +109,7 @@ export default function CatalogBrowser({ catalogue = [], onSelectItem, onClose, 
                   key={cat.name} type="button" onClick={() => setSelectedCategory(cat.name)}
                   className="min-h-[88px] p-3 rounded-xl border border-bord bg-surface text-center transition-colors hover:border-bord-fort hover:bg-surface-2"
                 >
-                  <span className="text-2xl block mb-1" aria-hidden="true">{cat.icon}</span>
+                  <IconeCategorie categorie={cat.name} size={24} className="mx-auto mb-1" />
                   <span className="block text-sm font-medium truncate text-encre">{cat.name}</span>
                   <span className="block text-sm text-encre-3 tabular-nums">{cat.count}</span>
                 </button>
@@ -120,7 +124,7 @@ export default function CatalogBrowser({ catalogue = [], onSelectItem, onClose, 
             {selectedCategory && (
               <div className="flex items-center gap-2 mb-3">
                 <BoutonIcone icone={ArrowLeft} libelle="Retour aux catégories" onClick={() => setSelectedCategory(null)} className="-ml-2" />
-                <span className="text-xl" aria-hidden="true">{iconeDe(selectedCategory)}</span>
+                <IconeCategorie categorie={selectedCategory} size={20} />
                 <h3 className="text-base font-semibold text-encre">{selectedCategory}</h3>
                 <span className="text-sm text-encre-3 tabular-nums">({filteredItems.length})</span>
               </div>
@@ -156,12 +160,12 @@ function CarteArticle({ item, onSelect, ajoute }) {
       {item.favori && !ajoute && <Star size={12} aria-hidden="true" className="absolute top-2 right-2 text-alerte-point" fill="currentColor" />}
       <div className={ajoute ? 'opacity-30' : ''}>
         <div className="flex items-start gap-2 mb-2">
-          <span className="text-lg" aria-hidden="true">{iconeDe(item.categorie)}</span>
+          <IconeCategorie categorie={item.categorie} size={18} className="flex-shrink-0 mt-0.5" />
           <p className="text-sm font-medium leading-tight line-clamp-2 text-encre">{item.nom}</p>
         </div>
         <div className="flex items-center justify-between gap-2">
           <span className="text-sm text-encre-3">{item.unite || 'unité'}</span>
-          <span className="text-sm font-bold whitespace-nowrap tabular-nums text-encre">{(item.prix || 0).toLocaleString('fr-FR')} €</span>
+          <span className="text-sm font-bold whitespace-nowrap tabular-nums text-encre">{formatMoney(item.prix || 0)}</span>
         </div>
       </div>
       {!ajoute && (

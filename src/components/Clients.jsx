@@ -75,6 +75,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
   const [showDupeConfirm, setShowDupeConfirm] = useState(false);
   const [pendingSubmit, setPendingSubmit] = useState(null);
   const [importingContacts, setImportingContacts] = useState(false);
+  const [bilanContacts, setBilanContacts] = useState(null); // null | { importes, total } : l'import depuis le répertoire s'est arrêté
   const contactPickerOk = isContactPickerSupported();
 
   // Import en masse depuis le répertoire téléphone (dédup + un seul toast récap)
@@ -86,17 +87,21 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
       const digits = (p) => (p || '').replace(/\D/g, '');
       const phones = new Set((clients || []).map((c) => digits(c.telephone)).filter(Boolean));
       const emails = new Set((clients || []).map((c) => (c.email || '').toLowerCase()).filter(Boolean));
-      let added = 0, skipped = 0;
+      let added = 0, skipped = 0, arrete = false;
       for (const c of picked) {
         const ph = digits(c.telephone), em = (c.email || '').toLowerCase();
         if ((ph && phones.has(ph)) || (em && emails.has(em))) { skipped++; continue; }
         const cree = await ctxAddClient({ ...c, categorie: 'Particulier' });
-        if (!cree) break; // refus (limite du plan, droits) : DataContext l'a dit, on s'arrête
+        if (!cree) { arrete = true; break; } // refus (limite du plan, droits) : DataContext l'a dit, on s'arrête
         if (ph) phones.add(ph);
         if (em) emails.add(em);
         added++;
       }
-      if (added > 0) {
+      if (arrete) {
+        // Même règle que l'import d'un fichier : dire ce qui a été enregistré, sans écraser le message de refus de DataContext
+        // (un seul message à la fois : le bilan passe dans une fenêtre)
+        setBilanContacts({ importes: added, total: picked.length - skipped });
+      } else if (added > 0) {
         showToast(`${added} contact${added > 1 ? 's' : ''} importé${added > 1 ? 's' : ''}${skipped ? ` · ${skipped} déjà présent${skipped > 1 ? 's' : ''}` : ''}`, 'success');
       } else {
         showToast('Ces contacts sont déjà dans vos clients', 'info');
@@ -135,7 +140,8 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
   // Détection des doublons dans le formulaire (téléphone, e-mail)
   const { phoneDuplicates, emailDuplicates, strongDuplicates, checkField: checkDupeField, clearAll: clearDupes } = useDuplicateCheck(clients, editId, 300);
 
-  useEffect(() => { if (createMode) { setShow(true); setCreateMode?.(false); } }, [createMode, setCreateMode]);
+  // Le menu « + » de l'en-tête demande la création : sans le droit de créer un client, rien ne s'ouvre
+  useEffect(() => { if (createMode) { if (peutCreer) setShow(true); setCreateMode?.(false); } }, [createMode, setCreateMode, peutCreer]);
 
   const fermerFormulaire = () => { setShow(false); setEditId(null); setForm(FORMULAIRE_VIDE); clearErrors(); clearDupes(); };
 
@@ -552,6 +558,22 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
     <div className="space-y-3">
       {fenetreRapide}
 
+      {/* Import depuis le répertoire arrêté en route : ce qui a été enregistré, dit une fois (le refus lui-même est déjà affiché) */}
+      <Modal isOpen={!!bilanContacts} onClose={() => setBilanContacts(null)} size="sm">
+        <ModalHeader>
+          <ModalTitle>Importation incomplète</ModalTitle>
+          <ModalDescription>
+            {bilanContacts?.importes} contact{bilanContacts?.importes > 1 ? 's' : ''} importé{bilanContacts?.importes > 1 ? 's' : ''} sur {bilanContacts?.total} : l'import s'est arrêté.
+          </ModalDescription>
+        </ModalHeader>
+        <ModalBody>
+          <p className="text-sm text-encre-2">Les autres contacts n'ont pas été enregistrés.</p>
+        </ModalBody>
+        <ModalFooter>
+          <Bouton variante="principal" onClick={() => setBilanContacts(null)}>Fermer</Bouton>
+        </ModalFooter>
+      </Modal>
+
       {/* Doublon détecté à la création : on demande avant de créer */}
       <Modal isOpen={showDupeConfirm && !!pendingSubmit} onClose={() => { setShowDupeConfirm(false); setPendingSubmit(null); }} size="sm">
         <ModalHeader>
@@ -747,10 +769,11 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
             const statut = getClientStatus(c.id);
             const du = canViewPrices ? (dueParClient.get(c.id) || 0) : 0;
             const dernierDevis = dernierDevisParClient.get(c.id);
+            // La date du dernier devis d'abord et abrégée : au téléphone, c'est la fin de la ligne qui est coupée (« devis du … »)
             const meta = [
+              dernierDevis ? `devis ${dateLue(dernierDevis).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}` : null,
               c.entreprise,
               villeDe(c.adresse),
-              dernierDevis ? `devis du ${dateLue(dernierDevis).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}` : null,
             ].filter(Boolean).join(' · ') || c.telephone || c.email || 'Coordonnées à compléter';
             return (
               <div key={c.id} className="flex items-center">
