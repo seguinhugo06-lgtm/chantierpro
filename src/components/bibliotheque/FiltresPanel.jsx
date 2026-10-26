@@ -1,12 +1,10 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { SlidersHorizontal, X, RotateCcw } from 'lucide-react';
 
 export default function FiltresPanel({
   filters,
   setFilters,
   resetFilters,
-  isDark = false,
-  couleur = '#f97316',
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -20,11 +18,8 @@ export default function FiltresPanel({
   }, [filters]);
 
   const bg = 'bg-surface border-bord';
-  const inputBg = isDark
-    ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
-    : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400';
+  const inputBg = 'bg-surface border-bord-fort text-encre placeholder:text-encre-3 focus:border-accent focus:ring-4 focus:ring-accent/20';
   const textSecondary = 'text-encre-3';
-  const btnBase = 'bg-surface border-bord-fort text-encre-2 hover:bg-surface-2';
 
   const difficulties = [
     { label: 'Tous', value: null },
@@ -108,8 +103,8 @@ export default function FiltresPanel({
                   placeholder="Min"
                   value={filters.priceRange[0] ?? ''}
                   onChange={(e) => handlePriceChange(0, e.target.value)}
-                  className={`w-24 px-2.5 py-1.5 text-sm border rounded-lg outline-none focus:ring-2 focus:ring-opacity-40 transition-shadow ${inputBg}`}
-                  style={{ '--tw-ring-color': couleur }}
+                  aria-label="Prix minimum"
+                  className={`w-24 px-2.5 h-11 text-base sm:text-sm border rounded-lg outline-none transition-shadow ${inputBg}`}
                 />
                 <span className={`text-xs ${textSecondary}`}>—</span>
                 <input
@@ -118,8 +113,8 @@ export default function FiltresPanel({
                   placeholder="Max"
                   value={filters.priceRange[1] ?? ''}
                   onChange={(e) => handlePriceChange(1, e.target.value)}
-                  className={`w-24 px-2.5 py-1.5 text-sm border rounded-lg outline-none focus:ring-2 focus:ring-opacity-40 transition-shadow ${inputBg}`}
-                  style={{ '--tw-ring-color': couleur }}
+                  aria-label="Prix maximum"
+                  className={`w-24 px-2.5 h-11 text-base sm:text-sm border rounded-lg outline-none transition-shadow ${inputBg}`}
                 />
                 <span className={`text-xs ${textSecondary}`}>€</span>
               </div>
@@ -128,17 +123,17 @@ export default function FiltresPanel({
             {/* Difficulty */}
             <div className="flex flex-col gap-1.5">
               <label className={`text-xs font-medium ${textSecondary}`}>Difficulté</label>
-              <div className="flex items-center rounded-lg overflow-hidden border" style={{ borderColor: isDark ? '#4b5563' : '#d1d5db' }}>
+              <div className="flex items-center rounded-lg overflow-hidden border border-bord-fort">
                 {difficulties.map((d, i) => {
                   const isActive = filters.difficulty === d.value;
                   return (
                     <button
                       key={d.label}
                       onClick={() => handleDifficultyChange(d.value)}
-                      className={`px-3 py-1.5 text-xs font-medium transition-all duration-150 ${
+                      aria-pressed={isActive}
+                      className={`px-3 h-11 text-sm font-medium transition-colors duration-150 ${
                         i > 0 ? 'border-l border-bord-fort' : ''
-                      } ${isActive ? 'text-white' : 'text-encre-2 hover:bg-surface-2'}`}
-                      style={isActive ? { backgroundColor: couleur } : {}}
+                      } ${isActive ? 'bg-encre text-surface' : 'text-encre-2 hover:bg-surface-2'}`}
                     >
                       {d.label}
                     </button>
@@ -153,8 +148,7 @@ export default function FiltresPanel({
               <select
                 value={filters.unite ?? 'Tous'}
                 onChange={handleUniteChange}
-                className={`px-2.5 py-1.5 text-sm border rounded-lg outline-none focus:ring-2 focus:ring-opacity-40 transition-shadow cursor-pointer ${inputBg}`}
-                style={{ '--tw-ring-color': couleur }}
+                className={`px-2.5 h-11 text-base sm:text-sm border rounded-lg outline-none transition-shadow cursor-pointer ${inputBg}`}
               >
                 {unites.map((u) => (
                   <option key={u} value={u}>

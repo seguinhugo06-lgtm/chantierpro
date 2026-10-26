@@ -1,4 +1,3 @@
-import React from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Label } from 'recharts';
 
 /**
@@ -25,20 +24,17 @@ function ChartTooltip({ active, payload, total }) {
   const pct = total > 0 ? ((entry.value / total) * 100).toFixed(1) : 0;
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg shadow-lg px-3 py-2 text-sm">
+    <div className="bg-surface border border-bord rounded-lg shadow-e2 px-3 py-2 text-sm">
       <div className="flex items-center gap-2 mb-1">
-        <span
-          className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-          style={{ backgroundColor: entry.payload.color }}
-        />
-        <span className="font-medium text-gray-900">
+        <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${entry.payload.point}`} />
+        <span className="font-medium text-encre">
           {entry.name}
         </span>
       </div>
-      <div className="text-gray-600">
+      <div className="text-encre-2">
         {formatPrice(entry.value)}
       </div>
-      <div className="text-gray-400 text-xs">
+      <div className="text-encre-3 text-xs">
         {pct}% du total
       </div>
     </div>
@@ -48,7 +44,7 @@ function ChartTooltip({ active, payload, total }) {
 /**
  * Custom center label rendered inside the donut
  */
-function CenterLabel({ viewBox, total, isDark }) {
+function CenterLabel({ viewBox, total }) {
   const { cx, cy } = viewBox;
   return (
     <g>
@@ -57,8 +53,7 @@ function CenterLabel({ viewBox, total, isDark }) {
         y={cy - 8}
         textAnchor="middle"
         dominantBaseline="central"
-        className="text-[11px]"
-        fill={isDark ? '#9ca3af' : '#6b7280'}
+        className="text-xs fill-encre-3"
       >
         Total
       </text>
@@ -67,8 +62,7 @@ function CenterLabel({ viewBox, total, isDark }) {
         y={cy + 12}
         textAnchor="middle"
         dominantBaseline="central"
-        className="text-[13px] font-semibold"
-        fill={isDark ? '#ffffff' : '#111827'}
+        className="text-sm font-semibold fill-encre"
       >
         {formatPrice(total)}
       </text>
@@ -83,15 +77,11 @@ function CenterLabel({ viewBox, total, isDark }) {
  * @param {number} fourniture  - Cost of supplies
  * @param {number} mainOeuvre  - Cost of labour
  * @param {number} materiel    - Cost of equipment
- * @param {boolean} isDark     - Dark mode flag
- * @param {string} couleur     - Accent colour (unused currently, reserved)
  */
 export default function PriceDecomposition({
   fourniture,
   mainOeuvre,
   materiel,
-  isDark = false,
-  couleur = '#f97316',
 }) {
   const total = (fourniture || 0) + (mainOeuvre || 0) + (materiel || 0);
 
@@ -101,25 +91,22 @@ export default function PriceDecomposition({
     {
       name: 'Fourniture',
       value: fourniture || 0,
-      color: '#f59e0b',
-      lightBg: 'bg-amber-50',
-      darkBg: 'bg-amber-900/20',
+      fill: 'fill-alerte-point',
+      point: 'bg-alerte-point',
       label: 'F',
     },
     {
       name: "Main d'oeuvre",
       value: mainOeuvre || 0,
-      color: '#3b82f6',
-      lightBg: 'bg-blue-50',
-      darkBg: 'bg-blue-900/20',
+      fill: 'fill-info-point',
+      point: 'bg-info-point',
       label: 'MO',
     },
     {
       name: 'Matériel',
       value: materiel || 0,
-      color: '#10b981',
-      lightBg: 'bg-emerald-50',
-      darkBg: 'bg-emerald-900/20',
+      fill: 'fill-succes-point',
+      point: 'bg-succes-point',
       label: 'Mat',
     },
   ].filter((d) => d.value > 0);
@@ -152,12 +139,12 @@ export default function PriceDecomposition({
               strokeWidth={0}
             >
               {data.map((d) => (
-                <Cell key={d.name} fill={d.color} />
+                <Cell key={d.name} className={d.fill} />
               ))}
 
               {/* Center label showing total */}
               <Label
-                content={<CenterLabel total={total} isDark={isDark} />}
+                content={<CenterLabel total={total} />}
                 position="center"
               />
             </Pie>
@@ -194,10 +181,7 @@ export default function PriceDecomposition({
               >
                 <td className="py-2">
                   <div className="flex items-center gap-2">
-                    <span
-                      className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                      style={{ backgroundColor: d.color }}
-                    />
+                    <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${d.point}`} />
                     <span className={textPrimary}>{d.name}</span>
                   </div>
                 </td>

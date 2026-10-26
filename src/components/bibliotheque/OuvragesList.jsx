@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { Search, PackageOpen, ChevronLeft, ChevronRight } from 'lucide-react';
 import OuvrageCard from './OuvrageCard';
 
@@ -44,11 +44,11 @@ function buildPageNumbers(currentPage, totalPages) {
 /**
  * List header row for list view mode
  */
-function ListHeader({ isDark }) {
+function ListHeader() {
   const textClass = 'text-encre-3';
   return (
     <div
-      className={`flex items-center gap-4 px-4 py-2 border-b text-xs font-semibold uppercase tracking-wide border-bord bg-fond ${textClass}`}
+      className={`flex items-center gap-4 px-4 py-2 border-b text-xs font-semibold border-bord bg-fond ${textClass}`}
     >
       <span className="w-20 shrink-0">Code</span>
       <span className="flex-1 min-w-0">Nom / Unité</span>
@@ -63,7 +63,7 @@ function ListHeader({ isDark }) {
 /**
  * Empty state when no ouvrages match
  */
-function EmptyState({ isDark, isSearching, searchQuery }) {
+function EmptyState({ isSearching, searchQuery }) {
   return (
     <div className="flex flex-col items-center justify-center py-16 px-4">
       <div
@@ -98,8 +98,6 @@ function EmptyState({ isDark, isSearching, searchQuery }) {
  * @param {number} props.totalPages - Total number of pages
  * @param {Function} props.onPageChange - Callback with new page number
  * @param {Function} props.onSelectOuvrage - Callback when an ouvrage is clicked
- * @param {boolean} props.isDark - Dark mode
- * @param {string} props.couleur - Brand accent color (hex)
  * @param {boolean} props.isSearching - Whether we are showing search results
  * @param {string} props.searchQuery - Current search query text
  */
@@ -111,8 +109,6 @@ export default function OuvragesList({
   totalPages = 1,
   onPageChange,
   onSelectOuvrage,
-  isDark = false,
-  couleur = '#f97316',
   isSearching = false,
   searchQuery = '',
 }) {
@@ -126,7 +122,7 @@ export default function OuvragesList({
 
   // ── Empty state ──
   if (!ouvrages || ouvrages.length === 0) {
-    return <EmptyState isDark={isDark} isSearching={isSearching} searchQuery={searchQuery} />;
+    return <EmptyState isSearching={isSearching} searchQuery={searchQuery} />;
   }
 
   return (
@@ -156,8 +152,6 @@ export default function OuvragesList({
             <OuvrageCard
               key={ouvrage.id}
               ouvrage={ouvrage}
-              isDark={isDark}
-              couleur={couleur}
               viewMode="grid"
               onSelect={onSelectOuvrage}
             />
@@ -170,13 +164,11 @@ export default function OuvragesList({
         <div
           className={`rounded-xl border overflow-hidden border-bord`}
         >
-          <ListHeader isDark={isDark} />
+          <ListHeader />
           {ouvrages.map((ouvrage) => (
             <OuvrageCard
               key={ouvrage.id}
               ouvrage={ouvrage}
-              isDark={isDark}
-              couleur={couleur}
               viewMode="list"
               onSelect={onSelectOuvrage}
             />
@@ -221,14 +213,9 @@ export default function OuvragesList({
                 aria-label={`Page ${page}`}
                 className={`px-3 py-1 rounded border text-sm transition-colors ${
                   page === currentPage
-                    ? 'text-white border-transparent font-semibold'
+                    ? 'bg-encre text-surface border-transparent font-semibold'
                     : `cursor-pointer border-bord-fort text-encre-2 hover:bg-surface-2`
                 }`}
-                style={
-                  page === currentPage
-                    ? { backgroundColor: couleur }
-                    : undefined
-                }
               >
                 {page}
               </button>

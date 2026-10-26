@@ -1,40 +1,84 @@
 import { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { createPortal } from 'react-dom';
-import { X, User, Phone, Mail, MapPin, Building2, ChevronDown, ChevronUp, Check, Sparkles, AlertTriangle, ExternalLink, Smartphone } from 'lucide-react';
-import FormError from './ui/FormError';
+import { ChevronDown, AlertTriangle, Smartphone } from 'lucide-react';
+import Modal, { ModalHeader, ModalTitle, ModalDescription, ModalBody, ModalFooter } from './ui/Modal';
+import Champ from './ui/Champ';
+import { Bouton } from './ui/Bouton';
+import { Segmente } from './ui/Onglets';
 import { useDuplicateCheck } from '../hooks/useDuplicateCheck';
 import { pickContacts, isContactPickerSupported } from '../lib/contactPicker';
 
 /**
- * QuickClientModal - Fast client creation with minimal friction
- * 2 required fields (nom, telephone) + expandable details
- * With real-time duplicate detection
+ * QuickClientModal — création rapide d'un client : un nom et un téléphone ou un e-mail, le reste dans « Adresse,
+ * entreprise… », avec détection de doublon en direct. Sur ui/Modal (portail, focus, Échap, feuille du bas au téléphone) et
+ * `Champ` (libellé au-dessus, 48 px) : refonte du 26 oct. 2026 (Task 7 « ancien code »). Avant : en-tête en dégradé de la
+ * couleur de l'entreprise (blanc sur orange ≈ 2,9:1), champs faits main, deux fenêtres empilées pour le doublon.
  */
+const FORMULAIRE_VIDE = { nom: '', prenom: '', telephone: '', email: '', entreprise: '', adresse: '', categorie: 'Particulier', siret: '' };
+const DOMAINES_DE_TEST = ['test.com', 'test.fr', 'example.com', 'foo.com', 'bar.com', 'mailinator.com'];
+
+const emailValide = (email) => {
+  if (!email) return true; // facultatif
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return false;
+  const domaine = email.split('@')[1]?.toLowerCase();
+  return !(domaine && DOMAINES_DE_TEST.includes(domaine));
+};
+const estDomaineDeTest = (email) => {
+  if (!email) return false;
+  const domaine = email.split('@')[1]?.toLowerCase();
+  return !!domaine && DOMAINES_DE_TEST.includes(domaine);
+};
+// Numéro français : 10 chiffres, espaces, points et tirets permis
+const telephoneValide = (tel) => {
+  if (!tel) return true; // facultatif
+  return /^(0[1-9])\d{8}$/.test(tel.replace(/[\s.\-]/g, ''));
+};
+
 export default function QuickClientModal({
   isOpen,
   onClose,
   onSubmit,
-  isDark = false,
-  couleur = '#f97316',
   existingClients = [],
   onViewClient,
 }) {
-  const [form, setForm] = useState({
-    nom: '',
-    prenom: '',
-    telephone: '',
-    email: '',
-    entreprise: '',
-    adresse: '',
-    categorie: 'Particulier',
-    siret: ''
-  });
+  const [form, setForm] = useState(FORMULAIRE_VIDE);
   const [showDetails, setShowDetails] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const envoiEnCoursRef = useRef(false);
   const [pickingContact, setPickingContact] = useState(false);
   const contactPickerOk = isContactPickerSupported();
+  const [errors, setErrors] = useState({});
+  const [duplicates, setDuplicates] = useState([]);
+  const [showDupeConfirm, setShowDupeConfirm] = useState(false);
+  const dupeTimeoutRef = useRef(null);
+
+  // Doublon d'e-mail : la détection commune
+  const { emailDuplicates, checkField: checkDupeField, clearAll: clearDupeChecks } = useDuplicateCheck(existingClients, null, 300);
+
+  // Doublon de téléphone ou de nom : cherché dans la liste des clients
+  const checkDuplicates = (field, value) => {
+    if (!value || !existingClients.length) { setDuplicates([]); return; }
+    const found = [];
+    const normaliser = (p) => (p || '').replace(/[\s.\-+]/g, '');
+    if (field === 'telephone') {
+      const propre = normaliser(value);
+      if (propre.length >= 6) {
+        existingClients.forEach((c) => { if (normaliser(c.telephone) === propre) found.push({ ...c, reason: 'Même téléphone' }); });
+      }
+    }
+    if (field === 'nom') {
+      const q = value.toLowerCase().trim();
+      if (q.length >= 3) {
+        existingClients.forEach((c) => {
+          const complet = `${c.nom || ''} ${c.prenom || ''}`.toLowerCase().trim();
+          const inverse = `${c.prenom || ''} ${c.nom || ''}`.toLowerCase().trim();
+          if ((complet.includes(q) || inverse.includes(q) || q.includes((c.nom || '').toLowerCase())) && !found.some((f) => f.id === c.id)) {
+            found.push({ ...c, reason: 'Nom similaire' });
+          }
+        });
+      }
+    }
+    setDuplicates(found.slice(0, 3));
+  };
 
   // Remplir le formulaire depuis un contact du répertoire téléphone (Chrome Android)
   const fillFromContact = async () => {
@@ -42,7 +86,7 @@ export default function QuickClientModal({
     try {
       const [c] = await pickContacts({ multiple: false });
       if (c) {
-        setForm(p => ({
+        setForm((p) => ({
           ...p,
           nom: c.nom || p.nom,
           prenom: c.prenom || p.prenom,
@@ -60,101 +104,27 @@ export default function QuickClientModal({
       setPickingContact(false);
     }
   };
-  const [errors, setErrors] = useState({});
-  const [duplicates, setDuplicates] = useState([]);
-  const [showDupeConfirm, setShowDupeConfirm] = useState(false);
-  const inputRef = useRef(null);
-  const dupeTimeoutRef = useRef(null);
 
-  // Centralized duplicate check for email
-  const { emailDuplicates, checkField: checkDupeField, clearAll: clearDupeChecks } = useDuplicateCheck(existingClients, null, 300);
-
-  // Validation helpers
-  const TEST_EMAIL_DOMAINS = ['test.com', 'test.fr', 'example.com', 'foo.com', 'bar.com', 'mailinator.com'];
-  const validateEmail = (email) => {
-    if (!email) return true; // Optional field
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return false;
-    const domain = email.split('@')[1]?.toLowerCase();
-    if (domain && TEST_EMAIL_DOMAINS.includes(domain)) return false;
-    return true;
-  };
-  const isTestDomain = (email) => {
-    if (!email) return false;
-    const domain = email.split('@')[1]?.toLowerCase();
-    return domain && TEST_EMAIL_DOMAINS.includes(domain);
-  };
-
-  const validatePhone = (phone) => {
-    if (!phone) return true; // Optional field
-    // French phone format: 10 digits, may have spaces/dots/dashes
-    const cleaned = phone.replace(/[\s.\-]/g, '');
-    return /^(0[1-9])\d{8}$/.test(cleaned);
-  };
-
-  // Duplicate detection
-  const checkDuplicates = (field, value) => {
-    if (!value || !existingClients.length) { setDuplicates([]); return; }
-    const found = [];
-    const normalizePhone = (p) => (p || '').replace(/[\s.\-+]/g, '');
-
-    if (field === 'telephone') {
-      const cleanVal = normalizePhone(value);
-      if (cleanVal.length >= 6) {
-        existingClients.forEach(c => {
-          if (normalizePhone(c.telephone) === cleanVal) {
-            found.push({ ...c, reason: 'Même téléphone' });
-          }
-        });
-      }
-    }
-
-    if (field === 'nom') {
-      const q = value.toLowerCase().trim();
-      if (q.length >= 3) {
-        existingClients.forEach(c => {
-          const fullName = `${c.nom || ''} ${c.prenom || ''}`.toLowerCase().trim();
-          const reverseName = `${c.prenom || ''} ${c.nom || ''}`.toLowerCase().trim();
-          if (fullName.includes(q) || reverseName.includes(q) || q.includes((c.nom || '').toLowerCase())) {
-            if (!found.some(f => f.id === c.id)) {
-              found.push({ ...c, reason: 'Nom similaire' });
-            }
-          }
-        });
-      }
-    }
-
-    setDuplicates(found.slice(0, 3));
-  };
-
-  // Theme classes
-  const cardBg = 'bg-surface';
-  const inputBg = 'bg-surface border-bord text-encre placeholder:text-encre-3';
-  const textPrimary = 'text-encre';
-  const textSecondary = 'text-encre-2';
-  const textMuted = 'text-encre-2';
-
-  // Auto-focus on open (robust: retry if animation blocks focus)
+  // Le curseur arrive dans « Nom » à l'ouverture (la fenêtre met le focus sur son premier bouton, on le déplace ensuite)
   useEffect(() => {
-    if (isOpen) {
-      const tryFocus = (attempt = 0) => {
-        if (inputRef.current) {
-          inputRef.current.focus();
-          // Verify focus was acquired, retry if not (animation may block)
-          if (document.activeElement !== inputRef.current && attempt < 3) {
-            setTimeout(() => tryFocus(attempt + 1), 150);
-          }
-        } else if (attempt < 5) {
-          setTimeout(() => tryFocus(attempt + 1), 100);
-        }
-      };
-      setTimeout(() => tryFocus(), 100);
-    }
+    if (!isOpen) return undefined;
+    const essayer = (tentative = 0) => {
+      const champ = document.getElementById('qc-nom');
+      if (champ) {
+        champ.focus();
+        if (document.activeElement !== champ && tentative < 3) setTimeout(() => essayer(tentative + 1), 150);
+      } else if (tentative < 5) {
+        setTimeout(() => essayer(tentative + 1), 100);
+      }
+    };
+    const t = setTimeout(() => essayer(), 100);
+    return () => clearTimeout(t);
   }, [isOpen]);
 
-  // Reset form on close
+  // Fermée : le formulaire repart à zéro
   useEffect(() => {
     if (!isOpen) {
-      setForm({ nom: '', prenom: '', telephone: '', email: '', entreprise: '', adresse: '', categorie: 'Particulier', siret: '' });
+      setForm(FORMULAIRE_VIDE);
       setShowDetails(false);
       setIsSubmitting(false);
       setErrors({});
@@ -162,6 +132,7 @@ export default function QuickClientModal({
       setShowDupeConfirm(false);
       clearDupeChecks();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
   const doFinalSubmit = async () => {
@@ -170,7 +141,6 @@ export default function QuickClientModal({
     envoiEnCoursRef.current = true;
     setErrors({});
     setIsSubmitting(true);
-
     const resultat = await onSubmit({
       nom: form.nom.trim(),
       prenom: form.prenom.trim(),
@@ -179,9 +149,8 @@ export default function QuickClientModal({
       entreprise: form.entreprise.trim(),
       adresse: form.adresse.trim(),
       categorie: form.categorie || '',
-      siret: form.siret?.trim() || ''
+      siret: form.siret?.trim() || '',
     });
-
     envoiEnCoursRef.current = false;
     // Refusé par la base ou par la limite du plan : la fenêtre reste ouverte, la saisie n'est pas perdue.
     if (resultat === null || resultat === false) {
@@ -191,490 +160,195 @@ export default function QuickClientModal({
     onClose();
   };
 
-  const handleSubmit = async () => {
-    // Validate all fields
-    const newErrors = {};
-
-    if (!form.nom.trim()) {
-      newErrors.nom = 'Le nom est requis';
+  const handleSubmit = async (e) => {
+    e?.preventDefault();
+    const nouvelles = {};
+    if (!form.nom.trim()) nouvelles.nom = 'Le nom est requis';
+    // Il faut au moins un téléphone ou un e-mail
+    if (!form.telephone.trim() && !form.email.trim()) nouvelles.telephone = 'Téléphone ou email requis';
+    if (form.email && !emailValide(form.email)) {
+      nouvelles.email = estDomaineDeTest(form.email) ? 'Domaine email non autorisé (@test.com, @example.com…)' : 'Format email invalide (ex: nom@email.fr)';
     }
-
-    // Require at least phone OR email
-    if (!form.telephone.trim() && !form.email.trim()) {
-      newErrors.telephone = 'Téléphone ou email requis';
-    }
-
-    if (form.email && !validateEmail(form.email)) {
-      newErrors.email = isTestDomain(form.email)
-        ? 'Domaine email non autorisé (@test.com, @example.com…)'
-        : 'Format email invalide (ex: nom@email.fr)';
-    }
-
-    if (form.telephone && !validatePhone(form.telephone)) {
-      newErrors.telephone = 'Format téléphone invalide (ex: 06 12 34 56 78)';
-    }
-
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
-      if (newErrors.nom) {
-        inputRef.current?.focus();
-      }
+    if (form.telephone && !telephoneValide(form.telephone)) nouvelles.telephone = 'Format téléphone invalide (ex: 06 12 34 56 78)';
+    if (Object.keys(nouvelles).length > 0) {
+      setErrors(nouvelles);
+      if (nouvelles.nom) document.getElementById('qc-nom')?.focus();
       return;
     }
-
-    // Check for strong duplicates (phone or email) before submitting
-    const hasStrongDupes = duplicates.some(d => d.reason === 'Même téléphone') || emailDuplicates.length > 0;
-    if (hasStrongDupes) {
+    // Doublon fort (téléphone ou e-mail) : on demande avant de créer
+    if (duplicates.some((d) => d.reason === 'Même téléphone') || emailDuplicates.length > 0) {
       setShowDupeConfirm(true);
       return;
     }
-
     await doFinalSubmit();
   };
 
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey && form.nom.trim()) {
-      e.preventDefault();
-      handleSubmit();
-    }
-    if (e.key === 'Escape') {
-      onClose();
-    }
-  };
-
   const canSubmit = form.nom.trim().length > 0;
+  const allerA = (id) => { setShowDupeConfirm(false); onClose(); setTimeout(() => onViewClient?.(id), 100); };
 
-  const modalContent = (
-    <AnimatePresence mode="wait">
-      {isOpen && (
-        <motion.div
-          className="fixed inset-0 z-[1200] flex items-end sm:items-center justify-center"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.2 }}
-        >
-          {/* Backdrop */}
-          <motion.div
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onClose}
-          />
+  // Les doublons forts, réunis pour la confirmation
+  const doublonsForts = (() => {
+    const vus = new Set();
+    const reunis = [];
+    [...duplicates.filter((d) => d.reason === 'Même téléphone'), ...emailDuplicates].forEach((d) => {
+      if (!vus.has(d.id)) { vus.add(d.id); reunis.push(d); }
+    });
+    return reunis;
+  })();
 
-          {/* Modal */}
-          <motion.div
-            className={`relative w-full sm:max-w-md ${cardBg} rounded-t-3xl sm:rounded-2xl shadow-2xl overflow-hidden`}
-            initial={{ y: '100%', opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: '100%', opacity: 0 }}
-            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            onKeyDown={handleKeyDown}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="titre-nouveau-client"
-          >
-        {/* Header with gradient */}
-        <div
-          className="px-6 pt-6 pb-4"
-          style={{ background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)` }}
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
-                <Sparkles size={20} className="text-white" />
+  // Étape de confirmation : la même fenêtre change de contenu (plus de fenêtres empilées)
+  if (showDupeConfirm && doublonsForts.length > 0) {
+    return (
+      <Modal isOpen={isOpen} onClose={onClose} size="sm">
+        <ModalHeader>
+          <ModalTitle>Doublon potentiel</ModalTitle>
+          <ModalDescription>Ce client semble être un doublon de :</ModalDescription>
+        </ModalHeader>
+        <ModalBody className="space-y-2">
+          {doublonsForts.map((dup) => (
+            <div key={dup.id} className="flex items-center justify-between gap-3 p-3 rounded-xl border border-bord bg-surface-2">
+              <div className="min-w-0">
+                <p className="font-semibold text-base text-encre truncate">{dup.nom} {dup.prenom || ''}</p>
+                <p className="text-sm text-encre-2">
+                  {dup.matchReason || dup.reason}
+                  {dup.telephone && ` · ${dup.telephone}`}
+                  {dup.email && ` · ${dup.email}`}
+                </p>
               </div>
-              <div>
-                <h2 id="titre-nouveau-client" className="text-lg font-bold text-white">Nouveau client</h2>
-                <p className="text-white/80 text-sm">Ajout rapide</p>
-              </div>
+              {onViewClient && <Bouton variante="secondaire" taille="compacte" onClick={() => allerA(dup.id)}>Voir</Bouton>}
             </div>
-            <button
-              onClick={onClose}
-              aria-label="Fermer"
-              className="p-3 hover:bg-white/20 rounded-xl transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
-            >
-              <X size={20} className="text-white" />
-            </button>
-          </div>
-        </div>
+          ))}
+        </ModalBody>
+        <ModalFooter>
+          <Bouton variante="secondaire" onClick={() => setShowDupeConfirm(false)}>Annuler</Bouton>
+          <Bouton variante="principal" onClick={async () => { setShowDupeConfirm(false); await doFinalSubmit(); }}>Créer quand même</Bouton>
+        </ModalFooter>
+      </Modal>
+    );
+  }
 
-        {/* Form content */}
-        <div className="p-6 space-y-4">
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} size="md">
+      <ModalHeader>
+        <ModalTitle>Nouveau client</ModalTitle>
+        <ModalDescription>Un nom et un téléphone ou un e‑mail suffisent.</ModalDescription>
+      </ModalHeader>
+      <form onSubmit={handleSubmit} noValidate className="flex flex-col min-h-0 flex-1">
+        <ModalBody className="space-y-4">
           {/* Import depuis le répertoire téléphone (Chrome Android uniquement) */}
           {contactPickerOk && (
-            <button
-              type="button"
-              onClick={fillFromContact}
-              disabled={pickingContact}
-              className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed text-sm font-semibold transition-all disabled:opacity-60 active:scale-[0.99] border-bord-fort text-encre-2 hover:bg-surface-2`}
-            >
-              <Smartphone size={17} className="text-accent-texte" />
+            <Bouton variante="secondaire" pleineLargeur icone={Smartphone} onClick={fillFromContact} disabled={pickingContact}>
               {pickingContact ? 'Ouverture du répertoire…' : 'Remplir depuis mes contacts'}
-            </button>
+            </Bouton>
           )}
 
-          {/* Essential fields - always visible */}
-          <div className="space-y-3">
-            {/* Nom field - required */}
-            <div>
-              <label htmlFor="qc-nom" className={`flex items-center gap-2 text-sm font-medium mb-2 ${textPrimary}`}>
-                <User size={14} className="text-accent-texte" />
-                Nom *
-              </label>
-              <input
-                id="qc-nom"
-                ref={inputRef}
-                type="text"
-                value={form.nom}
-                onChange={e => {
-                  const val = e.target.value;
-                  setForm(p => ({ ...p, nom: val }));
-                  if (errors.nom) setErrors(p => ({ ...p, nom: null }));
-                  clearTimeout(dupeTimeoutRef.current);
-                  dupeTimeoutRef.current = setTimeout(() => checkDuplicates('nom', val), 500);
-                }}
-                onBlur={() => {
-                  if (form.nom.trim() && form.nom.trim().length < 2) {
-                    setErrors(p => ({ ...p, nom: 'Le nom doit contenir au moins 2 caractères' }));
-                  }
-                }}
-                placeholder="ex. Dupont"
-                aria-required="true"
-                aria-invalid={!!errors.nom}
-                aria-describedby={errors.nom ? 'qc-nom-error' : undefined}
-                className={`w-full px-4 py-3 border rounded-xl text-base transition-all focus:ring-2 focus:ring-offset-1 ${inputBg} ${errors.nom ? 'border-red-500 ring-red-500/20 ring-2' : ''}`}
-                style={{ '--tw-ring-color': errors.nom ? '#ef4444' : couleur }}
-              />
-              <FormError id="qc-nom-error" message={errors.nom} />
-            </div>
+          <Champ
+            id="qc-nom" libelle="Nom" type="text" placeholder="ex. Dupont" aria-required="true" erreur={errors.nom} value={form.nom}
+            onChange={(e) => {
+              const val = e.target.value;
+              setForm((p) => ({ ...p, nom: val }));
+              if (errors.nom) setErrors((p) => ({ ...p, nom: null }));
+              clearTimeout(dupeTimeoutRef.current);
+              dupeTimeoutRef.current = setTimeout(() => checkDuplicates('nom', val), 500);
+            }}
+            onBlur={() => { if (form.nom.trim() && form.nom.trim().length < 2) setErrors((p) => ({ ...p, nom: 'Le nom doit contenir au moins 2 caractères' })); }}
+          />
+          <Champ id="qc-prenom" libelle="Prénom" facultatif type="text" placeholder="ex. Jean" value={form.prenom} onChange={(e) => setForm((p) => ({ ...p, prenom: e.target.value }))} />
+          <Champ
+            id="qc-telephone" libelle="Téléphone" type="tel" placeholder="06 12 34 56 78" erreur={errors.telephone} value={form.telephone}
+            onChange={(e) => {
+              const val = e.target.value;
+              setForm((p) => ({ ...p, telephone: val }));
+              if (errors.telephone) setErrors((p) => ({ ...p, telephone: null }));
+              clearTimeout(dupeTimeoutRef.current);
+              dupeTimeoutRef.current = setTimeout(() => checkDuplicates('telephone', val), 500);
+            }}
+            onBlur={() => { if (form.telephone && !telephoneValide(form.telephone)) setErrors((p) => ({ ...p, telephone: 'Format invalide (ex: 06 12 34 56 78)' })); }}
+          />
 
-            {/* Prenom field */}
-            <div>
-              <label htmlFor="qc-prenom" className={`flex items-center gap-2 text-sm font-medium mb-2 ${textPrimary}`}>
-                <User size={14} className={textMuted} />
-                Prénom
-              </label>
-              <input
-                id="qc-prenom"
-                type="text"
-                value={form.prenom}
-                onChange={e => setForm(p => ({ ...p, prenom: e.target.value }))}
-                placeholder="ex. Jean"
-                className={`w-full px-4 py-3 border rounded-xl text-base ${inputBg}`}
-              />
-            </div>
+          <Segmente
+            ariaLabel="Type de client" pleineLargeur valeur={form.categorie} onChange={(categorie) => setForm((p) => ({ ...p, categorie }))}
+            options={[{ valeur: 'Particulier', libelle: 'Particulier' }, { valeur: 'Professionnel', libelle: 'Professionnel' }]}
+          />
 
-            {/* Telephone field */}
-            <div>
-              <label htmlFor="qc-telephone" className={`flex items-center gap-2 text-sm font-medium mb-2 ${textPrimary}`}>
-                <Phone size={14} className="text-accent-texte" />
-                Téléphone
-              </label>
-              <input
-                id="qc-telephone"
-                type="tel"
-                value={form.telephone}
-                onChange={e => {
-                  const val = e.target.value;
-                  setForm(p => ({ ...p, telephone: val }));
-                  if (errors.telephone) setErrors(p => ({ ...p, telephone: null }));
-                  clearTimeout(dupeTimeoutRef.current);
-                  dupeTimeoutRef.current = setTimeout(() => checkDuplicates('telephone', val), 500);
-                }}
-                onBlur={() => {
-                  if (form.telephone && !validatePhone(form.telephone)) {
-                    setErrors(p => ({ ...p, telephone: 'Format invalide (ex: 06 12 34 56 78)' }));
-                  }
-                }}
-                placeholder="06 12 34 56 78"
-                aria-invalid={!!errors.telephone}
-                aria-describedby={errors.telephone ? 'qc-telephone-error' : undefined}
-                className={`w-full px-4 py-3 border rounded-xl text-base ${inputBg} ${errors.telephone ? 'border-red-500 ring-red-500/20 ring-2' : ''}`}
-              />
-              <FormError id="qc-telephone-error" message={errors.telephone} />
-            </div>
-          </div>
-
-          {/* Type toggle — Particulier / Professionnel */}
-          <div className="flex gap-2">
-            {['Particulier', 'Professionnel'].map(type => (
-              <button
-                key={type}
-                type="button"
-                onClick={() => setForm(p => ({ ...p, categorie: type }))}
-                className={`flex-1 py-2 rounded-xl text-sm font-medium border transition-all ${form.categorie === type
-                  ? 'text-white border-transparent shadow-sm'
-                  : 'border-bord text-encre-3 hover:border-bord-fort'
-                }`}
-                style={form.categorie === type ? { background: couleur } : {}}
-              >
-                {type === 'Particulier' ? '👤' : '🏢'} {type}
-              </button>
-            ))}
-          </div>
-
-          {/* Email field — promoted out of accordion */}
           <div>
-            <label htmlFor="qc-email" className={`flex items-center gap-2 text-sm font-medium mb-2 ${textPrimary}`}>
-              <Mail size={14} className="text-accent-texte" />
-              Email
-            </label>
-            <input
-              id="qc-email"
-              type="email"
-              value={form.email}
-              onChange={e => {
-                setForm(p => ({ ...p, email: e.target.value }));
-                if (errors.email) setErrors(p => ({ ...p, email: null }));
+            <Champ
+              id="qc-email" libelle="Email" type="email" placeholder="ex. nom@email.fr" erreur={errors.email} value={form.email}
+              onChange={(e) => {
+                setForm((p) => ({ ...p, email: e.target.value }));
+                if (errors.email) setErrors((p) => ({ ...p, email: null }));
                 checkDupeField('email', e.target.value);
               }}
-              onBlur={() => {
-                if (form.email && !validateEmail(form.email)) {
-                  setErrors(p => ({ ...p, email: isTestDomain(form.email) ? 'Domaine email non autorisé' : 'Format email invalide (ex: nom@email.fr)' }));
-                }
-              }}
-              placeholder="ex. nom@email.fr"
-              aria-invalid={!!errors.email}
-              aria-describedby={errors.email ? 'qc-email-error' : undefined}
-              className={`w-full px-4 py-3 border rounded-xl text-base ${inputBg} ${errors.email ? 'border-red-500 ring-red-500/20 ring-2' : ''} ${emailDuplicates.length > 0 && !errors.email ? (isDark ? 'border-amber-600' : 'border-amber-400') : ''}`}
+              onBlur={() => { if (form.email && !emailValide(form.email)) setErrors((p) => ({ ...p, email: estDomaineDeTest(form.email) ? 'Domaine email non autorisé' : 'Format email invalide (ex: nom@email.fr)' })); }}
             />
-            <FormError id="qc-email-error" message={errors.email} />
             {emailDuplicates.length > 0 && (
-              <div className={`mt-1.5 flex items-start gap-1.5 text-xs ${isDark ? 'text-amber-300' : 'text-amber-700'}`}>
-                <AlertTriangle size={13} className="shrink-0 mt-0.5 text-amber-500" />
+              <p className="mt-1.5 flex items-start gap-1.5 text-sm text-alerte-texte">
+                <AlertTriangle size={15} aria-hidden="true" className="shrink-0 mt-0.5" />
                 <span>
                   Un client avec cet email existe déjà : <strong>{emailDuplicates[0].nom} {emailDuplicates[0].prenom || ''}</strong>
-                  {onViewClient && (
-                    <button type="button" onClick={() => { onClose(); setTimeout(() => onViewClient(emailDuplicates[0].id), 100); }} className="ml-1 underline font-medium text-accent-texte">Voir la fiche →</button>
-                  )}
+                  {onViewClient && <button type="button" onClick={() => allerA(emailDuplicates[0].id)} className="ml-1 underline font-semibold">Voir la fiche</button>}
                 </span>
-              </div>
+              </p>
             )}
           </div>
 
-          {/* Duplicate detection warning (name/phone) */}
+          {/* Client déjà connu : par le nom ou le téléphone */}
           {duplicates.length > 0 && (
-            <div className={`rounded-xl p-3 ${isDark ? 'bg-amber-900/20 border border-amber-800/30' : 'bg-amber-50 border border-amber-200'}`}>
-              <div className="flex items-center gap-2 mb-2">
-                <AlertTriangle size={14} className="text-amber-500" />
-                <p className={`text-xs font-medium ${isDark ? 'text-amber-300' : 'text-amber-700'}`}>
-                  Client(s) similaire(s) détecté(s)
-                </p>
-              </div>
-              {duplicates.map(dup => (
-                <div key={dup.id} className={`flex items-center gap-2 py-1.5 ${isDark ? 'text-amber-200' : 'text-amber-800'}`}>
-                  <span className="text-xs flex-1">
-                    <span className="font-medium">{dup.nom} {dup.prenom}</span>
-                    {dup.telephone && <span className={`ml-1 ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>· {dup.telephone}</span>}
-                    <span className={`ml-1 text-[10px] ${isDark ? 'text-amber-500' : 'text-amber-500'}`}>({dup.reason})</span>
+            <div className="rounded-xl p-3 bg-alerte-fond text-alerte-texte">
+              <p className="flex items-center gap-2 text-sm font-semibold mb-1">
+                <AlertTriangle size={15} aria-hidden="true" /> Client(s) similaire(s) détecté(s)
+              </p>
+              {duplicates.map((dup) => (
+                <div key={dup.id} className="flex items-center gap-2 py-1">
+                  <span className="flex-1 min-w-0 text-sm">
+                    <span className="font-semibold">{dup.nom} {dup.prenom}</span>
+                    {dup.telephone && <span> · {dup.telephone}</span>}
+                    <span> ({dup.reason})</span>
                   </span>
-                  {onViewClient && (
-                    <button
-                      onClick={(e) => { e.preventDefault(); onClose(); setTimeout(() => onViewClient(dup.id), 100); }}
-                      className="text-[10px] font-medium flex items-center gap-0.5 px-2 py-1 rounded-md transition-colors hover:bg-amber-500/20 text-accent-texte"
-                    >
-                      Voir <ExternalLink size={10} />
-                    </button>
-                  )}
+                  {onViewClient && <button type="button" onClick={() => allerA(dup.id)} className="h-11 px-2 text-sm font-semibold underline">Voir</button>}
                 </div>
               ))}
             </div>
           )}
 
-          {/* Expandable details section */}
-          <div className={`border rounded-xl overflow-hidden transition-all border-bord`}>
+          {/* Le reste : adresse, entreprise, SIRET */}
+          <div className="border border-bord rounded-xl overflow-hidden">
             <button
-              type="button"
-              onClick={() => setShowDetails(!showDetails)}
-              className={`w-full px-4 py-3 flex items-center justify-between transition-colors hover:bg-surface-2`}
+              type="button" onClick={() => setShowDetails(!showDetails)} aria-expanded={showDetails}
+              className="w-full min-h-[48px] px-4 flex items-center justify-between text-sm font-medium text-encre-2 hover:bg-surface-2 transition-colors"
             >
-              <span className={`text-sm font-medium ${textSecondary}`}>
-                {form.categorie === 'Professionnel' ? 'Entreprise, adresse…' : 'Adresse, entreprise…'}
-              </span>
-              <motion.div
-                animate={{ rotate: showDetails ? 180 : 0 }}
-                transition={{ duration: 0.2 }}
-              >
-                <ChevronDown size={18} className={textMuted} />
-              </motion.div>
+              {form.categorie === 'Professionnel' ? 'Entreprise, adresse…' : 'Adresse, entreprise…'}
+              <ChevronDown size={18} aria-hidden="true" className={`text-encre-3 transition-transform ${showDetails ? 'rotate-180' : ''}`} />
             </button>
-
-            <AnimatePresence>
-              {showDetails && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: 'auto', opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  transition={{ duration: 0.2 }}
-                  className={`overflow-hidden border-t border-bord`}
-                >
-                  <div className="px-4 pb-4 pt-3 space-y-3">
-                    <div>
-                      <label htmlFor="qc-entreprise" className={`flex items-center gap-2 text-sm font-medium mb-2 ${textPrimary}`}>
-                        <Building2 size={14} className={textMuted} />
-                        {form.categorie === 'Professionnel' ? 'Raison sociale' : 'Entreprise'}
-                      </label>
-                      <input
-                        id="qc-entreprise"
-                        type="text"
-                        value={form.entreprise}
-                        onChange={e => setForm(p => ({ ...p, entreprise: e.target.value }))}
-                        placeholder={form.categorie === 'Professionnel' ? 'ex. SCI Martin' : 'Optionnel'}
-                        className={`w-full px-4 py-2.5 border rounded-xl text-sm ${inputBg}`}
-                      />
-                    </div>
-
-                    {/* Facturation électronique : à partir de septembre 2026, une
-                        facture adressée à un professionnel doit porter son SIRET.
-                        On le demande au moment où l'artisan déclare un pro, pas
-                        au moment où la facture part et où il est trop tard. */}
-                    {form.categorie === 'Professionnel' && (
-                      <div>
-                        <label htmlFor="qc-siret" className={`flex items-center gap-2 text-sm font-medium mb-2 ${textPrimary}`}>
-                          <Building2 size={14} className={textMuted} />
-                          SIRET
-                        </label>
-                        <input
-                          id="qc-siret"
-                          type="text"
-                          inputMode="numeric"
-                          maxLength={17}
-                          value={form.siret}
-                          onChange={e => setForm(p => ({ ...p, siret: e.target.value }))}
-                          placeholder="123 456 789 00012"
-                          className={`w-full px-4 py-2.5 border rounded-xl text-sm ${inputBg}`}
-                        />
-                        <p className={`text-xs mt-1 ${textMuted}`}>
-                          Nécessaire pour lui adresser une facture électronique.
-                        </p>
-                      </div>
-                    )}
-
-                    <div>
-                      <label htmlFor="qc-adresse" className={`flex items-center gap-2 text-sm font-medium mb-2 ${textPrimary}`}>
-                        <MapPin size={14} className={textMuted} />
-                        Adresse
-                      </label>
-                      <textarea
-                        id="qc-adresse"
-                        value={form.adresse}
-                        onChange={e => setForm(p => ({ ...p, adresse: e.target.value }))}
-                        placeholder="12 rue des Lilas, 75011 Paris"
-                        rows={2}
-                        className={`w-full px-4 py-2.5 border rounded-xl text-sm resize-none ${inputBg}`}
-                      />
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-
-          {/* Action buttons - stack on mobile */}
-          <div className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-3 pt-2">
-            <button
-              onClick={onClose}
-              className={`w-full sm:flex-1 px-4 py-3 rounded-xl font-medium transition-all min-h-[48px] ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
-            >
-              Annuler
-            </button>
-            <button
-              onClick={handleSubmit}
-              disabled={!canSubmit || isSubmitting}
-              className="w-full sm:flex-1 px-4 py-3 rounded-xl font-medium transition-all min-h-[48px] flex items-center justify-center gap-2 disabled:opacity-50 hover:shadow-lg active:scale-[0.98] bg-accent text-sur-accent"
-            >
-              {isSubmitting ? (
-                <>
-                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  <span>Ajout...</span>
-                </>
-              ) : (
-                <>
-                  <Check size={18} />
-                  <span>Ajouter</span>
-                </>
-              )}
-            </button>
-          </div>
-
-          {/* Hint */}
-          <p className={`text-center text-xs ${textMuted}`}>
-            Appuyez sur Entrée pour ajouter rapidement
-          </p>
-        </div>
-        </motion.div>
-      </motion.div>
-      )}
-    </AnimatePresence>
-  );
-
-  // Combine all strong duplicates for confirmation
-  const allStrongDupes = (() => {
-    const seen = new Set();
-    const combined = [];
-    [...duplicates.filter(d => d.reason === 'Même téléphone'), ...emailDuplicates].forEach(d => {
-      if (!seen.has(d.id)) { seen.add(d.id); combined.push(d); }
-    });
-    return combined;
-  })();
-
-  const dupeConfirmModal = showDupeConfirm && allStrongDupes.length > 0 ? (
-    <div className="fixed inset-0 z-[1250] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowDupeConfirm(false)} />
-      <div className={`relative w-full max-w-sm rounded-2xl shadow-2xl border bg-surface border-bord`}>
-        <div className="p-5">
-          <div className="flex items-center gap-3 mb-3">
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isDark ? 'bg-amber-900/40' : 'bg-amber-100'}`}>
-              <AlertTriangle size={20} className="text-amber-500" />
-            </div>
-            <h3 className={`text-base font-bold text-encre`}>Doublon potentiel</h3>
-          </div>
-          <p className={`text-sm mb-3 text-encre-2`}>
-            Ce client semble être un doublon de :
-          </p>
-          <div className="space-y-2 mb-4">
-            {allStrongDupes.map(dup => (
-              <div key={dup.id} className={`flex items-center justify-between p-3 rounded-xl border bg-fond border-bord`}>
-                <div>
-                  <p className={`font-semibold text-sm text-encre`}>{dup.nom} {dup.prenom || ''}</p>
-                  <p className={`text-xs text-encre-3`}>
-                    {dup.matchReason || dup.reason}
-                    {dup.telephone && ` · ${dup.telephone}`}
-                    {dup.email && ` · ${dup.email}`}
-                  </p>
-                </div>
-                {onViewClient && (
-                  <button
-                    onClick={() => { setShowDupeConfirm(false); onClose(); setTimeout(() => onViewClient(dup.id), 100); }}
-                    className="text-xs font-medium px-2.5 py-1 rounded-lg transition-colors text-accent-texte"
-                    style={{ backgroundColor: `${couleur}15` }}
-                  >
-                    Voir
-                  </button>
+            {showDetails && (
+              <div className="px-4 pb-4 pt-3 space-y-4 border-t border-bord">
+                <Champ
+                  id="qc-entreprise" libelle={form.categorie === 'Professionnel' ? 'Raison sociale' : 'Entreprise'} facultatif type="text"
+                  placeholder={form.categorie === 'Professionnel' ? 'ex. SCI Martin' : ''} value={form.entreprise} onChange={(e) => setForm((p) => ({ ...p, entreprise: e.target.value }))}
+                />
+                {/* Facturation électronique : à partir de septembre 2026, une facture adressée à un professionnel doit porter son
+                    SIRET. On le demande au moment où l'artisan déclare un pro, pas au moment où la facture part et où il est trop tard. */}
+                {form.categorie === 'Professionnel' && (
+                  <Champ
+                    id="qc-siret" libelle="SIRET" facultatif type="text" inputMode="numeric" maxLength={17} placeholder="123 456 789 00012"
+                    aide="Nécessaire pour lui adresser une facture électronique." value={form.siret} onChange={(e) => setForm((p) => ({ ...p, siret: e.target.value }))}
+                  />
                 )}
+                <Champ
+                  id="qc-adresse" as="textarea" libelle="Adresse" facultatif rows={2} placeholder="12 rue des Lilas, 75011 Paris"
+                  value={form.adresse} onChange={(e) => setForm((p) => ({ ...p, adresse: e.target.value }))}
+                />
               </div>
-            ))}
+            )}
           </div>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setShowDupeConfirm(false)}
-              className={`flex-1 py-2.5 rounded-xl font-medium text-sm transition-colors ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
-            >
-              Annuler
-            </button>
-            <button
-              onClick={async () => { setShowDupeConfirm(false); await doFinalSubmit(); }}
-              className="flex-1 py-2.5 rounded-xl font-medium text-sm transition-colors hover:opacity-90 bg-accent text-sur-accent"
-            >
-              Créer quand même
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  ) : null;
-
-  return createPortal(<>{modalContent}{dupeConfirmModal}</>, document.body);
+        </ModalBody>
+        <ModalFooter className="flex-col-reverse sm:flex-row">
+          <Bouton variante="secondaire" onClick={onClose} className="w-full sm:w-auto">Annuler</Bouton>
+          <Bouton variante="principal" type="submit" disabled={!canSubmit} chargement={isSubmitting} className="w-full sm:w-auto">
+            {isSubmitting ? 'Ajout…' : 'Ajouter'}
+          </Bouton>
+        </ModalFooter>
+      </form>
+    </Modal>
+  );
 }

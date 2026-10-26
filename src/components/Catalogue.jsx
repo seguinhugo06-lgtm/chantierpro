@@ -1,29 +1,36 @@
-import React, { useState, useMemo, useCallback, useEffect, useRef, Suspense, lazy } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useMemo, useCallback, useEffect, useRef, Suspense, lazy } from 'react';
 import {
-  Plus, Minus, ArrowLeft, Star, Search, Edit3, Trash2, Package, AlertTriangle, Box,
-  ChevronUp, ChevronDown, ArrowUpDown, Sparkles, Filter, X, Download, Upload,
-  TrendingUp, TrendingDown, BarChart3, Layers, ClipboardList, ShoppingCart,
-  Truck, History, DollarSign, Percent, Check, ChevronRight, Eye, Hash,
-  PackagePlus, ArrowRightLeft, AlertCircle, FileSpreadsheet, Settings, RefreshCw,
-  Camera, Scan, FileText, Bell, BellOff, Zap, MoreHorizontal, Library
+  Plus, Minus, Search, Edit3, Trash2, Star, Download, Upload, ArrowUpDown, Camera, FileText, Library, Package, Sparkles, X,
 } from 'lucide-react';
 import { useConfirm, useToast } from '../context/AppContext';
 import { generateId } from '../lib/utils';
 import { useDebounce } from '../hooks/useDebounce';
-import { ALL_ARTICLES_BTP, CATEGORIES_METIERS, getSousCategories, getArticlesBySousCategorie } from '../lib/data';
+import useStockageLocal from '../hooks/useStockageLocal';
+import { ALL_ARTICLES_BTP, CATEGORIES_METIERS } from '../lib/data';
 import { usePermissions } from '../hooks/usePermissions';
-import { ReadOnlyBanner } from './ui/PermissionGate';
-import TabBar from './ui/TabBar';
-import PageHeader from './ui/PageHeader';
+import { EnTetePage } from './ui/EnTete';
+import { Onglets } from './ui/Onglets';
 import { Bouton, BoutonIcone } from './ui/Bouton';
+import Carte from './ui/Carte';
+import Champ from './ui/Champ';
+import EtatVide from './ui/EtatVide';
+import LigneListe, { GroupeListe } from './ui/LigneListe';
+import MenuActions from './ui/MenuActions';
 import Pastille from './ui/Pastille';
-import useKeepInViewport from '../hooks/useKeepInViewport';
+import { ChampRecherche, BoutonVolet, Volet, GroupeChoix, ListeChoix, PucesActives, SegmentDefilant } from './ui/Filtres';
 import { remettreFichier } from '../lib/natif';
-import { jourLocal, dateLue } from '../lib/dates';
+import { jourLocal } from '../lib/dates';
 import { devisAvecLigneAjoutee } from '../lib/ajoutLigneDevis';
 import { estFranchiseTva } from '../lib/franchiseTva';
 import { lireCsv, nombreFr, associerColonnes } from '../lib/csvImport';
+import { margeBrute, niveauMarge, CLASSES_TON_MARGE } from '../lib/margeArticle';
+import ArticleDetail from './catalogue/ArticleDetail';
+import FormulaireArticle from './catalogue/FormulaireArticle';
+import Demarrage from './catalogue/Demarrage';
+import { FenetreImportCsv, FenetreScanner, FenetreAjoutDevis } from './catalogue/FenetresCatalogue';
+import {
+  OngletFournisseurs, OngletMouvements, OngletPacks, OngletInventaire, OngletCoefficients, ModeInventaire,
+} from './catalogue/OngletsStock';
 
 /**
  * Chargés à la demande : la bibliothèque d'ouvrages embarque à elle seule
@@ -46,234 +53,135 @@ const ArticlePicker = chargerALaDemande(() => import('./ArticlePicker'));
 const Bibliotheque = chargerALaDemande(() => import('./bibliotheque/Bibliotheque'));
 
 const BASE_CATEGORIES = ['Plomberie', 'Électricité', 'Maçonnerie', 'Carrelage', 'Peinture', 'Menuiserie', 'Matériaux', 'Isolation', 'Main d\'œuvre', 'Autre'];
-const UNITES = [
-  { value: 'u', label: 'u (unité)' }, { value: 'm²', label: 'm² (mètre carré)' },
-  { value: 'ml', label: 'ml (mètre linéaire)' }, { value: 'h', label: 'h (heure)' },
-  { value: 'forfait', label: 'Forfait' }, { value: 'jour', label: 'Jour' },
-  { value: 'kg', label: 'kg' }, { value: 'L', label: 'L (litre)' },
-  { value: 'sac', label: 'Sac' }, { value: 'pot', label: 'Pot' },
-  { value: 'rouleau', label: 'Rouleau' }, { value: 'm³', label: 'm³' },
-  { value: 'palette', label: 'Palette' },
-];
-
 const DEFAULT_COEFFICIENTS = {
   'Plomberie': 1.6, 'Électricité': 1.5, 'Maçonnerie': 1.4, 'Carrelage': 1.5,
-  'Peinture': 1.8, 'Menuiserie': 1.5, 'Matériaux': 1.3, 'Autre': 1.5
+  'Peinture': 1.8, 'Menuiserie': 1.5, 'Matériaux': 1.3, 'Autre': 1.5,
 };
+const FORMULAIRE_VIDE = { nom: '', reference: '', description: '', prix: '', prixAchat: '', unite: 'u', categorie: 'Autre', tva_rate: '20', favori: false, stock_actuel: '', stock_seuil_alerte: '', fournisseur: '', coefAuto: true };
+const nombreDe = (v) => Number.isFinite(parseFloat(String(v).replace(',', '.'))) ? parseFloat(String(v).replace(',', '.')) : null;
+const estMobile = () => /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
 
-/**
- * Nombre décimal saisi en texte (« 2,25 », « 1.8 ») et validé à la sortie du champ (ou Entrée), borné.
- * Avant (recette du 9 oct. 2026), le champ nombre contrôlé retombait à 1,5 dès le point ou la virgule :
- * « 2.25 » donnait 1,525.
- */
-function ChampDecimal({ valeur, min, max, onValider, ...props }) {
-  const enTexte = (v) => String(v).replace('.', ',');
-  const [texte, setTexte] = useState(enTexte(valeur));
-  useEffect(() => { setTexte(enTexte(valeur)); }, [valeur]);
-  const valider = () => {
-    const n = parseFloat(String(texte).replace(',', '.'));
-    const v = Number.isFinite(n) ? Math.max(min, Math.min(max, Math.round(n * 100) / 100)) : valeur;
-    setTexte(enTexte(v));
-    if (v !== valeur) onValider(v);
-  };
-  return (
-    <input
-      type="text"
-      inputMode="decimal"
-      value={texte}
-      onChange={(e) => setTexte(e.target.value.replace(/[^\d.,]/g, ''))}
-      onBlur={valider}
-      onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
-      {...props}
-    />
-  );
-}
+// Le stock d'un article (deux noms selon l'origine des données), son seuil d'alerte, et « stock bas » : sous le seuil
+const stockDe = (c) => c.stock_actuel ?? c.stock;
+const seuilDe = (c) => c.stock_seuil_alerte ?? c.stockMin;
+const estStockBas = (c) => { const st = stockDe(c); const se = seuilDe(c); return st != null && se != null && se > 0 && st < se; };
 
-export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, addCatalogueItem: addCatalogueItemProp, updateCatalogueItem: updateCatalogueItemProp, deleteCatalogueItem: deleteCatalogueItemProp, couleur, isDark, setPage, chantiers = [], equipe = [], modeDiscret, devis = [], updateDevis, clients = [] }) {
+export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, addCatalogueItem: addCatalogueItemProp, updateCatalogueItem: updateCatalogueItemProp, deleteCatalogueItem: deleteCatalogueItemProp, setPage, chantiers = [], modeDiscret, devis = [], updateDevis, clients = [], couleur, isDark }) {
   const { confirm } = useConfirm();
   const { showToast } = useToast();
 
-  // RBAC permissions
-  const { canPerform, getPermission } = usePermissions();
-  const catPerm = getPermission('catalogue');
-  const isViewOnly = catPerm === 'view';
+  // Droits : chaque action réservée passe par canPerform. Sans le droit de voir les prix (chef de chantier, ouvrier :
+  // canViewPrices de usePermissions, une seule règle), aucun prix de vente ni d'achat, aucune marge, aucun fournisseur, pack ni
+  // coefficient : les articles, leur référence, leur unité et leur stock restent.
+  const { canPerform, canViewPrices } = usePermissions();
+  const peutCreer = canPerform('catalogue', 'create');
+  const peutModifier = canPerform('catalogue', 'edit');
+  const peutSupprimer = canPerform('catalogue', 'delete');
+  const peutAjouterAuDevis = canPerform('devis', 'edit');
 
-  // Format money with modeDiscret support
-  const fmtPrice = (n) => modeDiscret ? '·····' : `${parseFloat(n || 0).toFixed(2)} €`;
-  // Prix au format français (« 2,5 € », pas « 2.5€ »)
-  const fmtPriceShort = (n) => modeDiscret ? '·····' : `${Number(n || 0).toLocaleString('fr-FR', { maximumFractionDigits: 2 })} €`;
+  // Prix au format français (« 2,5 € », pas « 2.5€ »), masqué en mode discret
+  const fmtPrix = (n) => (modeDiscret ? '·····' : `${Number(n || 0).toLocaleString('fr-FR', { maximumFractionDigits: 2 })} €`);
 
-  // Theme classes
-  const cardBg = "bg-surface border-bord";
-  const inputBg = isDark ? "bg-slate-700 border-slate-600 text-white placeholder-slate-400" : "bg-white border-slate-300";
-  const textPrimary = "text-encre";
-  const textSecondary = "text-encre-2";
-  const textMuted = "text-encre-2";
-
-  // ====== CORE STATE ======
-  const [activeTab, setActiveTab] = useState('catalogue'); // catalogue, fournisseurs, mouvements, packs, inventaire, parametres
+  // ====== ÉTAT ======
+  const [activeTab, setActiveTab] = useState('catalogue');
   const [show, setShow] = useState(false);
-  const [showMobileMenu, setShowMobileMenu] = useState(false);
-  const mobileMenuRef = useRef(null);
-  useKeepInViewport(mobileMenuRef, showMobileMenu);
   const [priceFlash, setPriceFlash] = useState(false);
   const [formErrors, setFormErrors] = useState({});
-  const [coefSaved, setCoefSaved] = useState(false); // 'saving' | 'saved' | false
-  const [coefDirty, setCoefDirty] = useState(false);
-  const coefSaveTimeoutRef = useRef(null);
+  const [enregistrement, setEnregistrement] = useState(false);
   const [editId, setEditId] = useState(null);
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 300);
   const [catFilter, setCatFilter] = useState('Tous');
-  const [showStock, setShowStock] = useState(true);
   const [sortBy, setSortBy] = useState('name');
-  const FORMULAIRE_VIDE = { nom: '', reference: '', description: '', prix: '', prixAchat: '', unite: 'u', categorie: 'Autre', tva_rate: '20', favori: false, stock_actuel: '', stock_seuil_alerte: '', fournisseur: '', coefAuto: true };
   const [form, setForm] = useState(FORMULAIRE_VIDE);
   // Fermer le formulaire le vide aussi : avant (recette du 9 oct. 2026), « Modifier » puis « Annuler » puis « Ajouter »
   // rouvrait l'article précédent, et « Enregistrer » le remplaçait.
   const fermerFormulaire = () => { setShow(false); setEditId(null); setForm(FORMULAIRE_VIDE); setFormErrors({}); };
-  const ouvrirNouvelArticle = () => { setEditId(null); setForm(FORMULAIRE_VIDE); setFormErrors({}); setShow(true); };
+  const ouvrirNouvelArticle = (preremplissage = {}) => { setEditId(null); setForm({ ...FORMULAIRE_VIDE, ...preremplissage }); setFormErrors({}); setShow(true); };
   const [showArticlePicker, setShowArticlePicker] = useState(false);
-  const [showFilters, setShowFilters] = useState(false);
   const [priceRange, setPriceRange] = useState([0, 10000]);
   const [onlyInStock, setOnlyInStock] = useState(false);
   const [onlyFavoris, setOnlyFavoris] = useState(false);
   const [onlyLowStock, setOnlyLowStock] = useState(false);
   const [articleDetail, setArticleDetail] = useState(null);
-  // #9: Pagination state
+  const [volet, setVolet] = useState(null); // null | 'filtres' | 'tri'
+  const boutonFiltresRef = useRef(null);
+  const boutonTriRef = useRef(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
-  const [showImport, setShowImport] = useState(false);
   const [importData, setImportData] = useState(null);
   const [importMapping, setImportMapping] = useState({});
-  const fileInputRef = React.useRef(null);
+  const [importEnCours, setImportEnCours] = useState(false);
+  const fileInputRef = useRef(null);
 
-  // ====== ONBOARDING STATE ======
-  const [onboardingStep, setOnboardingStep] = useState(null); // null | 'metiers' | 'importing' | 'done'
-  const [selectedMetiers, setSelectedMetiers] = useState([]);
-  const [importProgress, setImportProgress] = useState(0);
+  // Premier usage : référentiel BTP, ajout à la main ou fichier CSV
+  const [etapeDemarrage, setEtapeDemarrage] = useState(null); // null | 'metiers' | 'importing' | 'done'
+  const [metiersChoisis, setMetiersChoisis] = useState([]);
+  const [progression, setProgression] = useState(0);
+  const [resultatDemarrage, setResultatDemarrage] = useState(null);
   const [onboardingDismissed, setOnboardingDismissed] = useState(() => {
     try { return localStorage.getItem('cp_catalogue_onboarding_dismissed') === 'true'; } catch { return false; }
   });
+  const passerLeDemarrage = () => {
+    setOnboardingDismissed(true);
+    try { localStorage.setItem('cp_catalogue_onboarding_dismissed', 'true'); } catch { /* préférence non enregistrée : quota plein ou navigation privée */ }
+  };
 
-  // ====== BARCODE SCANNER STATE ======
-  const [showScanner, setShowScanner] = useState(false);
-  const [scanResult, setScanResult] = useState(null);
-  const [scanLoading, setScanLoading] = useState(false);
-  const videoRef = useRef(null);
-  const canvasRef = useRef(null);
-  const scanStreamRef = useRef(null);
+  const [scannerOuvert, setScannerOuvert] = useState(false);
 
-  // ====== STOCK ALERT NOTIFICATIONS ======
-  const [stockAlertsEnabled, setStockAlertsEnabled] = useState(() => {
-    try { return localStorage.getItem('cp_stock_alerts_enabled') !== 'false'; } catch { return true; }
-  });
-  const [stockAlertsDismissed, setStockAlertsDismissed] = useState(false);
+  // Suivi gardé sur cet appareil : fournisseurs, liens article-fournisseur, mouvements, packs, historique des prix, coefficients
+  const [fournisseurs, setFournisseurs] = useStockageLocal('mallettico_fournisseurs', []);
+  const [liens, setLiens] = useStockageLocal('mallettico_article_fournisseurs', []);
+  const [mouvements, setMouvements] = useStockageLocal('mallettico_mouvements', []);
+  const [packs, setPacks] = useStockageLocal('mallettico_packs', []);
+  const [priceHistory, setPriceHistory] = useStockageLocal('mallettico_price_history', []);
+  const [coefficients, setCoefficients] = useStockageLocal('mallettico_coefficients', DEFAULT_COEFFICIENTS);
 
-  // ====== FOURNISSEURS STATE ======
-  const [fournisseurs, setFournisseurs] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('mallettico_fournisseurs') || '[]'); } catch { return []; }
-  });
-  const [showFournisseurForm, setShowFournisseurForm] = useState(false);
-  const [fournisseurForm, setFournisseurForm] = useState({ nom: '', email: '', telephone: '', adresse: '', delaiLivraison: '3', conditions: '' });
-  const [editFournisseurId, setEditFournisseurId] = useState(null);
+  // « Ajouter au devis »
+  const [articleDevis, setArticleDevis] = useState(null);
+  const [devisQte, setDevisQte] = useState(1);
+  const [devisChoisi, setDevisChoisi] = useState(null);
+  const [ajoutEnCours, setAjoutEnCours] = useState(false);
 
-  // ====== ARTICLE-FOURNISSEUR LINKS ======
-  const [articleFournisseurs, setArticleFournisseurs] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('mallettico_article_fournisseurs') || '[]'); } catch { return []; }
-  });
-  const [linkModal, setLinkModal] = useState(null); // { fournisseurId, fournisseurNom }
-  const [linkSearch, setLinkSearch] = useState('');
-  const [linkSelected, setLinkSelected] = useState(null); // selected article
-  const [linkPrix, setLinkPrix] = useState('');
-  const linkSearchRef = useRef(null);
-
-  // ====== MOUVEMENTS STOCK ======
-  const [mouvements, setMouvements] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('mallettico_mouvements') || '[]'); } catch { return []; }
-  });
-  const [showMouvementForm, setShowMouvementForm] = useState(false);
-  const [mouvementForm, setMouvementForm] = useState({ articleId: '', type: 'in', quantite: '', chantierId: '', employe: '', raison: '' });
-  const [mouvTypeFilter, setMouvTypeFilter] = useState('all');
-  const [mouvArticleFilter, setMouvArticleFilter] = useState('');
-
-  // ====== PACKS/KITS ======
-  const [packs, setPacks] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('mallettico_packs') || '[]'); } catch { return []; }
-  });
-  const [showPackForm, setShowPackForm] = useState(false);
-  const [packForm, setPackForm] = useState({ nom: '', description: '', articles: [], prixVente: '' });
-  const [editPackId, setEditPackId] = useState(null);
-
-  // ====== AJOUTER AU DEVIS ======
-  const [addToDevisModal, setAddToDevisModal] = useState(null); // article object or null
-  const [addToDevisQty, setAddToDevisQty] = useState(1);
-  const [addToDevisSelected, setAddToDevisSelected] = useState(null); // devis id
-
-  // ====== INVENTAIRE ======
+  // Inventaire
   const [inventaireMode, setInventaireMode] = useState(false);
-  const [inventaireCounts, setInventaireCounts] = useState({});
+  const [comptes, setComptes] = useState({});
+  const [inventaireEnCours, setInventaireEnCours] = useState(false);
 
-  // ====== DUPLICATE DETECTION ======
-  const duplicateSuggestions = useMemo(() => {
+  // ====== ARTICLES SIMILAIRES (à la saisie du nom) ======
+  const similaires = useMemo(() => {
     if (!show || editId || !form.nom || form.nom.length < 3) return [];
-    const query = form.nom.toLowerCase();
-    return catalogue.filter(c => {
+    const q = form.nom.toLowerCase();
+    return catalogue.filter((c) => {
       const nom = (c.nom || '').toLowerCase();
-      // Check if names are similar (contains, or share 3+ char words)
-      if (nom.includes(query) || query.includes(nom)) return true;
-      const queryWords = query.split(/\s+/).filter(w => w.length >= 3);
-      const nomWords = nom.split(/\s+/).filter(w => w.length >= 3);
-      const shared = queryWords.filter(qw => nomWords.some(nw => nw.includes(qw) || qw.includes(nw)));
-      return shared.length >= 2;
+      if (nom.includes(q) || q.includes(nom)) return true;
+      const mots = q.split(/\s+/).filter((w) => w.length >= 3);
+      const motsNom = nom.split(/\s+/).filter((w) => w.length >= 3);
+      return mots.filter((m) => motsNom.some((n) => n.includes(m) || m.includes(n))).length >= 2;
     }).slice(0, 3);
   }, [show, editId, form.nom, catalogue]);
 
-  // ====== HISTORIQUE PRIX ======
-  const [priceHistory, setPriceHistory] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('mallettico_price_history') || '[]'); } catch { return []; }
-  });
+  // Revenir à la première page quand la liste change
+  useEffect(() => { setCurrentPage(1); }, [debouncedSearch, catFilter, onlyInStock, onlyFavoris, onlyLowStock, sortBy, priceRange]);
 
-  // ====== COEFFICIENTS ======
-  const [coefficients, setCoefficients] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('mallettico_coefficients') || 'null') || DEFAULT_COEFFICIENTS; } catch { return DEFAULT_COEFFICIENTS; }
-  });
-
-  // ====== PERSISTENCE ======
-  useEffect(() => { try { localStorage.setItem('mallettico_fournisseurs', JSON.stringify(fournisseurs)); } catch { /* préférence non enregistrée : quota plein ou navigation privée */ } }, [fournisseurs]);
-  useEffect(() => { try { localStorage.setItem('mallettico_article_fournisseurs', JSON.stringify(articleFournisseurs)); } catch { /* préférence non enregistrée : quota plein ou navigation privée */ } }, [articleFournisseurs]);
-  useEffect(() => { try { localStorage.setItem('mallettico_mouvements', JSON.stringify(mouvements)); } catch { /* préférence non enregistrée : quota plein ou navigation privée */ } }, [mouvements]);
-  useEffect(() => { try { localStorage.setItem('mallettico_packs', JSON.stringify(packs)); } catch { /* préférence non enregistrée : quota plein ou navigation privée */ } }, [packs]);
-  useEffect(() => { try { localStorage.setItem('mallettico_price_history', JSON.stringify(priceHistory)); } catch { /* préférence non enregistrée : quota plein ou navigation privée */ } }, [priceHistory]);
-  useEffect(() => { try { localStorage.setItem('mallettico_coefficients', JSON.stringify(coefficients)); } catch { /* préférence non enregistrée : quota plein ou navigation privée */ } }, [coefficients]);
-
-  // #9: Reset page on search/filter change
-  useEffect(() => { setCurrentPage(1); }, [debouncedSearch, catFilter, onlyInStock, onlyFavoris, onlyLowStock, sortBy]);
-
-  // ====== ESCAPE KEY HANDLER ======
+  // Échap : ferme le formulaire ou la fiche, jamais quand une fenêtre est ouverte par-dessus (c'est elle qui se ferme)
   useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.key === 'Escape') {
-        if (addToDevisModal) { setAddToDevisModal(null); setAddToDevisQty(1); setAddToDevisSelected(null); return; }
-        if (showImport) { setShowImport(false); return; }
-        if (showArticlePicker) { setShowArticlePicker(false); return; }
-        if (showMouvementForm) { setShowMouvementForm(false); return; }
-        if (showFournisseurForm) { setShowFournisseurForm(false); setEditFournisseurId(null); return; }
-        if (showPackForm) { setShowPackForm(false); return; }
-        if (articleDetail) { setArticleDetail(null); return; }
-        if (show) { fermerFormulaire(); return; }
-      }
+    const surEchap = (e) => {
+      if (e.key !== 'Escape' || document.querySelector('[role="dialog"]')) return;
+      if (inventaireMode) setInventaireMode(false);
+      else if (articleDetail) setArticleDetail(null);
+      else if (show) fermerFormulaire();
     };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showImport, showArticlePicker, showMouvementForm, showFournisseurForm, showPackForm, articleDetail, show, addToDevisModal]);
+    window.addEventListener('keydown', surEchap);
+    return () => window.removeEventListener('keydown', surEchap);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [articleDetail, show, inventaireMode]);
 
-  // ====== DYNAMIC CATEGORIES (include all used + base) ======
+  // ====== CATÉGORIES (les usuelles, plus celles que les articles utilisent) ======
   const CATEGORIES = useMemo(() => {
-    const usedCats = new Set(catalogue.map(c => c.categorie).filter(Boolean));
-    const allCats = new Set([...BASE_CATEGORIES, ...usedCats]);
-    return ['Tous', ...Array.from(allCats).sort((a, b) => {
-      // Keep base categories in order, then extras alphabetically
+    const utilisees = new Set(catalogue.map((c) => c.categorie).filter(Boolean));
+    const toutes = new Set([...BASE_CATEGORIES, ...utilisees]);
+    return ['Tous', ...Array.from(toutes).sort((a, b) => {
       const ai = BASE_CATEGORIES.indexOf(a);
       const bi = BASE_CATEGORIES.indexOf(b);
       if (ai >= 0 && bi >= 0) return ai - bi;
@@ -282,30 +190,28 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
       return a.localeCompare(b);
     })];
   }, [catalogue]);
+  // La rangée de puces ne propose que les catégories qui ont des articles
+  const categoriesUtilisees = useMemo(() => CATEGORIES.filter((c) => c !== 'Tous' && (catalogue.some((a) => a.categorie === c) || catFilter === c)), [CATEGORIES, catalogue, catFilter]);
 
-  // ====== FUZZY SEARCH ======
-  // Normalize accents for French search: é→e, è→e, ê→e, ù→u, ç→c, ô→o, î→i, ï→i etc.
-  const normalize = useCallback((str) => (str || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(), []);
-
+  // ====== RECHERCHE (sans accents : é → e) ======
+  const normalize = useCallback((str) => (str || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(), []);
   const fuzzyMatch = useCallback((text, query) => {
     if (!query) return true;
-    const words = normalize(query).split(/\s+/).filter(Boolean);
-    const target = normalize(text);
-    return words.every(w => target.includes(w));
+    const mots = normalize(query).split(/\s+/).filter(Boolean);
+    const cible = normalize(text);
+    return mots.every((w) => cible.includes(w));
   }, [normalize]);
 
-  // ====== DEVIS USAGE: count how many devis use each article ======
+  // ====== USAGE DANS LES DEVIS : combien de devis utilisent chaque article ======
   const devisUsageMap = useMemo(() => {
     const map = {};
-    (devis || []).forEach(d => {
-      const lignes = d.lignes || d.items || d.articles || [];
-      lignes.forEach(l => {
+    (devis || []).forEach((d) => {
+      (d.lignes || d.items || d.articles || []).forEach((l) => {
         const artId = l.catalogueId || l.articleId || l.article_id;
         const artNom = (l.designation || l.nom || '').toLowerCase();
-        if (artId) {
-          map[artId] = (map[artId] || 0) + 1;
-        } else if (artNom) {
-          const match = catalogue.find(c => (c.nom || '').toLowerCase() === artNom);
+        if (artId) map[artId] = (map[artId] || 0) + 1;
+        else if (artNom) {
+          const match = catalogue.find((c) => (c.nom || '').toLowerCase() === artNom);
           if (match) map[match.id] = (map[match.id] || 0) + 1;
         }
       });
@@ -313,1614 +219,740 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
     return map;
   }, [devis, catalogue]);
 
-  // ====== FILTERED & SORTED ======
+  // ====== STOCK : suivi seulement des articles qui ont un stock ======
+  const stockSuivi = useMemo(() => catalogue.some((c) => stockDe(c) != null), [catalogue]);
+  const alertesStock = useMemo(() => catalogue.filter(estStockBas), [catalogue]);
+  const favoris = useMemo(() => catalogue.filter((c) => c.favori), [catalogue]);
+
+  // ====== FILTRÉ ET TRIÉ ======
   const filtered = useMemo(() => {
-    let items = catalogue.filter(c => {
+    const items = catalogue.filter((c) => {
       if (catFilter !== 'Tous' && c.categorie !== catFilter) return false;
       if (debouncedSearch && !fuzzyMatch(`${c.nom} ${c.reference || ''} ${c.description || ''} ${c.categorie} ${c.unite}`, debouncedSearch)) return false;
-      if (onlyInStock && ((c.stock_actuel ?? c.stock) == null || (c.stock_actuel ?? c.stock) <= 0)) return false;
+      if (onlyInStock && (stockDe(c) == null || stockDe(c) <= 0)) return false;
       if (onlyFavoris && !c.favori) return false;
-      if (onlyLowStock) {
-        const st = c.stock_actuel ?? c.stock;
-        const se = c.stock_seuil_alerte ?? c.stockMin;
-        if (!(st != null && se != null && se > 0 && st < se)) return false;
+      if (onlyLowStock && !estStockBas(c)) return false;
+      if (canViewPrices) {
+        if (priceRange[0] > 0 && (c.prix || 0) < priceRange[0]) return false;
+        if (priceRange[1] < 10000 && (c.prix || 0) > priceRange[1]) return false;
       }
-      if (priceRange[0] > 0 && (c.prix || 0) < priceRange[0]) return false;
-      if (priceRange[1] < 10000 && (c.prix || 0) > priceRange[1]) return false;
       return true;
     });
     switch (sortBy) {
       case 'price': return items.sort((a, b) => (b.prix || 0) - (a.prix || 0));
-      case 'stock': return items.sort((a, b) => (a.stock_actuel ?? a.stock ?? 999) - (b.stock_actuel ?? b.stock ?? 999));
-      case 'margin': return items.sort((a, b) => {
-        const ma = a.prixAchat ? ((a.prix - a.prixAchat) / a.prix) * 100 : -1;
-        const mb = b.prixAchat ? ((b.prix - b.prixAchat) / b.prix) * 100 : -1;
-        return mb - ma;
-      });
+      case 'stock': return items.sort((a, b) => (stockDe(a) ?? 999) - (stockDe(b) ?? 999));
+      case 'margin': return items.sort((a, b) => (margeBrute(b.prix, b.prixAchat) ?? -1) - (margeBrute(a.prix, a.prixAchat) ?? -1));
       case 'usage': return items.sort((a, b) => (devisUsageMap[b.id] || 0) - (devisUsageMap[a.id] || 0));
       default: return items.sort((a, b) => (a.nom || '').localeCompare(b.nom || ''));
     }
-  }, [catalogue, catFilter, debouncedSearch, sortBy, fuzzyMatch, onlyInStock, onlyFavoris, onlyLowStock, priceRange, devisUsageMap]);
+  }, [catalogue, catFilter, debouncedSearch, sortBy, fuzzyMatch, onlyInStock, onlyFavoris, onlyLowStock, priceRange, devisUsageMap, canViewPrices]);
 
-  const favoris = catalogue.filter(c => c.favori);
-  const alertesStock = catalogue.filter(c => {
-    const stock = c.stock_actuel ?? c.stock;
-    const seuil = c.stock_seuil_alerte ?? c.stockMin;
-    return stock != null && seuil != null && seuil > 0 && stock < seuil;
-  });
-  const activeFilters = (catFilter !== 'Tous' ? 1 : 0) + (onlyInStock ? 1 : 0) + (onlyFavoris ? 1 : 0) + (onlyLowStock ? 1 : 0) + (priceRange[0] > 0 || priceRange[1] < 10000 ? 1 : 0);
+  // ====== ÉCRITURES : le résultat est lu avant d'être annoncé ======
+  /** Modifie un article ; vrai si la base (ou l'écran, en démo) a pris la modification. */
+  const modifierArticle = async (id, champs) => {
+    if (updateCatalogueItemProp) return !!(await updateCatalogueItemProp(id, champs));
+    setCatalogue((prev) => prev.map((c) => (c.id === id ? { ...c, ...champs } : c)));
+    return true;
+  };
+  const creerArticle = async (donnees) => {
+    if (addCatalogueItemProp) return !!(await addCatalogueItemProp(donnees));
+    setCatalogue((prev) => [...prev, { id: generateId(), ...donnees }]);
+    return true;
+  };
 
-  // ====== AUTO-FAVORITES: top 5 most used in devis ======
-  const trendingArticles = useMemo(() => {
-    return Object.entries(devisUsageMap)
-      .sort(([, a], [, b]) => b - a)
-      .slice(0, 5)
-      .map(([id, count]) => ({ id, count, article: catalogue.find(c => c.id === id) }))
-      .filter(t => t.article);
-  }, [devisUsageMap, catalogue]);
-
-  // ====== ONBOARDING BULK IMPORT ======
-  const handleBulkImport = useCallback(async (metierIds) => {
-    setOnboardingStep('importing');
-    setImportProgress(0);
-    let totalArticles = [];
-    metierIds.forEach(catId => {
+  // Import en masse du référentiel BTP (premier usage)
+  const importerReferentiel = useCallback(async (metierIds) => {
+    setEtapeDemarrage('importing');
+    setProgression(0);
+    const aImporter = [];
+    metierIds.forEach((catId) => {
       const cat = ALL_ARTICLES_BTP[catId];
       if (!cat) return;
-      const catMeta = CATEGORIES_METIERS.find(c => c.id === catId);
-      Object.entries(cat.sousCategories).forEach(([, sousCat]) => {
-        sousCat.articles.forEach(article => {
-          const coef = coefficients[catMeta?.nom] || coefficients[cat.nom] || 1.5;
-          totalArticles.push({
-            nom: article.nom,
-            prix: article.prixDefaut,
-            prixAchat: Math.round(article.prixDefaut / coef * 100) / 100,
-            unite: article.unite,
-            categorie: catMeta?.nom || 'Autre',
-            favori: false,
-            coefAuto: true,
+      const meta = CATEGORIES_METIERS.find((c) => c.id === catId);
+      Object.values(cat.sousCategories).forEach((sousCat) => {
+        sousCat.articles.forEach((article) => {
+          const coef = coefficients[meta?.nom] || coefficients[cat.nom] || 1.5;
+          aImporter.push({
+            nom: article.nom, prix: article.prixDefaut, prixAchat: Math.round(article.prixDefaut / coef * 100) / 100,
+            unite: article.unite, categorie: meta?.nom || 'Autre', favori: false, coefAuto: true,
             reference: `REF-${article.id.toUpperCase().slice(0, 10)}`,
           });
         });
       });
     });
-    // Import in batches with progress animation
     let importes = 0;
-    for (let i = 0; i < totalArticles.length; i++) {
-      const item = totalArticles[i];
-      if (addCatalogueItemProp) {
-        if (!(await addCatalogueItemProp(item))) break; // refus : DataContext l'a dit, on s'arrête
-      } else {
-        setCatalogue(prev => [...prev, { id: generateId(), ...item }]);
-      }
+    for (let i = 0; i < aImporter.length; i++) {
+      if (!(await creerArticle(aImporter[i]))) break; // refus : DataContext l'a dit, on s'arrête
       importes++;
-      if (i % 3 === 0 || i === totalArticles.length - 1) {
-        setImportProgress(Math.round(((i + 1) / totalArticles.length) * 100));
-      }
+      if (i % 3 === 0 || i === aImporter.length - 1) setProgression(Math.round(((i + 1) / aImporter.length) * 100));
     }
-    setOnboardingStep('done');
-    localStorage.setItem('cp_catalogue_onboarding_dismissed', 'true');
-    setOnboardingDismissed(true);
-    if (importes === totalArticles.length) showToast(`${importes} articles importés depuis le Référentiel BTP`, 'success');
-    else showToast(`${importes} articles importés sur ${totalArticles.length} : l'import s'est arrêté`, 'error');
-    setTimeout(() => setOnboardingStep(null), 2000);
+    setResultatDemarrage({ importes, total: aImporter.length });
+    setEtapeDemarrage('done');
+    if (importes > 0) passerLeDemarrage();
+    if (importes === aImporter.length) showToast(`${importes} articles importés depuis le Référentiel BTP`, 'success');
+    else showToast(`${importes} articles importés sur ${aImporter.length} : l'import s'est arrêté`, 'error');
+    if (importes === aImporter.length) setTimeout(() => setEtapeDemarrage(null), 2000);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [addCatalogueItemProp, setCatalogue, coefficients, showToast]);
 
-  // ====== BARCODE SCANNER ======
-  const startScanner = useCallback(async () => {
-    setShowScanner(true);
-    setScanResult(null);
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
-      });
-      scanStreamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.play();
-      }
-    } catch (err) {
-      showToast('Impossible d\'accéder à la caméra', 'error');
-      setShowScanner(false);
-    }
-  }, [showToast]);
-
-  const stopScanner = useCallback(() => {
-    if (scanStreamRef.current) {
-      scanStreamRef.current.getTracks().forEach(t => t.stop());
-      scanStreamRef.current = null;
-    }
-    setShowScanner(false);
-    setScanResult(null);
-  }, []);
-
-  const handleBarcodeDetected = useCallback(async (barcode) => {
-    setScanLoading(true);
-    // Try to match barcode in catalogue first (by reference)
-    const localMatch = catalogue.find(c =>
-      (c.reference || '').toLowerCase() === barcode.toLowerCase() ||
-      (c.ean || c.barcode || '').toLowerCase() === barcode.toLowerCase()
-    );
-    if (localMatch) {
-      setScanResult({ found: true, local: true, article: localMatch });
-      setScanLoading(false);
-      return;
-    }
-    // Try Open Food Facts / Open Product API for EAN codes
-    try {
-      const resp = await fetch(`https://world.openfoodfacts.org/api/v2/product/${barcode}.json`);
-      if (resp.ok) {
-        const data = await resp.json();
-        if (data.status === 1 && data.product) {
-          setScanResult({
-            found: true, local: false,
-            product: {
-              nom: data.product.product_name || data.product.product_name_fr || barcode,
-              marque: data.product.brands || '',
-              barcode: barcode,
-              image: data.product.image_front_small_url,
-            }
-          });
-          setScanLoading(false);
-          return;
-        }
-      }
-    } catch { /* API code-barres injoignable : on retombe sur « non trouvé » ci-dessous */ }
-    setScanResult({ found: false, barcode });
-    setScanLoading(false);
-  }, [catalogue]);
-
-  // BarcodeDetector API (available in Chrome/Edge)
-  useEffect(() => {
-    if (!showScanner || !videoRef.current) return;
-    let running = true;
-    const detectBarcode = async () => {
-      if (!running || !videoRef.current) return;
-      if ('BarcodeDetector' in window) {
-        try {
-          const detector = new window.BarcodeDetector({ formats: ['ean_13', 'ean_8', 'code_128', 'code_39', 'qr_code'] });
-          const detect = async () => {
-            if (!running || !videoRef.current || videoRef.current.readyState < 2) {
-              if (running) requestAnimationFrame(detect);
-              return;
-            }
-            try {
-              const barcodes = await detector.detect(videoRef.current);
-              if (barcodes.length > 0 && running) {
-                running = false;
-                handleBarcodeDetected(barcodes[0].rawValue);
-              } else if (running) {
-                requestAnimationFrame(detect);
-              }
-            } catch {
-              if (running) setTimeout(detect, 500);
-            }
-          };
-          detect();
-        } catch { /* BarcodeDetector absent ou caméra refusée : la saisie manuelle reste disponible */ }
-      } else {
-        // Fallback: prompt user to enter barcode manually
-        setScanResult({ noBarcodeAPI: true });
-      }
-    };
-    const timer = setTimeout(detectBarcode, 500);
-    return () => { running = false; clearTimeout(timer); };
-  }, [showScanner, handleBarcodeDetected]);
-
-  // ====== STOCK ALERTS NOTIFICATION EFFECT ======
-  useEffect(() => {
-    if (stockAlertsEnabled && alertesStock.length > 0 && !stockAlertsDismissed && 'Notification' in window && Notification.permission === 'granted') {
-      const lastAlert = localStorage.getItem('cp_stock_alert_last');
-      const now = Date.now();
-      if (!lastAlert || now - parseInt(lastAlert) > 24 * 60 * 60 * 1000) {
-        localStorage.setItem('cp_stock_alert_last', now.toString());
-        try {
-          new Notification('Mallettico — Stock bas', {
-            body: `${alertesStock.length} article${alertesStock.length > 1 ? 's' : ''} en dessous du seuil d'alerte`,
-            icon: '/icons/icon-192.png',
-          });
-        } catch { /* notification refusée par le navigateur : l'alerte reste visible dans la page */ }
-      }
-    }
-  }, [alertesStock, stockAlertsEnabled, stockAlertsDismissed]);
-
-  useEffect(() => {
-    localStorage.setItem('cp_stock_alerts_enabled', stockAlertsEnabled.toString());
-  }, [stockAlertsEnabled]);
-
-  // ====== HELPERS ======
-  const getMargeBrute = (prix, prixAchat) => {
-    const p = parseFloat(prix) || 0;
-    const a = parseFloat(prixAchat);
-    if (p === 0) return null;
-    // If prixAchat is 0 (e.g. main d'œuvre), marge = 100%
-    if (isNaN(a) || a === undefined || a === null) return null;
-    if (a === 0) return 100;
-    return ((p - a) / p) * 100;
-  };
-
-  // #3: Centralized margin badge — reusable in Devis/Factures
-  const getMargeBadge = (marge) => {
-    if (marge === null || marge === undefined) return { label: '—', color: '#94a3b8', textClass: textMuted };
-    if (marge >= 60) return { label: 'Excellente', color: '#8b5cf6', textClass: 'text-purple-500 font-bold' };
-    if (marge >= 40) return { label: 'Bonne', color: '#16a34a', textClass: 'text-emerald-600 font-bold' };
-    if (marge >= 25) return { label: 'Correcte', color: '#22c55e', textClass: 'text-emerald-500' };
-    if (marge >= 0) return { label: 'Faible', color: '#f59e0b', textClass: 'text-orange-500' };
-    return { label: 'Négative', color: '#ef4444', textClass: 'text-red-500' };
-  };
-
-  const getMargeColor = (marge) => {
-    return getMargeBadge(marge).textClass;
-  };
-
-  const handleAddFromPicker = async (item) => {
+  // Un article choisi dans le référentiel BTP
+  const ajouterDepuisReferentiel = async (item) => {
     const coef = coefficients[item.categorie] || 1.5;
-    const newItem = {
+    const nouveau = {
       nom: item.nom, prix: item.prixUnitaire,
       prixAchat: item.prixAchat || Math.round(item.prixUnitaire / coef * 100) / 100,
       unite: item.unite, categorie: item.categorie, favori: false,
       stock_actuel: undefined, stock_seuil_alerte: undefined,
     };
-    if (addCatalogueItemProp) {
-      if (!(await addCatalogueItemProp(newItem))) return;
-    } else {
-      setCatalogue([...catalogue, { id: generateId(), ...newItem }]);
-    }
+    if (!(await creerArticle(nouveau))) return;
     showToast(`"${item.nom}" ajouté au catalogue`, 'success');
   };
 
-  // ====== CRUD ======
+  // Enregistrer le formulaire
   const submit = async () => {
-    const errors = {};
-    if (!form.nom?.trim()) errors.nom = 'Le nom est requis';
-    if (!form.prix) errors.prix = 'Le prix de vente est requis';
-    else if (parseFloat(form.prix) <= 0) errors.prix = 'Le prix doit être supérieur à 0';
-    if (Object.keys(errors).length > 0) {
-      setFormErrors(errors);
+    const erreurs = {};
+    if (!form.nom?.trim()) erreurs.nom = 'Le nom est requis';
+    if (!form.prix) erreurs.prix = 'Le prix de vente est requis';
+    else if (parseFloat(form.prix) <= 0) erreurs.prix = 'Le prix doit être supérieur à 0';
+    if (Object.keys(erreurs).length > 0) {
+      setFormErrors(erreurs);
       showToast('Veuillez corriger les erreurs', 'error');
       return;
     }
     setFormErrors({});
     const prixVente = parseFloat(form.prix);
-    let prixAchat = parseFloat(form.prixAchat) || 0;
-    // Auto coefficient
-    if (form.coefAuto && prixAchat > 0 && !form.prix) {
-      const coef = coefficients[form.categorie] || 1.5;
-      // prix = prixAchat * coef
-    }
-    const data = {
+    const prixAchat = parseFloat(form.prixAchat) || 0;
+    // 0 % est un vrai taux (autoliquidation, franchise) : `|| 20` le remplaçait par 20 %
+    const tva = nombreDe(form.tva_rate) ?? 20;
+    const donnees = {
       ...form,
       prix: prixVente, prixAchat,
       reference: form.reference || undefined,
       description: form.description || undefined,
-      // 0 % est un vrai taux (autoliquidation, franchise) : `|| 20` le remplaçait par 20 %
-      tva_rate: Number.isFinite(parseFloat(String(form.tva_rate).replace(',', '.'))) ? parseFloat(String(form.tva_rate).replace(',', '.')) : 20,
-      tva: Number.isFinite(parseFloat(String(form.tva_rate).replace(',', '.'))) ? parseFloat(String(form.tva_rate).replace(',', '.')) : 20,
+      tva_rate: tva, tva,
       favori: form.favori || false,
       coefAuto: form.coefAuto || false,
-      stock_actuel: form.stock_actuel !== '' ? parseInt(form.stock_actuel) : undefined,
-      stock_seuil_alerte: form.stock_seuil_alerte !== '' ? parseInt(form.stock_seuil_alerte) : undefined
+      stock_actuel: form.stock_actuel !== '' ? parseInt(form.stock_actuel, 10) : undefined,
+      stock_seuil_alerte: form.stock_seuil_alerte !== '' ? parseInt(form.stock_seuil_alerte, 10) : undefined,
     };
-    // Track price history
+    setEnregistrement(true);
+    // Refus de la base : le formulaire reste ouvert avec la saisie (DataContext a dit pourquoi)
     if (editId) {
-      const old = catalogue.find(c => c.id === editId);
-      if (old && (old.prix !== prixVente || old.prixAchat !== prixAchat)) {
-        setPriceHistory(prev => [...prev, { id: generateId(), articleId: editId, prixVente: old.prix, prixAchat: old.prixAchat, date: new Date().toISOString() }]);
-      }
-      // Refus de la base : le formulaire reste ouvert avec la saisie (DataContext a dit pourquoi)
-      if (updateCatalogueItemProp) {
-        if (!(await updateCatalogueItemProp(editId, data))) return;
-      } else {
-        setCatalogue(catalogue.map(c => c.id === editId ? { id: editId, ...data } : c));
+      const ancien = catalogue.find((c) => c.id === editId);
+      if (!(await modifierArticle(editId, donnees))) { setEnregistrement(false); return; }
+      // L'historique des prix ne retient que ce que la base a accepté
+      if (ancien && (ancien.prix !== prixVente || ancien.prixAchat !== prixAchat)) {
+        setPriceHistory((prev) => [...prev, { id: generateId(), articleId: editId, prixVente: ancien.prix, prixAchat: ancien.prixAchat, date: new Date().toISOString() }]);
       }
       showToast('Article modifié', 'success');
-    } else {
-      if (addCatalogueItemProp) {
-        if (!(await addCatalogueItemProp(data))) return;
-      } else {
-        setCatalogue([...catalogue, { id: generateId(), ...data }]);
-      }
+    } else if (!(await creerArticle(donnees))) {
+      setEnregistrement(false);
+      return;
     }
-    setShow(false); setEditId(null);
-    setForm({ nom: '', reference: '', description: '', prix: '', prixAchat: '', unite: 'u', categorie: 'Autre', tva_rate: '20', favori: false, stock_actuel: '', stock_seuil_alerte: '', fournisseur: '', coefAuto: true });
+    setEnregistrement(false);
+    fermerFormulaire();
   };
 
   const startEdit = (item) => {
-    setForm({ nom: item.nom || '', reference: item.reference || '', description: item.description || '', prix: item.prix?.toString() || '', prixAchat: item.prixAchat?.toString() || '', unite: item.unite || 'u', categorie: item.categorie || 'Autre', tva_rate: String(item.tva_rate ?? item.tva ?? 20), favori: item.favori || false, stock_actuel: item.stock_actuel?.toString() ?? '', stock_seuil_alerte: item.stock_seuil_alerte?.toString() ?? '', fournisseur: '', coefAuto: item.coefAuto || false });
+    setForm({
+      nom: item.nom || '', reference: item.reference || '', description: item.description || '', prix: item.prix?.toString() || '', prixAchat: item.prixAchat?.toString() || '',
+      unite: item.unite || 'u', categorie: item.categorie || 'Autre', tva_rate: String(item.tva_rate ?? item.tva ?? 20), favori: item.favori || false,
+      stock_actuel: item.stock_actuel?.toString() ?? '', stock_seuil_alerte: item.stock_seuil_alerte?.toString() ?? '', fournisseur: '', coefAuto: item.coefAuto || false,
+    });
     setEditId(item.id); setShow(true); setFormErrors({});
   };
 
   const toggleFavori = async (id) => {
-    const item = catalogue.find(c => c.id === id);
+    const item = catalogue.find((c) => c.id === id);
     if (!item) return;
-    const newFavori = !item.favori;
-    if (updateCatalogueItemProp) {
-      if (!(await updateCatalogueItemProp(id, { favori: newFavori }))) return;
-    } else {
-      setCatalogue(catalogue.map(c => c.id === id ? { ...c, favori: newFavori } : c));
-    }
+    if (!(await modifierArticle(id, { favori: !item.favori }))) return;
     showToast(item.favori ? 'Retiré des favoris' : 'Ajouté aux favoris', 'success');
   };
 
   const deleteItem = async (id) => {
-    const confirmed = await confirm({ title: 'Supprimer', message: 'Supprimer cet article du catalogue ?' });
-    if (confirmed) {
-      if (deleteCatalogueItemProp) {
-        await deleteCatalogueItemProp(id); // l'enveloppe d'App.jsx dit « supprimé » si la base a confirmé
-      } else {
-        setCatalogue(catalogue.filter(c => c.id !== id));
-        showToast('Article supprimé', 'info');
-      }
-    }
-  };
-
-  const updateStock = async (id, value) => {
-    const item = catalogue.find(c => c.id === id);
-    if (!item) return;
-    const updated = { ...item, stock_actuel: Math.max(0, parseInt(value) || 0) };
-    if (updateCatalogueItemProp) { await updateCatalogueItemProp(id, updated); }
-    else { setCatalogue(catalogue.map(c => c.id === id ? updated : c)); }
-  };
-  const incrementStock = async (id) => {
-    const item = catalogue.find(c => c.id === id);
-    if (!item) return;
-    const updated = { ...item, stock_actuel: (item.stock_actuel || 0) + 1 };
-    if (updateCatalogueItemProp) { await updateCatalogueItemProp(id, updated); }
-    else { setCatalogue(catalogue.map(c => c.id === id ? updated : c)); }
-  };
-  const decrementStock = async (id) => {
-    const item = catalogue.find(c => c.id === id);
-    if (!item) return;
-    const updated = { ...item, stock_actuel: Math.max(0, (item.stock_actuel || 0) - 1) };
-    if (updateCatalogueItemProp) { await updateCatalogueItemProp(id, updated); }
-    else { setCatalogue(catalogue.map(c => c.id === id ? updated : c)); }
-  };
-
-  // ====== FOURNISSEUR CRUD ======
-  const addFournisseur = () => {
-    if (!fournisseurForm.nom) return showToast('Nom requis', 'error');
-    if (editFournisseurId) {
-      setFournisseurs(prev => prev.map(f => f.id === editFournisseurId ? { ...f, ...fournisseurForm } : f));
+    if (!(await confirm({ title: 'Supprimer', message: 'Supprimer cet article du catalogue ?' }))) return;
+    if (deleteCatalogueItemProp) {
+      await deleteCatalogueItemProp(id); // l'enveloppe d'App.jsx dit « supprimé » si la base a confirmé
     } else {
-      setFournisseurs(prev => [...prev, { id: generateId(), ...fournisseurForm, createdAt: new Date().toISOString() }]);
+      setCatalogue((prev) => prev.filter((c) => c.id !== id));
+      showToast('Article supprimé', 'info');
     }
-    setShowFournisseurForm(false); setEditFournisseurId(null);
-    setFournisseurForm({ nom: '', email: '', telephone: '', adresse: '', delaiLivraison: '3', conditions: '' });
-    showToast(editFournisseurId ? 'Fournisseur modifié' : 'Fournisseur ajouté', 'success');
   };
 
-  const linkArticleFournisseur = (articleId, fournisseurId, prixAchat) => {
-    const existing = articleFournisseurs.find(af => af.articleId === articleId && af.fournisseurId === fournisseurId);
-    if (existing) {
-      setArticleFournisseurs(prev => prev.map(af => af.id === existing.id ? { ...af, prixAchat, updatedAt: new Date().toISOString() } : af));
+  const dupliquer = async (item) => {
+    const copie = { ...item, nom: `${item.nom} (copie)`, favori: false };
+    delete copie.id; delete copie.createdAt;
+    if (addCatalogueItemProp) {
+      const cree = await addCatalogueItemProp(copie);
+      if (!cree) return;
+      showToast('Article dupliqué', 'success');
+      if (cree?.id) setArticleDetail(cree.id);
     } else {
-      setArticleFournisseurs(prev => [...prev, { id: generateId(), articleId, fournisseurId, prixAchat: parseFloat(prixAchat) || 0, createdAt: new Date().toISOString() }]);
+      const avecId = { ...copie, id: generateId() };
+      setCatalogue((prev) => [...prev, avecId]);
+      showToast('Article dupliqué', 'success');
+      setArticleDetail(avecId.id);
     }
   };
 
-  // ====== MOUVEMENTS ======
-  const addMouvement = async () => {
-    if (!mouvementForm.articleId || !mouvementForm.quantite) return showToast('Article et quantité requis', 'error');
-    const qty = parseInt(mouvementForm.quantite);
-    const article = catalogue.find(c => c.id === mouvementForm.articleId);
-    const newMouvement = { id: generateId(), ...mouvementForm, quantite: qty, date: new Date().toISOString(), articleNom: article?.nom };
-    setMouvements(prev => [newMouvement, ...prev]);
-    // Update stock via DataContext
-    if (article && (mouvementForm.type === 'in' || mouvementForm.type === 'return')) {
-      const newStock = (article.stock_actuel || 0) + qty;
-      if (updateCatalogueItemProp) { await updateCatalogueItemProp(article.id, { ...article, stock_actuel: newStock }); }
-      else { setCatalogue(prev => prev.map(c => c.id === article.id ? { ...c, stock_actuel: newStock } : c)); }
-    } else if (article && mouvementForm.type === 'out') {
-      const newStock = Math.max(0, (article.stock_actuel || 0) - qty);
-      if (updateCatalogueItemProp) { await updateCatalogueItemProp(article.id, { ...article, stock_actuel: newStock }); }
-      else { setCatalogue(prev => prev.map(c => c.id === article.id ? { ...c, stock_actuel: newStock } : c)); }
-    }
-    setShowMouvementForm(false);
-    setMouvementForm({ articleId: '', type: 'in', quantite: '', chantierId: '', employe: '', raison: '' });
-    showToast(`Mouvement enregistré — stock mis à jour`, 'success');
+  const changerStock = async (id, valeur) => {
+    await modifierArticle(id, { stock_actuel: Math.max(0, parseInt(valeur, 10) || 0) });
   };
 
-  // ====== PACKS ======
-  const addPack = () => {
-    if (!packForm.nom || packForm.articles.length === 0) return showToast('Nom et articles requis', 'error');
-    // Enrich articles with snapshot data (nom, prix, unite) for resilience
-    const enrichedArticles = packForm.articles.map(a => {
-      const item = catalogue.find(c => c.id === a.articleId);
-      return {
-        ...a,
-        label: item?.nom || a.label || '?',
-        prixSnapshot: item?.prix || a.prixSnapshot || 0,
-        prixAchatSnapshot: item?.prixAchat || a.prixAchatSnapshot || 0,
-        unite: item?.unite || a.unite || 'u',
-      };
+  // Lier un article à un fournisseur (depuis sa fiche)
+  const lierFournisseur = (articleId, fournisseurId, prixAchat) => {
+    setLiens((prev) => {
+      const existant = prev.find((l) => l.articleId === articleId && l.fournisseurId === fournisseurId);
+      if (existant) return prev.map((l) => (l.id === existant.id ? { ...l, prixAchat: parseFloat(prixAchat) || 0, updatedAt: new Date().toISOString() } : l));
+      return [...prev, { id: generateId(), articleId, fournisseurId, prixAchat: parseFloat(prixAchat) || 0, createdAt: new Date().toISOString() }];
     });
-    const totalCost = enrichedArticles.reduce((s, a) => {
-      const item = catalogue.find(c => c.id === a.articleId);
-      return s + ((item?.prixAchat ?? a.prixAchatSnapshot) || 0) * (a.quantite || 1);
-    }, 0);
-    const totalVente = enrichedArticles.reduce((s, a) => {
-      const item = catalogue.find(c => c.id === a.articleId);
-      return s + ((item?.prix ?? a.prixSnapshot) || 0) * (a.quantite || 1);
-    }, 0);
-    const packData = { ...packForm, articles: enrichedArticles, totalCost, totalVenteSuggere: totalVente, prixVente: parseFloat(packForm.prixVente) || totalVente };
-    if (editPackId) {
-      setPacks(prev => prev.map(p => p.id === editPackId ? { ...p, ...packData, updatedAt: new Date().toISOString() } : p));
-      showToast('Pack modifié', 'success');
-    } else {
-      const newPack = { id: generateId(), ...packData, createdAt: new Date().toISOString() };
-      setPacks(prev => [...prev, newPack]);
-      showToast('Pack créé', 'success');
-    }
-    setShowPackForm(false);
-    setEditPackId(null);
-    setPackForm({ nom: '', description: '', articles: [], prixVente: '' });
+    showToast(`Lié à ${fournisseurs.find((f) => f.id === fournisseurId)?.nom || 'ce fournisseur'}`, 'success');
   };
 
-  const duplicatePack = (pack) => {
-    const newPack = { ...pack, id: generateId(), nom: `${pack.nom} (copie)`, createdAt: new Date().toISOString() };
-    setPacks(prev => [...prev, newPack]);
-    showToast(`Pack "${pack.nom}" dupliqué`, 'success');
+  // Mouvement de stock : la base prend le nouveau stock AVANT que le mouvement soit noté et annoncé
+  const ajouterMouvement = async (f) => {
+    const quantite = parseInt(f.quantite, 10);
+    if (!(quantite > 0)) { showToast('Article et quantité requis', 'error'); return false; }
+    const article = catalogue.find((c) => c.id === f.articleId);
+    let nouveauStock = null;
+    if (article && (f.type === 'in' || f.type === 'return')) nouveauStock = (article.stock_actuel || 0) + quantite;
+    else if (article && f.type === 'out') nouveauStock = Math.max(0, (article.stock_actuel || 0) - quantite);
+    if (nouveauStock !== null && !(await modifierArticle(article.id, { stock_actuel: nouveauStock }))) return false;
+    setMouvements((prev) => [{ id: generateId(), ...f, quantite, date: new Date().toISOString(), articleNom: article?.nom }, ...prev]);
+    showToast(nouveauStock !== null ? 'Mouvement enregistré — stock mis à jour' : 'Mouvement enregistré', 'success');
+    return true;
   };
 
-  // ====== AJOUTER AU DEVIS ======
-  const devisBrouillons = useMemo(() => {
-    return (devis || []).filter(d => (d.statut || d.status || '').toLowerCase() === 'brouillon');
-  }, [devis]);
-
-  const handleAddToDevis = async () => {
-    if (!addToDevisSelected || !addToDevisModal) return;
-    const targetDevis = devis.find(d => d.id === addToDevisSelected);
-    if (!targetDevis) { showToast('Devis introuvable', 'error'); return; }
-
+  // Ajouter au devis
+  const devisBrouillons = useMemo(() => (devis || []).filter((d) => (d.statut || d.status || '').toLowerCase() === 'brouillon'), [devis]);
+  const ouvrirAjoutDevis = (article) => {
+    setArticleDevis(article);
+    setDevisQte(1);
+    setDevisChoisi(devisBrouillons.length > 0 ? devisBrouillons[0].id : null);
+  };
+  const fermerAjoutDevis = () => { setArticleDevis(null); setDevisQte(1); setDevisChoisi(null); };
+  const ajouterAuDevis = async () => {
+    if (!devisChoisi || !articleDevis) return;
+    const cible = devis.find((d) => d.id === devisChoisi);
+    if (!cible) { showToast('Devis introuvable', 'error'); return; }
     // Seulement un brouillon : un devis envoyé ou signé ne se modifie pas en douce
-    if ((targetDevis.statut || '') !== 'brouillon') { showToast('Seul un devis en brouillon peut recevoir un article', 'error'); return; }
-
+    if ((cible.statut || '') !== 'brouillon') { showToast('Seul un devis en brouillon peut recevoir un article', 'error'); return; }
     // Ligne visible (désignation), dans les lots, totaux HT / TVA / TTC recalculés comme dans l'éditeur
-    const champs = devisAvecLigneAjoutee(targetDevis, addToDevisModal, {
-      quantite: addToDevisQty,
-      franchise: estFranchiseTva(entreprise),
-      tauxDefaut: Number(targetDevis.tvaRate ?? entreprise?.tvaDefaut ?? 20),
-    });
-    if (!updateDevis || !(await updateDevis(targetDevis.id, champs))) return; // refus : DataContext l'a dit
-
-    const numero = targetDevis.numero || targetDevis.reference || targetDevis.id?.slice(0, 8);
-    showToast(`Article ajouté au devis ${numero}`, 'success');
-    setAddToDevisModal(null);
-    setAddToDevisQty(1);
-    setAddToDevisSelected(null);
+    const champs = devisAvecLigneAjoutee(cible, articleDevis, { quantite: devisQte, franchise: estFranchiseTva(entreprise), tauxDefaut: Number(cible.tvaRate ?? entreprise?.tvaDefaut ?? 20) });
+    setAjoutEnCours(true);
+    const ok = updateDevis && (await updateDevis(cible.id, champs)); // refus : DataContext l'a dit
+    setAjoutEnCours(false);
+    if (!ok) return;
+    showToast(`Article ajouté au devis ${cible.numero || cible.reference || cible.id?.slice(0, 8)}`, 'success');
+    fermerAjoutDevis();
   };
 
-  const openAddToDevisModal = (article) => {
-    setAddToDevisModal(article);
-    setAddToDevisQty(1);
-    setAddToDevisSelected(devisBrouillons.length > 0 ? devisBrouillons[0].id : null);
-  };
-
-  // ====== INVENTAIRE ======
-  const startInventaire = () => {
-    const counts = {};
-    catalogue.forEach(c => {
-      const stock = c.stock_actuel ?? c.stock;
-      if (stock != null || (c.stock_seuil_alerte ?? c.stockMin) > 0) {
-        counts[c.id] = stock ?? 0;
-      }
-    });
-    setInventaireCounts(counts);
+  // Inventaire : chaque ajustement est lu avant d'être noté
+  const articlesSuivis = useMemo(() => catalogue.filter((c) => stockDe(c) != null || (seuilDe(c) > 0)), [catalogue]);
+  const demarrerInventaire = () => {
+    const depart = {};
+    articlesSuivis.forEach((c) => { depart[c.id] = stockDe(c) ?? 0; });
+    setComptes(depart);
     setInventaireMode(true);
   };
-
-  const finishInventaire = async () => {
-    let adjustments = 0;
-    const newMouvements = [];
-    Object.entries(inventaireCounts).forEach(([id, counted]) => {
-      const item = catalogue.find(c => c.id === id);
-      if (item && item.stock_actuel !== undefined && counted !== item.stock_actuel) {
-        adjustments++;
-        newMouvements.push({ id: generateId(), articleId: id, type: 'adjustment', quantite: counted, date: new Date().toISOString(), raison: `Inventaire — écart: ${counted - item.stock_actuel}`, articleNom: item.nom });
-      }
-    });
-    // Update stock for each adjusted item
-    if (updateCatalogueItemProp) {
-      for (const [id, counted] of Object.entries(inventaireCounts)) {
-        const item = catalogue.find(c => c.id === id);
-        if (item && item.stock_actuel !== counted) {
-          await updateCatalogueItemProp(id, { ...item, stock_actuel: counted });
-        }
-      }
-    } else {
-      setCatalogue(prev => prev.map(c => {
-        if (inventaireCounts[c.id] !== undefined) return { ...c, stock_actuel: inventaireCounts[c.id] };
-        return c;
-      }));
+  const terminerInventaire = async () => {
+    setInventaireEnCours(true);
+    let ajustements = 0;
+    let refus = 0;
+    const nouveaux = [];
+    for (const [id, compte] of Object.entries(comptes)) {
+      const item = catalogue.find((c) => c.id === id);
+      const avant = item ? (stockDe(item) ?? 0) : 0;
+      if (!item || compte === avant) continue;
+      if (await modifierArticle(id, { stock_actuel: compte })) {
+        ajustements++;
+        nouveaux.push({ id: generateId(), articleId: id, type: 'adjustment', quantite: compte, date: new Date().toISOString(), raison: `Inventaire — écart: ${compte - avant}`, articleNom: item.nom });
+      } else refus++;
     }
-    setMouvements(prev => [...newMouvements, ...prev]);
+    setMouvements((prev) => [...nouveaux, ...prev]);
+    setInventaireEnCours(false);
+    if (refus > 0) { showToast(`${ajustements} ajustement${ajustements > 1 ? 's' : ''} enregistré${ajustements > 1 ? 's' : ''}, ${refus} non enregistré${refus > 1 ? 's' : ''}`, 'error'); return; }
     setInventaireMode(false);
-    showToast(`Inventaire terminé — ${adjustments} ajustement${adjustments > 1 ? 's' : ''}`, 'success');
+    showToast(`Inventaire terminé — ${ajustements} ajustement${ajustements > 1 ? 's' : ''}`, 'success');
   };
 
-  // ====== EXPORT CSV ======
-  const exportCSV = () => {
-    const rows = [['Référence', 'Nom', 'Description', 'Catégorie', 'Unité', 'TVA %', 'Prix vente HT', 'Prix achat HT', 'Marge %', 'Stock', 'Seuil alerte', 'Favori']];
-    catalogue.forEach(c => {
-      const marge = getMargeBrute(c.prix, c.prixAchat);
-      rows.push([c.reference || '', c.nom, c.description || '', c.categorie, c.unite, c.tva_rate || c.tva || 20, c.prix, c.prixAchat || '', marge !== null ? marge.toFixed(1) : '', c.stock_actuel ?? '', c.stock_seuil_alerte ?? '', c.favori ? 'Oui' : '']);
+  // Coefficients : prix de vente = prix d'achat × coefficient, ENREGISTRÉ article par article (avant, recette du 9 oct. 2026 :
+  // un champ `prixVente` inexistant, en mémoire seulement, et « 13 prix recalculés » sans rien changer)
+  const appliquerCoefficients = async () => {
+    const avecAchat = catalogue.filter((c) => c.prixAchat > 0);
+    if (avecAchat.length === 0) { showToast('Aucun article avec prix d\'achat à recalculer', 'info'); return; }
+    const ok = await confirm({
+      title: 'Appliquer les coefficients',
+      message: `Recalculer le prix de vente de ${avecAchat.length} article${avecAchat.length > 1 ? 's' : ''} selon les coefficients actuels ? Les prix de vente seront écrasés.`,
+      confirmText: 'Appliquer', variant: 'warning',
     });
-    const csv = rows.map(r => r.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(';')).join('\n');
-    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
-    remettreFichier(blob, `catalogue_${jourLocal()}.csv`)
+    if (!ok) return;
+    let modifies = 0;
+    let refuses = 0;
+    for (const c of avecAchat) {
+      const coef = coefficients[c.categorie] || coefficients.Divers || 1.5;
+      const prix = Math.round(c.prixAchat * coef * 100) / 100;
+      if (Math.abs((Number(c.prix) || 0) - prix) < 0.005) continue;
+      if (updateCatalogueItemProp && (await updateCatalogueItemProp(c.id, { prix }))) modifies++;
+      else refuses++;
+    }
+    if (refuses) showToast(`${modifies} prix modifié${modifies > 1 ? 's' : ''}, ${refuses} non enregistré${refuses > 1 ? 's' : ''}`, 'error');
+    else showToast(modifies ? `${modifies} prix modifié${modifies > 1 ? 's' : ''}` : 'Tous les prix étaient déjà à jour', 'success');
+  };
+
+  // Export CSV du catalogue (avec ses prix et ses marges : réservé à qui les voit)
+  const exporterCsv = () => {
+    const lignes = [['Référence', 'Nom', 'Description', 'Catégorie', 'Unité', 'TVA %', 'Prix vente HT', 'Prix achat HT', 'Marge %', 'Stock', 'Seuil alerte', 'Favori']];
+    catalogue.forEach((c) => {
+      const marge = margeBrute(c.prix, c.prixAchat);
+      lignes.push([c.reference || '', c.nom, c.description || '', c.categorie, c.unite, c.tva_rate || c.tva || 20, c.prix, c.prixAchat || '', marge !== null ? marge.toFixed(1) : '', c.stock_actuel ?? '', c.stock_seuil_alerte ?? '', c.favori ? 'Oui' : '']);
+    });
+    const csv = lignes.map((r) => r.map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`).join(';')).join('\n');
+    remettreFichier(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' }), `catalogue_${jourLocal()}.csv`)
       .then((r) => { if (r !== 'annule') showToast('Export CSV prêt', 'success'); })
       .catch(() => showToast('Export impossible', 'error'));
   };
 
-  // ====== MOUVEMENTS EXPORT ======
-  const exportMouvements = () => {
-    const rows = [['Date', 'Article', 'Référence', 'Type', 'Quantité', 'Chantier', 'Raison']];
-    mouvements.forEach(m => {
-      const article = catalogue.find(c => c.id === m.articleId);
-      const ch = chantiers?.find(c => c.id === m.chantierId);
-      const type = m.type === 'in' || m.type === 'entree' ? 'Entrée' : m.type === 'out' || m.type === 'sortie' ? 'Sortie' : m.type === 'return' ? 'Retour' : 'Ajustement';
-      rows.push([dateLue(m.date).toLocaleDateString('fr-FR'), article?.nom || m.articleNom || '?', article?.reference || '', type, m.quantite, ch?.nom || '', m.raison || m.motif || '']);
-    });
-    const csv = rows.map(r => r.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(';')).join('\n');
-    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
-    remettreFichier(blob, `mouvements_${jourLocal()}.csv`)
-      .then((r) => { if (r !== 'annule') showToast('Export mouvements prêt', 'success'); })
-      .catch(() => showToast('Export impossible', 'error'));
-  };
-
-  // ====== FILTERED MOUVEMENTS ======
-  const filteredMouvements = useMemo(() => {
-    return mouvements.filter(m => {
-      const typeNorm = m.type === 'entree' ? 'in' : m.type === 'sortie' ? 'out' : m.type;
-      if (mouvTypeFilter !== 'all' && typeNorm !== mouvTypeFilter) return false;
-      if (mouvArticleFilter && m.articleId !== mouvArticleFilter) return false;
-      return true;
-    });
-  }, [mouvements, mouvTypeFilter, mouvArticleFilter]);
-
-  // ====== CSV IMPORT ======
-  const handleFileUpload = (e) => {
+  // Import CSV : lecture, puis association des colonnes dans une fenêtre
+  const choisirFichier = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (evt) => {
+    const lecteur = new FileReader();
+    lecteur.onload = (evt) => {
       // Lecteur CSV commun (src/lib/csvImport.js) : guillemets, séparateur, colonnes associées par mot entier
-      const { entetes: headers, lignes: rows } = lireCsv(evt.target.result);
-      if (!headers.length || !rows.length) return showToast('Fichier vide ou invalide', 'error');
-      const autoMap = associerColonnes(headers);
-      setImportMapping(autoMap);
-      setImportData({ headers, rows });
-      setShowImport(true);
+      const { entetes, lignes } = lireCsv(evt.target.result);
+      if (!entetes.length || !lignes.length) { showToast('Fichier vide ou invalide', 'error'); return; }
+      setImportMapping(associerColonnes(entetes));
+      setImportData({ headers: entetes, rows: lignes });
     };
-    reader.readAsText(file, 'UTF-8');
+    lecteur.readAsText(file, 'UTF-8');
     e.target.value = '';
   };
 
-  const executeImport = async () => {
+  const importerCsv = async () => {
     if (!importData) return;
+    setImportEnCours(true);
     // Prix et TVA lus à la française (« 1 250,00 », « 5,5 ») ; un prix illisible ou nul : ligne écartée et comptée
     // (avant : 1 €, TVA 5, articles à 0 €) ; TVA 0 % respectée ; chaque refus de la base compté.
-    let imported = 0, skipped = 0, updated = 0, refuses = 0, prixIllisibles = 0;
+    let importes = 0, ecartees = 0, misAJour = 0, refuses = 0, prixIllisibles = 0;
     const tvaDe = (v, defaut) => { const n = nombreFr(v); return Number.isFinite(n) ? n : defaut; };
     for (const row of importData.rows) {
       const nom = row[importMapping.designation] || '';
-      if (!nom) { skipped++; continue; }
+      if (!nom) { ecartees++; continue; }
       const ref = row[importMapping.reference] || '';
       const prix = nombreFr(row[importMapping.prix]);
-      const prixAchatLu = nombreFr(row[importMapping.prixAchat]);
+      const achatLu = nombreFr(row[importMapping.prixAchat]);
       const stockLu = nombreFr(row[importMapping.stock]);
-      // Check duplicate by reference
-      const existing = ref ? catalogue.find(c => c.reference === ref) : null;
-      if (!(prix > 0) && !existing) { prixIllisibles++; continue; }
-      if (existing) {
-        const updatedData = {
-          ...existing,
-          nom: nom || existing.nom,
-          prix: prix > 0 ? prix : existing.prix,
-          prixAchat: Number.isFinite(prixAchatLu) ? prixAchatLu : existing.prixAchat,
-          unite: row[importMapping.unite] || existing.unite,
-          categorie: row[importMapping.categorie] || existing.categorie,
-          description: row[importMapping.description] || existing.description,
-          tva_rate: tvaDe(row[importMapping.tva_rate], existing.tva_rate),
-          tva: tvaDe(row[importMapping.tva_rate], existing.tva ?? existing.tva_rate),
-          stock_actuel: Number.isFinite(stockLu) ? Math.round(stockLu) : existing.stock_actuel,
+      const existant = ref ? catalogue.find((c) => c.reference === ref) : null; // doublon par référence
+      if (!(prix > 0) && !existant) { prixIllisibles++; continue; }
+      if (existant) {
+        const maj = {
+          ...existant,
+          nom: nom || existant.nom,
+          prix: prix > 0 ? prix : existant.prix,
+          prixAchat: Number.isFinite(achatLu) ? achatLu : existant.prixAchat,
+          unite: row[importMapping.unite] || existant.unite,
+          categorie: row[importMapping.categorie] || existant.categorie,
+          description: row[importMapping.description] || existant.description,
+          tva_rate: tvaDe(row[importMapping.tva_rate], existant.tva_rate),
+          tva: tvaDe(row[importMapping.tva_rate], existant.tva ?? existant.tva_rate),
+          stock_actuel: Number.isFinite(stockLu) ? Math.round(stockLu) : existant.stock_actuel,
         };
-        if (updateCatalogueItemProp) { if (await updateCatalogueItemProp(existing.id, updatedData)) updated++; else refuses++; }
-        else { setCatalogue(prev => prev.map(c => c.id === existing.id ? updatedData : c)); updated++; }
+        if (updateCatalogueItemProp) { if (await updateCatalogueItemProp(existant.id, maj)) misAJour++; else refuses++; }
+        else { setCatalogue((prev) => prev.map((c) => (c.id === existant.id ? maj : c))); misAJour++; }
       } else {
         const tva = tvaDe(row[importMapping.tva_rate], 20);
-        const newItem = {
-          nom,
-          reference: ref,
-          description: row[importMapping.description] || '',
-          prix,
-          prixAchat: Number.isFinite(prixAchatLu) ? prixAchatLu : 0,
-          unite: row[importMapping.unite] || 'u',
-          categorie: row[importMapping.categorie] || 'Autre',
-          tva_rate: tva,
-          tva,
-          favori: false,
-          stock_actuel: Number.isFinite(stockLu) ? Math.round(stockLu) : undefined,
-          stock_seuil_alerte: undefined,
+        const nouveau = {
+          nom, reference: ref, description: row[importMapping.description] || '', prix,
+          prixAchat: Number.isFinite(achatLu) ? achatLu : 0, unite: row[importMapping.unite] || 'u', categorie: row[importMapping.categorie] || 'Autre',
+          tva_rate: tva, tva, favori: false, stock_actuel: Number.isFinite(stockLu) ? Math.round(stockLu) : undefined, stock_seuil_alerte: undefined,
         };
-        if (addCatalogueItemProp) { if (await addCatalogueItemProp(newItem)) imported++; else refuses++; }
-        else { setCatalogue(prev => [...prev, { id: generateId(), ...newItem }]); imported++; }
+        if (await creerArticle(nouveau)) importes++; else refuses++;
       }
     }
-    setShowImport(false);
+    setImportEnCours(false);
     setImportData(null);
-    const ecartes = skipped + prixIllisibles;
-    const resume = `${imported} ajouté${imported > 1 ? 's' : ''}, ${updated} mis à jour${ecartes ? `, ${ecartes} ligne${ecartes > 1 ? 's' : ''} écartée${ecartes > 1 ? 's' : ''}${prixIllisibles ? ` (${prixIllisibles} sans prix lisible)` : ''}` : ''}${refuses ? `, ${refuses} non enregistré${refuses > 1 ? 's' : ''}` : ''}`;
+    const ecart = ecartees + prixIllisibles;
+    const resume = `${importes} ajouté${importes > 1 ? 's' : ''}, ${misAJour} mis à jour${ecart ? `, ${ecart} ligne${ecart > 1 ? 's' : ''} écartée${ecart > 1 ? 's' : ''}${prixIllisibles ? ` (${prixIllisibles} sans prix lisible)` : ''}` : ''}${refuses ? `, ${refuses} non enregistré${refuses > 1 ? 's' : ''}` : ''}`;
     showToast(`Import : ${resume}`, refuses || prixIllisibles ? 'error' : 'success');
   };
 
-  // ====== ARTICLE DETAIL VIEW ======
-  // Clear stale articleDetail via effect (not during render to avoid React warnings)
+  // Un article supprimé pendant qu'on le regarde : on revient à la liste
   useEffect(() => {
-    if (articleDetail && !catalogue.find(c => c.id === articleDetail)) {
-      setArticleDetail(null);
-    }
+    if (articleDetail && !catalogue.find((c) => c.id === articleDetail)) setArticleDetail(null);
   }, [articleDetail, catalogue]);
 
-  if (articleDetail) {
-    const item = catalogue.find(c => c.id === articleDetail);
-    if (!item) return null;
-    const marge = getMargeBrute(item.prix, item.prixAchat);
-    const itemFournisseurs = articleFournisseurs.filter(af => af.articleId === item.id).map(af => ({ ...af, fournisseur: fournisseurs.find(f => f.id === af.fournisseurId) })).filter(af => af.fournisseur);
-    const itemMouvements = mouvements.filter(m => m.articleId === item.id).slice(0, 15);
-    const itemHistory = priceHistory.filter(h => h.articleId === item.id).sort((a, b) => new Date(b.date) - new Date(a.date));
-
-    return (
-      <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
-          <div className="flex items-center gap-3 flex-1 min-w-0">
-            <button onClick={() => setArticleDetail(null)} className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl flex-shrink-0 hover:bg-surface-2`}>
-              <ArrowLeft size={20} className={textPrimary} />
-            </button>
-            <div className="min-w-0">
-              <h2 className={`text-lg sm:text-xl font-bold ${textPrimary} truncate`}>{item.nom}</h2>
-              <p className={`text-xs sm:text-sm ${textMuted}`}>
-                {item.reference && <span className="font-mono mr-1">{item.reference} ·</span>}
-                {item.categorie} · {item.unite} · TVA {item.tva_rate || item.tva || 20}%
-              </p>
-              {item.description && <p className={`text-xs sm:text-sm ${textMuted} mt-1 line-clamp-2`}>{item.description}</p>}
-            </div>
-          </div>
-          <div className="flex items-center gap-2 flex-wrap flex-shrink-0">
-            {/* Devis usage badge */}
-            {devisUsageMap[item.id] > 0 && (
-              <span className={`px-2.5 py-1.5 rounded-lg text-xs font-bold bg-info-fond text-info-texte`}>
-                <FileText size={12} className="inline mr-1" />
-                {devisUsageMap[item.id]} devis
-              </span>
-            )}
-            <button onClick={async () => {
-              const clone = { ...item, nom: `${item.nom} (copie)`, favori: false };
-              delete clone.id; delete clone.createdAt;
-              if (addCatalogueItemProp) {
-                const created = await addCatalogueItemProp(clone);
-                showToast(`Article dupliqué`, 'success');
-                if (created?.id) setArticleDetail(created.id);
-              } else {
-                const newClone = { ...clone, id: generateId() };
-                setCatalogue(prev => [...prev, newClone]);
-                showToast(`Article dupliqué`, 'success');
-                setArticleDetail(newClone.id);
-              }
-            }} className={`px-3 py-2 rounded-xl text-sm font-medium bg-surface-2 hover:bg-bord`}>
-              <PackagePlus size={14} className="inline mr-1" /> Dupliquer
-            </button>
-            <button onClick={() => { setArticleDetail(null); startEdit(item); }} className="px-4 py-2 rounded-xl text-sm font-medium text-accent-texte" style={{ background: `${couleur}15` }}>
-              <Edit3 size={14} className="inline mr-1" /> Modifier
-            </button>
-            {/* Ajouter au devis button */}
-            <button onClick={() => openAddToDevisModal(item)} className="px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-1.5 shadow-md bg-accent text-sur-accent">
-              <FileText size={14} /> Ajouter au devis
-            </button>
-          </div>
-        </div>
-
-        {/* KPI Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {[
-            { label: 'Prix vente', value: modeDiscret ? '·····' : `${item.prix} €`, sub: `/${item.unite}`, color: couleur },
-            { label: 'Prix achat', value: modeDiscret ? '·····' : `${item.prixAchat || '—'} €`, sub: !modeDiscret && item.prixAchat ? `/${item.unite}` : '', color: '#94A3B8' },
-            { label: 'Marge', value: modeDiscret ? '·····' : (marge !== null ? `${marge.toFixed(0)}%` : '—'), sub: !modeDiscret && marge !== null ? `${(item.prix - (item.prixAchat || 0)).toFixed(2)} €/${item.unite}` : '', color: marge >= 25 ? '#22c55e' : '#ef4444' },
-            { label: 'Stock', value: item.stock_actuel != null ? String(item.stock_actuel) : '—', sub: item.stock_actuel != null && item.stock_seuil_alerte ? (item.stock_actuel < item.stock_seuil_alerte ? 'Stock bas' : 'En stock') : (item.stock_seuil_alerte ? `Min: ${item.stock_seuil_alerte}` : ''), color: (item.stock_actuel != null && item.stock_seuil_alerte && item.stock_actuel < item.stock_seuil_alerte) ? '#ef4444' : '#22c55e' }
-          ].map((kpi, i) => (
-            <div key={i} className={`${cardBg} rounded-xl border p-4`}>
-              <p className={`text-xs ${textMuted} mb-1`}>{kpi.label}</p>
-              <p className="text-2xl font-bold" style={{ color: kpi.color }}>{kpi.value}</p>
-              {kpi.sub && <p className={`text-xs font-medium ${kpi.sub === 'En stock' ? 'text-emerald-500' : kpi.sub === 'Stock bas' ? 'text-red-500' : textMuted}`}>{kpi.sub}</p>}
-            </div>
-          ))}
-        </div>
-
-        {/* Fournisseurs comparateur */}
-        <div className={`${cardBg} rounded-2xl border p-5`}>
-          <div className="flex items-center justify-between mb-3">
-            <h3 className={`font-semibold flex items-center gap-2 ${textPrimary}`}><Truck size={16} className="text-accent-texte" /> Fournisseurs ({itemFournisseurs.length})</h3>
-            <button onClick={() => {
-              const fId = prompt('ID ou nom du fournisseur à lier ?');
-              const found = fournisseurs.find(f => f.nom.toLowerCase().includes((fId || '').toLowerCase()));
-              if (found) {
-                const prix = prompt('Prix achat chez ce fournisseur ?');
-                linkArticleFournisseur(item.id, found.id, prix);
-                showToast(`Lié à ${found.nom}`, 'success');
-              } else {
-                showToast('Fournisseur non trouvé — créez-le dans l\'onglet Fournisseurs', 'error');
-              }
-            }} className={`text-xs px-3 py-1.5 rounded-lg bg-surface-2 text-encre-2`}>
-              + Lier fournisseur
-            </button>
-          </div>
-          {itemFournisseurs.length === 0 ? (
-            <p className={`text-sm ${textMuted} text-center py-4`}>Aucun fournisseur lié — ajoutez-en via le bouton ci-dessus</p>
-          ) : (
-            <div className="space-y-2">
-              {itemFournisseurs.sort((a, b) => a.prixAchat - b.prixAchat).map((af, idx) => (
-                <div key={af.id} className={`flex items-center gap-3 p-3 rounded-xl ${idx === 0 ? (isDark ? 'bg-emerald-900/20 border border-emerald-800' : 'bg-emerald-50 border border-emerald-200') : ('bg-surface-2')}`}>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <p className={`font-medium text-sm ${textPrimary}`}>{af.fournisseur.nom}</p>
-                      {idx === 0 && <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-500 text-white">Meilleur prix</span>}
-                    </div>
-                    <p className={`text-xs ${textMuted}`}>{af.fournisseur.telephone || af.fournisseur.email || '—'} · Délai {af.fournisseur.delaiLivraison || '?'}j</p>
-                  </div>
-                  <p className="text-lg font-bold" style={{ color: idx === 0 ? '#22c55e' : couleur }}>{af.prixAchat}€</p>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Historique prix */}
-        {itemHistory.length > 0 && (
-          <div className={`${cardBg} rounded-2xl border p-5`}>
-            <h3 className={`font-semibold flex items-center gap-2 mb-3 ${textPrimary}`}><History size={16} className="text-accent-texte" /> Historique prix</h3>
-            <div className="space-y-2">
-              {itemHistory.map(h => (
-                <div key={h.id} className={`flex items-center justify-between py-2 border-b last:border-0 border-bord`}>
-                  <span className={`text-sm ${textMuted}`}>{dateLue(h.date).toLocaleDateString('fr-FR')}</span>
-                  <div className="flex items-center gap-4">
-                    <span className={`text-sm ${textPrimary}`}>Vente: {h.prixVente}€</span>
-                    <span className={`text-sm ${textMuted}`}>Achat: {h.prixAchat}€</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Mouvements récents */}
-        <div className={`${cardBg} rounded-2xl border p-5`}>
-          <h3 className={`font-semibold flex items-center gap-2 mb-3 ${textPrimary}`}><ArrowRightLeft size={16} className="text-accent-texte" /> Mouvements récents</h3>
-          {itemMouvements.length === 0 ? (
-            <p className={`text-sm ${textMuted} text-center py-4`}>Aucun mouvement enregistré</p>
-          ) : (
-            <div className="space-y-2">
-              {itemMouvements.map(m => (
-                <div key={m.id} className={`flex items-center gap-3 py-2 border-b last:border-0 border-bord`}>
-                  <span className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold ${m.type === 'in' ? 'bg-emerald-100 text-emerald-700' : m.type === 'out' ? 'bg-red-100 text-red-700' : m.type === 'return' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600'}`}>
-                    {m.type === 'in' ? '📥' : m.type === 'out' ? '📤' : m.type === 'return' ? '↩️' : '⚖️'}
-                  </span>
-                  <div className="flex-1">
-                    <p className={`text-sm font-medium ${textPrimary}`}>{m.type === 'in' ? 'Entrée' : m.type === 'out' ? 'Sortie' : m.type === 'return' ? 'Retour' : 'Ajustement'} — {m.quantite} unités</p>
-                    <p className={`text-xs ${textMuted}`}>{m.raison || '—'} · {dateLue(m.date).toLocaleDateString('fr-FR')}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  // ====== FORM VIEW ======
-  if (show) return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <button onClick={fermerFormulaire} className={`p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl hover:bg-surface-2`}>
-          <ArrowLeft size={20} className={textPrimary} />
-        </button>
-        <h2 className={`text-2xl font-bold ${textPrimary}`}>{editId ? 'Modifier' : 'Nouvel'} article</h2>
-      </div>
-      <div className={`${cardBg} rounded-2xl border p-6`}>
-        <div className="space-y-4">
-          <div>
-            <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Nom *</label>
-            <input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg} ${formErrors.nom ? 'border-red-400 ring-1 ring-red-400' : ''}`} value={form.nom} onChange={e => { setForm(p => ({...p, nom: e.target.value})); if (formErrors.nom) setFormErrors(p => ({...p, nom: ''})); }} placeholder="Ex: Tube PER 16mm, Câble R2V 3G2.5..." />
-            {formErrors.nom && <p className="text-xs text-red-500 mt-1">{formErrors.nom}</p>}
-            {duplicateSuggestions.length > 0 && (
-              <div className={`mt-2 p-3 rounded-xl text-sm ${isDark ? 'bg-amber-900/20 border border-amber-700' : 'bg-amber-50 border border-amber-200'}`}>
-                <p className="text-amber-600 font-medium flex items-center gap-1 mb-1"><AlertTriangle size={14} /> Articles similaires :</p>
-                {duplicateSuggestions.map(s => (
-                  <p key={s.id} className={`text-xs ${textMuted} ml-5`}>• {s.nom} ({s.categorie}, {s.prix}€/{s.unite})</p>
-                ))}
-              </div>
-            )}
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div><label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Référence / SKU</label><input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.reference} onChange={e => setForm(p => ({...p, reference: e.target.value}))} placeholder="Ex: PLB-TUB-016" /></div>
-            <div><label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Description</label><textarea className={`w-full px-4 py-2.5 border rounded-xl resize-none ${inputBg}`} rows={2} value={form.description} onChange={e => setForm(p => ({...p, description: e.target.value}))} placeholder="Description détaillée (optionnel)" /></div>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div>
-              <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Prix achat HT</label>
-              <input type="number" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.prixAchat} onChange={e => {
-                const pa = e.target.value;
-                setForm(p => {
-                  const newForm = { ...p, prixAchat: pa };
-                  if (p.coefAuto && pa) {
-                    const coef = coefficients[p.categorie] || 1.5;
-                    newForm.prix = (parseFloat(pa) * coef).toFixed(2);
-                    setPriceFlash(true);
-                    setTimeout(() => setPriceFlash(false), 1200);
-                  }
-                  return newForm;
-                });
-              }} />
-            </div>
-            <div>
-              <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>
-                Prix vente HT *
-                {form.coefAuto && <span className={`ml-1 text-xs ${textMuted}`}>(×{coefficients[form.categorie] || 1.5})</span>}
-              </label>
-              <input type="number" min="0.01" step="0.01" className={`w-full px-4 py-2.5 border rounded-xl transition-all duration-300 ${inputBg} ${priceFlash ? 'ring-2 ring-offset-1' : ''} ${formErrors.prix ? 'border-red-400 ring-1 ring-red-400' : ''}`} style={priceFlash ? { '--tw-ring-color': couleur, '--tw-ring-offset-color': isDark ? '#1e293b' : '#fff' } : {}} value={form.prix} onChange={e => { setForm(p => ({...p, prix: e.target.value, coefAuto: false})); if (formErrors.prix) setFormErrors(p => ({...p, prix: ''})); }} />
-              {formErrors.prix && <p className="text-xs text-red-500 mt-1">{formErrors.prix}</p>}
-              {form.coefAuto && form.prixAchat && (
-                <p className="text-xs mt-1 flex items-center gap-1 text-accent-texte">
-                  <Zap size={10} /> Calculé auto (×{coefficients[form.categorie] || 1.5})
-                </p>
-              )}
-            </div>
-            <div><label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Unité</label><select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.unite} onChange={e => setForm(p => ({...p, unite: e.target.value}))}>{UNITES.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}</select></div>
-            <div>
-              <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Catégorie</label>
-              <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.categorie} onChange={e => {
-                setForm(p => {
-                  const newForm = { ...p, categorie: e.target.value };
-                  if (p.coefAuto && p.prixAchat) {
-                    const coef = coefficients[e.target.value] || 1.5;
-                    newForm.prix = (parseFloat(p.prixAchat) * coef).toFixed(2);
-                  }
-                  return newForm;
-                });
-              }}>
-                {CATEGORIES.filter(c => c !== 'Tous').map(c => <option key={c}>{c}</option>)}
-              </select>
-            </div>
-          </div>
-          {/* TVA Rate */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Taux TVA %</label>
-              <select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.tva_rate} onChange={e => setForm(p => ({...p, tva_rate: e.target.value}))}>
-                <option value="20">20% (standard)</option>
-                <option value="10">10% (rénovation)</option>
-                <option value="5.5">5,5% (rénovation énergétique)</option>
-                <option value="2.1">2,1%</option>
-                <option value="0">0% (exonéré)</option>
-              </select>
-            </div>
-            <div className={`flex items-end pb-1`}>
-              <p className={`text-sm ${textMuted}`}>
-                {form.prix ? `TTC: ${(parseFloat(form.prix) * (1 + parseFloat(form.tva_rate || 20) / 100)).toFixed(2)}€` : ''}
-              </p>
-            </div>
-          </div>
-          {/* Coefficient toggle */}
-          <label className={`flex items-center gap-2 ${textMuted} text-sm cursor-pointer`}>
-            <input type="checkbox" checked={form.coefAuto} onChange={e => {
-              const checked = e.target.checked;
-              setForm(p => {
-                const newForm = { ...p, coefAuto: checked };
-                if (checked && p.prixAchat) {
-                  const coef = coefficients[p.categorie] || 1.5;
-                  newForm.prix = (parseFloat(p.prixAchat) * coef).toFixed(2);
-                }
-                return newForm;
-              });
-            }} className="rounded" />
-            <Percent size={14} /> Prix de vente auto (coefficient ×{coefficients[form.categorie] || 1.5} pour {form.categorie})
-          </label>
-          {/* Enhanced Marge Preview */}
-          {form.prix && form.prixAchat && parseFloat(form.prixAchat) > 0 && (() => {
-            const pv = parseFloat(form.prix);
-            const pa = parseFloat(form.prixAchat);
-            const margePercent = getMargeBrute(pv, pa);
-            const margeEuro = pv - pa;
-            const coefReel = pa > 0 ? (pv / pa).toFixed(2) : '—';
-            const badge = getMargeBadge(margePercent);
-            return (
-              <div className={`p-4 rounded-xl border bg-surface-2 border-bord`}>
-                <div className="flex items-center justify-between mb-2">
-                  <span className={`text-sm font-semibold ${textPrimary}`}>Marge live</span>
-                  <span className="text-xs px-2 py-0.5 rounded-full font-bold text-white" style={{ background: badge.color }}>{badge.label}</span>
-                </div>
-                <div className="flex items-end gap-4 mb-2">
-                  <div>
-                    <p className="text-2xl font-bold" style={{ color: badge.color }}>{margePercent?.toFixed(1)}%</p>
-                    <p className={`text-xs ${textMuted}`}>{modeDiscret ? '·····' : `${margeEuro.toFixed(2)}€ par ${form.unite}`}</p>
-                  </div>
-                  <div className={`text-xs ${textMuted}`}>
-                    <p>Coef réel: <strong className={textPrimary}>×{coefReel}</strong></p>
-                    <p>TTC: <strong className={textPrimary}>{modeDiscret ? '·····' : `${(pv * (1 + parseFloat(form.tva_rate || 20) / 100)).toFixed(2)}€`}</strong></p>
-                  </div>
-                </div>
-                {/* Progress bar — #11: aria-progressbar */}
-                <div className={`w-full h-2 rounded-full bg-bord`} role="progressbar" aria-valuenow={Math.round(margePercent)} aria-valuemin={0} aria-valuemax={100} aria-valuetext={`Marge ${badge.label} : ${margePercent?.toFixed(1)}%`}>
-                  <div className="h-full rounded-full transition-all duration-300" style={{ width: `${Math.min(margePercent, 100)}%`, background: badge.color }} />
-                </div>
-                {/* Benchmarks */}
-                <div className={`flex justify-between mt-1 text-xs ${textMuted}`}>
-                  <span>0%</span><span>25% min</span><span>40% bon</span><span>60%+</span>
-                </div>
-              </div>
-            );
-          })()}
-          <div className="grid grid-cols-2 gap-4">
-            <div><label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Stock actuel</label><input type="number" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.stock_actuel} onChange={e => setForm(p => ({...p, stock_actuel: e.target.value}))} placeholder="Optionnel" /></div>
-            <div><label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Stock minimum</label><input type="number" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.stock_seuil_alerte} onChange={e => setForm(p => ({...p, stock_seuil_alerte: e.target.value}))} placeholder="Optionnel" /></div>
-          </div>
-          <label className={`flex items-center gap-3 cursor-pointer py-2 ${textPrimary}`}>
-            <div className="relative">
-              <input type="checkbox" checked={form.favori} onChange={e => setForm(p => ({...p, favori: e.target.checked}))} className="sr-only peer" />
-              <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors peer-checked:border-amber-500 peer-checked:bg-amber-500 border-bord-fort bg-surface`}>
-                {form.favori && <Star size={12} className="text-white" fill="currentColor" />}
-              </div>
-            </div>
-            <Star size={16} className="text-amber-500" fill={form.favori ? "currentColor" : "none"} /> Favori
-          </label>
-        </div>
-        <div className={`flex justify-end gap-3 mt-6 pt-6 border-t `}>
-          <button onClick={fermerFormulaire} className={`px-4 py-2.5 rounded-xl min-h-[44px] bg-surface-2`}>Annuler</button>
-          <button onClick={submit} className="px-6 py-2.5 rounded-xl min-h-[44px] flex items-center gap-2 bg-accent text-sur-accent">
-            {editId ? <Edit3 size={16} /> : <Plus size={16} />} {editId ? 'Enregistrer' : 'Ajouter'}
-          </button>
-        </div>
-      </div>
-    </div>
+  // ====== LES FENÊTRES, communes à tous les écrans du Catalogue ======
+  const fenetres = (
+    <>
+      <input type="file" ref={fileInputRef} accept=".csv,.txt" onChange={choisirFichier} className="hidden" aria-label="Fichier CSV à importer" />
+      <FenetreImportCsv donnees={importData} mapping={importMapping} setMapping={setImportMapping} onFermer={() => setImportData(null)} onImporter={importerCsv} enCours={importEnCours} />
+      {scannerOuvert && (
+        <FenetreScanner
+          catalogue={catalogue} onFermer={() => setScannerOuvert(false)}
+          onVoirFiche={(id) => { setScannerOuvert(false); setArticleDetail(id); }}
+          onCreer={(prerempli) => { setScannerOuvert(false); ouvrirNouvelArticle(prerempli); }}
+        />
+      )}
+      <FenetreAjoutDevis
+        article={articleDevis} brouillons={devisBrouillons} clients={clients} quantite={devisQte} setQuantite={setDevisQte}
+        devisChoisi={devisChoisi} setDevisChoisi={setDevisChoisi} onFermer={fermerAjoutDevis} onAjouter={ajouterAuDevis}
+        onCreerDevis={() => { fermerAjoutDevis(); setPage?.('devis'); }} enCours={ajoutEnCours}
+      />
+      {showArticlePicker && <ArticlePicker isOpen={showArticlePicker} onClose={() => setShowArticlePicker(false)} onSelect={ajouterDepuisReferentiel} />}
+    </>
   );
 
-  // ====== INVENTAIRE MODE ======
-  if (inventaireMode) {
-    const stockItems = catalogue.filter(c => c.stock_actuel !== undefined);
-    const counted = Object.keys(inventaireCounts).filter(id => inventaireCounts[id] !== catalogue.find(c => c.id === id)?.stock_actuel).length;
+  const scanner = () => {
+    // Sur ordinateur, pas de caméra arrière : on le dit
+    if (!estMobile()) showToast('Scan de code-barres — disponible sur mobile uniquement', 'info');
+    else setScannerOuvert(true);
+  };
+
+  // ====== FICHE D'UN ARTICLE ======
+  if (articleDetail) {
+    const item = catalogue.find((c) => c.id === articleDetail);
+    if (!item) return null;
     return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button onClick={() => setInventaireMode(false)} className={`p-2.5 rounded-xl hover:bg-surface-2`}><ArrowLeft size={20} className={textPrimary} /></button>
-            <div>
-              <h2 className={`text-xl font-bold ${textPrimary}`}>Mode Inventaire</h2>
-              <p className={`text-sm ${textMuted}`}>{Object.keys(inventaireCounts).length} articles à compter · {counted} écart{counted > 1 ? 's' : ''}</p>
-            </div>
-          </div>
-          <button onClick={finishInventaire} className="px-5 py-2.5 rounded-xl font-medium flex items-center gap-2 shadow-lg bg-accent text-sur-accent">
-            <Check size={16} /> Terminer
-          </button>
-        </div>
+      <>
+        <ArticleDetail
+          item={item} fournisseurs={fournisseurs} liens={liens} mouvements={mouvements}
+          historique={priceHistory.filter((h) => h.articleId === item.id).sort((a, b) => new Date(b.date) - new Date(a.date))}
+          nbDevis={devisUsageMap[item.id] || 0} voitPrix={canViewPrices} modeDiscret={modeDiscret}
+          peutModifier={peutModifier} peutCreer={peutCreer} peutAjouterAuDevis={peutAjouterAuDevis}
+          onRetour={() => setArticleDetail(null)} onModifier={() => { setArticleDetail(null); startEdit(item); }}
+          onDupliquer={() => dupliquer(item)} onAjouterAuDevis={() => ouvrirAjoutDevis(item)} onLier={lierFournisseur}
+          onVoirFournisseurs={() => { setArticleDetail(null); setActiveTab('fournisseurs'); }}
+        />
+        {fenetres}
+      </>
+    );
+  }
 
-        {/* Progress */}
-        <div className={`w-full h-2 rounded-full bg-bord`}>
-          <div className="h-full rounded-full transition-all bg-accent" style={{ width: `${(Object.keys(inventaireCounts).length / Math.max(stockItems.length, 1)) * 100}%` }} />
-        </div>
-
-        <div className="space-y-2">
-          {stockItems.map(item => {
-            const sysStock = item.stock_actuel;
-            const counted = inventaireCounts[item.id] ?? sysStock;
-            const diff = counted - sysStock;
-            return (
-              <div key={item.id} className={`${cardBg} rounded-xl border p-4 flex items-center gap-4`}>
-                <div className="flex-1 min-w-0">
-                  <p className={`font-medium ${textPrimary}`}>{item.nom}</p>
-                  <p className={`text-xs ${textMuted}`}>Stock système: {sysStock} {item.unite}</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button onClick={() => setInventaireCounts(p => ({...p, [item.id]: Math.max(0, (p[item.id] ?? sysStock) - 1)}))} className={`w-10 h-10 rounded-lg flex items-center justify-center bg-surface-2 hover:bg-bord`}><Minus size={16} className={textMuted} /></button>
-                  <input type="number" value={counted} onChange={e => setInventaireCounts(p => ({...p, [item.id]: Math.max(0, parseInt(e.target.value) || 0)}))} className={`w-16 text-center py-2 border rounded-lg text-lg font-bold ${inputBg}`} />
-                  <button onClick={() => setInventaireCounts(p => ({...p, [item.id]: (p[item.id] ?? sysStock) + 1}))} className={`w-10 h-10 rounded-lg flex items-center justify-center bg-surface-2 hover:bg-bord`}><Plus size={16} className={textMuted} /></button>
-                </div>
-                {diff !== 0 && (
-                  <span className={`text-sm font-bold ${diff > 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                    {diff > 0 ? '+' : ''}{diff}
-                  </span>
-                )}
-              </div>
-            );
+  // ====== FORMULAIRE D'ARTICLE ======
+  if (show) {
+    return (
+      <>
+        <FormulaireArticle
+          form={form} setForm={setForm} editId={editId} erreurs={formErrors} effacerErreur={(cle) => setFormErrors((p) => ({ ...p, [cle]: '' }))}
+          categories={CATEGORIES} coefficients={coefficients} similaires={similaires} modeDiscret={modeDiscret} prixAchatFlash={priceFlash} enCours={enregistrement}
+          onPrixAchat={(pa) => setForm((p) => {
+            const suivant = { ...p, prixAchat: pa };
+            if (p.coefAuto && pa) {
+              suivant.prix = (parseFloat(pa) * (coefficients[p.categorie] || 1.5)).toFixed(2);
+              setPriceFlash(true);
+              setTimeout(() => setPriceFlash(false), 1200);
+            }
+            return suivant;
           })}
-        </div>
-      </div>
+          onCategorie={(cat) => setForm((p) => {
+            const suivant = { ...p, categorie: cat };
+            if (p.coefAuto && p.prixAchat) suivant.prix = (parseFloat(p.prixAchat) * (coefficients[cat] || 1.5)).toFixed(2);
+            return suivant;
+          })}
+          onCoefAuto={(coche) => setForm((p) => {
+            const suivant = { ...p, coefAuto: coche };
+            if (coche && p.prixAchat) suivant.prix = (parseFloat(p.prixAchat) * (coefficients[p.categorie] || 1.5)).toFixed(2);
+            return suivant;
+          })}
+          onEnregistrer={submit} onAnnuler={fermerFormulaire}
+        />
+        {fenetres}
+      </>
     );
   }
 
-  // ====== ONBOARDING: Catalogue vide + import BTP ======
-  if (catalogue.length === 0 && !onboardingDismissed && !show && !showArticlePicker) {
+  // ====== INVENTAIRE : LE COMPTAGE ======
+  if (inventaireMode) {
     return (
-      <div className="space-y-6">
-        <div className="flex items-center gap-3">
-          {setPage && (
-            <button onClick={() => setPage('dashboard')} className={`p-2.5 rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-surface-2 text-encre-3`}>
-              <ArrowLeft size={20} />
-            </button>
-          )}
-          <h1 className={`text-2xl font-bold ${textPrimary}`}>Catalogue</h1>
-        </div>
-
-        {!onboardingStep && (
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className={`${cardBg} rounded-2xl border p-8 text-center`}>
-            <div className="w-24 h-24 mx-auto mb-6 rounded-3xl flex items-center justify-center shadow-xl" style={{ background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)` }}>
-              <Package size={48} className="text-white" />
-            </div>
-            <h2 className={`text-2xl font-bold mb-2 ${textPrimary}`}>Bienvenue dans votre Catalogue</h2>
-            <p className={`text-sm ${textMuted} mb-8 max-w-md mx-auto`}>
-              Centralisez vos matériaux, tarifs et marges. Commencez en important des articles depuis notre référentiel BTP ou ajoutez-les manuellement.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <button onClick={() => setOnboardingStep('metiers')} className="px-8 py-4 rounded-2xl font-semibold flex items-center justify-center gap-3 shadow-xl hover:shadow-2xl transition-all text-lg bg-accent text-sur-accent">
-                <Sparkles size={22} /> Importer le Référentiel BTP
-              </button>
-              <button onClick={ouvrirNouvelArticle} className={`px-6 py-4 rounded-2xl font-medium flex items-center justify-center gap-2 border-2 transition-all text-encre-2 border-bord hover:bg-surface-2`}>
-                <Plus size={18} /> Ajouter manuellement
-              </button>
-            </div>
-            <button onClick={() => { setOnboardingDismissed(true); localStorage.setItem('cp_catalogue_onboarding_dismissed', 'true'); }} className={`mt-4 text-xs ${textMuted} hover:underline`}>
-              Passer l'onboarding
-            </button>
-          </motion.div>
-        )}
-
-        {onboardingStep === 'metiers' && (
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className={`${cardBg} rounded-2xl border p-6`}>
-            <div className="flex items-center gap-3 mb-2">
-              <button onClick={() => setOnboardingStep(null)} className={`p-2 rounded-xl hover:bg-surface-2`}>
-                <ArrowLeft size={18} className={textMuted} />
-              </button>
-              <h2 className={`text-xl font-bold ${textPrimary}`}>Choisissez vos métiers</h2>
-            </div>
-            <p className={`text-sm ${textMuted} mb-6`}>Sélectionnez un ou plusieurs métiers pour importer les articles correspondants.</p>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
-              {CATEGORIES_METIERS.map(cat => {
-                const isSelected = selectedMetiers.includes(cat.id);
-                const sousCount = getSousCategories(cat.id).reduce((s, sc) => s + sc.articlesCount, 0);
-                return (
-                  <button key={cat.id} onClick={() => setSelectedMetiers(prev => isSelected ? prev.filter(id => id !== cat.id) : [...prev, cat.id])}
-                    className={`relative p-4 rounded-xl border-2 text-center transition-all hover:scale-[1.02] ${isSelected ? 'shadow-lg' : 'border-bord hover:border-bord-fort'}`}
-                    style={isSelected ? { borderColor: couleur, background: `${couleur}10` } : {}}>
-                    {isSelected && <div className="absolute top-2 right-2 w-5 h-5 rounded-full flex items-center justify-center bg-accent text-sur-accent"><Check size={12} /></div>}
-                    <div className="text-3xl mb-2">{cat.icon}</div>
-                    <p className={`font-medium text-sm ${textPrimary}`}>{cat.nom}</p>
-                    <p className={`text-xs ${textMuted}`}>{sousCount} articles</p>
-                  </button>
-                );
-              })}
-            </div>
-            <div className="flex items-center justify-between">
-              <p className={`text-sm ${textMuted}`}>
-                {selectedMetiers.length > 0 ? `${selectedMetiers.length} métier${selectedMetiers.length > 1 ? 's' : ''} sélectionné${selectedMetiers.length > 1 ? 's' : ''}` : 'Aucun métier sélectionné'}
-              </p>
-              <button onClick={() => handleBulkImport(selectedMetiers)} disabled={selectedMetiers.length === 0}
-                className="px-6 py-3 rounded-xl font-semibold flex items-center gap-2 shadow-lg disabled:opacity-40 transition-all bg-accent text-sur-accent">
-                <Download size={18} /> Importer {selectedMetiers.length > 0 ? `(${selectedMetiers.reduce((s, id) => s + getSousCategories(id).reduce((ss, sc) => ss + sc.articlesCount, 0), 0)} articles)` : ''}
-              </button>
-            </div>
-          </motion.div>
-        )}
-
-        {onboardingStep === 'importing' && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className={`${cardBg} rounded-2xl border p-12 text-center`}>
-            <div className="w-16 h-16 mx-auto mb-6 rounded-2xl flex items-center justify-center animate-pulse" style={{ background: `${couleur}20` }}>
-              <Download size={32} className="text-accent-texte" />
-            </div>
-            <h3 className={`text-xl font-bold mb-2 ${textPrimary}`}>Import en cours...</h3>
-            <p className={`text-sm ${textMuted} mb-6`}>Ajout des articles depuis le Référentiel BTP</p>
-            <div className={`w-full max-w-md mx-auto h-3 rounded-full bg-bord`}>
-              <motion.div className="h-full rounded-full bg-accent" initial={{ width: 0 }} animate={{ width: `${importProgress}%` }} transition={{ ease: 'easeOut' }} />
-            </div>
-            <p className="text-sm font-bold mt-3 text-accent-texte">{importProgress}%</p>
-          </motion.div>
-        )}
-
-        {onboardingStep === 'done' && (
-          <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className={`${cardBg} rounded-2xl border p-12 text-center`}>
-            <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center bg-emerald-500 text-white">
-              <Check size={32} />
-            </div>
-            <h3 className={`text-xl font-bold mb-2 ${textPrimary}`}>Import terminé !</h3>
-            <p className={`text-sm ${textMuted}`}>Votre catalogue est prêt. Vous pouvez maintenant personnaliser les prix et marges.</p>
-          </motion.div>
-        )}
-
-        {/* Quick CSV import option */}
-        <div className={`p-4 rounded-xl border flex items-center justify-between bg-surface-2 border-bord`}>
-          <div className="flex items-center gap-3">
-            <FileSpreadsheet size={20} className={textMuted} />
-            <div>
-              <p className={`text-sm font-medium ${textPrimary}`}>Importez vos tarifs fournisseurs</p>
-              <p className={`text-xs ${textMuted}`}>CSV depuis Rexel, Sonepar, Cedeo, ou votre propre fichier</p>
-            </div>
-          </div>
-          <button onClick={() => fileInputRef.current?.click()} className={`px-4 py-2 rounded-lg text-sm font-medium bg-surface border border-bord hover:bg-surface-2`}>
-            <Upload size={14} className="inline mr-1.5" /> Import CSV
-          </button>
-          <input type="file" ref={fileInputRef} accept=".csv,.txt" onChange={handleFileUpload} className="hidden" />
-        </div>
-      </div>
+      <>
+        <ModeInventaire articles={articlesSuivis} comptes={comptes} setComptes={setComptes} enCours={inventaireEnCours} onTerminer={terminerInventaire} onRetour={() => setInventaireMode(false)} />
+        {fenetres}
+      </>
     );
   }
 
-  // ====== MAIN VIEW ======
+  // ====== PREMIER USAGE : CATALOGUE VIDE ======
+  if (catalogue.length === 0 && !onboardingDismissed && !showArticlePicker) {
+    return (
+      <>
+        <Demarrage
+          etape={etapeDemarrage} setEtape={setEtapeDemarrage} metiersChoisis={metiersChoisis} setMetiersChoisis={setMetiersChoisis}
+          progression={progression} resultat={resultatDemarrage} onImporter={importerReferentiel}
+          onNouveau={() => ouvrirNouvelArticle()} onPasser={passerLeDemarrage} onCsv={() => fileInputRef.current?.click()}
+          onRetour={setPage ? () => setPage('dashboard') : undefined}
+        />
+        {fenetres}
+      </>
+    );
+  }
+
+  // ====== LA PAGE : EN-TÊTE, ONGLETS, PUIS L'ONGLET ======
+  const vide = catalogue.length === 0;
+  const onglets = [
+    { id: 'catalogue', libelle: 'Articles', compte: catalogue.length },
+    ...(canViewPrices ? [{ id: 'bibliotheque', libelle: 'Référentiel' }, { id: 'fournisseurs', libelle: 'Fournisseurs', compte: fournisseurs.length }] : []),
+    { id: 'mouvements', libelle: 'Mouvements', compte: mouvements.length },
+    ...(canViewPrices ? [{ id: 'packs', libelle: 'Packs', compte: packs.length }] : []),
+    { id: 'inventaire', libelle: 'Inventaire' },
+    ...(canViewPrices && peutModifier ? [{ id: 'coefficients', libelle: 'Coefficients' }] : []),
+  ];
+  const ongletActif = onglets.some((o) => o.id === activeTab) ? activeTab : 'catalogue';
+  const sousTitre = [`${catalogue.length} article${catalogue.length > 1 ? 's' : ''}`, alertesStock.length > 0 ? `${alertesStock.length} en stock bas` : null].filter(Boolean).join(' · ');
+
+  // Recherche, filtres, tri : la boîte à outils commune (ui/Filtres.jsx)
+  const TRIS = [
+    ['name', 'Nom de A à Z'],
+    ...(canViewPrices ? [['price', 'Prix de vente'], ['margin', 'Marge']] : []),
+    ...(stockSuivi ? [['stock', 'Stock']] : []),
+    ['usage', 'Plus utilisés dans vos devis'],
+  ];
+  const vueRangee = onlyFavoris ? 'favoris' : onlyLowStock ? 'stockbas' : catFilter !== 'Tous' ? `cat:${catFilter}` : 'tous';
+  const choisirVue = (v) => {
+    setOnlyFavoris(v === 'favoris');
+    setOnlyLowStock(v === 'stockbas');
+    setCatFilter(v.startsWith('cat:') ? v.slice(4) : 'Tous');
+  };
+  const prixActif = canViewPrices && (priceRange[0] > 0 || priceRange[1] < 10000);
+  const nbFiltres = (onlyInStock ? 1 : 0) + (prixActif ? 1 : 0);
+  const effacerFiltres = () => { setOnlyInStock(false); setPriceRange([0, 10000]); setCatFilter('Tous'); setOnlyFavoris(false); setOnlyLowStock(false); };
+  const puces = [
+    onlyInStock && { cle: 'enstock', libelle: 'En stock', onRetirer: () => setOnlyInStock(false) },
+    prixActif && { cle: 'prix', libelle: `Prix ${priceRange[0] > 0 ? `dès ${priceRange[0]} €` : ''}${priceRange[0] > 0 && priceRange[1] < 10000 ? ' ' : ''}${priceRange[1] < 10000 ? `jusqu'à ${priceRange[1]} €` : ''}`.trim(), onRetirer: () => setPriceRange([0, 10000]) },
+  ].filter(Boolean);
+  const aucunFiltre = !debouncedSearch && vueRangee === 'tous' && nbFiltres === 0;
+  const lignes = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const nbPages = Math.max(1, Math.ceil(filtered.length / itemsPerPage));
+
   return (
-    <div className="space-y-6 animate-page-enter">
-      {/* Header (design system) */}
-      <PageHeader
-        icon={Package}
-        title={`Catalogue (${catalogue.length})`}
-        isDark={isDark}
-        color={couleur}
-        action={
-        <div className="flex gap-2 flex-wrap">
-          <input type="file" ref={fileInputRef} accept=".csv,.txt" onChange={handleFileUpload} className="hidden" />
-          {/* Desktop: 3 icon buttons */}
-          {/* #2: Header icons with enhanced tooltips */}
-          <button onClick={() => fileInputRef.current?.click()} className={`hidden sm:flex w-11 h-11 rounded-xl items-center justify-center bg-surface-2 hover:bg-bord`} title="Importer tarifs fournisseurs (CSV Rexel, Sonepar, Cedeo...)" aria-label="Importer tarifs fournisseurs CSV (Rexel, Sonepar, Cedeo)">
-            <Upload size={16} />
-          </button>
-          <button onClick={exportCSV} className={`hidden sm:flex w-11 h-11 rounded-xl items-center justify-center bg-surface-2 hover:bg-bord`} title="Exporter le catalogue (CSV/Excel)" aria-label="Exporter le catalogue en CSV">
-            <Download size={16} />
-          </button>
-          <button
-            onClick={() => {
-              // #2: Desktop feedback for scan
-              if (!/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)) {
-                showToast('Scan de code-barres — disponible sur mobile uniquement', 'info');
-              } else {
-                startScanner();
-              }
-            }}
-            className={`hidden sm:flex w-11 h-11 rounded-xl items-center justify-center transition-all ${
-              /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)
-                ? 'bg-surface-2 hover:bg-bord'
-                : 'bg-surface-2 text-encre-3 opacity-50'
-            }`}
-            title={/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) ? 'Scanner un code-barres article' : 'Disponible sur l\'application mobile'}
-            aria-label="Scanner un code-barres article"
-          >
-            <Camera size={16} />
-          </button>
-          {/* Mobile: overflow menu */}
-          <div className="relative sm:hidden">
-            <button onClick={() => setShowMobileMenu(!showMobileMenu)} aria-label="Plus d'actions" aria-haspopup="true" aria-expanded={showMobileMenu} className={`w-11 h-11 rounded-xl flex items-center justify-center bg-surface-2 hover:bg-bord`}>
-              <MoreHorizontal size={16} />
-            </button>
-            {showMobileMenu && (
-              <>
-                <div className="fixed inset-0 z-40" aria-hidden="true" onClick={() => setShowMobileMenu(false)} />
-                <div ref={mobileMenuRef} onKeyDown={(e) => { if (e.key === 'Escape') setShowMobileMenu(false); }} className={`absolute right-0 top-full mt-1 w-56 rounded-xl border shadow-lg z-50 py-1 bg-surface border-bord`}>
-                  <button onClick={() => { fileInputRef.current?.click(); setShowMobileMenu(false); }} className={`w-full flex items-center gap-3 px-4 py-3 text-sm ${textPrimary} hover:bg-surface-2`}>
-                    <Upload size={16} className={textMuted} /> Importer (CSV/Excel)
-                  </button>
-                  <button onClick={() => { exportCSV(); setShowMobileMenu(false); }} className={`w-full flex items-center gap-3 px-4 py-3 text-sm ${textPrimary} hover:bg-surface-2`}>
-                    <Download size={16} className={textMuted} /> Exporter le catalogue
-                  </button>
-                  <button onClick={() => { startScanner(); setShowMobileMenu(false); }} className={`w-full flex items-center gap-3 px-4 py-3 text-sm ${textPrimary} hover:bg-surface-2`}>
-                    <Camera size={16} className={textMuted} /> Scanner code-barres
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-          <button onClick={() => setShowArticlePicker(true)} aria-label="Référentiel BTP : articles pré-chiffrés par métier" className="w-11 h-11 sm:w-auto sm:px-4 rounded-xl flex items-center justify-center sm:gap-2 border border-bord-fort bg-surface text-encre font-semibold hover:bg-surface-2 transition-colors">
-            <Library size={18} aria-hidden="true" /><span className="hidden sm:inline">Référentiel BTP</span>
-          </button>
-          {canPerform('catalogue', 'create') && (
-          <button onClick={ouvrirNouvelArticle} aria-label="Ajouter un article" className="w-11 h-11 sm:w-auto sm:px-4 rounded-xl flex items-center justify-center sm:gap-2 bg-accent text-sur-accent font-semibold shadow-e1 hover:brightness-95">
-            <Plus size={18} aria-hidden="true" /><span className="hidden sm:inline">Ajouter</span>
-          </button>
-          )}
-        </div>
-        }
+    <div className="space-y-4">
+      <EnTetePage
+        titre="Catalogue"
+        sousTitre={sousTitre}
+        actions={(
+          <>
+            <MenuActions
+              titre="Plus d'actions"
+              actions={[
+                { libelle: 'Ajouter depuis le référentiel BTP', icone: Library, onClick: () => setShowArticlePicker(true), masque: !peutCreer },
+                { libelle: 'Importer un fichier (CSV)', icone: Upload, onClick: () => fileInputRef.current?.click(), masque: !peutCreer },
+                { libelle: 'Exporter le catalogue', icone: Download, onClick: exporterCsv, masque: !canViewPrices || vide },
+                { libelle: 'Scanner un code-barres', icone: Camera, onClick: scanner },
+              ]}
+            />
+            {peutCreer && !vide && <Bouton variante="principal" icone={Plus} onClick={() => ouvrirNouvelArticle()}>Ajouter</Bouton>}
+          </>
+        )}
       />
 
-      {/* Tab Navigation */}
-      <TabBar
-        tabs={[
-          { key: 'catalogue', label: 'Articles', icon: Package, badge: catalogue.length },
-          { key: 'bibliotheque', label: 'Référentiel', icon: Library },
-          { key: 'fournisseurs', label: 'Fournisseurs', icon: Truck, badge: fournisseurs.length },
-          { key: 'mouvements', label: 'Mouvements', icon: ArrowRightLeft, badge: mouvements.length },
-          { key: 'packs', label: 'Packs', icon: Layers, badge: packs.length },
-          { key: 'inventaire', label: 'Inventaire', icon: ClipboardList },
-          { key: 'favoris', label: 'Favoris', icon: Star, badge: favoris.length },
-          { key: 'parametres', label: 'Paramètres', icon: Percent },
-        ]}
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-        maxVisible={5}
-        isDark={isDark}
-        couleur={couleur}
-      />
+      <Onglets ariaLabel="Sections du catalogue" actif={ongletActif} onChange={setActiveTab} onglets={onglets} />
 
-      {/* ====== RÉFÉRENTIEL (Bibliothèque d'ouvrages) TAB ====== */}
-      {activeTab === 'bibliotheque' && (
-        <Bibliotheque
-          isDark={isDark}
-          couleur={couleur}
-          setPage={setPage}
-          devis={devis}
-          updateDevis={updateDevis}
-          clients={clients}
-          showToast={showToast}
+      {ongletActif === 'bibliotheque' && canViewPrices && (
+        <Bibliotheque isDark={isDark} couleur={couleur} setPage={setPage} devis={devis} updateDevis={updateDevis} clients={clients} showToast={showToast} />
+      )}
+
+      {ongletActif === 'fournisseurs' && canViewPrices && (
+        <OngletFournisseurs
+          fournisseurs={fournisseurs} setFournisseurs={setFournisseurs} liens={liens} setLiens={setLiens} catalogue={catalogue}
+          peutModifier={peutModifier} onImporter={() => fileInputRef.current?.click()}
         />
       )}
 
-      {/* ====== ARTICLES TAB ====== */}
-      {activeTab === 'catalogue' && (
-        <>
-          {/* Catalogue Stats */}
-          {catalogue.length > 0 && (
-            <div className="bandeau-chiffres grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {(() => {
-                const totalArticles = catalogue.length;
-                // E1 fix: only count items with both defined stock AND prixAchat
-                const stockItems = catalogue.filter(c => (c.stock_actuel ?? c.stock) != null && (c.stock_actuel ?? c.stock) > 0);
-                const stockWithPrice = stockItems.filter(c => c.prixAchat > 0);
-                const totalStockValue = stockWithPrice.reduce((s, c) => s + c.prixAchat * (c.stock_actuel ?? c.stock), 0);
-                const avgMargin = (() => {
-                  const withMargin = catalogue.filter(c => c.prix > 0 && c.prixAchat != null);
-                  if (withMargin.length === 0) return null;
-                  return withMargin.reduce((s, c) => {
-                    if (c.prixAchat === 0) return s + 100; // Main d'œuvre = 100% marge
-                    return s + ((c.prix - c.prixAchat) / c.prix) * 100;
-                  }, 0) / withMargin.length;
-                })();
-                return [
-                  { label: 'Articles', value: totalArticles, show: true },
-                  { label: 'Valeur stock', value: modeDiscret ? '·····' : (stockWithPrice.length === 0 && stockItems.length > 0 ? 'N/A' : totalStockValue > 0 ? `${(totalStockValue / 1000).toFixed(1).replace('.', ',')} k€` : null), title: stockWithPrice.length < stockItems.length ? `${stockItems.length - stockWithPrice.length} article(s) sans prix d'achat` : 'Valeur totale au prix d\'achat', show: totalStockValue > 0 || stockItems.length > 0 },
-                  { label: 'Marge moyenne', value: modeDiscret ? '·····' : (avgMargin ? `${avgMargin.toFixed(0)} %` : null), show: !!avgMargin },
-                  { label: 'Stock bas', value: alertesStock.length, danger: alertesStock.length > 0, title: 'Articles en dessous du seuil minimum de stock', show: true },
-                  { label: 'Favoris', value: favoris.length, onClick: () => setActiveTab('favoris'), show: favoris.length > 0 },
-                ].filter(s => s.show && s.value !== null).map((s, i) => (
-                  <div key={i} className={`p-3 rounded-2xl border bg-surface border-bord shadow-e1 ${s.onClick ? 'cursor-pointer hover:border-bord-fort transition-colors' : ''}`} onClick={s.onClick} title={s.title}>
-                    <p className="text-sm text-encre-2">{s.label}</p>
-                    <p className={`text-xl font-bold tabular-nums ${s.danger ? 'text-danger-texte' : 'text-encre'}`}>{s.value}</p>
-                  </div>
-                ));
-              })()}
-            </div>
-          )}
+      {ongletActif === 'mouvements' && (
+        <OngletMouvements mouvements={mouvements} catalogue={catalogue} chantiers={chantiers} peutModifier={peutModifier} onAjouter={ajouterMouvement} />
+      )}
 
-          {/* Enhanced Stock alerts with notification toggle */}
-          {alertesStock.length > 0 && !stockAlertsDismissed && (
-            <div className="rounded-2xl p-4 bg-danger-fond text-danger-texte">
-              <div className="flex items-center justify-between mb-3">
-                <span className="font-semibold flex items-center gap-2"><AlertTriangle size={18} aria-hidden="true" /> {alertesStock.length} article{alertesStock.length > 1 ? 's' : ''} en stock bas</span>
-                <div className="flex items-center gap-2">
-                  <button onClick={() => {
-                    if ('Notification' in window && Notification.permission === 'default') {
-                      Notification.requestPermission().then(p => {
-                        if (p === 'granted') { setStockAlertsEnabled(true); showToast('Notifications stock activées', 'success'); }
-                      });
-                    } else {
-                      setStockAlertsEnabled(!stockAlertsEnabled);
-                    }
-                  }} className={`p-1.5 rounded-lg transition-colors ${stockAlertsEnabled ? 'text-red-500' : textMuted}`} title={stockAlertsEnabled ? 'Désactiver alertes' : 'Activer alertes'}>
-                    {stockAlertsEnabled ? <Bell size={16} /> : <BellOff size={16} />}
-                  </button>
-                  <button onClick={() => setStockAlertsDismissed(true)} className={`p-1.5 rounded-lg ${isDark ? 'hover:bg-slate-700' : 'hover:bg-red-100'}`}>
-                    <X size={14} className={textMuted} />
-                  </button>
-                </div>
-              </div>
-              <div className="flex gap-2 flex-wrap">
-                {alertesStock.map(item => (
-                  <button key={item.id} onClick={() => setArticleDetail(item.id)} className="flex items-center gap-2 min-h-[44px] px-3 rounded-xl bg-surface text-left transition-colors hover:bg-surface-2">
-                    <span className="text-sm font-medium text-encre">{item.nom}</span>
-                    <span className="text-sm font-bold text-danger-texte tabular-nums">{item.stock_actuel} / {item.stock_seuil_alerte}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
+      {ongletActif === 'packs' && canViewPrices && (
+        <OngletPacks packs={packs} setPacks={setPacks} catalogue={catalogue} peutModifier={peutModifier} modeDiscret={modeDiscret} />
+      )}
 
-          {/* Trending articles (auto-favorites based on devis usage) */}
-          {trendingArticles.length > 0 && (
-            <div className="rounded-2xl p-4 bg-surface border border-bord shadow-e1">
-              <h3 className="text-base font-semibold mb-1 text-encre">Les plus utilisés <span className="text-sm font-medium text-encre-3 tabular-nums">{trendingArticles.length}</span></h3>
-              <p className="text-sm text-encre-2 mb-3">D'après vos devis.</p>
-              <div className="flex gap-2 flex-wrap">
-                {trendingArticles.map(({ id, count, article }) => (
-                  <button key={id} onClick={() => setArticleDetail(id)} className="flex items-center gap-2 min-h-[44px] px-3 rounded-xl border border-bord bg-surface text-left transition-colors hover:bg-surface-2">
-                    <span className="font-medium text-sm text-encre">{article.nom}</span>
-                    <span className="text-sm text-encre-3 tabular-nums">{count} ×</span>
-                    <span className="font-semibold text-sm text-encre tabular-nums">{Number(article.prix || 0).toLocaleString('fr-FR')} €</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
+      {ongletActif === 'inventaire' && (
+        <OngletInventaire
+          catalogue={catalogue} mouvements={mouvements} alertesStock={alertesStock} voitPrix={canViewPrices} modeDiscret={modeDiscret}
+          peutModifier={peutModifier} onDemarrer={demarrerInventaire} onVoirCatalogue={() => setActiveTab('catalogue')}
+        />
+      )}
 
-          {/* Favorites */}
-          {favoris.length > 0 && (
-            <div className="rounded-2xl bg-surface border border-bord shadow-e1 overflow-hidden">
-              <h3 className="px-4 pt-4 pb-2 text-base font-semibold text-encre flex items-center gap-2">
-                <Star size={18} aria-hidden="true" className="text-alerte-point" fill="currentColor" /> Favoris <span className="text-sm font-medium text-encre-3 tabular-nums">{favoris.length}</span>
-              </h3>
-              <div className="divide-y divide-bord">
-                {favoris.map(item => (
-                  <button key={item.id} onClick={() => setArticleDetail(item.id)} className="w-full min-h-[48px] flex items-center justify-between gap-3 px-4 py-2 text-left transition-colors hover:bg-surface-2">
-                    <span className="text-base text-encre min-w-0">{item.nom}</span>
-                    <span className="flex-shrink-0 text-base font-semibold text-encre tabular-nums">
-                      {Number(item.prix || 0).toLocaleString('fr-FR')} €<span className="text-sm font-normal text-encre-3"> / {item.unite}</span>
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
+      {ongletActif === 'coefficients' && canViewPrices && peutModifier && (
+        <OngletCoefficients
+          coefficients={coefficients} setCoefficients={setCoefficients} categories={CATEGORIES.filter((c) => c !== 'Tous')}
+          valeursParDefaut={DEFAULT_COEFFICIENTS} modeDiscret={modeDiscret} peutModifier={peutModifier} onAppliquer={appliquerCoefficients}
+        />
+      )}
 
-          {/* Search + Filters */}
-          <div className="space-y-3">
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <Search size={16} className={`absolute left-3 top-1/2 -translate-y-1/2 ${textMuted}`} />
-                <input type="text" placeholder="Rechercher un article, référence, catégorie..." aria-label="Rechercher" value={search} onChange={e => setSearch(e.target.value)} className={`w-full pl-10 pr-12 py-2.5 border rounded-xl ${inputBg}`} />
-                {search && (
-                  <button onClick={() => setSearch('')} aria-label="Effacer la recherche" className={`absolute right-2 top-1/2 -translate-y-1/2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full hover:bg-bord`}>
-                    <X size={14} className={textMuted} />
-                  </button>
+      {/* ====== ARTICLES : la recherche en tête, puis la liste ====== */}
+      {ongletActif === 'catalogue' && (
+        <div className="space-y-3">
+          {!vide && (
+            <>
+              <div className="flex items-center gap-2">
+                <ChampRecherche valeur={search} onChange={setSearch} placeholder="Rechercher un article, une référence…" ariaLabel="Rechercher un article" className="flex-1" />
+                <BoutonVolet ref={boutonFiltresRef} libelle="Filtres" compte={nbFiltres} ouvert={volet === 'filtres'} onClick={() => setVolet((v) => (v === 'filtres' ? null : 'filtres'))} libelleCacheTelephone />
+                {catalogue.length > 1 && (
+                  <BoutonVolet ref={boutonTriRef} icone={ArrowUpDown} libelle="Trier" valeur={TRIS.find((t) => t[0] === sortBy)?.[1]} ouvert={volet === 'tri'} onClick={() => setVolet((v) => (v === 'tri' ? null : 'tri'))} libelleCacheTelephone />
                 )}
               </div>
-              {/* #8: Enhanced tooltips on filter icons */}
-              <button onClick={() => setShowFilters(!showFilters)} title="Filtres avancés (prix, marge, stock)" aria-label="Filtres avancés" aria-expanded={showFilters} className={`min-w-[44px] min-h-[44px] px-3 rounded-xl flex items-center justify-center gap-2 font-semibold transition-colors ${showFilters || activeFilters > 0 ? 'bg-encre text-surface' : 'bg-surface-2 text-encre-2'}`}>
-                <Filter size={16} /> {activeFilters > 0 && `(${activeFilters})`}
-              </button>
-              <button onClick={() => setShowStock(!showStock)} title={showStock ? 'Masquer la colonne stock' : 'Afficher la colonne stock'} aria-label={showStock ? 'Masquer la colonne stock' : 'Afficher la colonne stock'} aria-pressed={showStock} className={`min-w-[44px] min-h-[44px] px-3 rounded-xl flex items-center justify-center gap-2 transition-colors ${showStock ? 'bg-encre text-surface' : 'bg-surface-2 text-encre-2'}`}>
-                <Box size={16} />
-              </button>
-            </div>
+              <SegmentDefilant
+                ariaLabel="Affichage du catalogue" valeur={vueRangee} onChange={choisirVue}
+                options={[
+                  { valeur: 'tous', libelle: 'Tous' },
+                  ...(favoris.length > 0 ? [{ valeur: 'favoris', libelle: 'Favoris', icone: Star, compte: favoris.length }] : []),
+                  ...(alertesStock.length > 0 ? [{ valeur: 'stockbas', libelle: 'Stock bas', compte: alertesStock.length, alerte: true }] : []),
+                  ...categoriesUtilisees.map((c) => ({ valeur: `cat:${c}`, libelle: c })),
+                ]}
+              />
+              <PucesActives puces={puces} onToutEffacer={effacerFiltres} />
 
-            {/* Filter Panel */}
-            <AnimatePresence>
-              {showFilters && (
-                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className={`overflow-hidden rounded-xl border p-4 ${cardBg}`}>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                    <label className={`flex items-center gap-2 text-sm ${textPrimary} cursor-pointer`}>
-                      <input type="checkbox" checked={onlyInStock} onChange={e => setOnlyInStock(e.target.checked)} className="rounded" />
-                      En stock uniquement
-                    </label>
-                    <label className={`flex items-center gap-2 text-sm ${textPrimary} cursor-pointer`}>
-                      <input type="checkbox" checked={onlyFavoris} onChange={e => setOnlyFavoris(e.target.checked)} className="rounded" />
-                      Favoris uniquement
-                    </label>
-                    <label className={`flex items-center gap-2 text-sm cursor-pointer ${alertesStock.length > 0 ? 'text-red-500 font-medium' : textPrimary}`}>
-                      <input type="checkbox" checked={onlyLowStock} onChange={e => setOnlyLowStock(e.target.checked)} className="rounded" />
-                      Stock bas ({alertesStock.length})
-                    </label>
-                    <div>
-                      <label className={`text-xs ${textMuted}`}>Prix min</label>
-                      <input type="number" value={priceRange[0] || ''} onChange={e => setPriceRange([parseInt(e.target.value) || 0, priceRange[1]])} className={`w-full px-3 py-1.5 border rounded-lg text-sm ${inputBg}`} placeholder="0€" />
-                    </div>
-                    <div>
-                      <label className={`text-xs ${textMuted}`}>Prix max</label>
-                      <input type="number" value={priceRange[1] < 10000 ? priceRange[1] : ''} onChange={e => setPriceRange([priceRange[0], parseInt(e.target.value) || 10000])} className={`w-full px-3 py-1.5 border rounded-lg text-sm ${inputBg}`} placeholder="∞" />
-                    </div>
-                  </div>
-                  {activeFilters > 0 && (
-                    <button onClick={() => { setOnlyInStock(false); setOnlyFavoris(false); setOnlyLowStock(false); setPriceRange([0, 10000]); setCatFilter('Tous'); }} className="mt-2 h-11 text-sm font-semibold text-accent-texte hover:underline">Réinitialiser les filtres</button>
-                  )}
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {/* #4: Category chips with scroll indicators */}
-            {(() => {
-              const scrollRef = React.createRef();
-              return (
-                <div className="relative group">
-                  {/* Right fade gradient — visible when more content to scroll */}
-                  <div className={`absolute right-0 top-0 bottom-0 w-10 pointer-events-none z-10 bg-gradient-to-l rounded-r-lg ${isDark ? 'from-slate-900' : 'from-white'}`} />
-                  {/* Left fade gradient */}
-                  <div className={`absolute left-0 top-0 bottom-0 w-6 pointer-events-none z-10 bg-gradient-to-r rounded-l-lg opacity-0 ${isDark ? 'from-slate-900' : 'from-white'}`} id="catScrollLeftFade" />
-                  <div
-                    ref={scrollRef}
-                    className="flex gap-2 overflow-x-auto pb-2"
-                    style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-                    role="tablist"
-                    aria-label="Filtrer par catégorie"
-                  >
-                    <style>{`#catFilterBar::-webkit-scrollbar { display: none; }`}</style>
-                    {CATEGORIES.map(cat => {
-                      return (
-                        <button
-                          key={cat}
-                          onClick={() => setCatFilter(cat)}
-                          role="tab"
-                          aria-selected={catFilter === cat}
-                          title={cat}
-                          className={`whitespace-nowrap px-3.5 rounded-full text-sm font-semibold min-h-[44px] transition-colors ${catFilter === cat ? 'bg-encre text-surface' : 'bg-surface-2 text-encre-2 hover:text-encre'}`}
-                        >
-                          {cat}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })()}
-          </div>
-
-          {/* Sort */}
-          {catalogue.length > 1 && (
-            <div className="flex items-center gap-2">
-              <select
-                value={sortBy}
-                onChange={e => setSortBy(e.target.value)}
-                className={`px-3 py-2 rounded-xl text-sm border min-h-[44px] cursor-pointer bg-surface border-bord text-encre-2`}
-                aria-label="Trier par"
+              <Volet
+                ouvert={volet === 'filtres'} onFermer={() => setVolet(null)} titre="Filtres" ancreRef={boutonFiltresRef} largeur={340}
+                pied={(
+                  <>
+                    <Bouton variante="discret" onClick={effacerFiltres} disabled={aucunFiltre}>Tout effacer</Bouton>
+                    <Bouton variante="principal" className="flex-1" onClick={() => setVolet(null)}>Voir {filtered.length} article{filtered.length > 1 ? 's' : ''}</Bouton>
+                  </>
+                )}
               >
-                <option value="name">Nom A-Z</option>
-                <option value="price">Prix</option>
-                <option value="stock">Stock</option>
-                <option value="margin">Marge</option>
-                <option value="usage">Plus utilisé</option>
-              </select>
-            </div>
+                {stockSuivi && (
+                  <GroupeChoix titre="Stock" multiple valeur={onlyInStock ? new Set(['enstock']) : new Set()} onChange={(s) => setOnlyInStock(s.has('enstock'))} options={[{ valeur: 'enstock', libelle: 'En stock uniquement' }]} />
+                )}
+                {canViewPrices && (
+                  <fieldset>
+                    <legend className="text-xs font-semibold uppercase tracking-wider mb-2.5 text-encre-3">Prix de vente</legend>
+                    <div className="grid grid-cols-2 gap-3">
+                      <Champ id="filtre-prix-min" libelle="Prix minimum (€)" type="number" inputMode="numeric" min="0" placeholder="0" value={priceRange[0] || ''} onChange={(e) => setPriceRange([parseInt(e.target.value, 10) || 0, priceRange[1]])} />
+                      <Champ id="filtre-prix-max" libelle="Prix maximum (€)" type="number" inputMode="numeric" min="0" placeholder="Aucun" value={priceRange[1] < 10000 ? priceRange[1] : ''} onChange={(e) => setPriceRange([priceRange[0], parseInt(e.target.value, 10) || 10000])} />
+                    </div>
+                  </fieldset>
+                )}
+                {!stockSuivi && !canViewPrices && <p className="text-sm text-encre-3">Aucun autre filtre.</p>}
+              </Volet>
+
+              <Volet ouvert={volet === 'tri'} onFermer={() => setVolet(null)} titre="Trier" ancreRef={boutonTriRef} largeur={320}>
+                <ListeChoix titre="Trier par" rechercheAuDela={99} options={TRIS.map(([valeur, libelle]) => ({ valeur, libelle }))} valeur={sortBy} onChange={(v) => { setSortBy(v); setVolet(null); }} />
+              </Volet>
+            </>
           )}
 
-          {/* Table */}
           {filtered.length === 0 ? (
-            <div className={`${cardBg} rounded-2xl border p-12 text-center`}>
-              <div className="w-20 h-20 mx-auto mb-4 rounded-2xl flex items-center justify-center shadow-lg" style={{ background: `${couleur}20` }}>
-                <Package size={40} className="text-accent-texte" />
-              </div>
-              <h2 className={`text-xl font-bold mb-2 ${textPrimary}`}>{search || catFilter !== 'Tous' ? 'Aucun article trouvé' : 'Créez votre catalogue'}</h2>
-              <p className={`text-sm ${textMuted} mb-4`}>{search || catFilter !== 'Tous' ? 'Modifiez vos filtres ou ajoutez un nouvel article.' : 'Centralisez vos matériaux, tarifs et stocks.'}</p>
-              <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                <button onClick={() => setShowArticlePicker(true)} className="px-6 py-3 rounded-xl flex items-center justify-center gap-2 font-medium hover:shadow-lg transition-all bg-accent text-sur-accent">
-                  <Sparkles size={18} /> Importer depuis le Référentiel BTP
-                </button>
-                <button onClick={ouvrirNouvelArticle} className={`px-6 py-3 rounded-xl flex items-center justify-center gap-2 border-2 font-medium transition-all text-encre-2 border-bord hover:bg-surface-2`}>
-                  <Plus size={18} /> Ajouter manuellement
-                </button>
-              </div>
-            </div>
+            <Carte marge="aucun">
+              {vide || aucunFiltre ? (
+                <EtatVide
+                  icone={Package} titre="Créez votre catalogue" texte="Centralisez vos matériaux, vos tarifs et vos stocks."
+                  action={peutCreer ? (
+                    <div className="flex flex-col items-center gap-2">
+                      <Bouton variante="principal" icone={Sparkles} onClick={() => setShowArticlePicker(true)}>Importer depuis le référentiel BTP</Bouton>
+                      <Bouton variante="secondaire" icone={Plus} onClick={() => ouvrirNouvelArticle()}>Ajouter un article</Bouton>
+                    </div>
+                  ) : null}
+                />
+              ) : (
+                <EtatVide
+                  icone={Search} titre="Aucun article trouvé" texte="Modifiez la recherche ou les filtres."
+                  action={<Bouton variante="secondaire" icone={X} onClick={() => { setSearch(''); effacerFiltres(); }}>Effacer la recherche et les filtres</Bouton>}
+                />
+              )}
+            </Carte>
           ) : (
             <>
-            {/* #10: Onboarding banner — dismissable, auto-hides at 10+ articles */}
-            {catalogue.length > 0 && catalogue.length < 10 && !search && catFilter === 'Tous' && !onboardingDismissed && (
-              <div className={`mb-4 p-4 rounded-xl border relative ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-gradient-to-r from-orange-50 to-amber-50 border-orange-200'}`}>
-                <button
-                  onClick={() => { setOnboardingDismissed(true); try { localStorage.setItem('cp_catalogue_onboarding_dismissed', 'true'); } catch { /* préférence non enregistrée : quota plein ou navigation privée */ } }}
-                  className={`absolute top-2 right-2 p-1.5 rounded-lg hover:bg-surface/80 text-encre-3`}
-                  aria-label="Fermer le bandeau"
-                >
-                  <X size={14} />
-                </button>
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl" style={{ background: `${couleur}15` }}>
-                      📦
-                    </div>
-                    <div>
-                      <p className={`text-sm font-semibold ${textPrimary}`}>Complétez votre catalogue</p>
-                      <p className={`text-xs ${textMuted} max-w-sm`}>
-                        Importez vos tarifs fournisseurs (Rexel, Sonepar, Cedeo) via CSV, ou utilisez notre référentiel BTP de plus de 500 articles pré-chiffrés.
-                      </p>
-                      <div className="flex gap-1.5 mt-1.5 flex-wrap">
-                        {['Tarifs Rexel/Sonepar', 'Référentiel BTP', 'Import CSV'].map(tag => (
-                          <span key={tag} className={`text-xs px-2 py-0.5 rounded-full bg-surface/90 text-encre-2 border border-bord`}>{tag}</span>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex gap-2 flex-shrink-0">
-                    <button onClick={() => setShowArticlePicker(true)} className="px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 whitespace-nowrap hover:shadow-lg transition-all bg-accent text-sur-accent">
-                      <Sparkles size={14} /> Référentiel BTP
-                    </button>
-                    <button onClick={() => fileInputRef.current?.click()} className={`px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2 whitespace-nowrap border bg-surface text-encre-2 border-bord hover:bg-surface-2`}>
-                      <Upload size={14} /> Tarifs fournisseurs
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-            <div className={`${cardBg} rounded-2xl border overflow-hidden`}>
               {/* Téléphone : une ligne par article (le tableau débordait : sa colonne d'actions n'apparaît qu'au survol). */}
-              <div className="sm:hidden divide-y divide-bord">
-                {filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map(item => {
-                  const stockVal = item.stock_actuel ?? item.stock;
-                  const seuilVal = item.stock_seuil_alerte ?? item.stockMin;
-                  const stockLow = stockVal != null && seuilVal != null && seuilVal > 0 && stockVal < seuilVal;
+              <GroupeListe className="sm:hidden">
+                {lignes.map((item) => {
+                  const stockVal = stockDe(item);
+                  const bas = estStockBas(item);
                   return (
-                    <div key={item.id} className="flex items-center gap-1 pr-3">
-                      <button onClick={() => toggleFavori(item.id)} aria-label={item.favori ? `Retirer ${item.nom} des favoris` : `Ajouter ${item.nom} aux favoris`} aria-pressed={!!item.favori}
-                        className="w-11 h-11 flex-shrink-0 flex items-center justify-center rounded-lg">
-                        <Star size={18} aria-hidden="true" className={item.favori ? 'text-alerte-point' : 'text-encre-3'} fill={item.favori ? 'currentColor' : 'none'} />
-                      </button>
-                      <button onClick={() => setArticleDetail(item.id)} className="flex-1 min-w-0 py-3 text-left">
-                        <span className="flex items-baseline justify-between gap-3">
-                          <span className="text-base font-medium text-encre">{item.nom}</span>
-                          <span className="flex-shrink-0 text-base font-semibold text-encre tabular-nums">{fmtPriceShort(item.prix)}</span>
-                        </span>
-                        <span className="mt-0.5 flex items-center justify-between gap-2 text-sm text-encre-2">
-                          <span className="truncate">{[item.reference, item.categorie, item.unite].filter(Boolean).join(' · ')}</span>
-                          {stockLow ? <Pastille ton="danger">Stock bas</Pastille>
-                            : showStock && stockVal != null ? <span className="flex-shrink-0 tabular-nums">Stock {stockVal}</span> : null}
-                        </span>
-                      </button>
+                    <div key={item.id} className="flex items-center bg-surface">
+                      {peutModifier ? (
+                        <button
+                          type="button" onClick={() => toggleFavori(item.id)} aria-pressed={!!item.favori}
+                          aria-label={item.favori ? `Retirer ${item.nom} des favoris` : `Ajouter ${item.nom} aux favoris`}
+                          className="w-11 h-11 ml-1 flex-shrink-0 flex items-center justify-center rounded-lg"
+                        >
+                          <Star size={18} aria-hidden="true" className={item.favori ? 'text-alerte-point' : 'text-encre-3'} fill={item.favori ? 'currentColor' : 'none'} />
+                        </button>
+                      ) : <span className="w-3 flex-shrink-0" />}
+                      <LigneListe
+                        className="flex-1 min-w-0"
+                        onClick={() => setArticleDetail(item.id)}
+                        titre={item.nom}
+                        meta={[item.reference, item.categorie, item.unite].filter(Boolean).join(' · ')}
+                        montant={canViewPrices ? fmtPrix(item.prix) : undefined}
+                        pastille={bas ? <Pastille ton="alerte">Stock bas</Pastille> : stockVal != null ? <span className="text-sm text-encre-2 tabular-nums">Stock {stockVal}</span> : undefined}
+                      />
                     </div>
                   );
                 })}
-              </div>
-              <div className="hidden sm:block overflow-x-auto">
+              </GroupeListe>
+
+              {/* Ordinateur : le tableau, avec ses colonnes de prix pour qui les voit */}
+              <div className="hidden sm:block bg-surface border border-bord rounded-2xl shadow-e1 overflow-x-auto">
                 <table className="w-full text-sm">
-                  <thead className={`border-b bg-surface-2`}>
+                  <thead className="bg-surface-2 text-encre-3">
                     <tr>
-                      <th className={`text-left px-4 py-3 ${textPrimary}`}>Article</th>
-                      <th className={`text-right px-4 py-3 w-24 ${textPrimary}`}>Vente</th>
-                      <th className={`text-right px-4 py-3 w-24 hidden sm:table-cell ${textPrimary}`}>Achat</th>
-                      <th className={`text-right px-4 py-3 w-20 hidden sm:table-cell ${textPrimary}`}>Marge</th>
-                      {showStock && <th className={`text-center px-4 py-3 w-28 ${textPrimary}`}>Stock</th>}
-                      <th className="w-28"></th>
+                      <th className="text-left font-medium px-4 py-3">Article</th>
+                      {canViewPrices && <th className="text-right font-medium px-4 py-3 w-24">Vente</th>}
+                      {canViewPrices && <th className="text-right font-medium px-4 py-3 w-24">Achat</th>}
+                      {canViewPrices && <th className="text-right font-medium px-4 py-3 w-20">Marge</th>}
+                      {stockSuivi && <th className="text-center font-medium px-4 py-3 w-36">Stock</th>}
+                      <th className="w-32"><span className="sr-only">Actions</span></th>
                     </tr>
                   </thead>
-                  <tbody className="animate-stagger">
-                    {/* #9: Paginated list */}
-                    {filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map(item => {
-                      const marge = getMargeBrute(item.prix, item.prixAchat);
-                      const stockVal = item.stock_actuel ?? item.stock;
-                      const seuilVal = item.stock_seuil_alerte ?? item.stockMin;
-                      const stockLow = stockVal != null && seuilVal != null && seuilVal > 0 && stockVal < seuilVal;
+                  <tbody>
+                    {lignes.map((item) => {
+                      const marge = margeBrute(item.prix, item.prixAchat);
+                      const niveau = niveauMarge(marge);
+                      const stockVal = stockDe(item);
+                      const bas = estStockBas(item);
                       return (
-                        <tr key={item.id} className={`group border-b last:border-0 transition-colors cursor-pointer hover:bg-surface-2`} onClick={() => setArticleDetail(item.id)}>
+                        <tr key={item.id} className="group border-b border-bord last:border-0 transition-colors cursor-pointer hover:bg-surface-2" onClick={() => setArticleDetail(item.id)}>
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-3">
-                              <button onClick={(e) => { e.stopPropagation(); toggleFavori(item.id); }} aria-label={item.favori ? 'Retirer des favoris' : 'Ajouter aux favoris'} aria-pressed={!!item.favori} className={`w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-surface-2`}>
-                                <Star size={18} className={`${item.favori ? 'text-amber-500' : `${textMuted} hover:text-amber-400`} transition-colors`} fill={item.favori ? 'currentColor' : 'none'} />
-                              </button>
-                              <div>
-                                <div className="flex items-center gap-2">
-                                  <p className={`font-medium ${textPrimary}`}>{item.nom}</p>
-                                  {stockLow && <span className="w-2 h-2 rounded-full bg-red-500" />}
-                                  {devisUsageMap[item.id] > 0 && (
-                                    <span className={`text-xs px-1.5 py-0.5 rounded font-bold bg-info-fond text-info-texte`}>
-                                      {devisUsageMap[item.id]} devis
-                                    </span>
-                                  )}
-                                  {item.tva_rate && item.tva_rate !== 20 && <span className={`text-xs px-1.5 py-0.5 rounded font-medium bg-info-fond text-info-texte`}>TVA {item.tva_rate}%</span>}
+                              {peutModifier ? (
+                                <button
+                                  type="button" onClick={(e) => { e.stopPropagation(); toggleFavori(item.id); }} aria-pressed={!!item.favori}
+                                  aria-label={item.favori ? `Retirer ${item.nom} des favoris` : `Ajouter ${item.nom} aux favoris`} className="w-11 h-11 flex-shrink-0 flex items-center justify-center rounded-lg hover:bg-bord"
+                                >
+                                  <Star size={18} aria-hidden="true" className={item.favori ? 'text-alerte-point' : 'text-encre-3'} fill={item.favori ? 'currentColor' : 'none'} />
+                                </button>
+                              ) : item.favori ? <Star size={18} aria-hidden="true" className="text-alerte-point mx-3" fill="currentColor" /> : null}
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <button type="button" onClick={(e) => { e.stopPropagation(); setArticleDetail(item.id); }} className="text-left text-base font-semibold text-encre hover:underline">{item.nom}</button>
+                                  {devisUsageMap[item.id] > 0 && <Pastille ton="info">{devisUsageMap[item.id]} devis</Pastille>}
+                                  {canViewPrices && item.tva_rate && item.tva_rate !== 20 && <Pastille ton="neutre">TVA {item.tva_rate} %</Pastille>}
                                 </div>
-                                <p className={`text-xs ${textMuted}`}>
+                                <p className="text-sm text-encre-3">
                                   {item.reference && <span className="font-mono mr-1.5">{item.reference} ·</span>}
                                   {item.categorie} · {item.unite}
                                 </p>
                               </div>
                             </div>
                           </td>
-                          <td className={`px-4 py-3 text-right font-medium ${textPrimary}`}>{fmtPriceShort(item.prix)}</td>
-                          <td className={`px-4 py-3 text-right hidden sm:table-cell ${textMuted}`}>{item.prixAchat != null ? fmtPriceShort(item.prixAchat) : '—'}</td>
-                          <td className="px-4 py-3 text-right hidden sm:table-cell"><span className={getMargeColor(marge)}>{modeDiscret ? '·····' : (marge !== null ? `${marge.toFixed(0)}%` : '—')}</span></td>
-                          {showStock && (
+                          {canViewPrices && <td className="px-4 py-3 text-right font-semibold tabular-nums text-encre">{fmtPrix(item.prix)}</td>}
+                          {canViewPrices && <td className="px-4 py-3 text-right tabular-nums text-encre-3">{item.prixAchat != null ? fmtPrix(item.prixAchat) : '—'}</td>}
+                          {canViewPrices && (
+                            <td className="px-4 py-3 text-right tabular-nums">
+                              <span className={marge !== null ? CLASSES_TON_MARGE[niveau.ton].texte : 'text-encre-3'}>{modeDiscret ? '·····' : (marge !== null ? `${marge.toFixed(0)} %` : '—')}</span>
+                            </td>
+                          )}
+                          {stockSuivi && (
                             <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                              {(item.stock_actuel ?? item.stock) != null ? (
+                              {stockVal != null ? (
                                 <div className="flex items-center justify-center gap-1">
-                                  <button onClick={() => decrementStock(item.id)} className={`p-2.5 min-w-[44px] min-h-[44px] rounded-lg flex items-center justify-center hover:bg-surface-2`}><Minus size={16} className={textMuted} /></button>
-                                  <input type="number" value={item.stock_actuel ?? item.stock} onChange={e => updateStock(item.id, e.target.value)} className={`w-14 px-1 py-1 border rounded text-center text-sm ${inputBg}`} />
-                                  <button onClick={() => incrementStock(item.id)} className={`p-2.5 min-w-[44px] min-h-[44px] rounded-lg flex items-center justify-center hover:bg-surface-2`}><Plus size={16} className={textMuted} /></button>
+                                  {peutModifier && <BoutonIcone icone={Minus} taille={16} libelle={`Un de moins pour ${item.nom}`} onClick={() => changerStock(item.id, (item.stock_actuel || 0) - 1)} />}
+                                  {peutModifier ? (
+                                    <input type="number" inputMode="numeric" aria-label={`Stock de ${item.nom}`} value={stockVal} onChange={(e) => changerStock(item.id, e.target.value)} className="w-14 h-10 px-1 rounded-lg border border-bord-fort bg-surface text-center text-sm text-encre" />
+                                  ) : <span className="w-14 text-center tabular-nums text-encre">{stockVal}</span>}
+                                  {peutModifier && <BoutonIcone icone={Plus} taille={16} libelle={`Un de plus pour ${item.nom}`} onClick={() => changerStock(item.id, (item.stock_actuel || 0) + 1)} />}
+                                  {bas && <Pastille ton="alerte">Bas</Pastille>}
                                 </div>
-                              ) : (
-                                <span className={`text-xs px-2 py-1 rounded bg-surface-2 text-encre-3`}>Non géré</span>
-                              )}
+                              ) : <span className="block text-center text-sm text-encre-3">Non suivi</span>}
                             </td>
                           )}
                           <td className="px-4 py-3">
-                            <div className="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <button onClick={(e) => { e.stopPropagation(); openAddToDevisModal(item); }} title="Ajouter au devis" aria-label={`Ajouter ${item.nom || 'article'} au devis`} className={`p-2.5 min-w-[44px] min-h-[44px] rounded-lg flex items-center justify-center ${isDark ? 'hover:bg-emerald-900/40 text-slate-400 hover:text-emerald-400' : 'hover:bg-emerald-50 text-slate-500 hover:text-emerald-600'}`}><FileText size={18} /></button>
-                              <button onClick={(e) => { e.stopPropagation(); startEdit(item); }} title="Modifier" aria-label={`Modifier ${item.nom || 'article'}`} className={`p-2.5 min-w-[44px] min-h-[44px] rounded-lg flex items-center justify-center ${isDark ? 'hover:bg-blue-900/40 text-slate-400 hover:text-blue-400' : 'hover:bg-blue-50 text-slate-500 hover:text-blue-600'}`}><Edit3 size={18} /></button>
-                              <button onClick={(e) => { e.stopPropagation(); deleteItem(item.id); }} title="Supprimer" aria-label={`Supprimer ${item.nom || 'article'}`} className={`p-2.5 min-w-[44px] min-h-[44px] rounded-lg flex items-center justify-center ${isDark ? 'text-slate-400 hover:text-red-400 hover:bg-red-900/40' : 'text-slate-500 hover:text-red-600 hover:bg-red-50'}`}><Trash2 size={18} /></button>
+                            <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+                              {peutAjouterAuDevis && canViewPrices && <BoutonIcone icone={FileText} libelle={`Ajouter ${item.nom} au devis`} onClick={() => ouvrirAjoutDevis(item)} />}
+                              {peutModifier && <BoutonIcone icone={Edit3} libelle={`Modifier ${item.nom}`} onClick={() => startEdit(item)} />}
+                              {peutSupprimer && <BoutonIcone icone={Trash2} libelle={`Supprimer ${item.nom}`} onClick={() => deleteItem(item.id)} />}
                             </div>
                           </td>
                         </tr>
@@ -1929,1109 +961,31 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
                   </tbody>
                 </table>
               </div>
-            </div>
 
-            {/* #9: Pagination controls */}
-            {filtered.length > itemsPerPage && (
-              <div className={`flex flex-col sm:flex-row items-center justify-between gap-3 p-3 rounded-xl bg-surface-2`}>
-                <div className="flex items-center gap-2">
-                  <span className={`text-sm ${textMuted}`}>Afficher</span>
-                  <select
-                    value={itemsPerPage}
-                    onChange={e => { setItemsPerPage(Number(e.target.value)); setCurrentPage(1); }}
-                    className={`px-2 py-1 border rounded-lg text-sm ${inputBg}`}
-                    aria-label="Nombre d'articles par page"
-                  >
-                    {[25, 50, 100].map(n => <option key={n} value={n}>{n}</option>)}
-                  </select>
-                  <span className={`text-sm ${textMuted}`}>par page</span>
+              {/* Pagination */}
+              {filtered.length > itemsPerPage && (
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3 rounded-xl bg-surface-2">
+                  <label className="flex items-center gap-2 text-sm text-encre-2">
+                    Afficher
+                    <select value={itemsPerPage} onChange={(e) => { setItemsPerPage(Number(e.target.value)); setCurrentPage(1); }} className="h-10 px-2 rounded-lg border border-bord-fort bg-surface text-sm text-encre" aria-label="Nombre d'articles par page">
+                      {[25, 50, 100].map((n) => <option key={n} value={n}>{n}</option>)}
+                    </select>
+                    par page
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <Bouton variante="secondaire" taille="compacte" onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={currentPage <= 1}>Précédent</Bouton>
+                    <span className="text-sm font-medium text-encre tabular-nums">Page {currentPage} sur {nbPages}</span>
+                    <Bouton variante="secondaire" taille="compacte" onClick={() => setCurrentPage((p) => Math.min(nbPages, p + 1))} disabled={currentPage >= nbPages}>Suivant</Bouton>
+                  </div>
+                  <span className="text-sm text-encre-3">{filtered.length} article{filtered.length > 1 ? 's' : ''} au total</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                    disabled={currentPage <= 1}
-                    className={`px-3 py-1.5 rounded-lg text-sm font-medium min-h-[36px] disabled:opacity-40 bg-surface border border-bord hover:bg-surface-2`}
-                  >
-                    Précédent
-                  </button>
-                  <span className={`text-sm font-medium ${textPrimary}`}>
-                    Page {currentPage} sur {Math.ceil(filtered.length / itemsPerPage)}
-                  </span>
-                  <button
-                    onClick={() => setCurrentPage(p => Math.min(Math.ceil(filtered.length / itemsPerPage), p + 1))}
-                    disabled={currentPage >= Math.ceil(filtered.length / itemsPerPage)}
-                    className={`px-3 py-1.5 rounded-lg text-sm font-medium min-h-[36px] disabled:opacity-40 bg-surface border border-bord hover:bg-surface-2`}
-                  >
-                    Suivant
-                  </button>
-                </div>
-                <span className={`text-xs ${textMuted}`}>{filtered.length} article{filtered.length > 1 ? 's' : ''} au total</span>
-              </div>
-            )}
+              )}
             </>
           )}
-        </>
-      )}
-
-      {/* ====== FOURNISSEURS TAB ====== */}
-      {activeTab === 'fournisseurs' && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <p className={`text-sm ${textMuted}`}>{fournisseurs.length} fournisseur{fournisseurs.length > 1 ? 's' : ''}</p>
-            <button onClick={() => setShowFournisseurForm(true)} className="px-4 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2 shadow-md bg-accent text-sur-accent"><Plus size={16} /> Ajouter</button>
-          </div>
-
-          {fournisseurs.length === 0 ? (
-            <div className={`${cardBg} rounded-2xl border p-12 text-center`}>
-              <div className="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center" style={{ background: `${couleur}15` }}>
-                <Truck size={32} className="text-accent-texte" />
-              </div>
-              <p className={`text-lg font-bold ${textPrimary}`}>Gérez vos fournisseurs</p>
-              <p className={`text-sm ${textMuted} mt-1 max-w-md mx-auto`}>Centralisez vos contacts fournisseurs, comparez les prix et suivez les délais de livraison.</p>
-              <div className="flex flex-col sm:flex-row gap-3 justify-center mt-6">
-                <button onClick={() => setShowFournisseurForm(true)} className="px-5 py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2 shadow-lg hover:opacity-90 transition-all bg-accent text-sur-accent">
-                  <Plus size={16} /> Ajouter un fournisseur
-                </button>
-                <button onClick={() => fileInputRef.current?.click()} className={`px-5 py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2 border-2 transition-all text-encre-2 border-bord hover:bg-surface-2`}>
-                  <Upload size={16} /> Importer depuis CSV
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="grid gap-3">
-              {fournisseurs.map(f => {
-                const links = articleFournisseurs.filter(af => af.fournisseurId === f.id);
-                const linkedArticles = links.length;
-                return (
-                  <div key={f.id} className={`${cardBg} rounded-xl border p-4`}>
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-xl flex items-center justify-center font-bold flex-shrink-0 bg-accent text-sur-accent">
-                        {f.nom.charAt(0).toUpperCase()}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className={`font-semibold ${textPrimary}`}>{f.nom}</p>
-                        <p className={`text-xs ${textMuted}`}>
-                          {f.telephone || ''}
-                          {f.telephone && (f.email || f.contact) ? ' · ' : ''}
-                          {f.email || f.contact || ''}
-                        </p>
-                        <div className="flex items-center gap-2 mt-1 flex-wrap">
-                          {f.delaiLivraison && <span className={`text-xs px-1.5 py-0.5 rounded bg-surface-2 text-encre-2`}>Délai {f.delaiLivraison}j</span>}
-                          {f.conditions && <span className={`text-xs px-1.5 py-0.5 rounded bg-surface-2 text-encre-2`}>{f.conditions}</span>}
-                          {f.categorie && <span className={`text-xs px-1.5 py-0.5 rounded bg-info-fond text-info-texte`}>{f.categorie}</span>}
-                          <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${linkedArticles > 0 ? 'bg-succes-fond text-succes-texte' : 'bg-surface-2 text-encre-3'}`}>
-                            {linkedArticles} article{linkedArticles > 1 ? 's' : ''}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <button onClick={() => { setFournisseurForm({ nom: f.nom, email: f.email || f.contact || '', telephone: f.telephone || '', adresse: f.adresse || '', delaiLivraison: f.delaiLivraison || '3', conditions: f.conditions || '' }); setEditFournisseurId(f.id); setShowFournisseurForm(true); }} className={`p-2 rounded-lg hover:bg-surface-2`} title="Modifier"><Edit3 size={16} className={textMuted} /></button>
-                        <button onClick={async () => {
-                          const confirmed = await confirm({ title: 'Supprimer fournisseur', message: `Supprimer "${f.nom}" et ses liaisons articles ?` });
-                          if (confirmed) {
-                            setFournisseurs(prev => prev.filter(x => x.id !== f.id));
-                            setArticleFournisseurs(prev => prev.filter(af => af.fournisseurId !== f.id));
-                            showToast('Fournisseur supprimé', 'success');
-                          }
-                        }} className={`p-2 rounded-lg ${isDark ? 'hover:bg-red-900/30 text-slate-400 hover:text-red-400' : 'hover:bg-red-50 text-slate-400 hover:text-red-500'}`} title="Supprimer"><Trash2 size={16} /></button>
-                      </div>
-                    </div>
-                    {/* Linked articles list + link button */}
-                    <div className={`mt-3 pt-3 border-t border-bord`}>
-                      {links.length > 0 && (
-                        <div className="space-y-1 mb-2">
-                          {links.map(af => {
-                            const article = catalogue.find(c => c.id === af.articleId);
-                            return article ? (
-                              <div key={af.id} className={`flex items-center justify-between text-xs ${textMuted}`}>
-                                <span>{article.nom} <span className="font-mono">{article.reference || ''}</span></span>
-                                <div className="flex items-center gap-2">
-                                  <span className={`font-medium ${textPrimary}`}>{(af.prixAchat || article.prixAchat || 0).toFixed(2)} €</span>
-                                  <button onClick={() => { setArticleFournisseurs(prev => prev.filter(x => x.id !== af.id)); showToast('Liaison retirée', 'info'); }} className="text-red-400 hover:text-red-500"><X size={12} /></button>
-                                </div>
-                              </div>
-                            ) : null;
-                          })}
-                        </div>
-                      )}
-                      <button onClick={() => {
-                        setLinkModal({ fournisseurId: f.id, fournisseurNom: f.nom });
-                        setLinkSearch('');
-                        setLinkSelected(null);
-                        setLinkPrix('');
-                        setTimeout(() => linkSearchRef.current?.focus(), 100);
-                      }} className={`text-xs flex items-center gap-1 text-info-texte`}>
-                        <Plus size={12} /> Lier un article
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Fournisseur Form Modal */}
-          <AnimatePresence>
-            {showFournisseurForm && (
-              <motion.div className="fixed inset-0 z-50 flex items-center justify-center p-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                <div className="absolute inset-0 bg-black/50" onClick={() => { setShowFournisseurForm(false); setEditFournisseurId(null); }} />
-                <motion.div className={`relative w-full max-w-md rounded-2xl p-6 bg-surface shadow-2xl`} initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }}>
-                  <h3 className={`font-bold text-lg mb-4 ${textPrimary}`}>{editFournisseurId ? 'Modifier' : 'Nouveau'} fournisseur</h3>
-                  <div className="space-y-3">
-                    <input placeholder="Nom *" className={`w-full px-4 py-3 border rounded-xl ${inputBg}`} value={fournisseurForm.nom} onChange={e => setFournisseurForm(p => ({...p, nom: e.target.value}))} />
-                    <div className="grid grid-cols-2 gap-3">
-                      <input placeholder="Téléphone" className={`px-4 py-3 border rounded-xl ${inputBg}`} value={fournisseurForm.telephone} onChange={e => setFournisseurForm(p => ({...p, telephone: e.target.value}))} />
-                      <input placeholder="Email" className={`px-4 py-3 border rounded-xl ${inputBg}`} value={fournisseurForm.email} onChange={e => setFournisseurForm(p => ({...p, email: e.target.value}))} />
-                    </div>
-                    <input placeholder="Adresse" className={`w-full px-4 py-3 border rounded-xl ${inputBg}`} value={fournisseurForm.adresse} onChange={e => setFournisseurForm(p => ({...p, adresse: e.target.value}))} />
-                    <div className="grid grid-cols-2 gap-3">
-                      <input type="number" placeholder="Délai livraison (jours)" className={`px-4 py-3 border rounded-xl ${inputBg}`} value={fournisseurForm.delaiLivraison} onChange={e => setFournisseurForm(p => ({...p, delaiLivraison: e.target.value}))} />
-                      <input placeholder="Conditions paiement" className={`px-4 py-3 border rounded-xl ${inputBg}`} value={fournisseurForm.conditions} onChange={e => setFournisseurForm(p => ({...p, conditions: e.target.value}))} />
-                    </div>
-                  </div>
-                  <div className="flex gap-3 mt-5">
-                    <button onClick={() => { setShowFournisseurForm(false); setEditFournisseurId(null); }} className={`flex-1 py-3 rounded-xl bg-surface-2`}>Annuler</button>
-                    <button onClick={addFournisseur} className="flex-1 py-3 rounded-xl font-medium bg-accent text-sur-accent">{editFournisseurId ? 'Modifier' : 'Ajouter'}</button>
-                  </div>
-                </motion.div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Link Article to Fournisseur Modal */}
-          <AnimatePresence>
-            {linkModal && (
-              <motion.div className="fixed inset-0 z-50 flex items-center justify-center p-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                <div className="absolute inset-0 bg-black/50" onClick={() => setLinkModal(null)} />
-                <motion.div className={`relative w-full max-w-md rounded-2xl p-6 bg-surface shadow-2xl`} initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}>
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className={`font-bold text-lg ${textPrimary}`}>Lier un article</h3>
-                    <button onClick={() => setLinkModal(null)} className={`p-1.5 rounded-lg hover:bg-surface-2`}><X size={18} /></button>
-                  </div>
-                  <p className={`text-sm mb-4 ${textMuted}`}>Fournisseur : <span className={`font-medium ${textPrimary}`}>{linkModal.fournisseurNom}</span></p>
-
-                  {!linkSelected ? (
-                    <>
-                      <div className={`flex items-center gap-2 px-3 py-2.5 border rounded-xl mb-3 ${inputBg}`}>
-                        <Search size={16} className={textMuted} />
-                        <input
-                          ref={linkSearchRef}
-                          type="text"
-                          placeholder="Rechercher un article..."
-                          className={`flex-1 bg-transparent outline-none text-sm `}
-                          value={linkSearch}
-                          onChange={e => setLinkSearch(e.target.value)}
-                          autoFocus
-                        />
-                        {linkSearch && <button onClick={() => setLinkSearch('')} className={textMuted}><X size={14} /></button>}
-                      </div>
-                      <div className={`max-h-64 overflow-y-auto rounded-xl border border-bord`}>
-                        {(() => {
-                          const alreadyLinked = articleFournisseurs.filter(af => af.fournisseurId === linkModal.fournisseurId).map(af => af.articleId);
-                          const results = catalogue.filter(c =>
-                            !alreadyLinked.includes(c.id) &&
-                            (!linkSearch || c.nom.toLowerCase().includes(linkSearch.toLowerCase()) || (c.reference || '').toLowerCase().includes(linkSearch.toLowerCase()) || (c.categorie || '').toLowerCase().includes(linkSearch.toLowerCase()))
-                          ).slice(0, 20);
-                          if (results.length === 0) return (
-                            <div className={`p-6 text-center text-sm ${textMuted}`}>
-                              {catalogue.length === 0 ? 'Aucun article dans le catalogue' : linkSearch ? 'Aucun article trouvé' : 'Tous les articles sont déjà liés'}
-                            </div>
-                          );
-                          return results.map(article => (
-                            <button
-                              key={article.id}
-                              onClick={() => { setLinkSelected(article); setLinkPrix(article.prixAchat?.toString() || '0'); }}
-                              className={`w-full flex items-center justify-between px-4 py-3 text-left text-sm transition-colors border-b last:border-b-0 border-bord hover:bg-surface-2`}
-                            >
-                              <div>
-                                <p className={`font-medium ${textPrimary}`}>{article.nom}</p>
-                                <p className={`text-xs ${textMuted}`}>{article.reference || ''} {article.categorie ? `· ${article.categorie}` : ''}</p>
-                              </div>
-                              <span className={`text-xs font-mono ${textMuted}`}>{fmtPrice(article.prixAchat || article.prix)}</span>
-                            </button>
-                          ));
-                        })()}
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div className={`p-3 rounded-xl border mb-4 bg-surface-2 border-bord`}>
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className={`font-medium text-sm ${textPrimary}`}>{linkSelected.nom}</p>
-                            <p className={`text-xs ${textMuted}`}>{linkSelected.reference || ''} {linkSelected.categorie ? `· ${linkSelected.categorie}` : ''}</p>
-                          </div>
-                          <button onClick={() => { setLinkSelected(null); setLinkPrix(''); }} className={`text-xs px-2 py-1 rounded-lg bg-bord text-encre-2`}>Changer</button>
-                        </div>
-                      </div>
-                      <label className={`block text-sm font-medium mb-1.5 ${textPrimary}`}>Prix d'achat chez {linkModal.fournisseurNom}</label>
-                      <div className={`flex items-center gap-2 px-3 py-2.5 border rounded-xl ${inputBg}`}>
-                        <DollarSign size={16} className={textMuted} />
-                        <input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          placeholder="0.00"
-                          className={`flex-1 bg-transparent outline-none text-sm `}
-                          value={linkPrix}
-                          onChange={e => setLinkPrix(e.target.value)}
-                          autoFocus
-                        />
-                        <span className={`text-sm ${textMuted}`}>€ HT</span>
-                      </div>
-                      <div className="flex gap-3 mt-5">
-                        <button onClick={() => setLinkModal(null)} className={`flex-1 py-3 rounded-xl text-sm font-medium bg-surface-2`}>Annuler</button>
-                        <button
-                          onClick={() => {
-                            linkArticleFournisseur(linkSelected.id, linkModal.fournisseurId, linkPrix);
-                            showToast(`"${linkSelected.nom}" lié à ${linkModal.fournisseurNom}`, 'success');
-                            setLinkModal(null);
-                          }}
-                          className="flex-1 py-3 rounded-xl text-sm font-medium bg-accent text-sur-accent"
-                        >
-                          Lier l'article
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </motion.div>
-              </motion.div>
-            )}
-          </AnimatePresence>
         </div>
       )}
 
-      {/* ====== MOUVEMENTS TAB ====== */}
-      {activeTab === 'mouvements' && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between flex-wrap gap-2">
-            <p className={`text-sm ${textMuted}`}>{filteredMouvements.length} mouvement{filteredMouvements.length > 1 ? 's' : ''}{mouvTypeFilter !== 'all' || mouvArticleFilter ? ` (sur ${mouvements.length})` : ''}</p>
-            <div className="flex gap-2">
-              {mouvements.length > 0 && (
-                <button onClick={exportMouvements} className={`px-3 py-2 rounded-xl text-sm flex items-center gap-1.5 bg-surface-2 hover:bg-bord`}>
-                  <Download size={14} /> CSV
-                </button>
-              )}
-              <button onClick={() => setShowMouvementForm(true)} className="px-4 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2 shadow-md bg-accent text-sur-accent"><Plus size={16} /> Nouveau mouvement</button>
-            </div>
-          </div>
-
-          {/* Mouvements Stats */}
-          {mouvements.length > 0 && (() => {
-            const totalIn = mouvements.filter(m => m.type === 'in' || m.type === 'entree' || m.type === 'return').reduce((s, m) => s + Math.abs(m.quantite || 0), 0);
-            const totalOut = mouvements.filter(m => m.type === 'out' || m.type === 'sortie').reduce((s, m) => s + Math.abs(m.quantite || 0), 0);
-            const uniqueArticles = new Set(mouvements.map(m => m.articleId)).size;
-            return (
-              <div className="grid grid-cols-3 gap-3">
-                <div className={`p-3 rounded-xl border bg-surface border-bord`}>
-                  <p className={`text-xs ${textMuted}`}>Entrées</p>
-                  <p className="text-lg font-bold text-emerald-500">+{totalIn}</p>
-                </div>
-                <div className={`p-3 rounded-xl border bg-surface border-bord`}>
-                  <p className={`text-xs ${textMuted}`}>Sorties</p>
-                  <p className="text-lg font-bold text-red-500">-{totalOut}</p>
-                </div>
-                <div className={`p-3 rounded-xl border bg-surface border-bord`}>
-                  <p className={`text-xs ${textMuted}`}>Articles</p>
-                  <p className="text-lg font-bold text-accent-texte">{uniqueArticles}</p>
-                </div>
-              </div>
-            );
-          })()}
-
-          {/* Mouvements Filters */}
-          {mouvements.length > 0 && (
-            <div className="flex gap-2 flex-wrap">
-              {[
-                { key: 'all', label: 'Tous' },
-                { key: 'in', label: 'Entrées' },
-                { key: 'out', label: 'Sorties' },
-                { key: 'return', label: 'Retours' },
-                { key: 'adjustment', label: 'Ajustements' },
-              ].map(f => (
-                <button key={f.key} onClick={() => setMouvTypeFilter(f.key)} className={`px-3 py-1.5 rounded-lg text-sm font-medium min-h-[36px] transition-colors ${mouvTypeFilter === f.key ? 'text-white shadow-sm' : 'bg-surface-2 text-encre-2'}`} style={mouvTypeFilter === f.key ? { background: couleur } : {}}>
-                  {f.label}
-                </button>
-              ))}
-              {mouvements.length > 5 && (
-                <select className={`px-3 py-1.5 rounded-lg text-sm border ${inputBg}`} value={mouvArticleFilter} onChange={e => setMouvArticleFilter(e.target.value)}>
-                  <option value="">Tous les articles</option>
-                  {[...new Set(mouvements.map(m => m.articleId))].map(aid => {
-                    const art = catalogue.find(c => c.id === aid);
-                    return <option key={aid} value={aid}>{art?.nom || 'Inconnu'}</option>;
-                  })}
-                </select>
-              )}
-            </div>
-          )}
-
-          {mouvements.length === 0 ? (
-            <div className={`${cardBg} rounded-2xl border p-12 text-center`}>
-              <div className="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center" style={{ background: `${couleur}15` }}>
-                <ArrowRightLeft size={32} className="text-accent-texte" />
-              </div>
-              <p className={`text-lg font-bold ${textPrimary}`}>Tracez vos mouvements de stock</p>
-              <p className={`text-sm ${textMuted} mt-1 max-w-md mx-auto`}>Enregistrez les entrées et sorties pour un suivi précis de vos stocks en temps réel.</p>
-              <div className="flex items-center justify-center gap-6 mt-4">
-                <div className="flex items-center gap-2">
-                  <span className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold bg-succes-fond text-succes-texte`}>↗</span>
-                  <span className={`text-xs ${textMuted}`}>Entrées</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold bg-danger-fond text-danger-texte`}>↘</span>
-                  <span className={`text-xs ${textMuted}`}>Sorties</span>
-                </div>
-              </div>
-              <button onClick={() => setShowMouvementForm(true)} className="mt-6 px-5 py-2.5 rounded-xl text-sm font-medium inline-flex items-center gap-2 shadow-lg hover:opacity-90 transition-all bg-accent text-sur-accent">
-                <Plus size={16} /> Enregistrer un mouvement
-              </button>
-            </div>
-          ) : filteredMouvements.length === 0 ? (
-            <div className={`${cardBg} rounded-2xl border p-8 text-center`}>
-              <Filter size={32} className={`mx-auto mb-2 ${textMuted}`} />
-              <p className={`text-sm font-medium ${textPrimary}`}>Aucun mouvement pour ces filtres</p>
-              <button onClick={() => { setMouvTypeFilter('all'); setMouvArticleFilter(''); }} className="text-sm mt-2 text-accent-texte">Réinitialiser</button>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {filteredMouvements.slice(0, 50).map(m => {
-                const ch = chantiers?.find(c => c.id === m.chantierId);
-                const article = catalogue.find(c => c.id === m.articleId);
-                const articleName = article?.nom || m.articleNom || 'Article inconnu';
-                const articleRef = article?.reference || '';
-                const articleCat = article?.categorie || '';
-                const typeNormalized = m.type === 'entree' ? 'in' : m.type === 'sortie' ? 'out' : m.type;
-                const isIn = typeNormalized === 'in' || typeNormalized === 'return';
-                const isOut = typeNormalized === 'out';
-                return (
-                  <div key={m.id} className={`${cardBg} rounded-xl border p-4 flex items-center gap-4`}>
-                    <span className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold ${isIn ? 'bg-succes-fond text-succes-texte' : isOut ? 'bg-danger-fond text-danger-texte' : 'bg-alerte-fond text-alerte-texte'}`}>
-                      {isIn ? '↗' : isOut ? '↘' : '⇄'}
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <p className={`font-medium ${textPrimary}`}>
-                        {articleName}
-                        {articleRef && <span className={`ml-2 text-xs font-normal ${textMuted}`}>{articleRef}</span>}
-                      </p>
-                      <p className={`text-xs ${textMuted}`}>
-                        {isIn ? 'Entrée' : isOut ? 'Sortie' : typeNormalized === 'return' ? 'Retour' : 'Ajustement'}
-                        {articleCat && ` · ${articleCat}`}
-                        {ch ? ` · ${ch.nom}` : ''}
-                        {(m.raison || m.motif) ? ` · ${m.raison || m.motif}` : ''}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className={`font-bold ${isIn ? 'text-emerald-500' : isOut ? 'text-red-500' : 'text-alerte-texte'}`}>
-                        {isIn ? '+' : isOut ? '-' : ''}{Math.abs(m.quantite)}
-                      </p>
-                      <p className={`text-xs ${textMuted}`}>{dateLue(m.date).toLocaleDateString('fr-FR')}</p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Mouvement Form Modal */}
-          <AnimatePresence>
-            {showMouvementForm && (
-              <motion.div className="fixed inset-0 z-50 flex items-center justify-center p-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                <div className="absolute inset-0 bg-black/50" onClick={() => setShowMouvementForm(false)} />
-                <motion.div className={`relative w-full max-w-md rounded-2xl p-6 bg-surface shadow-2xl`} initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }}>
-                  <h3 className={`font-bold text-lg mb-4 ${textPrimary}`}>Nouveau mouvement</h3>
-                  <div className="space-y-3">
-                    <select className={`w-full px-4 py-3 border rounded-xl ${inputBg}`} value={mouvementForm.type} onChange={e => setMouvementForm(p => ({...p, type: e.target.value}))}>
-                      <option value="in">📥 Entrée (Livraison)</option>
-                      <option value="out">📤 Sortie (Chantier)</option>
-                      <option value="return">↩️ Retour</option>
-                      <option value="adjustment">⚖️ Ajustement</option>
-                    </select>
-                    <select className={`w-full px-4 py-3 border rounded-xl ${inputBg}`} value={mouvementForm.articleId} onChange={e => setMouvementForm(p => ({...p, articleId: e.target.value}))}>
-                      <option value="">Choisir l'article *</option>
-                      {catalogue.map(c => <option key={c.id} value={c.id}>{c.nom} ({c.stock_actuel ?? '?'} en stock)</option>)}
-                    </select>
-                    <input type="number" placeholder="Quantité *" className={`w-full px-4 py-3 border rounded-xl ${inputBg}`} value={mouvementForm.quantite} onChange={e => setMouvementForm(p => ({...p, quantite: e.target.value}))} />
-                    {mouvementForm.type === 'out' && chantiers.length > 0 && (
-                      <select className={`w-full px-4 py-3 border rounded-xl ${inputBg}`} value={mouvementForm.chantierId} onChange={e => setMouvementForm(p => ({...p, chantierId: e.target.value}))}>
-                        <option value="">Chantier destination</option>
-                        {chantiers.filter(c => c.statut === 'en_cours').map(c => <option key={c.id} value={c.id}>{c.nom}</option>)}
-                      </select>
-                    )}
-                    <input placeholder="Raison / Commentaire" className={`w-full px-4 py-3 border rounded-xl ${inputBg}`} value={mouvementForm.raison} onChange={e => setMouvementForm(p => ({...p, raison: e.target.value}))} />
-                  </div>
-                  <div className="flex gap-3 mt-5">
-                    <button onClick={() => setShowMouvementForm(false)} className={`flex-1 py-3 rounded-xl bg-surface-2`}>Annuler</button>
-                    <button onClick={addMouvement} className="flex-1 py-3 rounded-xl font-medium bg-accent text-sur-accent">Valider</button>
-                  </div>
-                </motion.div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-      )}
-
-      {/* ====== PACKS TAB ====== */}
-      {activeTab === 'packs' && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <p className={`text-sm ${textMuted}`}>{packs.length} pack{packs.length > 1 ? 's' : ''}</p>
-            <button onClick={() => { setEditPackId(null); setPackForm({ nom: '', description: '', articles: [], prixVente: '' }); setShowPackForm(true); }} className="px-4 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2 shadow-md bg-accent text-sur-accent"><PackagePlus size={16} /> Nouveau pack</button>
-          </div>
-
-          {packs.length === 0 ? (
-            <div className={`${cardBg} rounded-2xl border p-12 text-center`}>
-              <div className="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center" style={{ background: `${couleur}15` }}>
-                <Layers size={32} className="text-accent-texte" />
-              </div>
-              <p className={`text-lg font-bold ${textPrimary}`}>Créez des packs / kits</p>
-              <p className={`text-sm ${textMuted} mt-1 max-w-md mx-auto`}>Regroupez plusieurs articles fréquemment utilisés ensemble pour les ajouter d'un clic à vos devis.</p>
-              <div className={`flex flex-wrap justify-center gap-2 mt-4`}>
-                {['Kit salle de bain', 'Pack électricité cuisine', 'Pack peinture complète'].map(ex => (
-                  <span key={ex} className={`text-xs px-2.5 py-1 rounded-full bg-surface-2 text-encre-2`}>{ex}</span>
-                ))}
-              </div>
-              <button onClick={() => { setEditPackId(null); setPackForm({ nom: '', description: '', articles: [], prixVente: '' }); setShowPackForm(true); }} className="mt-6 px-5 py-2.5 rounded-xl text-sm font-medium inline-flex items-center gap-2 shadow-lg hover:opacity-90 transition-all bg-accent text-sur-accent">
-                <PackagePlus size={16} /> Créer un pack
-              </button>
-            </div>
-          ) : (
-            <div className="grid gap-3 sm:grid-cols-2">
-              {packs.map(pack => {
-                // Calculate pack totals dynamically from articles (with snapshot fallback)
-                const totalVente = pack.articles.reduce((s, a) => {
-                  const item = catalogue.find(c => c.id === a.articleId);
-                  return s + ((item?.prix ?? a.prixSnapshot) || 0) * (a.quantite || 1);
-                }, 0);
-                const totalCout = pack.articles.reduce((s, a) => {
-                  const item = catalogue.find(c => c.id === a.articleId);
-                  return s + ((item?.prixAchat ?? a.prixAchatSnapshot) || 0) * (a.quantite || 1);
-                }, 0);
-                const prixVente = pack.prixVente || totalVente;
-                const marge = totalCout > 0 ? ((prixVente - totalCout) / prixVente * 100) : null;
-                const nbArticles = pack.articles.reduce((s, a) => s + (a.quantite || 1), 0);
-                return (
-                  <div key={pack.id} className={`${cardBg} rounded-xl border p-4`}>
-                    <div className="flex items-center justify-between mb-2">
-                      <div>
-                        <h4 className={`font-bold ${textPrimary}`}>{pack.nom}</h4>
-                        <span className={`text-xs px-1.5 py-0.5 rounded bg-surface-2 text-encre-2`}>
-                          {pack.articles.length} article{pack.articles.length > 1 ? 's' : ''} · {nbArticles} unités
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <button onClick={() => { setEditPackId(pack.id); setPackForm({ nom: pack.nom, description: pack.description || '', articles: pack.articles.map(a => ({ ...a })), prixVente: pack.prixVente?.toString() || '' }); setShowPackForm(true); }} className={`p-1.5 rounded hover:bg-surface-2`} title="Modifier"><Edit3 size={14} className={textMuted} /></button>
-                        <button onClick={() => duplicatePack(pack)} className={`p-1.5 rounded hover:bg-surface-2`} title="Dupliquer"><PackagePlus size={14} className={textMuted} /></button>
-                        <button onClick={() => setPacks(prev => prev.filter(p => p.id !== pack.id))} className={`p-1.5 rounded hover:bg-surface-2`} title="Supprimer"><Trash2 size={14} className="text-red-500" /></button>
-                      </div>
-                    </div>
-                    {pack.description && <p className={`text-xs ${textMuted} mb-2`}>{pack.description}</p>}
-                    <div className="space-y-1 mb-3">
-                      {pack.articles.map((a, i) => {
-                        const item = catalogue.find(c => c.id === a.articleId);
-                        const artPrix = (item?.prix ?? a.prixSnapshot) || 0;
-                        return (
-                          <p key={i} className={`text-xs ${textMuted} flex items-center justify-between`}>
-                            <span>• {a.quantite}× {item?.nom || a.label || '?'}</span>
-                            <span className={`font-medium ${textPrimary}`}>{(artPrix * (a.quantite || 1)).toFixed(0)} €</span>
-                          </p>
-                        );
-                      })}
-                    </div>
-                    <div className={`pt-3 border-t flex items-center justify-between border-bord`}>
-                      <div>
-                        <span className={`text-lg font-bold text-accent-texte`}>{prixVente.toFixed(0)} €</span>
-                        {totalCout > 0 && <span className={`text-xs ml-2 ${textMuted}`}>Coût: {totalCout.toFixed(0)} €</span>}
-                      </div>
-                      {marge !== null && <span className={`text-sm font-semibold ${getMargeColor(marge)}`}>Marge {marge.toFixed(0)}%</span>}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Pack Form Modal */}
-          <AnimatePresence>
-            {showPackForm && (
-              <motion.div className="fixed inset-0 z-50 flex items-center justify-center p-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                <div className="absolute inset-0 bg-black/50" onClick={() => setShowPackForm(false)} />
-                <motion.div className={`relative w-full max-w-lg rounded-2xl p-6 bg-surface shadow-2xl`} initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }}>
-                  <h3 className={`font-bold text-lg mb-4 ${textPrimary}`}>{editPackId ? 'Modifier le pack' : 'Nouveau pack / kit'}</h3>
-                  <div className="space-y-3">
-                    <input placeholder="Nom du pack *" className={`w-full px-4 py-3 border rounded-xl ${inputBg}`} value={packForm.nom} onChange={e => setPackForm(p => ({...p, nom: e.target.value}))} />
-                    <input placeholder="Description" className={`w-full px-4 py-3 border rounded-xl ${inputBg}`} value={packForm.description} onChange={e => setPackForm(p => ({...p, description: e.target.value}))} />
-                    <div>
-                      <p className={`text-sm font-medium mb-2 ${textPrimary}`}>Articles du pack</p>
-                      {packForm.articles.map((a, i) => (
-                        <div key={i} className="flex gap-2 mb-2">
-                          <select className={`flex-1 px-3 py-2 border rounded-lg text-sm ${inputBg}`} value={a.articleId} onChange={e => {
-                            const arts = [...packForm.articles]; arts[i].articleId = e.target.value;
-                            setPackForm(p => ({...p, articles: arts}));
-                          }}>
-                            <option value="">Choisir article</option>
-                            {catalogue.map(c => <option key={c.id} value={c.id}>{c.nom} ({c.prix}€)</option>)}
-                          </select>
-                          <input type="number" placeholder="Qté" className={`w-16 px-2 py-2 border rounded-lg text-sm ${inputBg}`} value={a.quantite} onChange={e => {
-                            const arts = [...packForm.articles]; arts[i].quantite = parseInt(e.target.value) || 1;
-                            setPackForm(p => ({...p, articles: arts}));
-                          }} />
-                          <button onClick={() => setPackForm(p => ({...p, articles: p.articles.filter((_, j) => j !== i)}))} className="p-2 text-red-500"><X size={16} /></button>
-                        </div>
-                      ))}
-                      <button onClick={() => setPackForm(p => ({...p, articles: [...p.articles, { articleId: '', quantite: 1 }]}))} className={`text-sm text-info-texte flex items-center gap-1`}><Plus size={14} /> Ajouter article</button>
-                    </div>
-                    {/* Auto-calculated totals */}
-                    {packForm.articles.length > 0 && (
-                      <div className={`p-3 rounded-xl bg-surface-2`}>
-                        <p className={`text-xs ${textMuted}`}>Coût total: <strong>{packForm.articles.reduce((s, a) => s + (catalogue.find(c => c.id === a.articleId)?.prixAchat || 0) * (a.quantite || 1), 0).toFixed(2)}€</strong></p>
-                        <p className={`text-xs ${textMuted}`}>Prix vente suggéré: <strong>{packForm.articles.reduce((s, a) => s + (catalogue.find(c => c.id === a.articleId)?.prix || 0) * (a.quantite || 1), 0).toFixed(2)}€</strong></p>
-                      </div>
-                    )}
-                    <input type="number" placeholder="Prix de vente du pack" className={`w-full px-4 py-3 border rounded-xl ${inputBg}`} value={packForm.prixVente} onChange={e => setPackForm(p => ({...p, prixVente: e.target.value}))} />
-                  </div>
-                  <div className="flex gap-3 mt-5">
-                    <button onClick={() => { setShowPackForm(false); setEditPackId(null); setPackForm({ nom: '', description: '', articles: [], prixVente: '' }); }} className={`flex-1 py-3 rounded-xl bg-surface-2`}>Annuler</button>
-                    <button onClick={addPack} className="flex-1 py-3 rounded-xl font-medium bg-accent text-sur-accent">{editPackId ? 'Enregistrer' : 'Créer le pack'}</button>
-                  </div>
-                </motion.div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-      )}
-
-      {/* ====== FAVORIS TAB ====== */}
-      {activeTab === 'favoris' && (
-        <div className={`rounded-2xl border ${cardBg} p-5`}>
-          <div className="flex items-center justify-between mb-5">
-            <div className="flex items-center gap-3">
-              <Star size={20} className="text-amber-500" fill="currentColor" />
-              <div>
-                <h2 className={`text-base font-bold ${textPrimary}`}>Articles favoris</h2>
-                <p className={`text-xs ${textMuted}`}>{favoris.length} article{favoris.length > 1 ? 's' : ''} en favoris — accès rapide pour vos devis</p>
-              </div>
-            </div>
-          </div>
-          {favoris.length === 0 ? (
-            <div className={`text-center py-12`}>
-              <div className="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center" style={{ background: `${couleur}15` }}>
-                <Star size={32} className="text-accent-texte" />
-              </div>
-              <p className={`text-lg font-bold ${textPrimary}`}>Aucun article en favoris</p>
-              <p className={`text-sm ${textMuted} mt-1 max-w-md mx-auto`}>Cliquez sur l'étoile ★ d'un article pour l'ajouter à vos favoris.</p>
-              <p className={`text-xs mt-2 max-w-sm mx-auto text-accent-texte`}>Les articles favoris apparaissent en premier lors de la création de devis</p>
-              <button onClick={() => setActiveTab('catalogue')}
-                className="mt-6 inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium shadow-md hover:opacity-90 transition-all bg-accent text-sur-accent">
-                <Package size={16} /> Voir le catalogue
-              </button>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {favoris.map(item => {
-                const marge = getMargeBrute(item.prix, item.prixAchat);
-                const itemStock = item.stock_actuel ?? item.stock;
-                const itemSeuil = item.stock_seuil_alerte ?? item.stockMin;
-                const isLowStock = itemStock != null && itemSeuil != null && itemSeuil > 0 && itemStock < itemSeuil;
-                return (
-                  <div key={item.id} className={`rounded-xl border p-4 transition-all hover:shadow-md bg-surface border-bord hover:bg-surface-2`}>
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-sm font-bold truncate ${textPrimary}`}>{item.nom}</p>
-                        {item.reference && <p className={`text-xs font-mono ${textMuted}`}>{item.reference}</p>}
-                        <span className={`inline-block mt-1 text-xs px-1.5 py-0.5 rounded font-medium bg-surface-2 text-encre-2`}>{item.categorie}</span>
-                      </div>
-                      <div className="flex items-center gap-1 ml-2">
-                        <button onClick={() => toggleFavori(item.id)} title="Retirer des favoris" aria-label="Retirer des favoris" aria-pressed="true"
-                          className={`p-1.5 rounded-lg text-amber-500 transition-colors ${isDark ? 'hover:bg-amber-500/10' : 'hover:bg-amber-50'}`}>
-                          <Star size={16} fill="currentColor" />
-                        </button>
-                        <button onClick={() => startEdit(item)} title="Modifier"
-                          className={`p-1.5 rounded-lg transition-colors hover:bg-surface-2 text-encre-3`}>
-                          <Edit3 size={14} />
-                        </button>
-                      </div>
-                    </div>
-                    <div className="flex items-end justify-between mt-3">
-                      <div>
-                        <p className={`text-lg font-bold ${textPrimary}`}>{fmtPrice(item.prix)}<span className={`text-xs font-normal ml-1 ${textMuted}`}>/{item.unite}</span></p>
-                        {!modeDiscret && (item.prixAchat > 0 || marge === 100) && (
-                          <p className={`text-xs ${textMuted}`}>
-                            {item.prixAchat > 0 ? `Achat : ${parseFloat(item.prixAchat).toFixed(2)} €` : 'Main d\'œuvre'}
-                            {marge !== null && <span className={`ml-2 font-semibold ${getMargeColor(marge)}`}>{marge.toFixed(0)}% marge</span>}
-                          </p>
-                        )}
-                      </div>
-                      {isLowStock && (
-                        <span className={`text-xs px-1.5 py-0.5 rounded font-medium bg-danger-fond text-danger-texte`}>
-                          <AlertTriangle size={10} className="inline mr-0.5" />Stock bas
-                        </span>
-                      )}
-                      {(item.stock_actuel ?? item.stock) != null && !isLowStock && (
-                        <span className={`text-xs ${textMuted}`}>{item.stock_actuel ?? item.stock} en stock</span>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Stock alerts section inside favoris */}
-          {alertesStock.length > 0 && (
-            <div className={`mt-6 pt-5 border-t border-bord`}>
-              <div className="flex items-center gap-2 mb-3">
-                <AlertTriangle size={16} className="text-red-500" />
-                <h3 className={`text-sm font-bold ${textPrimary}`}>Alertes de stock ({alertesStock.length})</h3>
-              </div>
-              <div className="space-y-2">
-                {alertesStock.slice(0, 8).map(item => (
-                  <div key={item.id} className={`flex items-center justify-between p-2.5 rounded-lg ${isDark ? 'bg-red-900/10 border border-red-500/20' : 'bg-red-50 border border-red-100'}`}>
-                    <div className="flex items-center gap-3 min-w-0">
-                      <span className={`text-sm font-medium truncate ${textPrimary}`}>{item.nom}</span>
-                      {item.reference && <span className={`text-xs font-mono ${textMuted}`}>{item.reference}</span>}
-                    </div>
-                    <div className="flex items-center gap-3 ml-2">
-                      <span className="text-xs text-red-500 font-bold whitespace-nowrap">{item.stock_actuel} / {item.stock_seuil_alerte}</span>
-                      <button onClick={() => startEdit(item)} className={`text-xs px-2 py-1 rounded font-medium bg-surface text-encre-2 hover:bg-surface-2`}>Modifier</button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ====== INVENTAIRE TAB ====== */}
-      {activeTab === 'inventaire' && (() => {
-        const stockItems = catalogue.filter(c => (c.stock_actuel ?? c.stock) != null || (c.stock_seuil_alerte ?? c.stockMin) > 0);
-        const lastInventaire = mouvements.find(m => m.type === 'adjustment' && m.raison?.startsWith('Inventaire'));
-        return (
-          <div className="space-y-4">
-            {/* Stats */}
-            {stockItems.length > 0 && (
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div className={`p-3 rounded-xl border bg-surface border-bord`} title="Nombre d'articles avec gestion de stock activée">
-                  <p className={`text-xs ${textMuted}`}>Articles suivis</p>
-                  <p className="text-xl font-bold text-accent-texte">{stockItems.length}</p>
-                </div>
-                <div className={`p-3 rounded-xl border bg-surface border-bord`} title="Articles dont le stock actuel est inférieur au minimum défini">
-                  <p className={`text-xs ${textMuted}`}>Stock bas</p>
-                  <p className={`text-xl font-bold ${alertesStock.length > 0 ? 'text-red-500' : 'text-emerald-500'}`}>{alertesStock.length}</p>
-                </div>
-                {/* #6: Valeur stock — E1 fix: only count items with prixAchat */}
-                {(() => {
-                  const withPrice = stockItems.filter(c => c.prixAchat > 0);
-                  const stockValue = withPrice.reduce((s, c) => s + c.prixAchat * (c.stock_actuel ?? c.stock ?? 0), 0);
-                  const hasLowStock = alertesStock.length > 0;
-                  const noPrice = stockItems.length > 0 && withPrice.length === 0;
-                  const stockColor = noPrice ? '#94a3b8' : stockValue > 0 ? (hasLowStock ? '#f59e0b' : '#22c55e') : '#94a3b8';
-                  return (
-                    <div className={`p-3 rounded-xl border bg-surface border-bord`} title={noPrice ? "Prix d'achat manquant — valeur non calculable" : "Valeur totale du stock au prix d'achat"}>
-                      <p className={`text-xs ${textMuted}`}>Valeur stock</p>
-                      <p className="text-xl font-bold" style={{ color: stockColor }}>{modeDiscret ? '·····' : (noPrice ? 'N/A' : `${(stockValue / 1000).toFixed(1)}k€`)}</p>
-                    </div>
-                  );
-                })()}
-                {/* #7: Dernier inventaire — contextual color */}
-                {(() => {
-                  // If never done and account is new (< 30 days), show neutral gray
-                  const accountAge = 31; // Default: assume >30 days since we can't know account creation date
-                  const inventaireColor = lastInventaire
-                    ? textPrimary
-                    : accountAge <= 30 ? textMuted : 'text-amber-500';
-                  return (
-                    <div className={`p-3 rounded-xl border bg-surface border-bord`} title="Date du dernier comptage physique">
-                      <p className={`text-xs ${textMuted}`}>Dernier inventaire</p>
-                      <p className={`text-sm font-bold ${inventaireColor} flex items-center gap-1`}>
-                        {lastInventaire
-                          ? dateLue(lastInventaire.date).toLocaleDateString('fr-FR')
-                          : <>
-                              {accountAge > 30 && <AlertCircle size={12} className="text-amber-500" />}
-                              Jamais effectué
-                            </>
-                        }
-                      </p>
-                    </div>
-                  );
-                })()}
-              </div>
-            )}
-
-            <div className={`${cardBg} rounded-2xl border p-8 text-center`}>
-              <ClipboardList size={48} className={`mx-auto mb-4 ${textMuted}`} />
-              <h3 className={`text-lg font-bold mb-2 ${textPrimary}`}>Mode Inventaire</h3>
-              <p className={`text-sm ${textMuted} mb-6 max-w-md mx-auto`}>
-                Comptez rapidement votre stock physique. Les écarts seront automatiquement enregistrés comme mouvements d'ajustement.
-              </p>
-              {stockItems.length === 0 ? (
-                <div className={`p-4 rounded-xl mb-4 bg-alerte-fond`}>
-                  <p className={`text-sm text-amber-600 font-medium mb-1`}>Aucun article avec gestion de stock</p>
-                  <p className={`text-xs ${textMuted}`}>Pour activer le suivi de stock, modifiez un article et remplissez les champs "Stock actuel" et "Stock minimum".</p>
-                  <button onClick={() => setActiveTab('catalogue')} className="mt-2 text-sm font-medium text-accent-texte">Aller au catalogue</button>
-                </div>
-              ) : (
-                <button onClick={async () => {
-                  const confirmed = await confirm({ title: 'Démarrer un inventaire', message: `Vous allez compter ${stockItems.length} article${stockItems.length !== 1 ? 's' : ''}. Les écarts seront enregistrés comme ajustements de stock.` });
-                  if (confirmed) startInventaire();
-                }} className="px-8 py-3 rounded-xl font-medium flex items-center justify-center gap-2 mx-auto shadow-lg bg-accent text-sur-accent">
-                  <RefreshCw size={18} /> Démarrer l'inventaire ({stockItems.length} article{stockItems.length > 1 ? 's' : ''})
-                </button>
-              )}
-            </div>
-
-            {/* Stock alerts in Inventaire */}
-            {alertesStock.length > 0 && (
-              <div className={`rounded-2xl border p-5 ${isDark ? 'bg-red-900/10 border-red-800' : 'bg-red-50 border-red-200'}`}>
-                <h3 className={`font-semibold flex items-center gap-2 mb-3 ${textPrimary}`}>
-                  <AlertTriangle size={16} className="text-red-500" /> Articles en stock bas ({alertesStock.length})
-                </h3>
-                <div className="space-y-2">
-                  {alertesStock.map(item => (
-                    <div key={item.id} className={`flex items-center justify-between p-2.5 rounded-lg bg-surface`}>
-                      <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-red-500" />
-                        <span className={`text-sm font-medium ${textPrimary}`}>{item.nom}</span>
-                        {item.reference && <span className={`text-xs font-mono ${textMuted}`}>{item.reference}</span>}
-                      </div>
-                      <span className="text-sm text-red-500 font-bold">{item.stock_actuel ?? item.stock} / {item.stock_seuil_alerte ?? item.stockMin}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        );
-      })()}
-
-      {/* ====== PARAMETRES / COEFFICIENTS TAB ====== */}
-      {activeTab === 'parametres' && (
-        <div className="space-y-4">
-          <div className={`${cardBg} rounded-2xl border p-5`}>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className={`font-semibold flex items-center gap-2 ${textPrimary}`}><Percent size={16} className="text-accent-texte" /> Coefficients par catégorie</h3>
-              {/* #1: Auto-save feedback */}
-              <div className="flex items-center gap-2" role="status" aria-live="polite">
-                {coefSaved === 'saving' && (
-                  <span className={`text-xs flex items-center gap-1.5 ${textMuted}`}>
-                    <span className="w-2 h-2 rounded-full bg-slate-400 animate-pulse" />
-                    Sauvegarde...
-                  </span>
-                )}
-                {coefSaved === 'saved' && (
-                  <span className="text-xs text-emerald-500 flex items-center gap-1">
-                    <Check size={12} /> Coefficients sauvegardés
-                  </span>
-                )}
-              </div>
-            </div>
-            <p className={`text-sm ${textMuted} mb-4`}>Le prix de vente sera automatiquement calculé: Prix achat × Coefficient</p>
-            <div className="space-y-3">
-              {CATEGORIES.filter(c => c !== 'Tous').map(cat => (
-                <div key={cat} className={`flex items-center gap-3 sm:gap-4 p-3 pl-4 rounded-xl bg-surface-2`}>
-                  <span className={`font-medium flex-1 min-w-0 truncate ${textPrimary}`}>{cat}</span>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <span className={`text-sm ${textMuted}`}>×</span>
-                    <ChampDecimal
-                      min={1}
-                      max={10}
-                      aria-label={`Coefficient pour ${cat}`}
-                      className={`w-20 px-3 py-2 border rounded-lg text-center font-bold ${inputBg}`}
-                      valeur={coefficients[cat] || 1.5}
-                      onValider={val => {
-                        setCoefficients(prev => ({...prev, [cat]: val}));
-                        setCoefDirty(true);
-                        setCoefSaved('saving');
-                        // #1: Debounced auto-save (600ms)
-                        if (coefSaveTimeoutRef.current) clearTimeout(coefSaveTimeoutRef.current);
-                        coefSaveTimeoutRef.current = setTimeout(() => {
-                          try {
-                            // localStorage persistence is already handled by useEffect
-                            setCoefSaved('saved');
-                            setCoefDirty(false);
-                            setTimeout(() => setCoefSaved(false), 2000);
-                          } catch (err) {
-                            showToast('Erreur — vos modifications n\'ont pas été sauvegardées', 'error');
-                          }
-                        }, 600);
-                      }}
-                    />
-                  </div>
-                  <span className={`text-xs ${textMuted} w-48 text-right flex-shrink-0 hidden sm:block`}>100€ → {modeDiscret ? '·····' : `${((coefficients[cat] || 1.5) * 100).toFixed(0)}€`} <span className="font-medium text-accent-texte">(+{(((coefficients[cat] || 1.5) - 1) * 100).toFixed(0)}%)</span></span>
-                </div>
-              ))}
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-3">
-            {/* E5: Appliquer coefficients à tous les articles */}
-            <button
-              onClick={async () => {
-                const articlesWithPrixAchat = catalogue.filter(c => c.prixAchat > 0);
-                if (articlesWithPrixAchat.length === 0) {
-                  showToast('Aucun article avec prix d\'achat à recalculer', 'info');
-                  return;
-                }
-                const ok = await confirm({
-                  title: 'Appliquer les coefficients',
-                  message: `Recalculer le prix de vente de ${articlesWithPrixAchat.length} article${articlesWithPrixAchat.length > 1 ? 's' : ''} selon les coefficients actuels ? Les prix de vente seront écrasés.`,
-                  confirmText: 'Appliquer',
-                  variant: 'warning',
-                });
-                if (!ok) return;
-                // Prix de vente = prix d'achat × coefficient, ENREGISTRÉ article par article (avant, recette du 9 oct.
-                // 2026 : un champ `prixVente` inexistant, en mémoire seulement, et « 13 prix recalculés » sans rien changer)
-                let modifies = 0;
-                let refuses = 0;
-                for (const c of articlesWithPrixAchat) {
-                  const coef = coefficients[c.categorie] || coefficients['Divers'] || 1.5;
-                  const prix = Math.round(c.prixAchat * coef * 100) / 100;
-                  if (Math.abs((Number(c.prix) || 0) - prix) < 0.005) continue;
-                  if (updateCatalogueItemProp && (await updateCatalogueItemProp(c.id, { prix }))) modifies++;
-                  else refuses++;
-                }
-                if (refuses) showToast(`${modifies} prix modifié${modifies > 1 ? 's' : ''}, ${refuses} non enregistré${refuses > 1 ? 's' : ''}`, 'error');
-                else showToast(modifies ? `${modifies} prix modifié${modifies > 1 ? 's' : ''}` : 'Tous les prix étaient déjà à jour', 'success');
-              }}
-              className={`text-sm flex items-center gap-1.5 px-3 py-2 rounded-lg transition-colors bg-accent text-sur-accent`}
-            >
-              <Check size={14} /> Appliquer à tous les articles
-            </button>
-            <button onClick={() => { setCoefficients(DEFAULT_COEFFICIENTS); setCoefSaved('saved'); setTimeout(() => setCoefSaved(false), 2000); showToast('Coefficients réinitialisés', 'info'); }} className={`text-sm flex items-center gap-1 text-encre-3`}>
-              <RefreshCw size={14} /> Réinitialiser par défaut
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* CSV Import Modal */}
-      <AnimatePresence>
-        {showImport && importData && (
-          <motion.div className="fixed inset-0 z-50 flex items-center justify-center p-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <div className="absolute inset-0 bg-black/50" onClick={() => setShowImport(false)} />
-            <motion.div className={`relative w-full max-w-2xl rounded-2xl p-6 max-h-[80vh] overflow-y-auto bg-surface shadow-2xl`} initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }}>
-              <h3 className={`font-bold text-lg mb-2 ${textPrimary}`}>Import CSV — {importData.rows.length} lignes détectées</h3>
-              <p className={`text-sm ${textMuted} mb-4`}>Associez les colonnes de votre fichier aux champs du catalogue</p>
-              <div className="space-y-3 mb-4">
-                {[
-                  { key: 'designation', label: 'Nom / Désignation *', required: true },
-                  { key: 'reference', label: 'Référence / SKU' },
-                  { key: 'description', label: 'Description' },
-                  { key: 'prix', label: 'Prix vente HT' },
-                  { key: 'prixAchat', label: 'Prix achat HT' },
-                  { key: 'unite', label: 'Unité' },
-                  { key: 'categorie', label: 'Catégorie' },
-                  { key: 'tva_rate', label: 'Taux TVA' },
-                  { key: 'stock', label: 'Stock' },
-                ].map(({ key, label, required }) => (
-                  <div key={key} className="flex items-center gap-3">
-                    <span className={`text-sm w-40 ${required ? 'font-semibold' : ''} ${textPrimary}`}>{label}</span>
-                    <select className={`flex-1 px-3 py-2 border rounded-lg text-sm ${inputBg}`} value={importMapping[key] || ''} onChange={e => setImportMapping(p => ({...p, [key]: e.target.value}))}>
-                      <option value="">— Ignorer —</option>
-                      {importData.headers.map(h => <option key={h} value={h}>{h}</option>)}
-                    </select>
-                  </div>
-                ))}
-              </div>
-              {/* Preview */}
-              <div className={`rounded-xl p-3 mb-4 bg-surface-2`}>
-                <p className={`text-xs font-medium ${textMuted} mb-2`}>Aperçu (5 premières lignes)</p>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-xs">
-                    <thead><tr>{importData.headers.slice(0, 6).map(h => <th key={h} className={`text-left p-1 ${textMuted}`}>{h}</th>)}</tr></thead>
-                    <tbody>{importData.rows.slice(0, 5).map((row, i) => <tr key={i} className={`border-t border-bord`}>{importData.headers.slice(0, 6).map(h => <td key={h} className={`p-1 ${textPrimary}`}>{row[h]}</td>)}</tr>)}</tbody>
-                  </table>
-                </div>
-              </div>
-              <div className="flex gap-3">
-                <button onClick={() => setShowImport(false)} className={`flex-1 py-3 rounded-xl bg-surface-2`}>Annuler</button>
-                <button onClick={executeImport} disabled={!importMapping.designation} className="flex-1 py-3 rounded-xl font-medium disabled:opacity-50 bg-accent text-sur-accent">
-                  <Upload size={16} className="inline mr-2" />Importer {importData.rows.length} articles
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Barcode Scanner Modal */}
-      <AnimatePresence>
-        {showScanner && (
-          <motion.div className="fixed inset-0 z-50 flex items-center justify-center p-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <div className="absolute inset-0 bg-black/70" onClick={stopScanner} />
-            <motion.div className={`relative w-full max-w-lg rounded-2xl overflow-hidden bg-surface shadow-2xl`} initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }}>
-              <div className={`p-4 border-b flex items-center justify-between border-bord`}>
-                <h3 className={`font-bold text-lg flex items-center gap-2 ${textPrimary}`}><Camera size={20} className="text-accent-texte" /> Scanner un code-barres</h3>
-                <button onClick={stopScanner} className={`p-2 rounded-lg hover:bg-surface-2`}><X size={20} className={textMuted} /></button>
-              </div>
-              {!scanResult ? (
-                <div className="relative">
-                  <video ref={videoRef} className="w-full aspect-video object-cover bg-black" autoPlay playsInline muted />
-                  <canvas ref={canvasRef} className="hidden" />
-                  {/* Scan overlay with aiming guide */}
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <div className="w-64 h-32 border-2 border-white/60 rounded-xl">
-                      <div className="absolute top-0 left-0 w-6 h-6 border-t-2 border-l-2 border-white rounded-tl-lg" />
-                      <div className="absolute top-0 right-0 w-6 h-6 border-t-2 border-r-2 border-white rounded-tr-lg" />
-                      <div className="absolute bottom-0 left-0 w-6 h-6 border-b-2 border-l-2 border-white rounded-bl-lg" />
-                      <div className="absolute bottom-0 right-0 w-6 h-6 border-b-2 border-r-2 border-white rounded-br-lg" />
-                    </div>
-                  </div>
-                  {scanLoading && (
-                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                      <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    </div>
-                  )}
-                  <p className="absolute bottom-3 left-0 right-0 text-center text-white text-sm font-medium bg-black/40 py-2">
-                    Placez le code-barres dans le cadre
-                  </p>
-                </div>
-              ) : (
-                <div className="p-6">
-                  {scanResult.noBarcodeAPI && (
-                    <div className="text-center">
-                      <p className={`text-sm ${textMuted} mb-4`}>Scanner non supporté. Entrez le code manuellement :</p>
-                      <form onSubmit={(e) => { e.preventDefault(); const v = e.target.barcode.value; if (v) handleBarcodeDetected(v); }}>
-                        <input name="barcode" type="text" placeholder="Code-barres (EAN)" className={`w-full px-4 py-3 border rounded-xl text-center text-lg font-mono ${inputBg}`} autoFocus />
-                        <button type="submit" className="mt-3 w-full py-3 rounded-xl font-medium bg-accent text-sur-accent">Rechercher</button>
-                      </form>
-                    </div>
-                  )}
-                  {scanResult.found && scanResult.local && (
-                    <div className="text-center">
-                      <div className="w-12 h-12 mx-auto mb-3 rounded-full flex items-center justify-center bg-emerald-100 text-emerald-600">
-                        <Check size={24} />
-                      </div>
-                      <p className={`font-bold text-lg mb-1 ${textPrimary}`}>{scanResult.article.nom}</p>
-                      <p className={`text-sm ${textMuted} mb-4`}>Trouvé dans votre catalogue</p>
-                      <div className="flex gap-2">
-                        <button onClick={() => { stopScanner(); setArticleDetail(scanResult.article.id); }} className="flex-1 py-3 rounded-xl font-medium bg-accent text-sur-accent">Voir la fiche</button>
-                        <button onClick={() => setScanResult(null)} className={`flex-1 py-3 rounded-xl bg-surface-2`}>Scanner encore</button>
-                      </div>
-                    </div>
-                  )}
-                  {scanResult.found && !scanResult.local && scanResult.product && (
-                    <div className="text-center">
-                      <div className="w-12 h-12 mx-auto mb-3 rounded-full flex items-center justify-center bg-blue-100 text-blue-600">
-                        <Package size={24} />
-                      </div>
-                      {scanResult.product.image && <img src={scanResult.product.image} alt="" className="w-20 h-20 mx-auto mb-3 object-contain rounded-lg" />}
-                      <p className={`font-bold text-lg mb-1 ${textPrimary}`}>{scanResult.product.nom}</p>
-                      {scanResult.product.marque && <p className={`text-sm ${textMuted}`}>{scanResult.product.marque}</p>}
-                      <p className={`text-xs ${textMuted} mb-4`}>Code: {scanResult.product.barcode}</p>
-                      <button onClick={() => {
-                        stopScanner();
-                        setForm(prev => ({ ...prev, nom: scanResult.product.nom, reference: scanResult.product.barcode }));
-                        setShow(true);
-                      }} className="w-full py-3 rounded-xl font-medium flex items-center justify-center gap-2 bg-accent text-sur-accent">
-                        <Plus size={18} /> Ajouter au catalogue
-                      </button>
-                    </div>
-                  )}
-                  {!scanResult.found && !scanResult.noBarcodeAPI && (
-                    <div className="text-center">
-                      <div className="w-12 h-12 mx-auto mb-3 rounded-full flex items-center justify-center bg-amber-100 text-amber-600">
-                        <Search size={24} />
-                      </div>
-                      <p className={`font-bold mb-1 ${textPrimary}`}>Produit non trouvé</p>
-                      <p className={`text-sm ${textMuted} mb-4`}>Code: {scanResult.barcode}</p>
-                      <div className="flex gap-2">
-                        <button onClick={() => {
-                          stopScanner();
-                          setForm(prev => ({ ...prev, reference: scanResult.barcode }));
-                          setShow(true);
-                        }} className="flex-1 py-3 rounded-xl font-medium bg-accent text-sur-accent">Créer l'article</button>
-                        <button onClick={() => setScanResult(null)} className={`flex-1 py-3 rounded-xl bg-surface-2`}>Réessayer</button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Ajouter au devis Modal */}
-      <AnimatePresence>
-        {addToDevisModal && (
-          <motion.div className="fixed inset-0 z-50 flex items-center justify-center p-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <div className="absolute inset-0 bg-black/50" onClick={() => { setAddToDevisModal(null); setAddToDevisQty(1); setAddToDevisSelected(null); }} />
-            <motion.div className={`relative w-full max-w-md rounded-2xl p-6 bg-surface shadow-2xl`} initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }}>
-              <h3 className={`font-bold text-lg mb-1 ${textPrimary}`}>Ajouter au devis</h3>
-              <p className={`text-sm ${textMuted} mb-4`}>
-                <span className="font-medium text-accent-texte">{addToDevisModal.nom}</span> — {addToDevisModal.prix}€/{addToDevisModal.unite || 'u'}
-              </p>
-
-              {devisBrouillons.length === 0 ? (
-                <div className={`text-center py-6 rounded-xl bg-surface-2`}>
-                  <FileText size={32} className={`mx-auto mb-2 ${textMuted}`} />
-                  <p className={`text-sm font-medium ${textPrimary}`}>Aucun devis brouillon</p>
-                  <p className={`text-xs ${textMuted} mt-1`}>Créez d'abord un devis pour y ajouter des articles.</p>
-                  <button onClick={() => { setAddToDevisModal(null); if (setPage) setPage('devis'); }} className="mt-3 px-4 py-2 rounded-xl text-sm font-medium bg-accent text-sur-accent">
-                    Créer un devis
-                  </button>
-                </div>
-              ) : (
-                <>
-                  <div className="space-y-3">
-                    <div>
-                      <label className={`text-xs font-medium ${textMuted} mb-1 block`}>Devis cible</label>
-                      <select
-                        className={`w-full px-4 py-3 border rounded-xl ${inputBg}`}
-                        value={addToDevisSelected || ''}
-                        onChange={e => setAddToDevisSelected(e.target.value)}
-                      >
-                        {devisBrouillons.map(d => {
-                          const client = clients.find(c => c.id === (d.clientId || d.client_id));
-                          const clientNom = client?.nom || client?.name || d.clientNom || '';
-                          return (
-                            <option key={d.id} value={d.id}>
-                              {d.numero || d.reference || `DEV-${d.id?.slice(0, 6)}`}{clientNom ? ` — ${clientNom}` : ''}
-                            </option>
-                          );
-                        })}
-                      </select>
-                    </div>
-                    <div>
-                      <label className={`text-xs font-medium ${textMuted} mb-1 block`}>Quantité</label>
-                      <input
-                        type="number"
-                        min="1"
-                        className={`w-full px-4 py-3 border rounded-xl ${inputBg}`}
-                        value={addToDevisQty}
-                        onChange={e => setAddToDevisQty(Math.max(1, parseInt(e.target.value) || 1))}
-                      />
-                    </div>
-                    <div className={`p-3 rounded-xl bg-surface-2`}>
-                      <div className="flex items-center justify-between">
-                        <span className={`text-sm ${textMuted}`}>Sous-total HT</span>
-                        <span className={`text-lg font-bold text-accent-texte`}>
-                          {((parseFloat(addToDevisModal.prix) || 0) * addToDevisQty).toFixed(2)} €
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex gap-3 mt-5">
-                    <button onClick={() => { setAddToDevisModal(null); setAddToDevisQty(1); setAddToDevisSelected(null); }} className={`flex-1 py-3 rounded-xl font-medium bg-surface-2 text-encre-2`}>
-                      Annuler
-                    </button>
-                    <button
-                      onClick={handleAddToDevis}
-                      disabled={!addToDevisSelected}
-                      className="flex-1 py-3 rounded-xl font-medium flex items-center justify-center gap-2 disabled:opacity-50 bg-accent text-sur-accent"
-                    >
-                      <Plus size={16} /> Ajouter
-                    </button>
-                  </div>
-                </>
-              )}
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Article Picker Modal */}
-      {showArticlePicker && <ArticlePicker isOpen={showArticlePicker} onClose={() => setShowArticlePicker(false)} onSelect={handleAddFromPicker} isDark={isDark} couleur={couleur} />}
+      {fenetres}
     </div>
   );
 }

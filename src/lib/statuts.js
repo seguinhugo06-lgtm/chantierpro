@@ -49,6 +49,40 @@ const CLIENT = {
   inactif: { libelle: 'Inactif', ton: 'neutre' },
 };
 
+/**
+ * La règle d'un statut de client, écrite une fois (audit UX du 20 oct. 2026 : « Actif / Inactif / En devis » n'étaient
+ * expliqués nulle part ; une cliente qui avait payé était « Inactive »). Ce texte s'affiche tel quel dans l'app.
+ */
+export const REGLE_CLIENT = {
+  actif: 'Un chantier est en cours ou prévu.',
+  en_devis: 'Un devis est envoyé ou signé, sans chantier en cours.',
+  prospect: 'Créé il y a moins de 90 jours, sans devis ni chantier.',
+  inactif: 'Ni chantier ouvert, ni devis envoyé ou signé.',
+};
+
+const JOURS_PROSPECT = 90;
+
+/**
+ * Le statut d'un client, d'après ce qu'il a en cours — la seule règle (liste, fiche, filtres).
+ * @param {{ chantiersEnCours?: number, chantiersActifs?: number, devisActifs?: number, chantiers?: number, devis?: number }} stats
+ *   chantiersEnCours : chantiers « en cours » ; chantiersActifs : ni archivé, ni abandonné, ni terminé (en cours ou prévu) ;
+ *   devisActifs : devis envoyé, vu, signé ou à acompte facturé ; chantiers et devis : totaux
+ * @param {string|number|Date} [creeLe] date de création du client
+ * @param {number} [maintenant] horloge (pour les tests)
+ * @returns {'actif'|'en_devis'|'prospect'|'inactif'}
+ */
+export function statutClient(stats = {}, creeLe, maintenant = Date.now()) {
+  const { chantiersEnCours = 0, chantiersActifs = 0, devisActifs = 0, chantiers = 0, devis = 0 } = stats;
+  if (chantiersEnCours > 0) return 'actif';
+  if (devisActifs > 0) return 'en_devis';
+  if (creeLe) {
+    const t = new Date(creeLe).getTime();
+    if (Number.isFinite(t) && (maintenant - t) / 86400000 < JOURS_PROSPECT && chantiers === 0 && devis === 0) return 'prospect';
+  }
+  if (chantiersActifs > 0) return 'actif';
+  return 'inactif';
+}
+
 const TABLES = { devis: DEVIS, facture: FACTURE, chantier: CHANTIER, client: CLIENT };
 
 /**

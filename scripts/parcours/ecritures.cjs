@@ -41,7 +41,9 @@ module.exports = [
       await attendre(1500);
       await page.evaluate(() => [...document.querySelectorAll('[data-ui="LigneListe"] > button')].find((b) => b.innerText.includes('Dupont'))?.click());
       await attendre(800);
-      await cliquer(page, 'Supprimer le client');
+      // La corbeille n'est plus à côté du crayon : « Supprimer le client » est dans « ⋯ » (audit UX du 20 oct. 2026)
+      await cliquer(page, "Plus d'actions");
+      await cliquer(page, 'Supprimer le client', { dans: '[role="dialog"]' });
       await cliquer(page, 'Confirmer', { dans: '[role="dialog"]' });
       await attendre(1500);
       const t = await texte(page);

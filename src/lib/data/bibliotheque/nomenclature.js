@@ -32,33 +32,33 @@ export const NOMENCLATURE = [
   // ===========================================================================
   // LOT 01 — Gros Œuvre
   // ===========================================================================
-  { id: 'LOT_01', code: '01', nom: 'Gros Œuvre', type: 'lot', parentId: null, icon: 'Building2', color: '#f97316', ordre: 1 },
+  { id: 'LOT_01', code: '01', nom: 'Gros Œuvre', type: 'lot', parentId: null, icon: 'Building2', color: '#78716c', ordre: 1 },
 
   // Corps d'état
-  { id: 'CORPS_01_01', code: '01-01', nom: 'Terrassement / Fondations', type: 'corps', parentId: 'LOT_01', icon: 'Building2', color: '#f97316', ordre: 1 },
-  { id: 'CORPS_01_02', code: '01-02', nom: 'Élévation / Maçonnerie', type: 'corps', parentId: 'LOT_01', icon: 'Building2', color: '#f97316', ordre: 2 },
-  { id: 'CORPS_01_03', code: '01-03', nom: 'Béton armé', type: 'corps', parentId: 'LOT_01', icon: 'Building2', color: '#f97316', ordre: 3 },
-  { id: 'CORPS_01_04', code: '01-04', nom: 'Dallage / Chape', type: 'corps', parentId: 'LOT_01', icon: 'Building2', color: '#f97316', ordre: 4 },
+  { id: 'CORPS_01_01', code: '01-01', nom: 'Terrassement / Fondations', type: 'corps', parentId: 'LOT_01', icon: 'Building2', color: '#78716c', ordre: 1 },
+  { id: 'CORPS_01_02', code: '01-02', nom: 'Élévation / Maçonnerie', type: 'corps', parentId: 'LOT_01', icon: 'Building2', color: '#78716c', ordre: 2 },
+  { id: 'CORPS_01_03', code: '01-03', nom: 'Béton armé', type: 'corps', parentId: 'LOT_01', icon: 'Building2', color: '#78716c', ordre: 3 },
+  { id: 'CORPS_01_04', code: '01-04', nom: 'Dallage / Chape', type: 'corps', parentId: 'LOT_01', icon: 'Building2', color: '#78716c', ordre: 4 },
 
   // Chapitres — Terrassement / Fondations
-  { id: 'CHAP_01_01_01', code: '01-01-01', nom: 'Fouilles', type: 'chapitre', parentId: 'CORPS_01_01', icon: 'Building2', color: '#f97316', ordre: 1 },
-  { id: 'CHAP_01_01_02', code: '01-01-02', nom: 'Remblaiement', type: 'chapitre', parentId: 'CORPS_01_01', icon: 'Building2', color: '#f97316', ordre: 2 },
-  { id: 'CHAP_01_01_03', code: '01-01-03', nom: 'Évacuation terres', type: 'chapitre', parentId: 'CORPS_01_01', icon: 'Building2', color: '#f97316', ordre: 3 },
+  { id: 'CHAP_01_01_01', code: '01-01-01', nom: 'Fouilles', type: 'chapitre', parentId: 'CORPS_01_01', icon: 'Building2', color: '#78716c', ordre: 1 },
+  { id: 'CHAP_01_01_02', code: '01-01-02', nom: 'Remblaiement', type: 'chapitre', parentId: 'CORPS_01_01', icon: 'Building2', color: '#78716c', ordre: 2 },
+  { id: 'CHAP_01_01_03', code: '01-01-03', nom: 'Évacuation terres', type: 'chapitre', parentId: 'CORPS_01_01', icon: 'Building2', color: '#78716c', ordre: 3 },
 
   // Chapitres — Élévation / Maçonnerie
-  { id: 'CHAP_01_02_01', code: '01-02-01', nom: 'Parpaings / Blocs', type: 'chapitre', parentId: 'CORPS_01_02', icon: 'Building2', color: '#f97316', ordre: 1 },
-  { id: 'CHAP_01_02_02', code: '01-02-02', nom: 'Briques', type: 'chapitre', parentId: 'CORPS_01_02', icon: 'Building2', color: '#f97316', ordre: 2 },
-  { id: 'CHAP_01_02_03', code: '01-02-03', nom: 'Pierre', type: 'chapitre', parentId: 'CORPS_01_02', icon: 'Building2', color: '#f97316', ordre: 3 },
+  { id: 'CHAP_01_02_01', code: '01-02-01', nom: 'Parpaings / Blocs', type: 'chapitre', parentId: 'CORPS_01_02', icon: 'Building2', color: '#78716c', ordre: 1 },
+  { id: 'CHAP_01_02_02', code: '01-02-02', nom: 'Briques', type: 'chapitre', parentId: 'CORPS_01_02', icon: 'Building2', color: '#78716c', ordre: 2 },
+  { id: 'CHAP_01_02_03', code: '01-02-03', nom: 'Pierre', type: 'chapitre', parentId: 'CORPS_01_02', icon: 'Building2', color: '#78716c', ordre: 3 },
 
   // Chapitres — Béton armé
-  { id: 'CHAP_01_03_01', code: '01-03-01', nom: 'Semelles / Longrines', type: 'chapitre', parentId: 'CORPS_01_03', icon: 'Building2', color: '#f97316', ordre: 1 },
-  { id: 'CHAP_01_03_02', code: '01-03-02', nom: 'Poteaux / Poutres', type: 'chapitre', parentId: 'CORPS_01_03', icon: 'Building2', color: '#f97316', ordre: 2 },
-  { id: 'CHAP_01_03_03', code: '01-03-03', nom: 'Dalles / Planchers', type: 'chapitre', parentId: 'CORPS_01_03', icon: 'Building2', color: '#f97316', ordre: 3 },
+  { id: 'CHAP_01_03_01', code: '01-03-01', nom: 'Semelles / Longrines', type: 'chapitre', parentId: 'CORPS_01_03', icon: 'Building2', color: '#78716c', ordre: 1 },
+  { id: 'CHAP_01_03_02', code: '01-03-02', nom: 'Poteaux / Poutres', type: 'chapitre', parentId: 'CORPS_01_03', icon: 'Building2', color: '#78716c', ordre: 2 },
+  { id: 'CHAP_01_03_03', code: '01-03-03', nom: 'Dalles / Planchers', type: 'chapitre', parentId: 'CORPS_01_03', icon: 'Building2', color: '#78716c', ordre: 3 },
 
   // Chapitres — Dallage / Chape
-  { id: 'CHAP_01_04_01', code: '01-04-01', nom: 'Dallage sur terre-plein', type: 'chapitre', parentId: 'CORPS_01_04', icon: 'Building2', color: '#f97316', ordre: 1 },
-  { id: 'CHAP_01_04_02', code: '01-04-02', nom: 'Chapes', type: 'chapitre', parentId: 'CORPS_01_04', icon: 'Building2', color: '#f97316', ordre: 2 },
-  { id: 'CHAP_01_04_03', code: '01-04-03', nom: 'Ragréage', type: 'chapitre', parentId: 'CORPS_01_04', icon: 'Building2', color: '#f97316', ordre: 3 },
+  { id: 'CHAP_01_04_01', code: '01-04-01', nom: 'Dallage sur terre-plein', type: 'chapitre', parentId: 'CORPS_01_04', icon: 'Building2', color: '#78716c', ordre: 1 },
+  { id: 'CHAP_01_04_02', code: '01-04-02', nom: 'Chapes', type: 'chapitre', parentId: 'CORPS_01_04', icon: 'Building2', color: '#78716c', ordre: 2 },
+  { id: 'CHAP_01_04_03', code: '01-04-03', nom: 'Ragréage', type: 'chapitre', parentId: 'CORPS_01_04', icon: 'Building2', color: '#78716c', ordre: 3 },
 
   // ===========================================================================
   // LOT 02 — VRD

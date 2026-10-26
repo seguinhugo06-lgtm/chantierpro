@@ -19,19 +19,11 @@ const formatPrice = (amount) => {
 /**
  * Difficulty badge config
  */
+// Trois tons du thème : simple = acquis, standard = neutre, complexe = à surveiller (le rouge reste celui du retard)
 const DIFFICULTE_STYLES = {
-  simple: {
-    light: 'bg-green-100 text-green-700',
-    dark: 'bg-green-900/30 text-green-400',
-  },
-  standard: {
-    light: 'bg-blue-100 text-blue-700',
-    dark: 'bg-blue-900/30 text-blue-400',
-  },
-  complexe: {
-    light: 'bg-red-100 text-red-700',
-    dark: 'bg-red-900/30 text-red-400',
-  },
+  simple: 'bg-succes-fond text-succes-texte',
+  standard: 'bg-neutre-fond text-neutre-texte',
+  complexe: 'bg-alerte-fond text-alerte-texte',
 };
 
 /**
@@ -49,21 +41,21 @@ function DecompositionBar({ fourniture, mainOeuvre, materiel }) {
     <div className="flex w-full h-1.5 rounded-full overflow-hidden mt-1">
       {pctF > 0 && (
         <div
-          className="bg-amber-400 h-full"
+          className="bg-alerte-point h-full"
           style={{ width: `${pctF}%` }}
           title={`Fourniture: ${pctF.toFixed(0)}%`}
         />
       )}
       {pctMO > 0 && (
         <div
-          className="bg-blue-400 h-full"
+          className="bg-info-point h-full"
           style={{ width: `${pctMO}%` }}
           title={`Main d'oeuvre: ${pctMO.toFixed(0)}%`}
         />
       )}
       {pctMat > 0 && (
         <div
-          className="bg-emerald-400 h-full"
+          className="bg-succes-point h-full"
           style={{ width: `${pctMat}%` }}
           title={`Matériel: ${pctMat.toFixed(0)}%`}
         />
@@ -75,11 +67,10 @@ function DecompositionBar({ fourniture, mainOeuvre, materiel }) {
 /**
  * DifficultyBadge — small pill showing difficulty level
  */
-function DifficultyBadge({ difficulte, isDark }) {
-  const config = DIFFICULTE_STYLES[difficulte];
-  if (!config) return null;
+function DifficultyBadge({ difficulte }) {
+  const classes = DIFFICULTE_STYLES[difficulte];
+  if (!classes) return null;
 
-  const classes = isDark ? config.dark : config.light;
   const label = difficulte.charAt(0).toUpperCase() + difficulte.slice(1);
 
   return (
@@ -103,8 +94,6 @@ function DifficultyBadge({ difficulte, isDark }) {
  */
 const OuvrageCard = React.memo(function OuvrageCard({
   ouvrage,
-  isDark = false,
-  couleur = '#f97316',
   viewMode = 'grid',
   onSelect,
 }) {
@@ -165,7 +154,7 @@ const OuvrageCard = React.memo(function OuvrageCard({
         </div>
 
         {/* Prix HT */}
-        <span className="w-24 text-right shrink-0 text-sm font-semibold text-accent-texte">
+        <span className="w-24 text-right shrink-0 text-sm font-semibold tabular-nums text-encre">
           {hasGeoCoeff ? (
             <span className="flex flex-col items-end leading-tight">
               <span className={`text-xs line-through text-encre-3`}>
@@ -180,9 +169,9 @@ const OuvrageCard = React.memo(function OuvrageCard({
 
         {/* F / MO / Mat */}
         <span className={`text-xs w-32 shrink-0 hidden md:flex items-center gap-1 text-encre-3`}>
-          <span className="text-amber-500">F:{fourniture ?? '—'}</span>
-          <span className="text-blue-500">MO:{mainOeuvre ?? '—'}</span>
-          <span className="text-emerald-500">M:{materiel ?? '—'}</span>
+          <span className="text-alerte-texte">F:{fourniture ?? '—'}</span>
+          <span className="text-info-texte">MO:{mainOeuvre ?? '—'}</span>
+          <span className="text-succes-texte">M:{materiel ?? '—'}</span>
         </span>
 
         {/* Temps */}
@@ -192,7 +181,7 @@ const OuvrageCard = React.memo(function OuvrageCard({
 
         {/* Difficulté */}
         <span className="w-20 shrink-0 hidden lg:flex justify-center">
-          <DifficultyBadge difficulte={difficulte} isDark={isDark} />
+          <DifficultyBadge difficulte={difficulte} />
         </span>
       </div>
     );
@@ -212,7 +201,7 @@ const OuvrageCard = React.memo(function OuvrageCard({
         <span className={`text-xs font-mono text-encre-3`}>
           {code}
         </span>
-        <DifficultyBadge difficulte={difficulte} isDark={isDark} />
+        <DifficultyBadge difficulte={difficulte} />
       </div>
 
       {/* Nom */}
@@ -236,12 +225,12 @@ const OuvrageCard = React.memo(function OuvrageCard({
               <span className={`text-xs line-through text-encre-3`}>
                 {formatPrice(_prixOriginal)}
               </span>
-              <span className="text-lg font-bold text-accent-texte">
+              <span className="text-lg font-bold tabular-nums text-encre">
                 {formatPrice(prixUnitaireHT)}
               </span>
             </span>
           ) : (
-            <span className="text-lg font-bold text-accent-texte">
+            <span className="text-lg font-bold tabular-nums text-encre">
               {formatPrice(prixUnitaireHT)}
             </span>
           )}
@@ -261,17 +250,17 @@ const OuvrageCard = React.memo(function OuvrageCard({
       <div className="mb-2">
         <div className="flex items-center gap-2 text-xs">
           {fourniture != null && (
-            <span className={`px-1.5 py-0.5 rounded ${isDark ? 'bg-amber-900/30 text-amber-400' : 'bg-amber-50 text-amber-700'}`}>
+            <span className="px-1.5 py-0.5 rounded bg-alerte-fond text-alerte-texte">
               F: {formatPrice(fourniture)}
             </span>
           )}
           {mainOeuvre != null && (
-            <span className={`px-1.5 py-0.5 rounded ${isDark ? 'bg-blue-900/30 text-blue-400' : 'bg-blue-50 text-blue-700'}`}>
+            <span className="px-1.5 py-0.5 rounded bg-info-fond text-info-texte">
               MO: {formatPrice(mainOeuvre)}
             </span>
           )}
           {materiel != null && (
-            <span className={`px-1.5 py-0.5 rounded ${isDark ? 'bg-emerald-900/30 text-emerald-400' : 'bg-emerald-50 text-emerald-700'}`}>
+            <span className="px-1.5 py-0.5 rounded bg-succes-fond text-succes-texte">
               Mat: {formatPrice(materiel)}
             </span>
           )}

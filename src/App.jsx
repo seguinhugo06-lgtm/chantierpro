@@ -2262,20 +2262,19 @@ export default function App() {
             isDark={isDark}
             couleur={couleur}
             onImport={async (data) => {
+              // Un par un, par DataContext : chaque client est enregistré en base et compte dans la limite
+              // du plan. Au premier refus (limite, droits), on s'arrête (DataContext a dit pourquoi) et on rend combien
+              // sont passés : la fenêtre l'écrit elle-même, sans second message. Avant : setClients seul, « 3 client(s)
+              // importé(s) » et rien en base ; puis un message, et la fenêtre qui se fermait sur lui.
+              let importes = 0;
               if (importType === 'clients') {
-                // Un par un, par DataContext : chaque client est enregistré en base et compte dans la limite
-                // du plan. Au premier refus (limite, droits), on s'arrête et on dit combien sont passés.
-                // Avant : setClients seul, « 3 client(s) importé(s) » et rien en base.
-                let importes = 0;
                 for (const item of data) {
                   const c = await dataAddClient(item);
                   if (!c) break;
                   importes++;
                 }
-                if (importes === data.length) showToast(`${importes} client${importes > 1 ? 's' : ''} importé${importes > 1 ? 's' : ''}`, 'success');
-                else showToast(`${importes} client${importes > 1 ? 's' : ''} importé${importes > 1 ? 's' : ''} sur ${data.length} : l'import s'est arrêté`, 'error');
               }
-              setShowImport(false);
+              return { importes, total: data.length };
             }}
           />
         </Suspense>

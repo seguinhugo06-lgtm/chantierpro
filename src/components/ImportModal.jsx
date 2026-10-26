@@ -1,16 +1,21 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { createPortal } from 'react-dom';
-import { X, Upload, FileSpreadsheet, Check, AlertCircle, ArrowRight, ChevronDown, Loader2 } from 'lucide-react';
+import { Upload, FileSpreadsheet, Check, AlertCircle, ArrowRight, ChevronDown, Loader2 } from 'lucide-react';
+import Modal, { ModalHeader, ModalTitle, ModalDescription, ModalBody } from './ui/Modal';
+import { Bouton } from './ui/Bouton';
 import { lireCsv } from '../lib/csvImport';
 
 /**
- * ImportModal - CSV/Excel import with column mapping
- * Supports drag-and-drop, file preview, and field mapping
- * Inline CSV parser (no external dependency)
+ * ImportModal — import d'un fichier CSV avec association des colonnes (glisser-déposer, aperçu, champs à associer).
+ * Sur ui/Modal (rôle dialogue, focus, Échap, feuille du bas au téléphone) : refonte du 26 oct. 2026 (Task 7 « ancien code »).
+ * Avant : en-tête en dégradé de la couleur de l'entreprise, fenêtre faite main sans rôle ni nom sur la croix, pourcentage
+ * d'avancement calculé avant l'écriture (100 % pendant que les clients s'enregistraient encore), « Importation réussie »
+ * même quand l'import s'était arrêté en route, textes sans accents. `isDark` et `couleur` sont encore passés par
+ * l'appelant et ignorés ici.
+ *
+ * `onImport(lignes)` doit rendre `{ importes, total }` : ce qui a VRAIMENT été enregistré. La fenêtre le dit tel quel.
  */
 
-// ── Field definitions per type ──────────────────────────────────
+// ── Champs à associer, par type ─────────────────────────────────
 const FIELD_DEFINITIONS = {
   clients: [
     { key: 'nom', label: 'Nom' },
@@ -22,27 +27,23 @@ const FIELD_DEFINITIONS = {
     { key: 'notes', label: 'Notes' },
   ],
   articles: [
-    { key: 'designation', label: 'Designation' },
-    { key: 'unite', label: 'Unite' },
+    { key: 'designation', label: 'Désignation' },
+    { key: 'unite', label: 'Unité' },
     { key: 'prixUnitaire', label: 'Prix unitaire' },
     { key: 'tva', label: 'TVA (%)' },
-    { key: 'categorie', label: 'Categorie' },
+    { key: 'categorie', label: 'Catégorie' },
   ],
   ouvrages: [
-    { key: 'designation', label: 'Designation' },
+    { key: 'designation', label: 'Désignation' },
     { key: 'description', label: 'Description' },
-    { key: 'unite', label: 'Unite' },
+    { key: 'unite', label: 'Unité' },
     { key: 'prixUnitaire', label: 'Prix unitaire' },
     { key: 'tva', label: 'TVA (%)' },
-    { key: 'categorie', label: 'Categorie' },
+    { key: 'categorie', label: 'Catégorie' },
   ],
 };
 
-const TYPE_LABELS = {
-  clients: 'Clients',
-  articles: 'Articles',
-  ouvrages: 'Ouvrages',
-};
+const TYPE_LABELS = { clients: 'Clients', articles: 'Articles', ouvrages: 'Ouvrages' };
 
 // ── Lecture du fichier ───────────────────────────────────────────
 // Lecteur CSV commun (src/lib/csvImport.js) : un seul séparateur, détecté sur la ligne d'en-tête. Avant (recette du
@@ -56,7 +57,7 @@ function parseCSV(text) {
 // ── Association automatique des colonnes ─────────────────────────
 // Égalité d'abord (« Prénom » → prénom), puis inclusion et synonymes ; un champ ne sert qu'une fois. Avant :
 // « prenom » contient « nom », et le champ nom passait avant prénom (les clients s'appelaient « Anne », « Paul »).
-const normaliser = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
+const normaliser = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]/g, '');
 
 function autoMapColumns(csvHeaders, fields) {
   const mapping = {};
@@ -84,18 +85,11 @@ function autoMapColumns(csvHeaders, fields) {
   return mapping;
 }
 
-
 export { parseCSV, autoMapColumns };
 
-export default function ImportModal({
-  isOpen,
-  onClose,
-  type = 'clients',
-  onImport,
-  isDark = false,
-  couleur = '#f97316'
-}) {
-  // ── State ───────────────────────────────────────────────────
+const ETAPES = { upload: [1, 'Choisir le fichier'], mapping: [2, 'Associer les colonnes'], importing: [3, 'Importation'], done: [3, 'Terminé'] };
+
+export default function ImportModal({ isOpen, onClose, type = 'clients', onImport }) {
   const [step, setStep] = useState('upload'); // 'upload' | 'mapping' | 'importing' | 'done'
   const [fileName, setFileName] = useState('');
   const [csvHeaders, setCsvHeaders] = useState([]);
@@ -103,25 +97,13 @@ export default function ImportModal({
   const [mapping, setMapping] = useState({});
   const [dragOver, setDragOver] = useState(false);
   const [error, setError] = useState('');
-  const [importProgress, setImportProgress] = useState(0);
   const [importResult, setImportResult] = useState(null);
   const fileInputRef = useRef(null);
 
   const fields = FIELD_DEFINITIONS[type] || FIELD_DEFINITIONS.clients;
+  const nomDuType = (TYPE_LABELS[type] || type).toLowerCase();
 
-  // ── Theme ─────────────────────────────────────────────────
-  const cardBg = 'bg-surface';
-  const inputBg = 'bg-surface border-bord text-encre';
-  const textPrimary = 'text-encre';
-  const textSecondary = 'text-encre-2';
-  const textMuted = 'text-encre-3';
-  const borderColor = 'border-bord';
-  const hoverBg = 'hover:bg-surface-2';
-  const dropZoneBg = 'bg-fond';
-  const tableBg = 'bg-fond';
-  const tableRowBg = 'even:bg-fond';
-
-  // ── Reset on close ────────────────────────────────────────
+  // Fermée : tout repart à zéro
   useEffect(() => {
     if (!isOpen) {
       setStep('upload');
@@ -131,529 +113,232 @@ export default function ImportModal({
       setMapping({});
       setDragOver(false);
       setError('');
-      setImportProgress(0);
       setImportResult(null);
     }
   }, [isOpen]);
 
-  // ── File processing ───────────────────────────────────────
   const processFile = useCallback((file) => {
     setError('');
-
-    // Validate file type
     const ext = file.name.split('.').pop().toLowerCase();
     if (!['csv', 'txt'].includes(ext)) {
-      setError('Format non supporte. Veuillez utiliser un fichier .csv');
+      setError('Format non pris en charge. Utilisez un fichier .csv.');
       return;
     }
-
-    // Validate size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
-      setError('Fichier trop volumineux (max 5 Mo)');
+      setError('Fichier trop volumineux (5 Mo au plus).');
       return;
     }
-
     setFileName(file.name);
-
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
-        const text = e.target.result;
-        const parsed = parseCSV(text);
-
+        const parsed = parseCSV(e.target.result);
         if (parsed.length < 2) {
-          setError('Le fichier doit contenir au moins un en-tete et une ligne de donnees');
+          setError('Le fichier doit contenir au moins un en-tête et une ligne de données.');
           return;
         }
-
         const headers = parsed[0];
-        const dataRows = parsed.slice(1);
-
         setCsvHeaders(headers);
-        setCsvRows(dataRows);
+        setCsvRows(parsed.slice(1));
         setMapping(autoMapColumns(headers, fields));
         setStep('mapping');
       } catch (err) {
-        setError('Erreur lors de la lecture du fichier: ' + err.message);
+        setError(`Le fichier n'a pas pu être lu : ${err.message}`);
       }
     };
-
-    reader.onerror = () => {
-      setError('Erreur lors de la lecture du fichier');
-    };
-
+    reader.onerror = () => setError('Le fichier n\'a pas pu être lu.');
     reader.readAsText(file, 'UTF-8');
   }, [fields]);
 
-  // ── Drag and drop handlers ────────────────────────────────
-  const handleDragOver = useCallback((e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragOver(true);
-  }, []);
-
-  const handleDragLeave = useCallback((e) => {
+  const surGlisse = useCallback((e) => { e.preventDefault(); e.stopPropagation(); setDragOver(true); }, []);
+  const surSortie = useCallback((e) => { e.preventDefault(); e.stopPropagation(); setDragOver(false); }, []);
+  const surDepot = useCallback((e) => {
     e.preventDefault();
     e.stopPropagation();
     setDragOver(false);
-  }, []);
-
-  const handleDrop = useCallback((e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragOver(false);
-    const files = e.dataTransfer?.files;
-    if (files && files.length > 0) {
-      processFile(files[0]);
-    }
+    const fichier = e.dataTransfer?.files?.[0];
+    if (fichier) processFile(fichier);
+  }, [processFile]);
+  const surChoix = useCallback((e) => {
+    const fichier = e.target.files?.[0];
+    if (fichier) processFile(fichier);
   }, [processFile]);
 
-  const handleFileSelect = useCallback((e) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      processFile(file);
-    }
-  }, [processFile]);
+  const mappedCount = Object.values(mapping).filter((v) => v !== '').length;
 
-  // ── Column mapping change ─────────────────────────────────
-  const handleMappingChange = (colIndex, fieldKey) => {
-    setMapping(prev => ({ ...prev, [colIndex]: fieldKey }));
-  };
-
-  // ── Count mapped columns ──────────────────────────────────
-  const mappedCount = Object.values(mapping).filter(v => v !== '').length;
-
-  // ── Execute import ────────────────────────────────────────
   const handleImport = async () => {
     setStep('importing');
-    setImportProgress(0);
-
-    const mappedData = [];
-
-    for (let i = 0; i < csvRows.length; i++) {
-      const row = csvRows[i];
+    const lignes = [];
+    for (const row of csvRows) {
       const obj = {};
-      let hasData = false;
-
+      let aDesDonnees = false;
       Object.entries(mapping).forEach(([colIndex, fieldKey]) => {
-        if (fieldKey && row[parseInt(colIndex)] !== undefined) {
-          let value = row[parseInt(colIndex)];
-
-          // Convert numeric fields
+        if (fieldKey && row[parseInt(colIndex, 10)] !== undefined) {
+          let value = row[parseInt(colIndex, 10)];
           if (['prixUnitaire', 'tva'].includes(fieldKey)) {
-            const parsed = parseFloat(value.replace(',', '.'));
-            value = isNaN(parsed) ? 0 : parsed;
+            const lu = parseFloat(value.replace(',', '.'));
+            value = Number.isNaN(lu) ? 0 : lu;
           }
-
-          if (value !== '' && value !== undefined) {
-            obj[fieldKey] = value;
-            hasData = true;
-          }
+          if (value !== '' && value !== undefined) { obj[fieldKey] = value; aDesDonnees = true; }
         }
       });
-
-      if (hasData) {
-        mappedData.push(obj);
-      }
-
-      // Update progress
-      setImportProgress(Math.round(((i + 1) / csvRows.length) * 100));
-
-      // Small delay for visual feedback on large files
-      if (i % 50 === 0 && i > 0) {
-        await new Promise(r => setTimeout(r, 10));
-      }
+      if (aDesDonnees) lignes.push(obj);
     }
-
-    // Call the import callback
+    // Le résultat dit ce qui a VRAIMENT été enregistré : un import arrêté en route (limite de l'offre, refus de la base) n'est pas un succès
     try {
-      await onImport(mappedData);
-      setImportResult({ success: true, count: mappedData.length });
+      const res = await onImport(lignes);
+      const importes = typeof res?.importes === 'number' ? res.importes : lignes.length;
+      const total = typeof res?.total === 'number' ? res.total : lignes.length;
+      setImportResult({ ok: importes === total, importes, total });
     } catch (err) {
-      setImportResult({ success: false, error: err.message || 'Erreur lors de l\'importation' });
+      setImportResult({ ok: false, importes: 0, total: lignes.length, erreur: err.message || 'Erreur lors de l\'importation' });
     }
-
     setStep('done');
   };
 
-  // ── Keyboard handler ──────────────────────────────────────
-  const handleKeyDown = (e) => {
-    if (e.key === 'Escape') {
-      onClose();
-    }
-  };
+  const [numero, etiquette] = ETAPES[step];
+  const apercu = csvRows.slice(0, 5);
+  const resume = importResult
+    ? importResult.erreur
+      ? importResult.erreur
+      : importResult.ok
+        ? `${importResult.importes} ${nomDuType} importé${importResult.importes > 1 ? 's' : ''}.`
+        : `${importResult.importes} ${nomDuType} importé${importResult.importes > 1 ? 's' : ''} sur ${importResult.total} : l'import s'est arrêté. Les autres lignes n'ont pas été enregistrées.`
+    : '';
 
-  // ── Preview rows (first 5) ────────────────────────────────
-  const previewRows = csvRows.slice(0, 5);
-
-  const modalContent = (
-    <AnimatePresence mode="wait">
-      {isOpen && (
-        <motion.div
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.2 }}
-          onKeyDown={handleKeyDown}
-        >
-          {/* Backdrop */}
-          <motion.div
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onClose}
-          />
-
-          {/* Modal */}
-          <motion.div
-            className={`relative w-full sm:max-w-2xl max-h-[90vh] ${cardBg} rounded-t-3xl sm:rounded-2xl shadow-2xl overflow-hidden flex flex-col`}
-            initial={{ y: '100%', opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: '100%', opacity: 0 }}
-            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-          >
-            {/* Header with gradient */}
-            <div
-              className="px-6 pt-6 pb-4 shrink-0"
-              style={{ background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)` }}
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} size="lg" closeOnBackdrop={step !== 'importing'} closeOnEscape={step !== 'importing'}>
+      <ModalHeader>
+        <ModalTitle className="flex items-center gap-2"><FileSpreadsheet size={20} aria-hidden="true" className="text-encre-3" /> Importer des {nomDuType}</ModalTitle>
+        <ModalDescription>
+          Étape {numero} sur 3 · {etiquette}{step === 'mapping' ? ` · ${csvRows.length} ligne${csvRows.length > 1 ? 's' : ''} détectée${csvRows.length > 1 ? 's' : ''}` : ''}
+        </ModalDescription>
+      </ModalHeader>
+      <ModalBody className="space-y-5">
+        {/* ── Étape 1 : choisir le fichier ── */}
+        {step === 'upload' && (
+          <>
+            <button
+              type="button" onClick={() => fileInputRef.current?.click()}
+              onDragOver={surGlisse} onDragLeave={surSortie} onDrop={surDepot}
+              className={`w-full border-2 border-dashed rounded-2xl p-8 text-center transition-colors ${dragOver ? 'border-accent bg-accent/10' : 'border-bord-fort bg-fond hover:bg-surface-2'}`}
             >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
-                    <FileSpreadsheet size={20} className="text-white" />
-                  </div>
-                  <div>
-                    <h2 className="text-lg font-bold text-white">
-                      Importer des {TYPE_LABELS[type] || type}
-                    </h2>
-                    <p className="text-white/80 text-sm">
-                      {step === 'upload' && 'Fichier CSV'}
-                      {step === 'mapping' && `${csvRows.length} lignes detectees`}
-                      {step === 'importing' && 'Importation en cours...'}
-                      {step === 'done' && 'Termine'}
-                    </p>
-                  </div>
-                </div>
-                <button
-                  onClick={onClose}
-                  className="p-3 hover:bg-white/20 rounded-xl transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
-                >
-                  <X size={20} className="text-white" />
-                </button>
-              </div>
+              <span className="w-14 h-14 rounded-2xl bg-surface-2 text-encre-2 flex items-center justify-center mx-auto mb-4"><Upload size={28} aria-hidden="true" /></span>
+              <span className="block text-base font-semibold text-encre mb-1">Glissez votre fichier ici</span>
+              <span className="block text-sm text-encre-2">ou touchez pour le choisir</span>
+              <span className="block text-sm mt-3 text-encre-3">Fichier .csv, 5 Mo au plus</span>
+            </button>
+            <input ref={fileInputRef} type="file" accept=".csv,.txt" onChange={surChoix} className="hidden" aria-label="Fichier à importer" />
 
-              {/* Step indicator */}
-              <div className="flex items-center gap-2 mt-4">
-                {['upload', 'mapping', 'done'].map((s, i) => (
-                  <div key={s} className="flex items-center gap-2">
-                    <div
-                      className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
-                        step === s || (['importing', 'done'].includes(step) && s === 'done') ||
-                        (step === 'mapping' && i < 1) || (step === 'importing' && i < 2) || (step === 'done' && i < 2)
-                          ? 'bg-white text-slate-900'
-                          : 'bg-white/30 text-white'
-                      }`}
-                    >
-                      {(step === 'done' && i < 2) || (step === 'mapping' && i === 0) || (step === 'importing' && i <= 1) ? (
-                        <Check size={14} />
-                      ) : (
-                        i + 1
-                      )}
+            {error && (
+              <p role="alert" className="flex items-center gap-2 p-3 rounded-xl text-sm font-medium bg-danger-fond text-danger-texte">
+                <AlertCircle size={16} aria-hidden="true" className="shrink-0" /> {error}
+              </p>
+            )}
+
+            <div className="rounded-xl p-4 bg-fond">
+              <p className="text-sm font-semibold text-encre mb-2">Colonnes attendues pour les {nomDuType} :</p>
+              <div className="flex flex-wrap gap-1.5">
+                {fields.map((f) => <span key={f.key} className="px-2.5 py-1 rounded-lg text-sm font-medium bg-surface border border-bord text-encre-2">{f.label}</span>)}
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* ── Étape 2 : associer les colonnes ── */}
+        {step === 'mapping' && (
+          <>
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-fond">
+              <FileSpreadsheet size={18} aria-hidden="true" className="text-encre-3" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold truncate text-encre">{fileName}</p>
+                <p className="text-sm text-encre-3">{csvRows.length} lignes, {csvHeaders.length} colonnes</p>
+              </div>
+              <Bouton variante="secondaire" taille="compacte" onClick={() => { setStep('upload'); setError(''); }}>Changer</Bouton>
+            </div>
+
+            <div>
+              <p className="text-sm font-semibold mb-3 text-encre">Associer les colonnes ({mappedCount}/{csvHeaders.length} associées)</p>
+              <div className="space-y-2">
+                {csvHeaders.map((header, colIndex) => (
+                  <div key={colIndex} className={`flex items-center gap-3 p-3 rounded-xl border border-bord ${mapping[colIndex] ? '' : 'opacity-70'}`}>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold truncate text-encre">{header}</p>
+                      {apercu[0] && apercu[0][colIndex] && <p className="text-sm truncate text-encre-3">ex : {apercu[0][colIndex]}</p>}
                     </div>
-                    {i < 2 && (
-                      <div className={`w-8 h-0.5 rounded ${
-                        (step === 'mapping' && i === 0) || (step === 'importing' && i <= 1) || (step === 'done' && i <= 1)
-                          ? 'bg-white'
-                          : 'bg-white/30'
-                      }`} />
-                    )}
+                    <ArrowRight size={16} aria-hidden="true" className="text-encre-3 flex-shrink-0" />
+                    <div className="relative">
+                      <select
+                        value={mapping[colIndex] || ''} aria-label={`Colonne « ${header} »`}
+                        onChange={(e) => setMapping((prev) => ({ ...prev, [colIndex]: e.target.value }))}
+                        className="appearance-none h-11 pl-3 pr-8 rounded-xl border border-bord-fort bg-surface text-base sm:text-sm text-encre cursor-pointer min-w-[150px]"
+                      >
+                        <option value="">Ignorer</option>
+                        {fields.map((f) => <option key={f.key} value={f.key}>{f.label}</option>)}
+                      </select>
+                      <ChevronDown size={14} aria-hidden="true" className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-encre-3" />
+                    </div>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* Content - scrollable */}
-            <div className="p-6 overflow-y-auto flex-1">
-
-              {/* ── STEP: Upload ───────────────────────────── */}
-              {step === 'upload' && (
-                <div className="space-y-4">
-                  {/* Drop zone */}
-                  <div
-                    onDragOver={handleDragOver}
-                    onDragLeave={handleDragLeave}
-                    onDrop={handleDrop}
-                    onClick={() => fileInputRef.current?.click()}
-                    className={`border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all ${
-                      dragOver
-                        ? 'border-current scale-[1.01]'
-                        : `${borderColor} ${hoverBg}`
-                    } ${dropZoneBg}`}
-                    style={dragOver ? { borderColor: couleur, backgroundColor: `${couleur}10` } : {}}
-                  >
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept=".csv,.txt"
-                      onChange={handleFileSelect}
-                      className="hidden"
-                    />
-                    <div
-                      className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4"
-                      style={{ backgroundColor: `${couleur}15` }}
-                    >
-                      <Upload size={28} className="text-accent-texte" />
-                    </div>
-                    <p className={`text-base font-medium mb-1 ${textPrimary}`}>
-                      Glissez votre fichier ici
-                    </p>
-                    <p className={`text-sm ${textMuted}`}>
-                      ou cliquez pour parcourir
-                    </p>
-                    <p className={`text-xs mt-3 ${textMuted}`}>
-                      Formats acceptes: .csv (max 5 Mo)
-                    </p>
-                  </div>
-
-                  {/* Error message */}
-                  {error && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className={`flex items-center gap-2 p-3 rounded-xl text-sm ${isDark ? 'bg-red-900/20 text-red-400' : 'bg-red-50 text-red-600'}`}
-                    >
-                      <AlertCircle size={16} className="shrink-0" />
-                      {error}
-                    </motion.div>
-                  )}
-
-                  {/* Format hints */}
-                  <div className={`rounded-xl p-4 ${tableBg}`}>
-                    <p className={`text-sm font-medium mb-2 ${textPrimary}`}>
-                      Colonnes attendues pour {TYPE_LABELS[type]}:
-                    </p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {fields.map(f => (
-                        <span
-                          key={f.key}
-                          className={`px-2.5 py-1 rounded-lg text-xs font-medium ${
-                            isDark ? 'bg-slate-600 text-slate-200' : 'bg-white text-slate-700 border border-slate-200'
-                          }`}
-                        >
-                          {f.label}
-                        </span>
+            <div>
+              <p className="text-sm font-semibold mb-3 text-encre">Aperçu (5 premières lignes)</p>
+              <div className="overflow-x-auto rounded-xl border border-bord">
+                <table className="w-full text-sm" aria-label="Aperçu des données importées">
+                  <thead>
+                    <tr className="bg-fond">
+                      {csvHeaders.map((h, i) => (
+                        <th key={i} scope="col" className="px-3 py-2 text-left font-semibold whitespace-nowrap text-encre-2">
+                          {mapping[i] ? <span className="text-accent-texte">{fields.find((f) => f.key === mapping[i])?.label || h}</span> : <span className="line-through text-encre-3">{h}</span>}
+                        </th>
                       ))}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* ── STEP: Mapping ──────────────────────────── */}
-              {step === 'mapping' && (
-                <div className="space-y-5">
-                  {/* File info */}
-                  <div className={`flex items-center gap-3 p-3 rounded-xl ${tableBg}`}>
-                    <FileSpreadsheet size={18} className="text-accent-texte" />
-                    <div className="flex-1 min-w-0">
-                      <p className={`text-sm font-medium truncate ${textPrimary}`}>{fileName}</p>
-                      <p className={`text-xs ${textMuted}`}>
-                        {csvRows.length} lignes, {csvHeaders.length} colonnes
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => { setStep('upload'); setError(''); }}
-                      className={`text-xs px-3 py-1.5 rounded-lg transition-colors ${
-                        isDark ? 'bg-slate-600 text-slate-300 hover:bg-slate-500' : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
-                      }`}
-                    >
-                      Changer
-                    </button>
-                  </div>
-
-                  {/* Column mapping */}
-                  <div>
-                    <p className={`text-sm font-medium mb-3 ${textPrimary}`}>
-                      Associer les colonnes ({mappedCount}/{csvHeaders.length} associees)
-                    </p>
-                    <div className="space-y-2">
-                      {csvHeaders.map((header, colIndex) => (
-                        <div
-                          key={colIndex}
-                          className={`flex items-center gap-3 p-3 rounded-xl border ${borderColor} transition-colors ${
-                            mapping[colIndex] ? '' : isDark ? 'opacity-60' : 'opacity-70'
-                          }`}
-                        >
-                          <div className="flex-1 min-w-0">
-                            <p className={`text-sm font-medium truncate ${textPrimary}`}>{header}</p>
-                            {previewRows[0] && previewRows[0][colIndex] && (
-                              <p className={`text-xs truncate ${textMuted}`}>
-                                ex: {previewRows[0][colIndex]}
-                              </p>
-                            )}
-                          </div>
-                          <ArrowRight size={16} className={textMuted} />
-                          <div className="relative">
-                            <select
-                              value={mapping[colIndex] || ''}
-                              onChange={(e) => handleMappingChange(colIndex, e.target.value)}
-                              className={`appearance-none pl-3 pr-8 py-2 rounded-xl border text-sm cursor-pointer min-w-[160px] ${inputBg}`}
-                            >
-                              <option value="">-- Ignorer --</option>
-                              {fields.map(f => (
-                                <option key={f.key} value={f.key}>
-                                  {f.label}
-                                </option>
-                              ))}
-                            </select>
-                            <ChevronDown size={14} className={`absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none ${textMuted}`} />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Preview table */}
-                  <div>
-                    <p className={`text-sm font-medium mb-3 ${textPrimary}`}>
-                      Aperçu (5 premières lignes)
-                    </p>
-                    <div className={`overflow-x-auto rounded-xl border ${borderColor}`}>
-                      <table className="w-full text-sm" aria-label="Aperçu des données importées">
-                        <thead>
-                          <tr className={tableBg}>
-                            {csvHeaders.map((h, i) => (
-                              <th key={i} scope="col" className={`px-3 py-2 text-left font-medium whitespace-nowrap ${textSecondary}`}>
-                                {mapping[i] ? (
-                                  <span className="text-accent-texte">
-                                    {fields.find(f => f.key === mapping[i])?.label || h}
-                                  </span>
-                                ) : (
-                                  <span className={`line-through ${textMuted}`}>{h}</span>
-                                )}
-                              </th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {previewRows.map((row, rowIdx) => (
-                            <tr key={rowIdx} className={tableRowBg}>
-                              {csvHeaders.map((_, colIdx) => (
-                                <td
-                                  key={colIdx}
-                                  className={`px-3 py-2 whitespace-nowrap ${
-                                    mapping[colIdx] ? textPrimary : textMuted + ' line-through'
-                                  }`}
-                                >
-                                  {row[colIdx] || ''}
-                                </td>
-                              ))}
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-
-                  {/* Action buttons */}
-                  <div className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-3 pt-2">
-                    <button
-                      onClick={onClose}
-                      className={`w-full sm:flex-1 px-4 py-3 rounded-xl font-medium transition-all min-h-[48px] ${
-                        isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                      }`}
-                    >
-                      Annuler
-                    </button>
-                    <button
-                      onClick={handleImport}
-                      disabled={mappedCount === 0}
-                      className="w-full sm:flex-1 px-4 py-3 rounded-xl font-medium transition-all min-h-[48px] flex items-center justify-center gap-2 disabled:opacity-50 hover:shadow-lg active:scale-[0.98] bg-accent text-sur-accent"
-                    >
-                      <Upload size={18} />
-                      <span>Importer {csvRows.length} lignes</span>
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* ── STEP: Importing ────────────────────────── */}
-              {step === 'importing' && (
-                <div className="space-y-6 py-8">
-                  <div className="text-center">
-                    <div className="w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-                      <Loader2 size={40} className="animate-spin text-accent-texte" />
-                    </div>
-                    <p className={`text-base font-medium ${textPrimary}`}>
-                      Importation en cours...
-                    </p>
-                    <p className={`text-sm mt-1 ${textMuted}`}>
-                      {importProgress}% termine
-                    </p>
-                  </div>
-
-                  {/* Progress bar */}
-                  <div className={`w-full h-3 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`}>
-                    <motion.div
-                      className="h-full rounded-full bg-accent"
-                      initial={{ width: '0%' }}
-                      animate={{ width: `${importProgress}%` }}
-                      transition={{ duration: 0.3, ease: 'easeOut' }}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* ── STEP: Done ─────────────────────────────── */}
-              {step === 'done' && importResult && (
-                <div className="space-y-6 py-8">
-                  <div className="text-center">
-                    {importResult.success ? (
-                      <>
-                        <div
-                          className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center"
-                          style={{ backgroundColor: `${couleur}15` }}
-                        >
-                          <Check size={32} className="text-accent-texte" />
-                        </div>
-                        <p className={`text-lg font-bold ${textPrimary}`}>
-                          Importation reussie
-                        </p>
-                        <p className={`text-sm mt-1 ${textMuted}`}>
-                          {importResult.count} {TYPE_LABELS[type]?.toLowerCase() || 'elements'} importes avec succes
-                        </p>
-                      </>
-                    ) : (
-                      <>
-                        <div className={`w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center ${isDark ? 'bg-red-900/20' : 'bg-red-50'}`}>
-                          <AlertCircle size={32} className="text-red-500" />
-                        </div>
-                        <p className={`text-lg font-bold ${textPrimary}`}>
-                          Erreur lors de l'importation
-                        </p>
-                        <p className="text-sm mt-1 text-red-500">
-                          {importResult.error}
-                        </p>
-                      </>
-                    )}
-                  </div>
-
-                  <button
-                    onClick={onClose}
-                    className="w-full px-4 py-3 rounded-xl font-medium transition-all min-h-[48px] flex items-center justify-center gap-2 hover:shadow-lg active:scale-[0.98] bg-accent text-sur-accent"
-                  >
-                    <Check size={18} />
-                    <span>Fermer</span>
-                  </button>
-                </div>
-              )}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {apercu.map((row, r) => (
+                      <tr key={r} className="even:bg-fond">
+                        {csvHeaders.map((_, c) => <td key={c} className={`px-3 py-2 whitespace-nowrap ${mapping[c] ? 'text-encre' : 'text-encre-3 line-through'}`}>{row[c] || ''}</td>)}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
 
-  return createPortal(modalContent, document.body);
+            <div className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-3 sm:justify-end pt-1">
+              <Bouton variante="secondaire" onClick={onClose} className="w-full sm:w-auto">Annuler</Bouton>
+              <Bouton variante="principal" icone={Upload} onClick={handleImport} disabled={mappedCount === 0} className="w-full sm:w-auto">
+                Importer {csvRows.length} ligne{csvRows.length > 1 ? 's' : ''}
+              </Bouton>
+            </div>
+          </>
+        )}
+
+        {/* ── Étape 3 : importation en cours ── (pas de pourcentage : on ne le connaît pas, et un faux 100 % mentirait) */}
+        {step === 'importing' && (
+          <div role="status" className="py-10 text-center">
+            <Loader2 size={40} aria-hidden="true" className="animate-spin mx-auto mb-4 text-accent-texte" />
+            <p className="text-base font-semibold text-encre">Importation en cours…</p>
+            <p className="text-sm mt-1 text-encre-3">{csvRows.length} ligne{csvRows.length > 1 ? 's' : ''} à enregistrer. Gardez cette fenêtre ouverte.</p>
+          </div>
+        )}
+
+        {/* ── Terminé ── */}
+        {step === 'done' && importResult && (
+          <div className="py-6 space-y-6">
+            <div role="status" className="text-center">
+              <span className={`w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center ${importResult.ok ? 'bg-succes-fond text-succes-texte' : 'bg-alerte-fond text-alerte-texte'}`}>
+                {importResult.ok ? <Check size={32} aria-hidden="true" /> : <AlertCircle size={32} aria-hidden="true" />}
+              </span>
+              <p className="text-lg font-bold text-encre">{importResult.ok ? 'Importation terminée' : 'Importation incomplète'}</p>
+              <p className="text-sm mt-1 text-encre-2">{resume}</p>
+            </div>
+            <Bouton variante="principal" icone={Check} pleineLargeur onClick={onClose}>Fermer</Bouton>
+          </div>
+        )}
+      </ModalBody>
+    </Modal>
+  );
 }

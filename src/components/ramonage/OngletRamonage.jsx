@@ -7,6 +7,7 @@ import Pastille from '../ui/Pastille';
 import LigneListe, { GroupeListe } from '../ui/LigneListe';
 import { useData } from '../../context/DataContext';
 import { useConfirm } from '../../context/AppContext';
+import { usePermissions } from '../../hooks/usePermissions';
 import { formatMoney } from '../../lib/formatters';
 import { dateLue, jourLocal } from '../../lib/dates';
 import {
@@ -44,6 +45,8 @@ export default function OngletRamonage({ client, entreprise, setPage, setSelecte
   const rappels = [...dus, ...Object.values(notes).filter((n) => !dus.some((d) => d.ramonage.id === n.ramonage.id))];
   const fiche = ficheId ? ramonages.find((r) => r.id === ficheId) : null;
   const prix = (n) => (modeDiscret ? '·····' : formatMoney(n));
+  // Sans le droit de voir les prix (chef de chantier, ouvrier : canViewPrices, une seule règle), aucun montant dans l'historique
+  const { canViewPrices } = usePermissions();
 
   const nouveau = () => {
     if (appareils.length === 0) setSaisie({ precedent: null });
@@ -135,7 +138,7 @@ export default function OngletRamonage({ client, entreprise, setPage, setSelecte
                         onClick={() => setFicheId(p.id)}
                         // Comme la fiche papier : date, méthode, prix et n° de facture ; le prochain ramonage est en tête
                         titre={`${jourFr(jourDe(p.realise_le), true)} · ${METHODE_COURTE[p.methode] || ''}`}
-                        montant={p.prix_ht != null ? `${prix(p.prix_ht)} HT` : undefined}
+                        montant={canViewPrices && p.prix_ht != null ? `${prix(p.prix_ht)} HT` : undefined}
                         meta={[p.numero || 'numéro en attente', facture ? (facture.numero || 'facture') : 'pas de facture'].join(' · ')}
                         pastille={p.annulee_le ? <Pastille ton="danger">Annulée</Pastille> : undefined}
                       />

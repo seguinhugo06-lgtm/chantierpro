@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import {
   Building2,
   MapPin,
@@ -45,8 +45,6 @@ export default function ArbreNomenclature({
   expandedNodes,
   onToggleNode,
   countByNode,
-  isDark = false,
-  couleur = '#f97316',
 }) {
   // Pre-compute lot children once
   const lotsWithChildren = useMemo(
@@ -73,9 +71,7 @@ export default function ArbreNomenclature({
   // "Tous" button styling
   const isAllSelected = selectedNodeId === null;
   const allBg = isAllSelected
-    ? isDark
-      ? 'bg-orange-900/20 border-l-2 border-orange-500'
-      : 'bg-orange-50 border-l-2 border-orange-500'
+    ? 'bg-accent/10 border-l-2 border-accent'
     : `border-l-2 border-transparent ${hoverBg}`;
 
   return (
@@ -92,20 +88,14 @@ export default function ArbreNomenclature({
       >
         <Layers
           size={16}
-          className="flex-shrink-0"
-          style={{ color: isAllSelected ? couleur : (isDark ? '#9ca3af' : '#6b7280') }}
+          aria-hidden="true"
+          className={`flex-shrink-0 ${isAllSelected ? 'text-accent-texte' : 'text-encre-3'}`}
         />
         <span className={`flex-1 text-sm ${isAllSelected ? 'font-semibold' : 'font-medium'}`}>
           Tous les ouvrages
         </span>
         {totalCount > 0 && (
-          <span
-            className="text-xs font-medium px-1.5 py-0.5 rounded-full"
-            style={{
-              backgroundColor: isAllSelected ? couleur : (isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)'),
-              color: isAllSelected ? '#fff' : (isDark ? '#d1d5db' : '#6b7280'),
-            }}
-          >
+          <span className={`text-xs font-medium px-1.5 py-0.5 rounded-full tabular-nums ${isAllSelected ? 'bg-accent text-sur-accent' : 'bg-surface-2 text-encre-3'}`}>
             {totalCount}
           </span>
         )}
@@ -123,9 +113,7 @@ export default function ArbreNomenclature({
           const hasChildren = children.length > 0;
           const count = countByNode ? countByNode(lot.id) : 0;
 
-          const selectedBg = isDark
-            ? 'bg-orange-900/20 border-l-2 border-orange-500'
-            : 'bg-orange-50 border-l-2 border-orange-500';
+          const selectedBg = 'bg-accent/10 border-l-2 border-accent';
           const defaultBorder = 'border-l-2 border-transparent';
 
           return (
@@ -146,14 +134,9 @@ export default function ArbreNomenclature({
                 aria-selected={isSelected}
                 aria-expanded={hasChildren ? isExpanded : undefined}
               >
-                {/* LOT icon with color */}
-                <span
-                  className="flex-shrink-0 w-6 h-6 rounded flex items-center justify-center"
-                  style={{
-                    backgroundColor: `${lot.color}20`,
-                  }}
-                >
-                  <LotIcon size={14} style={{ color: lot.color }} />
+                {/* L'icône du lot : neutre, le nom dit le lot (une teinte par lot décorait sans rien dire) */}
+                <span className="flex-shrink-0 w-6 h-6 rounded flex items-center justify-center bg-surface-2 text-encre-2">
+                  <LotIcon size={14} aria-hidden="true" />
                 </span>
 
                 {/* LOT name */}
@@ -163,13 +146,7 @@ export default function ArbreNomenclature({
 
                 {/* Ouvrage count badge */}
                 {count > 0 && (
-                  <span
-                    className="flex-shrink-0 text-xs font-medium px-1.5 py-0.5 rounded-full"
-                    style={{
-                      backgroundColor: isSelected ? couleur : (isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)'),
-                      color: isSelected ? '#fff' : (isDark ? '#d1d5db' : '#6b7280'),
-                    }}
-                  >
+                  <span className={`flex-shrink-0 text-xs font-medium px-1.5 py-0.5 rounded-full tabular-nums ${isSelected ? 'bg-accent text-sur-accent' : 'bg-surface-2 text-encre-3'}`}>
                     {count}
                   </span>
                 )}
@@ -191,8 +168,6 @@ export default function ArbreNomenclature({
                       countByNode={countByNode}
                       getChildrenFn={getChildren}
                       level={1}
-                      isDark={isDark}
-                      couleur={couleur}
                     />
                   );
                 })}

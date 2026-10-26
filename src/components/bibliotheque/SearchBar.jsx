@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { Search, X, ArrowRight, ChevronRight, Package } from 'lucide-react';
-import { searchOuvrages, getNodeById, getPath } from '../../lib/data/bibliotheque';
+import { searchOuvrages, getPath } from '../../lib/data/bibliotheque';
 
 // =============================================================================
 // formatPrice — formatte un montant en EUR (locale FR)
@@ -46,8 +46,6 @@ export default function SearchBar({
   setSearchQuery,
   onSelectOuvrage,
   onSelectNode,
-  isDark = false,
-  couleur = '#f97316',
 }) {
   // ── Local state ───────────────────────────────────────────────────────────
   const [showDropdown, setShowDropdown] = useState(false);
@@ -58,9 +56,7 @@ export default function SearchBar({
   const containerRef = useRef(null);
 
   // ── Theme ─────────────────────────────────────────────────────────────────
-  const inputBg = isDark
-    ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
-    : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400';
+  const inputBg = 'bg-surface border-bord-fort text-encre placeholder:text-encre-3';
   const dropdownBg = 'bg-surface border-bord';
   const itemHover = 'hover:bg-surface-2';
   const highlightBg = 'bg-surface-2';
@@ -170,8 +166,8 @@ export default function SearchBar({
       {/* ── Search input ──────────────────────────────────────────────────── */}
       <div className="relative">
         <Search
-          className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none"
-          style={{ color: isFocused ? couleur : undefined }}
+          className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none ${isFocused ? 'text-accent-texte' : 'text-encre-3'}`}
+          aria-hidden="true"
         />
         <input
           ref={inputRef}
@@ -181,11 +177,8 @@ export default function SearchBar({
           onFocus={() => setIsFocused(true)}
           onKeyDown={handleKeyDown}
           placeholder="Rechercher un ouvrage..."
-          className={`w-full pl-9 pr-8 py-2.5 rounded-xl border text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-0 ${inputBg}`}
-          style={{
-            '--tw-ring-color': couleur,
-            borderColor: isFocused ? couleur : undefined,
-          }}
+          aria-label="Rechercher un ouvrage"
+          className={`w-full pl-9 pr-10 h-11 rounded-xl border text-base sm:text-sm transition-shadow focus:outline-none focus:border-accent focus:ring-4 focus:ring-accent/20 ${inputBg}`}
           autoComplete="off"
           role="combobox"
           aria-expanded={showDropdown}
@@ -198,14 +191,10 @@ export default function SearchBar({
               setSearchQuery('');
               inputRef.current?.focus();
             }}
-            className={`absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-full transition-colors ${
-              isDark
-                ? 'hover:bg-gray-600 text-gray-400'
-                : 'hover:bg-gray-200 text-gray-400'
-            }`}
+            className="absolute right-1 top-1/2 -translate-y-1/2 w-9 h-9 flex items-center justify-center rounded-full transition-colors hover:bg-surface-2 text-encre-3"
             aria-label="Effacer la recherche"
           >
-            <X className="w-3.5 h-3.5" />
+            <X className="w-4 h-4" />
           </button>
         )}
       </div>
@@ -229,24 +218,13 @@ export default function SearchBar({
                   data-autocomplete-item
                   onClick={() => handleSelectResult(ouvrage)}
                   onMouseEnter={() => setHighlightedIndex(index)}
-                  className={`w-full text-left px-3.5 py-2.5 flex items-start gap-3 transition-colors cursor-pointer border-b last:border-b-0 ${
-                    isDark ? 'border-gray-700/50' : 'border-gray-100'
-                  } ${isHighlighted ? highlightBg : itemHover}`}
+                  className={`w-full text-left px-3.5 py-2.5 flex items-start gap-3 transition-colors cursor-pointer border-b border-bord last:border-b-0 ${isHighlighted ? highlightBg : itemHover}`}
                   role="option"
                   aria-selected={isHighlighted}
                 >
                   {/* Icon */}
-                  <div
-                    className="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center mt-0.5"
-                    style={{
-                      backgroundColor: isDark
-                        ? 'rgba(255,255,255,0.06)'
-                        : `${couleur}10`,
-                    }}
-                  >
-                    <Package
-                      className="w-4 h-4 text-accent-texte"
-                    />
+                  <div className="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center mt-0.5 bg-surface-2">
+                    <Package className="w-4 h-4 text-encre-2" aria-hidden="true" />
                   </div>
 
                   {/* Content */}
@@ -294,9 +272,7 @@ export default function SearchBar({
 
                   {/* Price */}
                   <div className="flex-shrink-0 text-right ml-2">
-                    <div
-                      className="text-sm font-semibold whitespace-nowrap text-accent-texte"
-                    >
+                    <div className="text-sm font-semibold whitespace-nowrap tabular-nums text-encre">
                       {formatPrice(ouvrage.prixUnitaireHT)}
                     </div>
                     <div className={`text-xs ${textMuted}`}>
@@ -309,11 +285,7 @@ export default function SearchBar({
           </div>
 
           {/* ── Footer: "Voir tous les resultats" ─────────────────────────── */}
-          <div
-            className={`border-t px-3.5 py-2.5 ${
-              isDark ? 'border-gray-700 bg-gray-800/80' : 'border-gray-100 bg-gray-50/80'
-            }`}
-          >
+          <div className="border-t border-bord px-3.5 py-2.5 bg-fond">
             <button
               onClick={() => {
                 setShowDropdown(false);
@@ -323,14 +295,7 @@ export default function SearchBar({
             >
               <Search className="w-3.5 h-3.5" />
               Voir tous les r&eacute;sultats
-              <span
-                className="text-xs font-normal px-1.5 py-0.5 rounded-full text-accent-texte"
-                style={{
-                  backgroundColor: isDark
-                    ? 'rgba(255,255,255,0.08)'
-                    : `${couleur}15`,
-                }}
-              >
+              <span className="text-xs font-normal px-1.5 py-0.5 rounded-full text-accent-texte bg-accent/10">
                 {autocompleteResults.length}+
               </span>
               <ArrowRight className="w-3.5 h-3.5" />

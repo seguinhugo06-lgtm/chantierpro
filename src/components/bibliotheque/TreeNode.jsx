@@ -15,8 +15,6 @@ const TreeNode = React.memo(function TreeNode({
   countByNode,
   getChildrenFn,
   level = 0,
-  isDark,
-  couleur,
 }) {
   const isSelected = selectedNodeId === node.id;
   const isExpanded = expandedNodes.has(node.id);
@@ -27,9 +25,7 @@ const TreeNode = React.memo(function TreeNode({
   const paddingClass = level === 0 ? 'pl-3' : level === 1 ? 'pl-7' : 'pl-11';
 
   // Row styling
-  const selectedBg = isDark
-    ? 'bg-orange-900/20 border-l-2 border-orange-500'
-    : 'bg-orange-50 border-l-2 border-orange-500';
+  const selectedBg = 'bg-accent/10 border-l-2 border-accent';
   const hoverBg = 'hover:bg-surface-2';
   const defaultBorder = 'border-l-2 border-transparent';
 
@@ -66,8 +62,6 @@ const TreeNode = React.memo(function TreeNode({
           countByNode={countByNode}
           getChildrenFn={getChildrenFn}
           level={level + 1}
-          isDark={isDark}
-          couleur={couleur}
         />
       );
     });
@@ -82,8 +76,6 @@ const TreeNode = React.memo(function TreeNode({
     countByNode,
     getChildrenFn,
     level,
-    isDark,
-    couleur,
   ]);
 
   return (
@@ -102,12 +94,6 @@ const TreeNode = React.memo(function TreeNode({
           )}
         </span>
 
-        {/* Color indicator dot */}
-        <span
-          className="flex-shrink-0 w-2 h-2 rounded-full"
-          style={{ backgroundColor: node.color || couleur }}
-        />
-
         {/* Node name */}
         <span className={`flex-1 text-sm truncate ${textColor} ${isSelected ? 'font-semibold' : 'font-normal'}`}>
           {node.nom}
@@ -115,13 +101,7 @@ const TreeNode = React.memo(function TreeNode({
 
         {/* Ouvrage count badge */}
         {count > 0 && (
-          <span
-            className="flex-shrink-0 text-xs font-medium px-1.5 py-0.5 rounded-full"
-            style={{
-              backgroundColor: isSelected ? (couleur || '#f97316') : (isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)'),
-              color: isSelected ? '#fff' : (isDark ? '#d1d5db' : '#6b7280'),
-            }}
-          >
+          <span className={`flex-shrink-0 text-xs font-medium px-1.5 py-0.5 rounded-full tabular-nums ${isSelected ? 'bg-accent text-sur-accent' : 'bg-surface-2 text-encre-3'}`}>
             {count}
           </span>
         )}

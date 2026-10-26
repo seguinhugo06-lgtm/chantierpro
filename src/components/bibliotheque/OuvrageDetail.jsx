@@ -16,36 +16,23 @@ const formatPrice = (amount) => {
   }).format(amount);
 };
 
+// Trois tons du thème : simple = acquis, standard = neutre, complexe = à surveiller (le rouge reste celui du retard)
 const DIFFICULTE_STYLES = {
-  simple: {
-    light: 'bg-green-100 text-green-700',
-    dark: 'bg-green-900/30 text-green-400',
-    label: 'Simple',
-  },
-  standard: {
-    light: 'bg-blue-100 text-blue-700',
-    dark: 'bg-blue-900/30 text-blue-400',
-    label: 'Standard',
-  },
-  complexe: {
-    light: 'bg-red-100 text-red-700',
-    dark: 'bg-red-900/30 text-red-400',
-    label: 'Complexe',
-  },
+  simple: { classes: 'bg-succes-fond text-succes-texte', label: 'Simple' },
+  standard: { classes: 'bg-neutre-fond text-neutre-texte', label: 'Standard' },
+  complexe: { classes: 'bg-alerte-fond text-alerte-texte', label: 'Complexe' },
 };
 
 // =============================================================================
 // DifficultyBadge
 // =============================================================================
 
-function DifficultyBadge({ difficulte, isDark }) {
+function DifficultyBadge({ difficulte }) {
   const config = DIFFICULTE_STYLES[difficulte];
   if (!config) return null;
 
-  const classes = isDark ? config.dark : config.light;
-
   return (
-    <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${classes}`}>
+    <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${config.classes}`}>
       {config.label}
     </span>
   );
@@ -55,14 +42,14 @@ function DifficultyBadge({ difficulte, isDark }) {
 // PriceRangeBar
 // =============================================================================
 
-function PriceRangeBar({ prixMin, prixMax, prixUnitaireHT, isDark, couleur }) {
+function PriceRangeBar({ prixMin, prixMax, prixUnitaireHT }) {
   if (prixMin == null || prixMax == null) return null;
 
   const range = prixMax - prixMin;
   const position = range > 0 ? ((prixUnitaireHT - prixMin) / range) * 100 : 50;
   const clampedPosition = Math.max(0, Math.min(100, position));
 
-  const trackBg = isDark ? 'bg-gray-600' : 'bg-gray-200';
+  const trackBg = 'bg-bord';
   const textSecondary = 'text-encre-3';
 
   return (
@@ -85,7 +72,7 @@ function PriceRangeBar({ prixMin, prixMax, prixUnitaireHT, isDark, couleur }) {
         />
         {/* Position indicator */}
         <div
-          className="absolute top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-2 border-white shadow-md bg-accent"
+          className="absolute top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-2 border-surface shadow-md bg-accent"
           style={{
             left: `${clampedPosition}%`,
             transform: `translate(-50%, -50%)`,
@@ -107,8 +94,6 @@ export default function OuvrageDetail({
   ouvrage,
   isOpen,
   onClose,
-  isDark,
-  couleur = '#f97316',
   coefficientGeo,
   selectedDept,
   breadcrumb,
@@ -205,13 +190,7 @@ export default function OuvrageDetail({
         className={`relative w-full h-full sm:h-auto sm:max-w-3xl sm:max-h-[90vh] overflow-y-auto rounded-t-2xl sm:rounded-2xl shadow-2xl ${bg}`}
       >
         {/* ── Header ──────────────────────────────────────────────────────── */}
-        <div
-          className="sticky top-0 z-10 px-6 pt-5 pb-4 border-b"
-          style={{
-            borderColor: isDark ? '#374151' : '#e5e7eb',
-            backgroundColor: isDark ? '#1f2937' : '#ffffff',
-          }}
-        >
+        <div className="sticky top-0 z-10 px-6 pt-5 pb-4 border-b border-bord bg-surface">
           {/* Close button */}
           <button
             onClick={onClose}
@@ -239,7 +218,7 @@ export default function OuvrageDetail({
               {nom}
             </h2>
             <div className="flex-shrink-0 mt-0.5">
-              <DifficultyBadge difficulte={difficulte} isDark={isDark} />
+              <DifficultyBadge difficulte={difficulte} />
             </div>
           </div>
         </div>
@@ -290,8 +269,6 @@ export default function OuvrageDetail({
               prixMin={prixMin}
               prixMax={prixMax}
               prixUnitaireHT={prixUnitaireHT}
-              isDark={isDark}
-              couleur={couleur}
             />
           </div>
 
@@ -301,8 +278,6 @@ export default function OuvrageDetail({
               fourniture={fourniture}
               mainOeuvre={mainOeuvre}
               materiel={materiel}
-              isDark={isDark}
-              couleur={couleur}
             />
           )}
 
@@ -374,7 +349,7 @@ export default function OuvrageDetail({
                   Difficulté
                 </p>
                 <div className="mt-1 flex justify-center">
-                  <DifficultyBadge difficulte={difficulte} isDark={isDark} />
+                  <DifficultyBadge difficulte={difficulte} />
                 </div>
               </div>
             </div>
@@ -393,11 +368,7 @@ export default function OuvrageDetail({
                 {tags.map((tag) => (
                   <span
                     key={tag}
-                    className={`text-xs font-medium px-3 py-1.5 rounded-full transition-colors ${
-                      isDark
-                        ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                    }`}
+                    className="text-xs font-medium px-3 py-1.5 rounded-full transition-colors bg-surface-2 text-encre-2"
                   >
                     {tag}
                   </span>
@@ -408,12 +379,7 @@ export default function OuvrageDetail({
         </div>
 
         {/* ── Action Buttons ──────────────────────────────────────────────── */}
-        <div
-          className={`sticky bottom-0 px-6 py-4 border-t flex items-center gap-3 ${borderColor}`}
-          style={{
-            backgroundColor: isDark ? '#1f2937' : '#ffffff',
-          }}
-        >
+        <div className={`sticky bottom-0 px-6 py-4 border-t flex items-center gap-3 bg-surface ${borderColor}`}>
           <button
             onClick={onClose}
             className={`flex-1 sm:flex-none px-6 py-2.5 rounded-xl text-sm font-medium transition-colors border border-bord-fort text-encre-2 hover:bg-surface-2`}

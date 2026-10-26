@@ -8,10 +8,6 @@ import {
   SlidersHorizontal,
   X,
   Library,
-  ChevronDown,
-  FileText,
-  Plus,
-  ShoppingCart,
 } from 'lucide-react';
 import useBibliotheque from '../../hooks/useBibliotheque';
 import ArbreNomenclature from './ArbreNomenclature';
@@ -28,6 +24,7 @@ import {
   DEPARTEMENTS,
 } from '../../lib/data/bibliotheque';
 import { devisAvecLigneAjoutee } from '../../lib/ajoutLigneDevis';
+import { FenetreAjoutDevis } from '../catalogue/FenetresCatalogue';
 
 // =============================================================================
 // Sort options
@@ -53,7 +50,7 @@ function getDeptByCode(code) {
 // Bibliotheque — Main page component
 // =============================================================================
 
-export default function Bibliotheque({ isDark, couleur = '#f97316', setPage, devis, addDevis, updateDevis, clients, showToast }) {
+export default function Bibliotheque({ setPage, devis, addDevis, updateDevis, clients, showToast }) {
   // ── Hook state ──────────────────────────────────────────────────────────────
   const {
     selectedNodeId,
@@ -143,14 +140,11 @@ export default function Bibliotheque({ isDark, couleur = '#f97316', setPage, dev
   const pageBg = 'bg-fond text-encre';
   const sidebarBg = 'bg-surface border-bord';
   const cardBg = 'bg-surface border-bord';
-  const inputBg = isDark
-    ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
-    : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400';
+  const inputBg = 'bg-surface border-bord-fort text-encre placeholder:text-encre-3';
   const textSecondary = 'text-encre-3';
   const textMuted = 'text-encre-3';
-  const toolbarBg = 'bg-surface/80';
   const btnBase = 'bg-surface border-bord-fort text-encre-2 hover:bg-surface-2';
-  const btnActive = `border-transparent text-white`;
+  const btnActive = 'bg-encre text-surface';
 
   // ── Ouvrage detail modal handlers ───────────────────────────────────────────
   const handleSelectOuvrage = useCallback((ouvrage) => {
@@ -206,21 +200,19 @@ export default function Bibliotheque({ isDark, couleur = '#f97316', setPage, dev
   // ── Search input (simple version for sidebar/drawer) ────────────────────────
   const SearchInputSimple = (
     <div className="relative">
-      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-encre-3 pointer-events-none" />
       <input
         type="text"
         value={searchQuery}
         onChange={(e) => setSearchQuery(e.target.value)}
         placeholder="Rechercher un ouvrage..."
-        className={`w-full pl-9 pr-8 py-2 rounded-lg border text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-0 ${inputBg}`}
-        style={{ focusRingColor: couleur }}
+        aria-label="Rechercher un ouvrage"
+        className={`w-full pl-9 pr-8 h-11 rounded-xl border text-base sm:text-sm transition-shadow focus:outline-none focus:border-accent focus:ring-4 focus:ring-accent/20 ${inputBg}`}
       />
       {searchQuery && (
         <button
           onClick={() => setSearchQuery('')}
-          className={`absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded-full transition-colors ${
-            isDark ? 'hover:bg-gray-600 text-gray-400' : 'hover:bg-gray-200 text-gray-400'
-          }`}
+          className="absolute right-1 top-1/2 -translate-y-1/2 w-9 h-9 flex items-center justify-center rounded-full transition-colors hover:bg-surface-2 text-encre-3"
           aria-label="Effacer la recherche"
         >
           <X className="w-4 h-4" />
@@ -232,12 +224,12 @@ export default function Bibliotheque({ isDark, couleur = '#f97316', setPage, dev
   // ── Dept selector (select element) ──────────────────────────────────────────
   const DeptSelector = (
     <div className="relative flex items-center gap-2">
-      <MapPin className="w-4 h-4 flex-shrink-0" style={{ color: hasActiveCoeff ? couleur : undefined }} />
+      <MapPin className={`w-4 h-4 flex-shrink-0 ${hasActiveCoeff ? 'text-accent-texte' : 'text-encre-3'}`} aria-hidden="true" />
       <select
         value={selectedDept || ''}
         onChange={handleDeptChange}
-        className={`text-sm rounded-lg border py-1.5 pl-2 pr-7 appearance-none cursor-pointer transition-colors ${inputBg}`}
-        style={hasActiveCoeff ? { borderColor: couleur } : undefined}
+        aria-label="Département (coefficient géographique)"
+        className={`text-sm rounded-lg border h-10 pl-2 pr-7 appearance-none cursor-pointer transition-colors ${hasActiveCoeff ? 'bg-surface text-encre border-accent' : inputBg}`}
       >
         <option value="">France (&times;1.00)</option>
         {regions.map((region) => (
@@ -273,9 +265,8 @@ export default function Bibliotheque({ isDark, couleur = '#f97316', setPage, dev
       <button
         onClick={() => handleBreadcrumbClick(null)}
         className={`shrink-0 hover:underline transition-colors ${
-          selectedNodeId == null ? 'font-semibold' : textSecondary
+          selectedNodeId == null ? 'font-semibold text-accent-texte' : textSecondary
         }`}
-        style={selectedNodeId == null ? { color: couleur } : undefined}
       >
         Tous
       </button>
@@ -286,9 +277,8 @@ export default function Bibliotheque({ isDark, couleur = '#f97316', setPage, dev
             <button
               onClick={() => handleBreadcrumbClick(node.id)}
               className={`shrink-0 hover:underline truncate max-w-[120px] sm:max-w-[200px] transition-colors ${
-                idx === breadcrumb.length - 1 ? 'font-semibold' : textSecondary
+                idx === breadcrumb.length - 1 ? 'font-semibold text-accent-texte' : textSecondary
               }`}
-              style={idx === breadcrumb.length - 1 ? { color: couleur } : undefined}
               title={node.nom}
             >
               {node.nom}
@@ -303,10 +293,10 @@ export default function Bibliotheque({ isDark, couleur = '#f97316', setPage, dev
     <div className={`inline-flex rounded-lg border overflow-hidden border-bord-fort`}>
       <button
         onClick={() => setViewMode('grid')}
-        className={`p-1.5 transition-colors ${
+        className={`w-10 h-10 flex items-center justify-center transition-colors ${
           viewMode === 'grid' ? btnActive : 'text-encre-3 hover:text-encre-2'
         }`}
-        style={viewMode === 'grid' ? { backgroundColor: couleur } : undefined}
+        aria-pressed={viewMode === 'grid'}
         aria-label="Vue grille"
         title="Vue grille"
       >
@@ -314,10 +304,10 @@ export default function Bibliotheque({ isDark, couleur = '#f97316', setPage, dev
       </button>
       <button
         onClick={() => setViewMode('list')}
-        className={`p-1.5 transition-colors ${
+        className={`w-10 h-10 flex items-center justify-center transition-colors ${
           viewMode === 'list' ? btnActive : 'text-encre-3 hover:text-encre-2'
         }`}
-        style={viewMode === 'list' ? { backgroundColor: couleur } : undefined}
+        aria-pressed={viewMode === 'list'}
         aria-label="Vue liste"
         title="Vue liste"
       >
@@ -387,8 +377,6 @@ export default function Bibliotheque({ isDark, couleur = '#f97316', setPage, dev
             expandedNodes={expandedNodes}
             onToggleNode={toggleNode}
             countByNode={countOuvragesByNode}
-            isDark={isDark}
-            couleur={couleur}
           />
         </div>
       </div>
@@ -429,10 +417,9 @@ export default function Bibliotheque({ isDark, couleur = '#f97316', setPage, dev
       {/* ── Header ────────────────────────────────────────────────────────── */}
       <div className="px-4 sm:px-6 pt-4 pb-2">
         <div className="flex items-center gap-3 mb-4">
-          <Library className="w-6 h-6 flex-shrink-0 text-accent-texte" />
-          <h1 className={`text-xl sm:text-2xl font-bold text-encre`}>
-            Biblioth&egrave;que de Prix
-          </h1>
+          <h2 className="text-lg font-semibold text-encre">
+            Biblioth&egrave;que de prix
+          </h2>
           <span className={`text-sm ${textSecondary}`}>
             {(stats?.totalOuvrages ?? STATS.totalOuvrages).toLocaleString('fr-FR')} ouvrages
             {' \u2022 '}
@@ -458,16 +445,14 @@ export default function Bibliotheque({ isDark, couleur = '#f97316', setPage, dev
               setSearchQuery={setSearchQuery}
               onSelectOuvrage={handleSelectOuvrage}
               onSelectNode={setSelectedNodeId}
-              isDark={isDark}
-              couleur={couleur}
             />
           </div>
 
           {/* Dept shortcut (mobile) */}
           <button
             onClick={() => setShowDeptDropdown(!showDeptDropdown)}
-            className={`flex items-center gap-1 px-3 py-2 rounded-lg border text-sm transition-colors ${btnBase}`}
-            style={hasActiveCoeff ? { borderColor: couleur, color: couleur } : undefined}
+            aria-label="Département (coefficient géographique)"
+            className={`flex items-center gap-1 px-3 h-11 rounded-lg border text-sm transition-colors ${hasActiveCoeff ? 'bg-surface border-accent text-accent-texte' : btnBase}`}
           >
             <MapPin className="w-4 h-4" />
             {hasActiveCoeff && <span className="text-xs font-semibold">&times;{coefficientGeo.toFixed(2)}</span>}
@@ -490,16 +475,12 @@ export default function Bibliotheque({ isDark, couleur = '#f97316', setPage, dev
           style={{ maxHeight: 'calc(100vh - 140px)' }}
         >
           {/* Sidebar search (with autocomplete) */}
-          <div className="px-3 py-3 border-b flex-shrink-0"
-            style={{ borderColor: isDark ? '#374151' : '#e5e7eb' }}
-          >
+          <div className="px-3 py-3 border-b border-bord flex-shrink-0">
             <SearchBar
               searchQuery={searchQuery}
               setSearchQuery={setSearchQuery}
               onSelectOuvrage={handleSelectOuvrage}
               onSelectNode={setSelectedNodeId}
-              isDark={isDark}
-              couleur={couleur}
             />
           </div>
 
@@ -511,8 +492,6 @@ export default function Bibliotheque({ isDark, couleur = '#f97316', setPage, dev
               expandedNodes={expandedNodes}
               onToggleNode={toggleNode}
               countByNode={countOuvragesByNode}
-              isDark={isDark}
-              couleur={couleur}
             />
           </div>
         </aside>
@@ -529,18 +508,12 @@ export default function Bibliotheque({ isDark, couleur = '#f97316', setPage, dev
             </div>
 
             {/* Count badge */}
-            <span
-              className="text-xs font-semibold px-2 py-1 rounded-full flex-shrink-0"
-              style={{
-                backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
-                color: isDark ? '#d1d5db' : '#6b7280',
-              }}
-            >
+            <span className="text-xs font-semibold px-2 py-1 rounded-full flex-shrink-0 bg-surface-2 text-encre-2">
               {totalOuvrages.toLocaleString('fr-FR')} r&eacute;sultat{totalOuvrages !== 1 ? 's' : ''}
             </span>
 
             {/* Separator */}
-            <div className={`hidden sm:block w-px h-6 ${isDark ? 'bg-gray-700' : 'bg-gray-200'}`} />
+            <div className="hidden sm:block w-px h-6 bg-bord" />
 
             {/* Sort */}
             <div className="hidden sm:flex">
@@ -567,8 +540,6 @@ export default function Bibliotheque({ isDark, couleur = '#f97316', setPage, dev
               filters={filters}
               setFilters={setFilters}
               resetFilters={resetFilters}
-              isDark={isDark}
-              couleur={couleur}
             />
           </div>
 
@@ -587,8 +558,6 @@ export default function Bibliotheque({ isDark, couleur = '#f97316', setPage, dev
             <OuvragesList
               ouvrages={ouvrages}
               viewMode={viewMode}
-              isDark={isDark}
-              couleur={couleur}
               currentPage={currentPage}
               totalPages={totalPages}
               totalOuvrages={totalOuvrages}
@@ -606,99 +575,19 @@ export default function Bibliotheque({ isDark, couleur = '#f97316', setPage, dev
       {/* ── Mobile tree drawer overlay ──────────────────────────────────── */}
       {TreeDrawer}
 
-      {/* ── Add to devis modal ─────────────────────────────────────────── */}
-      {addToDevisModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={closeAddToDevisModal} />
-          <div className={`relative w-full max-w-md rounded-2xl p-6 shadow-2xl bg-surface`}>
-            <h3 className={`font-bold text-lg mb-1 text-encre`}>Ajouter au devis</h3>
-            <p className={`text-sm mb-4 ${textSecondary}`}>
-              <span className="font-medium text-accent-texte">{addToDevisModal.nom}</span>
-              {' — '}
-              {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(addToDevisModal.prixUnitaireHT || 0)}
-              /{addToDevisModal.unite || 'u'}
-            </p>
-
-            {devisBrouillons.length === 0 ? (
-              <div className={`text-center py-6 rounded-xl bg-fond`}>
-                <FileText size={32} className={`mx-auto mb-2 ${textSecondary}`} />
-                <p className={`text-sm font-medium text-encre`}>Aucun devis brouillon</p>
-                <p className={`text-xs mt-1 ${textSecondary}`}>Créez d'abord un devis pour y ajouter des ouvrages.</p>
-                <button
-                  onClick={() => { closeAddToDevisModal(); if (setPage) setPage('devis'); }}
-                  className="mt-3 px-4 py-2 rounded-xl text-sm font-medium bg-accent text-sur-accent"
-                >
-                  Créer un devis
-                </button>
-              </div>
-            ) : (
-              <>
-                <div className="space-y-3">
-                  <div>
-                    <label className={`text-xs font-medium mb-1 block ${textSecondary}`}>Devis cible</label>
-                    <select
-                      className={`w-full px-4 py-3 border rounded-xl ${inputBg}`}
-                      value={addToDevisSelected || ''}
-                      onChange={e => setAddToDevisSelected(e.target.value)}
-                    >
-                      {devisBrouillons.map(d => {
-                        const client = (clients || []).find(c => c.id === (d.clientId || d.client_id));
-                        const clientNom = client?.nom || client?.name || d.clientNom || '';
-                        return (
-                          <option key={d.id} value={d.id}>
-                            {d.numero || d.reference || `DEV-${d.id?.slice(0, 6)}`}{clientNom ? ` — ${clientNom}` : ''}
-                          </option>
-                        );
-                      })}
-                    </select>
-                  </div>
-                  <div>
-                    <label className={`text-xs font-medium mb-1 block ${textSecondary}`}>Quantité</label>
-                    <input
-                      type="number"
-                      min="1"
-                      className={`w-full px-4 py-3 border rounded-xl ${inputBg}`}
-                      value={addToDevisQty}
-                      onChange={e => setAddToDevisQty(Math.max(1, parseInt(e.target.value) || 1))}
-                    />
-                  </div>
-                  <div className={`p-3 rounded-xl bg-fond`}>
-                    <div className="flex items-center justify-between">
-                      <span className={`text-sm ${textSecondary}`}>Sous-total HT</span>
-                      <span className="text-lg font-bold text-accent-texte">
-                        {((parseFloat(addToDevisModal.prixUnitaireHT) || 0) * addToDevisQty).toFixed(2)} €
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex gap-3 mt-5">
-                  <button
-                    onClick={closeAddToDevisModal}
-                    className={`flex-1 py-3 rounded-xl font-medium bg-surface-2 text-encre-2`}
-                  >
-                    Annuler
-                  </button>
-                  <button
-                    onClick={handleAddToDevis}
-                    disabled={!addToDevisSelected}
-                    className="flex-1 py-3 rounded-xl font-medium flex items-center justify-center gap-2 disabled:opacity-50 bg-accent text-sur-accent"
-                  >
-                    <Plus size={16} /> Ajouter
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      )}
+      {/* ── Ajouter au devis : la même fenêtre que le Catalogue ──────────── */}
+      <FenetreAjoutDevis
+        article={addToDevisModal ? { ...addToDevisModal, prix: addToDevisModal.prixUnitaireHT || 0 } : null}
+        brouillons={devisBrouillons} clients={clients || []} quantite={addToDevisQty} setQuantite={setAddToDevisQty}
+        devisChoisi={addToDevisSelected} setDevisChoisi={setAddToDevisSelected} onFermer={closeAddToDevisModal} onAjouter={handleAddToDevis}
+        onCreerDevis={() => { closeAddToDevisModal(); if (setPage) setPage('devis'); }}
+      />
 
       {/* ── Ouvrage detail modal ────────────────────────────────────────── */}
       <OuvrageDetail
         ouvrage={selectedOuvrage}
         isOpen={!!selectedOuvrage}
         onClose={handleCloseDetail}
-        isDark={isDark}
-        couleur={couleur}
         coefficientGeo={coefficientGeo}
         selectedDept={selectedDept}
         breadcrumb={ouvrageBreadcrumb}

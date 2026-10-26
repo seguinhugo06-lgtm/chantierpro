@@ -95,14 +95,15 @@ function saveDemoData(data) {
   }
 }
 
-// Demo seed catalogue — articles BTP de base pour les nouveaux utilisateurs
+// Demo seed catalogue — articles BTP de base pour les nouveaux utilisateurs. `nom` et `prix` sont les champs que lit le Catalogue
+// (avant : seuls `designation` et `prixUnitaire`, et l'écran montrait six lignes sans nom, à 0 €)
 const DEMO_SEED_CATALOGUE = [
-  { id: crypto.randomUUID(), reference: 'CAR-001', designation: 'Carrelage sol intérieur 60x60', description: 'Fourniture et pose carrelage grès cérame', unite: 'm²', categorie: 'Carrelage', prixUnitaire: 65, tva: 20 },
-  { id: crypto.randomUUID(), reference: 'PEI-001', designation: 'Peinture murale acrylique', description: 'Fourniture et application 2 couches', unite: 'm²', categorie: 'Peinture', prixUnitaire: 28, tva: 20 },
-  { id: crypto.randomUUID(), reference: 'PLO-001', designation: 'Installation robinet mitigeur', description: 'Fourniture et pose mitigeur cuisine/salle de bain', unite: 'u', categorie: 'Plomberie', prixUnitaire: 180, tva: 20 },
-  { id: crypto.randomUUID(), reference: 'ELE-001', designation: 'Pose prise électrique', description: 'Fourniture et pose prise 16A encastrée', unite: 'u', categorie: 'Électricité', prixUnitaire: 85, tva: 20 },
-  { id: crypto.randomUUID(), reference: 'MEN-001', designation: 'Pose de cloison placo BA13', description: 'Fourniture et pose cloison sur ossature métallique', unite: 'm²', categorie: 'Menuiserie / Placo', prixUnitaire: 55, tva: 20 },
-  { id: crypto.randomUUID(), reference: 'MAÇ-001', designation: 'Enduit façade extérieure', description: 'Préparation et application enduit monocouche', unite: 'm²', categorie: 'Maçonnerie', prixUnitaire: 45, tva: 20 },
+  { id: crypto.randomUUID(), reference: 'CAR-001', nom: 'Carrelage sol intérieur 60x60', designation: 'Carrelage sol intérieur 60x60', description: 'Fourniture et pose carrelage grès cérame', unite: 'm²', categorie: 'Carrelage', prix: 65, prixUnitaire: 65, tva: 20 },
+  { id: crypto.randomUUID(), reference: 'PEI-001', nom: 'Peinture murale acrylique', designation: 'Peinture murale acrylique', description: 'Fourniture et application 2 couches', unite: 'm²', categorie: 'Peinture', prix: 28, prixUnitaire: 28, tva: 20 },
+  { id: crypto.randomUUID(), reference: 'PLO-001', nom: 'Installation robinet mitigeur', designation: 'Installation robinet mitigeur', description: 'Fourniture et pose mitigeur cuisine/salle de bain', unite: 'u', categorie: 'Plomberie', prix: 180, prixUnitaire: 180, tva: 20 },
+  { id: crypto.randomUUID(), reference: 'ELE-001', nom: 'Pose prise électrique', designation: 'Pose prise électrique', description: 'Fourniture et pose prise 16A encastrée', unite: 'u', categorie: 'Électricité', prix: 85, prixUnitaire: 85, tva: 20 },
+  { id: crypto.randomUUID(), reference: 'MEN-001', nom: 'Pose de cloison placo BA13', designation: 'Pose de cloison placo BA13', description: 'Fourniture et pose cloison sur ossature métallique', unite: 'm²', categorie: 'Menuiserie / Placo', prix: 55, prixUnitaire: 55, tva: 20 },
+  { id: crypto.randomUUID(), reference: 'MAÇ-001', nom: 'Enduit façade extérieure', designation: 'Enduit façade extérieure', description: 'Préparation et application enduit monocouche', unite: 'm²', categorie: 'Maçonnerie', prix: 45, prixUnitaire: 45, tva: 20 },
 ];
 
 export function DataProvider({ children, initialData = {} }) {

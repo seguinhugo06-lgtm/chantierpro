@@ -325,7 +325,7 @@ export function PucesActives({ puces, onToutEffacer, isDark }) {
   );
 }
 
-/** Rangée du filtre principal (défile sur téléphone, garde le choix en vue). */
+/** Rangée du filtre principal (défile sur téléphone, garde le choix en vue). `alerte: true` sur une option : puce en ton alerte (« Stock bas »). */
 export function SegmentDefilant({ options, valeur, onChange, ariaLabel, isDark }) {
   const t = theme(isDark);
   const rangeeRef = useRef(null);
@@ -349,7 +349,9 @@ export function SegmentDefilant({ options, valeur, onChange, ariaLabel, isDark }
             type="button"
             onClick={() => onChange(o.valeur)}
             aria-pressed={oui}
-            className={`h-11 inline-flex items-center gap-1.5 px-4 rounded-full text-sm font-medium whitespace-nowrap flex-shrink-0 transition-colors ${oui ? 'bg-encre text-surface' : `${t.fondDoux} ${t.texte} hover:bg-bord`}`}
+            className={`h-11 inline-flex items-center gap-1.5 px-4 rounded-full text-sm font-medium whitespace-nowrap flex-shrink-0 transition-colors ${
+              oui ? 'bg-encre text-surface' : o.alerte ? 'bg-alerte-fond text-alerte-texte hover:opacity-80' : `${t.fondDoux} ${t.texte} hover:bg-bord`
+            }`}
           >
             {Icone ? <Icone size={15} aria-hidden="true" /> : null}
             {o.libelle}
