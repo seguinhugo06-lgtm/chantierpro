@@ -883,7 +883,7 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
               </GroupeListe>
 
               {/* Ordinateur : le tableau, avec ses colonnes de prix pour qui les voit */}
-              <div className="hidden sm:block bg-surface border border-bord rounded-2xl shadow-e1 overflow-x-auto">
+              <div className="relative hidden sm:block bg-surface border border-bord rounded-2xl shadow-e1 overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead className="bg-surface-2 text-encre-3">
                     <tr>
