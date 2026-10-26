@@ -332,4 +332,37 @@ export const FIELD_LABELS = {
   code_postal: 'Code postal',
   description: 'Description',
   montant: 'Montant',
+  montant_devis: 'Montant du devis',
+  montantDevis: 'Montant du devis',
 };
+
+// ── Les prix dans le journal (relecture de la Task 6, tour 2) ──
+
+/**
+ * Un champ d'audit qui porte un montant ou une marge : total, montant, prix, budget, remise, TVA, HT/TTC, acompte, coût…
+ * Le nom est lu mot à mot (« totalHt » → total, ht ; « montant_devis » → montant, devis) : « code_postal » ou « description »
+ * ne sont pas pris pour des montants.
+ */
+export function estChampMonetaire(champ) {
+  const mots = String(champ).replace(/([a-z0-9])([A-Z])/g, '$1_$2').toLowerCase();
+  return /(^|_)(total|montant|prix|budget|remise|tva|ttc|ht|acompte|solde|reste|cout|marge|tarif|taux)(_|$)/.test(mots);
+}
+
+/**
+ * Le journal tel que le voit un rôle qui n'a pas le droit de voir les prix (`canViewPrices` faux) : les champs monétaires
+ * disparaissent des modifications, et une modification qui ne portait que des montants (un devis ou une facture dont seul le
+ * total a changé) disparaît avec eux. Le reste du journal est gardé : créations, envois, signatures, changements de statut,
+ * modifications de champs sans montant.
+ * @param {Array} entries  entrées d'audit
+ * @returns {Array}
+ */
+export function sansPrix(entries = []) {
+  return entries.flatMap((entry) => {
+    const changes = entry.changes || {};
+    const champs = Object.keys(changes);
+    const gardes = Object.fromEntries(Object.entries(changes).filter(([champ]) => !estChampMonetaire(champ)));
+    const restants = Object.keys(gardes).length;
+    if (entry.action === 'updated' && champs.length > 0 && restants === 0) return [];
+    return [champs.length === restants ? entry : { ...entry, changes: gardes }];
+  });
+}

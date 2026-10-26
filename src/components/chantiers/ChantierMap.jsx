@@ -72,7 +72,7 @@ function FitBounds({ positions }) {
 /**
  * ChantierMap - Interactive map displaying all chantiers
  */
-export default function ChantierMap({ chantiers, clients, onSelectChantier, isDark, couleur: _couleur, formatMoney, modeDiscret: _modeDiscret, voitPrix = true, budgetDe }) {
+export default function ChantierMap({ chantiers, clients, onSelectChantier, isDark, couleur: _couleur, formatMoney, modeDiscret: _modeDiscret, voitPrix = true, budgetDe, avancementDe }) {
   const [positions, setPositions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [userPos, setUserPos] = useState(null);
@@ -290,7 +290,7 @@ export default function ChantierMap({ chantiers, clients, onSelectChantier, isDa
           // Calculate avancement
           const allTasks = ch.taches || [];
           const tasksDone = allTasks.filter(t => t.done).length;
-          const avancement = ch.statut === 'termine' ? 100 : allTasks.length > 0 ? Math.round((tasksDone / allTasks.length) * 100) : 0;
+          const avancement = avancementDe ? avancementDe(ch) : ch.statut === 'termine' ? 100 : allTasks.length > 0 ? Math.round((tasksDone / allTasks.length) * 100) : 0;
 
           // GPS URL
           const gpsAddr = [ch.adresse, ch.codePostal, ch.ville].filter(Boolean).join(' ');
@@ -396,7 +396,7 @@ export default function ChantierMap({ chantiers, clients, onSelectChantier, isDa
 
         const allTasks = sch.taches || [];
         const tasksDone = allTasks.filter(t => t.done).length;
-        const avancement = sch.statut === 'termine' ? 100 : allTasks.length > 0 ? Math.round((tasksDone / allTasks.length) * 100) : 0;
+        const avancement = avancementDe ? avancementDe(sch) : sch.statut === 'termine' ? 100 : allTasks.length > 0 ? Math.round((tasksDone / allTasks.length) * 100) : 0;
         const gpsAddr = [sch.adresse, sch.codePostal, sch.ville].filter(Boolean).join(' ');
         const gpsUrl = gpsAddr ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(gpsAddr)}` : null;
 

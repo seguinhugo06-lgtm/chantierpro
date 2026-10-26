@@ -18,6 +18,7 @@ export default function GanttView({
   taches = [],
   setTaches,
   onUpdateChantier: _onUpdateChantier,
+  avancementDe, // (chantier) => avancement affiché, le même que la liste
   isDark: _isDark = false,
   couleur: _couleur,
 }) {
@@ -316,7 +317,7 @@ export default function GanttView({
                         <span className={`font-medium truncate ${textPrimary}`}>{chantier.nom}</span>
                       </div>
                       <p className={`text-xs ${textMuted} mt-1`}>
-                        {chantier.avancement || 0} % d'avancement
+                        {avancementDe ? avancementDe(chantier) : (chantier.avancement || 0)} % d'avancement
                       </p>
                     </div>
                     <div className={`relative flex-1 h-16 ${gridBg}`}>

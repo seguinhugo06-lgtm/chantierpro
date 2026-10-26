@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { joursAvantFin, chantierEnRetard, joursSansActivite } from '../echeanceChantier';
-import { avancementChantier } from '../avancementChantier';
+import { avancementChantier, avancementDuChantier } from '../avancementChantier';
 
 const AUJOURDHUI = new Date(2026, 9, 25, 10, 30); // 25 oct. 2026, 10 h 30
 
@@ -69,5 +69,15 @@ describe('avancement d’un chantier : la moyenne de ce que l’on sait', () => 
     expect(avancementChantier({ statut: 'en_cours', avancement: 0 }, null, 0, 0)).toBe(5);
     expect(avancementChantier({ statut: 'en_cours', avancement: 40 }, null, 0, 0)).toBe(40);
     expect(avancementChantier({ statut: 'prospect', avancement: 0 }, null, 0, 0)).toBe(0);
+  });
+
+  it('avancementDuChantier compte les tâches du chantier : la frise, la carte et l’Accueil disent comme la liste', () => {
+    const taches = [{ done: true }, { done: false }, { done: false }, { done: true }];
+    // le champ « avancement » saisi (65) ne l’emporte pas sur ce que disent les tâches
+    expect(avancementDuChantier({ statut: 'en_cours', avancement: 65, taches }, {})).toBe(50);
+    expect(avancementDuChantier({ statut: 'en_cours', avancement: 65, taches }, {})).toBe(avancementChantier({ statut: 'en_cours', avancement: 65 }, {}, 2, 4));
+    expect(avancementDuChantier({ statut: 'termine', taches }, null)).toBe(100);
+    expect(avancementDuChantier({ statut: 'en_cours', avancement: 40 }, null)).toBe(40);
+    expect(avancementDuChantier(null, null)).toBe(0);
   });
 });

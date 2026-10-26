@@ -49,7 +49,7 @@ import { rappelsDus, DELAI_RAPPEL_DEFAUT } from '../lib/ramonage';
 import { profilManquant, enPhrase } from '../lib/profilLegal';
 import { devisARelancer, joursDepuisEnvoi } from '../lib/ventes';
 import { formatClientName } from '../lib/formatters';
-import { avancementChantier } from '../lib/avancementChantier';
+import { avancementDuChantier } from '../lib/avancementChantier';
 import { RELANCES_PAR_ENVOI } from '../lib/relanceEngine';
 
 /** La mallette — marque Mallettico, reprise du jeu d'icônes (grille 48, contour 3,2). */
@@ -641,8 +641,7 @@ export default function Dashboard({
           <GroupeListe>
             {activeChantiers.slice(0, 4).map(c => {
               const client = clients.find(cl => cl.id === c.client_id);
-              const taches = c.taches || [];
-              const av = Math.max(0, Math.min(100, avancementChantier(c, getChantierBilan?.(c.id), taches.filter((t) => t.done).length, taches.length)));
+              const av = Math.max(0, Math.min(100, avancementDuChantier(c, getChantierBilan?.(c.id))));
               return (
                 <LigneListe
                   key={c.id}

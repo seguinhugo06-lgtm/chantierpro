@@ -107,6 +107,7 @@ import { Bouton } from './components/ui/Bouton';
 import { messageEcritureRefusee } from './lib/erreursEcriture';
 import { jourLocal, dateLue } from './lib/dates';
 import { joursAvantFin, chantierEnRetard } from './lib/echeanceChantier';
+import { budgetChantier } from './lib/budgetChantier';
 import { mentionsFacture } from './lib/mentionsFacture';
 import PortailIndisponible from './components/portal/PortailIndisponible';
 
@@ -157,7 +158,7 @@ export default function App() {
   const { showToast, toast, hideToast } = useToast();
 
   // RBAC: organization role + permissions
-  const { canAccess, canAccessBilling, role: userRole, loading: orgLoading, orgId } = usePermissions();
+  const { canAccess, canAccessBilling, canViewPrices, role: userRole, loading: orgLoading, orgId } = usePermissions();
 
   // PWA install hook
   const { canInstall, install, isInstalled } = usePWA();
@@ -358,6 +359,8 @@ export default function App() {
     // Montants : masqués en mode discret ; devis, factures et marges : seulement pour un rôle qui voit les finances
     // (avant, recette du 9 oct. 2026 : la cloche d'un ouvrier listait les factures impayées et leurs montants)
     const voitFinances = canAccess('finances');
+    // Budget, marge et montants d'un chantier : le droit de voir les prix (usePermissions), le même partout
+    const voitPrix = canViewPrices;
     const montant = (n) => (modeDiscret ? '•••' : new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(n || 0));
 
     // 1. Devis à relancer : la règle de la pastille et de l'Accueil (src/lib/ventes.js) — compté depuis l'envoi, jamais
@@ -446,7 +449,7 @@ export default function App() {
 
     // 5. Chantiers avec marge négative
     (chantiers || []).forEach(ch => {
-      if (voitFinances && ch.statut === 'en_cours' && getChantierBilan) {
+      if (voitPrix && ch.statut === 'en_cours' && getChantierBilan) {
         const bilan = getChantierBilan(ch.id);
         if (bilan && bilan.margeBrute < 0) {
           items.push({
@@ -515,39 +518,27 @@ export default function App() {
       }
     }
 
-    // 8. Chantier avec budget dépassé >90%
+    // 8. Budget presque consommé : 90 % du budget du chantier (src/lib/budgetChantier.js) déjà dépensés, comme la carte de la liste.
+    //    Ambre (« à surveiller »), jamais rouge ; au-delà du budget la marge est négative et l'alerte « en perte » (5) le dit déjà.
+    //    Avant : la règle lisait `ch.budget`, un champ qui n'existe pas — elle ne s'est jamais déclenchée.
     (chantiers || []).forEach(ch => {
-      if (ch.statut === 'en_cours' && ch.budget && ch.budget > 0 && getChantierBilan) {
-        const bilan = getChantierBilan(ch.id);
-        if (bilan) {
-          const pct = (bilan.totalDepenses / ch.budget) * 100;
-          if (pct >= 100) {
-            items.push({
-              id: `budget-depasse-${ch.id}`,
-              message: `Budget dépassé sur "${ch.nom || 'Sans nom'}" (${Math.round(pct)}% consommé)`,
-              date: 'Budget dépassé',
-              type: 'alert',
-              link: 'chantiers',
-              itemId: ch.id,
-              itemType: 'chantier',
-              sortDate: now,
-              priority: 1,
-            });
-          } else if (pct >= 90) {
-            items.push({
-              id: `budget-alerte-${ch.id}`,
-              message: `Budget critique sur "${ch.nom || 'Sans nom'}" (${Math.round(pct)}% consommé)`,
-              date: 'Alerte budget',
-              type: 'warning',
-              link: 'chantiers',
-              itemId: ch.id,
-              itemType: 'chantier',
-              sortDate: now,
-              priority: 2,
-            });
-          }
-        }
-      }
+      if (!voitPrix || ch.statut !== 'en_cours' || !getChantierBilan) return;
+      const bilan = getChantierBilan(ch.id);
+      const budget = budgetChantier(ch, bilan);
+      if (!bilan || budget <= 0 || bilan.margeBrute < 0) return;
+      if (!(bilan.totalDepenses > budget * 0.9)) return; // la règle de la carte de la liste : plus de 90 % dépensés
+      const pct = Math.round((bilan.totalDepenses / budget) * 100);
+      items.push({
+        id: `budget-alerte-${ch.id}`,
+        message: `Budget presque consommé sur "${ch.nom || 'Sans nom'}" (${pct} % dépensé)`,
+        date: 'Budget à surveiller',
+        type: 'warning',
+        link: 'chantiers',
+        itemId: ch.id,
+        itemType: 'chantier',
+        sortDate: now,
+        priority: 2,
+      });
     });
 
     // Sort by priority (1=urgent) then date (newest first), limit to 20
@@ -556,7 +547,7 @@ export default function App() {
       ...n,
       read: readNotifIds.includes(n.id),
     }));
-  }, [devis, paiements, chantiers, clients, entreprise, getChantierBilan, readNotifIds, canAccess, modeDiscret]);
+  }, [devis, paiements, chantiers, clients, entreprise, getChantierBilan, readNotifIds, canAccess, canViewPrices, modeDiscret]);
   const [showNotifs, setShowNotifs] = useState(false);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [menuCompte, setMenuCompte] = useState(false);

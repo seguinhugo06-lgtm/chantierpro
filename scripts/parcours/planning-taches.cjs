@@ -84,4 +84,45 @@ module.exports = [
       verifier(!/\btache\b/i.test(texte.replace(/tâche/gi, '')), 'aucun « tache » sans accent');
     },
   },
+  {
+    // Avant : la frise affichait le champ « avancement » saisi (10 %), la liste l'avancement calculé (tâches, heures, achats : 75 %).
+    nom: 'chantiers → Frise : l’avancement est celui de la liste (tâches faites), pas le champ saisi (1440 px)',
+    reel: true,
+    async executer({ ouvrir, attendre, verifier, sessionFactice }) {
+      const CLIENT = { id: 'c0c0c0c0-0000-4000-8000-000000000051', nom: 'Colin', prenom: 'Ana', created_at: '2026-10-01T08:00:00Z' };
+      const CHANTIER = {
+        id: 'c1c1c1c1-0000-4000-8000-000000000051', nom: 'Frise Colin Parcours', client_id: CLIENT.id, statut: 'en_cours', avancement: 10, date_debut: '2026-10-01', date_fin: '2026-12-31',
+        taches: [{ id: 't1', text: 'A', done: true }, { id: 't2', text: 'B', done: true }, { id: 't3', text: 'C', done: true }, { id: 't4', text: 'D', done: false }], created_at: '2026-10-01T08:00:00Z',
+      };
+      const base = creerBase({ clients: [CLIENT], chantiers: [CHANTIER] });
+      const { page } = await ouvrir({ reel: true, largeur: 1440, page: 'chantiers', session: sessionFactice(UID), supabase: base.reponse });
+      await attendre(2500);
+      const liste = await page.evaluate(() => (document.querySelector('button[aria-label^="Ouvrir le chantier Frise Colin"]')?.innerText || '').replace(/\s+/g, ' '));
+      verifier(/Avancement 75 %/.test(liste), `la liste dit 75 % (« ${liste} »)`);
+      await page.evaluate(() => [...document.querySelectorAll('[aria-label="Vue des chantiers"] button')].find((b) => b.innerText.trim() === 'Frise' && b.getBoundingClientRect().width > 0)?.click());
+      await attendre(1500);
+      const frise = await page.evaluate(() => document.querySelector('#main-content')?.innerText.replace(/\s+/g, ' ') || '');
+      verifier(/75 % d'avancement/.test(frise) && !/10 % d'avancement/.test(frise), `la frise dit 75 % comme la liste (« ${(frise.match(/\d+ % d'avancement/) || [''])[0]} »)`);
+    },
+  },
+  {
+    // Avant : « Échéance dépassée » ne tenait pas dans la tuile « En retard » à 375 px (trois tuiles de front) : le mot débordait.
+    nom: 'tâches : la tuile « En retard » n’est pas coupée à 375 px, ni aucune des trois tuiles',
+    reel: true,
+    async executer({ ouvrir, attendre, verifier, sessionFactice }) {
+      const retard = (n) => ({ id: `f0f0f0f0-0000-4000-8000-00000000006${n}`, text: `Tâche en retard ${n}`, status: 'a_faire', is_done: false, due_date: '2026-10-01', created_at: '2026-10-01T08:00:00Z' });
+      const base = creerBase({ memos: [retard(1), retard(2), retard(3)] });
+      const { page } = await ouvrir({ reel: true, largeur: 375, page: 'tasks', session: sessionFactice(UID), supabase: base.reponse });
+      await attendre(2500);
+      const tuiles = await page.evaluate(() => [...document.querySelectorAll('[data-ui="TuileChiffre"]')].map((t) => ({
+        texte: t.innerText.replace(/\s+/g, ' ').trim(),
+        horizontal: [...t.querySelectorAll('span')].filter((s) => s.scrollWidth > s.clientWidth + 1).map((s) => s.innerText.trim()),
+        vertical: [...t.querySelectorAll('span[class*="line-clamp"]')].filter((s) => s.scrollHeight > s.clientHeight + 1).map((s) => s.innerText.trim()),
+        dehors: [...t.querySelectorAll('span')].filter((s) => s.getBoundingClientRect().right > t.getBoundingClientRect().right).map((s) => s.innerText.trim()),
+      })));
+      verifier(tuiles.length === 3, `trois tuiles (${tuiles.length})`);
+      verifier(/En retard 3/.test(tuiles[0].texte) && /depuis \d+ j/i.test(tuiles[0].texte), `la tuile « En retard » dit 3 et depuis combien de jours (« ${tuiles[0].texte} »)`);
+      for (const t of tuiles) verifier(t.horizontal.length === 0 && t.vertical.length === 0 && t.dehors.length === 0, `tuile « ${t.texte} » : rien de coupé ni de débordant (${JSON.stringify({ h: t.horizontal, v: t.vertical, d: t.dehors })})`);
+    },
+  },
 ];

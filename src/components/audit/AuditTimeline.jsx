@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { ChevronDown, ChevronUp, Clock, Eye } from 'lucide-react';
-import { ACTION_LABELS, ACTION_ICONS, ENTITY_LABELS, FIELD_LABELS } from '../../lib/auditService';
+import { ACTION_LABELS, ACTION_ICONS, ENTITY_LABELS, FIELD_LABELS, estChampMonetaire, sansPrix } from '../../lib/auditService';
 import { formatMoney } from '../../lib/formatters';
+import { usePermissions } from '../../hooks/usePermissions';
 
 /**
  * AuditTimeline — Reusable vertical timeline of audit log entries
@@ -17,7 +18,7 @@ import { formatMoney } from '../../lib/formatters';
  *  - showEntityBadge: boolean (show entity type badge, useful for mixed feeds)
  */
 export default function AuditTimeline({
-  entries = [],
+  entries: toutes = [],
   isDark,
   couleur,
   modeDiscret,
@@ -31,6 +32,11 @@ export default function AuditTimeline({
   const textMuted = 'text-encre-3';
   const borderColor = 'border-bord';
   const cardBg = 'bg-surface';
+
+  // Sans le droit de voir les prix (chef de chantier, ouvrier) : ni montant, ni modification qui ne portait que des montants.
+  // La règle est ici, pas dans chaque écran : le journal du chantier, celui du client et celui d'un devis passent par ce composant.
+  const { canViewPrices } = usePermissions();
+  const entries = canViewPrices ? toutes : sansPrix(toutes);
 
   if (isLoading) {
     return (
@@ -96,7 +102,9 @@ function AuditEntry({
   const actionLabel = ACTION_LABELS[entry.action] || entry.action;
   const entityLabel = ENTITY_LABELS[entry.entity_type] || entry.entity_type;
   const changes = entry.changes || {};
-  const hasChanges = Object.keys(changes).length > 0;
+  // Le statut est dit en tête de l'entrée (« Brouillon → Envoyé ») : il ne compte pas dans les modifications dépliables
+  const champsAffiches = Object.keys(changes).filter((champ) => champ !== 'statut');
+  const hasChanges = champsAffiches.length > 0;
   const hasSnapshot = !!entry.snapshot_id;
 
   // Build description
@@ -161,7 +169,7 @@ function AuditEntry({
                 className={`flex items-center gap-1 text-xs px-2 py-1 rounded-lg transition-colors hover:bg-surface-2 text-encre-3`}
               >
                 {expanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-                {Object.keys(changes).length} modification{Object.keys(changes).length > 1 ? 's' : ''}
+                {champsAffiches.length} modification{champsAffiches.length > 1 ? 's' : ''}
               </button>
             )}
             {hasSnapshot && onViewSnapshot && (
@@ -218,7 +226,7 @@ function ChangeRow({ field, change, isDark, textSecondary, textMuted, modeDiscre
   }
 
   // Money fields
-  const isMoneyField = ['total_ht', 'total_ttc', 'totalHt', 'totalTtc', 'montant', 'remise_globale', 'remiseGlobale'].includes(field);
+  const isMoneyField = estChampMonetaire(field);
 
   const formatVal = (val) => {
     if (val === null || val === undefined) return '—';

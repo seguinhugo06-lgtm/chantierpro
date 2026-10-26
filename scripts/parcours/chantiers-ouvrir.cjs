@@ -173,4 +173,34 @@ module.exports = [
       verifier(enBase(B.id).statut === 'abandonne' && enBase(B.id).date_fin === aujourdhui(), `confirmé : abandonné, fin d’aujourd’hui (${enBase(B.id).statut} / ${enBase(B.id).date_fin})`);
     },
   },
+  {
+    // Avant : la règle « budget dépassé / critique » lisait `ch.budget`, un champ qui n'existe pas : elle ne se déclenchait jamais.
+    nom: 'cloche : un chantier dont 95 % du budget est dépensé est « à surveiller » (ambre), pour qui voit les prix seulement',
+    reel: true,
+    async executer({ ouvrir, attendre, verifier, sessionFactice }) {
+      const CLIENT = { id: 'c0c0c0c0-0000-4000-8000-000000000041', nom: 'Perrin', prenom: 'Eli', created_at: '2026-10-01T08:00:00Z' };
+      const fin = new Date(); fin.setDate(fin.getDate() + 20);
+      const PRESQUE = { id: 'c1c1c1c1-0000-4000-8000-000000000041', nom: 'Budget serré Perrin', client_id: CLIENT.id, statut: 'en_cours', avancement: 50, budget_prevu: 1000, date_fin: fin.toLocaleDateString('sv-SE'), created_at: '2026-10-01T08:00:00Z' };
+      const LARGE = { id: 'c1c1c1c1-0000-4000-8000-000000000042', nom: 'Budget large Perrin', client_id: CLIENT.id, statut: 'en_cours', avancement: 50, budget_prevu: 1000, date_fin: fin.toLocaleDateString('sv-SE'), created_at: '2026-10-01T08:00:00Z' };
+      const DEPENSES = [
+        { id: 'e0e0e0e0-0000-4000-8000-000000000041', chantier_id: PRESQUE.id, description: 'Fournitures', montant: 950, date: '2026-10-10', categorie: 'Matériaux', created_at: '2026-10-10T08:00:00Z' },
+        { id: 'e0e0e0e0-0000-4000-8000-000000000042', chantier_id: LARGE.id, description: 'Fournitures', montant: 300, date: '2026-10-10', categorie: 'Matériaux', created_at: '2026-10-10T08:00:00Z' },
+      ];
+      for (const role of ['owner', 'chef_chantier']) {
+        const base = creerBase({ clients: [CLIENT], chantiers: [PRESQUE, LARGE], depenses: DEPENSES }, { role });
+        const { page } = await ouvrir({ reel: true, largeur: 375, page: 'dashboard', session: sessionFactice(UID), supabase: base.reponse });
+        await attendre(2500);
+        await page.evaluate(() => [...document.querySelectorAll('button')].find((b) => /^Notifications/.test(b.getAttribute('aria-label') || ''))?.click());
+        await attendre(700);
+        const cloche = await page.evaluate(() => [...document.querySelectorAll('[role="dialog"] li')].map((li) => ({ texte: li.innerText.replace(/\s+/g, ' ').trim(), rouge: !!li.querySelector('[class*="bg-danger-fond"]'), ambre: !!li.querySelector('[class*="bg-alerte-fond"]') })));
+        const serre = cloche.find((n) => /Budget serré Perrin/.test(n.texte));
+        if (role === 'owner') {
+          verifier(serre && /Budget presque consommé/.test(serre.texte) && /95 %/.test(serre.texte) && serre.ambre && !serre.rouge, `gérant : « Budget presque consommé… 95 % », en ambre (${JSON.stringify(serre)})`);
+          verifier(!cloche.some((n) => /Budget large Perrin/.test(n.texte)), 'gérant : le chantier à 30 % du budget n’a pas d’alerte');
+        } else {
+          verifier(!cloche.some((n) => /Budget|Perrin/.test(n.texte) && /consommé|dépensé|marge/.test(n.texte)), `chef de chantier : aucune alerte de budget (${JSON.stringify(cloche.map((n) => n.texte))})`);
+        }
+      }
+    },
+  },
 ];

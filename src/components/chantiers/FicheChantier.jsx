@@ -565,8 +565,8 @@ export default function FicheChantier({
         )}
         {ongletActif === 'notes' && (
           <OngletNotes
-            chantier={ch} memos={memos.filter((m) => m.chantier_id === ch.id)} peutModifier={peutModifier} peutMemo={peutMemo} peutMemoModifier={peutMemoModifier}
-            onNotes={(texte) => updateChantier(ch.id, { notes: texte }, { silencieux: true })}
+            key={ch.id} chantier={ch} memos={memos.filter((m) => m.chantier_id === ch.id)} peutModifier={peutModifier} peutMemo={peutMemo} peutMemoModifier={peutMemoModifier}
+            onNotes={(texte, chantierId) => updateChantier(chantierId ?? ch.id, { notes: texte }, { silencieux: true })}
             onAjouterMemo={(texte) => addMemo?.({ text: texte, chantier_id: ch.id, client_id: ch.client_id || null })}
             onBasculerMemo={(memoId) => toggleMemo?.(memoId)}
             onAjouterEchange={ajouterEchange}

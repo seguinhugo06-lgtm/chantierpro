@@ -16,7 +16,7 @@ import { usePermissions } from '../hooks/usePermissions';
 import { findDuplicateChantiers } from '../lib/utils';
 import { formatClientName } from '../lib/formatters';
 import { estFranchiseTva } from '../lib/franchiseTva';
-import { avancementChantier } from '../lib/avancementChantier';
+import { avancementChantier, avancementDuChantier } from '../lib/avancementChantier';
 import { joursAvantFin, chantierEnRetard } from '../lib/echeanceChantier';
 import { budgetChantier } from '../lib/budgetChantier';
 import { ouvrirLienExterne } from '../lib/natif';
@@ -77,6 +77,9 @@ export default function Chantiers({
   useEffect(() => { if (createMode) { setClientPourChantier(createMode?.clientId || null); setShow(true); setCreateMode?.(false); } }, [createMode, setCreateMode]);
   // La frise garde ses tâches sur l'appareil
   useEffect(() => { try { localStorage.setItem('cp_gantt_tasks', JSON.stringify(ganttTasks)); } catch { /* préférence non enregistrée : quota plein ou navigation privée */ } }, [ganttTasks]);
+
+  // L'avancement affiché par la frise et la carte est celui de la liste (src/lib/avancementChantier.js)
+  const avancementDe = (c) => avancementDuChantier(c, getChantierBilan(c.id));
 
   const retourListe = useCallback(() => { setView(null); setSelectedChantier?.(null); }, [setSelectedChantier]);
 
@@ -418,6 +421,7 @@ export default function Chantiers({
               <GanttView
                 chantiers={chantiers.filter((c) => c.statut === 'en_cours' || c.statut === 'prospect')}
                 equipe={equipe} taches={ganttTasks} setTaches={setGanttTasks} onUpdateChantier={updateChantier} isDark={isDark} couleur={couleur}
+                avancementDe={avancementDe}
               />
             </Suspense>
           )}
@@ -437,7 +441,7 @@ export default function Chantiers({
                 <ChantierMap
                   chantiers={resultats} clients={clients} onSelectChantier={(id) => setView(id)} isDark={isDark} couleur={couleur}
                   formatMoney={formatMoney} modeDiscret={modeDiscret} voitPrix={voitPrix}
-                  budgetDe={(c) => budgetChantier(c, getChantierBilan(c.id))}
+                  budgetDe={(c) => budgetChantier(c, getChantierBilan(c.id))} avancementDe={avancementDe}
                 />
               </Suspense>
             </ErrorBoundary>

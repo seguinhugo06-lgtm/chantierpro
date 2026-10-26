@@ -236,4 +236,80 @@ module.exports = [
       verifier(detail.champDesactive && !detail.supprimer, `le détail est en lecture seule, sans suppression (${JSON.stringify(detail)})`);
     },
   },
+  {
+    // Relecture de la Task 6, tour 2 : le Journal affichait « Total HT 8 000 € → 8 500 € » et « montant_devis 8000 → 8500 » à un chef de chantier.
+    nom: 'chef de chantier : le journal du chantier n’affiche aucun montant mais garde le reste ; le gérant voit tout (375 px)',
+    reel: true,
+    async executer({ ouvrir, attendre, verifier, sessionFactice }) {
+      const { CLIENT, CHANTIER, DEVIS } = jeuAvecPrix();
+      const entree = (id, type, entityId, action, changes, minutes) => ({
+        id, entity_type: type, entity_id: entityId, action, changes, metadata: {}, snapshot_id: null, user_name: 'Hugo', created_at: new Date(Date.now() - minutes * 60000).toISOString(),
+      });
+      const AUDIT = [
+        entree('a0a0a0a0-0000-4000-8000-000000000001', 'chantier', CHANTIER.id, 'updated', { montant_devis: { old: 8000, new: 8500 }, avancement: { old: 40, new: 60 } }, 10),
+        entree('a0a0a0a0-0000-4000-8000-000000000002', 'chantier', CHANTIER.id, 'updated', { montant_devis: { old: 7000, new: 8000 } }, 20),
+        entree('a0a0a0a0-0000-4000-8000-000000000003', 'devis', DEVIS.id, 'updated', { total_ht: { old: 8000, new: 8500 }, total_ttc: { old: 9600, new: 10200 }, remise_globale: { old: 0, new: 5 } }, 30),
+        entree('a0a0a0a0-0000-4000-8000-000000000004', 'devis', DEVIS.id, 'updated', { objet: { old: 'Cuisine', new: 'Cuisine complète' }, total_ht: { old: 8000, new: 8500 } }, 40),
+        entree('a0a0a0a0-0000-4000-8000-000000000005', 'devis', DEVIS.id, 'status_changed', { statut: { old: 'brouillon', new: 'envoye' } }, 50),
+      ];
+      const lignesAudit = (u) => {
+        const type = (u.searchParams.get('entity_type') || '').replace(/^eq\./, '');
+        const brut = u.searchParams.get('entity_id') || '';
+        const ids = brut.startsWith('in.') ? brut.slice(4, -1).split(',') : [brut.replace(/^eq\./, '')];
+        return AUDIT.filter((e) => e.entity_type === type && ids.includes(e.entity_id));
+      };
+      for (const role of ['owner', 'chef_chantier']) {
+        const base = creerBase({ clients: [CLIENT], chantiers: [CHANTIER], devis: [DEVIS] }, { role });
+        const { page } = await ouvrir({
+          reel: true, largeur: 375, page: 'chantiers', session: sessionFactice(UID),
+          supabase: (req, u) => (u.pathname === '/rest/v1/audit_logs' ? json(lignesAudit(u)) : base.reponse(req, u)),
+        });
+        await attendre(2500);
+        await ouvrirFiche(page, attendre, 'Rénovation Morel');
+        await ongletFiche(page, attendre, 'Journal');
+        await attendre(1200);
+        await page.evaluate(() => [...document.querySelectorAll('#main-content button')].filter((b) => /modification/.test(b.innerText)).forEach((b) => b.click()));
+        await attendre(500);
+        const journal = await page.evaluate(() => ({ entrees: document.querySelectorAll('#main-content .relative.pl-10').length, texte: (document.querySelector('#main-content')?.innerText || '').replace(/\s+/g, ' ') }));
+        if (role === 'owner') {
+          verifier(journal.entrees === 5, `gérant : les cinq entrées du journal (${journal.entrees})`);
+          verifier(/8\s?500\s?€/.test(journal.texte) && /Total HT/.test(journal.texte), `gérant : les montants sont là (${journal.texte.slice(0, 160)})`);
+        } else {
+          verifier(journal.entrees === 3, `chef de chantier : trois entrées, celles qui ne portaient que des montants ont disparu (${journal.entrees})`);
+          verifier(!/€|Total|Remise|Montant|\b8[\s\u202f\u00a0]?[05]00\b|\b9[\s\u202f\u00a0]?600\b|\b10[\s\u202f\u00a0]?200\b/.test(journal.texte), `chef de chantier : ni « € », ni total, ni montant (${journal.texte.slice(0, 200)})`);
+          verifier(/avancement/i.test(journal.texte) && /Objet/.test(journal.texte) && /Statut modifié/.test(journal.texte), 'chef de chantier : le reste du journal est gardé (avancement, objet, statut)');
+        }
+      }
+    },
+  },
+  {
+    // Relecture de la Task 6, tour 2 : taper dans A puis passer à B avant la pause de 0,8 s écrivait le texte de A dans B.
+    nom: 'notes de chantier : taper dans A puis passer à B tout de suite écrit dans A ; B reste inchangé (1440 px)',
+    reel: true,
+    async executer({ ouvrir, attendre, verifier, saisir, sessionFactice }) {
+      const CLIENT = { id: 'c0c0c0c0-0000-4000-8000-000000000031', nom: 'Girard', prenom: 'Lou', created_at: '2026-10-01T08:00:00Z' };
+      const A = { id: 'c1c1c1c1-0000-4000-8000-000000000031', nom: 'Alpha Notes Parcours', client_id: CLIENT.id, statut: 'en_cours', avancement: 10, notes: '', created_at: '2026-10-01T08:00:00Z' };
+      const B = { id: 'c1c1c1c1-0000-4000-8000-000000000032', nom: 'Bravo Notes Parcours', client_id: CLIENT.id, statut: 'en_cours', avancement: 10, notes: 'Note de B, ne pas toucher', created_at: '2026-10-02T08:00:00Z' };
+      const base = creerBase({ clients: [CLIENT], chantiers: [A, B] });
+      const { page } = await ouvrir({ reel: true, largeur: 1440, page: 'chantiers', session: sessionFactice(UID), supabase: base.reponse });
+      await attendre(2500);
+      await ouvrirFiche(page, attendre, 'Alpha Notes');
+      await ongletFiche(page, attendre, 'Notes');
+      await saisir(page, '#main-content textarea', 'Code du portail : 4521');
+      // tout de suite, sans attendre la pause : le chantier suivant
+      const suivant = await page.evaluate(() => {
+        const b = [...document.querySelectorAll('[data-ui="EnTeteChantier"] button')].find((x) => /Bravo Notes/.test(x.innerText));
+        b?.click();
+        return !!b;
+      });
+      verifier(suivant, 'le bouton du chantier suivant est là');
+      await attendre(2200);
+      const de = (id) => base.tables.chantiers.find((c) => c.id === id);
+      verifier(de(A.id).notes === 'Code du portail : 4521', `A a reçu le texte tapé (« ${de(A.id).notes} »)`);
+      verifier(de(B.id).notes === 'Note de B, ne pas toucher', `B est inchangé (« ${de(B.id).notes} »)`);
+      await ongletFiche(page, attendre, 'Notes');
+      const affiche = await page.evaluate(() => document.querySelector('#main-content textarea')?.value);
+      verifier(affiche === 'Note de B, ne pas toucher', `la fiche de B montre la note de B (« ${affiche} »)`);
+    },
+  },
 ];

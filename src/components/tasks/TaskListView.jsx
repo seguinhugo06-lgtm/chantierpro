@@ -28,7 +28,10 @@ function Chiffres({ memos, quickFilter, onQuickFilter }) {
     debutSemaine.setDate(now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1));
     debutSemaine.setHours(0, 0, 0, 0);
     const faitesCetteSemaine = memos.filter((m) => m.is_done && m.done_at && new Date(m.done_at) >= debutSemaine).length;
-    const enRetard = memos.filter((m) => !m.is_done && m.due_date && m.due_date < today()).length;
+    const enRetardListe = memos.filter((m) => !m.is_done && m.due_date && m.due_date < today());
+    const enRetard = enRetardListe.length;
+    // Depuis combien de jours la plus ancienne est en retard : un mot court (« Depuis 26 j »), qui tient dans une tuile de 110 px
+    const joursDeRetard = enRetardListe.reduce((plus, m) => Math.max(plus, Math.ceil((new Date(`${today()}T00:00:00`) - new Date(`${m.due_date}T00:00:00`)) / 86400000)), 0);
 
     const debutMois = new Date(now.getFullYear(), now.getMonth(), 1);
     const creeesCeMois = memos.filter((m) => {
@@ -36,14 +39,14 @@ function Chiffres({ memos, quickFilter, onQuickFilter }) {
       return !Number.isNaN(d.getTime()) && d >= debutMois;
     });
     const faitesCeMois = creeesCeMois.filter((m) => m.is_done).length;
-    return { faitesCetteSemaine, enRetard, faitesCeMois, creeesCeMois: creeesCeMois.length };
+    return { faitesCetteSemaine, enRetard, joursDeRetard, faitesCeMois, creeesCeMois: creeesCeMois.length };
   }, [memos]);
 
   return (
     <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-4">
       <TuileChiffre
         libelle="En retard" valeur={stats.enRetard}
-        alerte={stats.enRetard > 0 ? 'Échéance dépassée' : undefined} contexte={stats.enRetard === 0 ? 'Rien en retard' : undefined}
+        alerte={stats.enRetard > 0 ? `Depuis ${stats.joursDeRetard} j` : undefined} contexte={stats.enRetard === 0 ? 'Rien en retard' : undefined}
         onClick={() => onQuickFilter(quickFilter === 'overdue' ? 'all' : 'overdue')} actif={quickFilter === 'overdue'}
         className={SERRE}
       />

@@ -37,4 +37,15 @@ export function avancementChantier(chantier, bilan, tasksDone, tasksTotal) {
   return Math.round(signaux.reduce((somme, s) => somme + (s.valeur * s.poids) / poidsTotal, 0));
 }
 
+/**
+ * L'avancement d'un chantier tel qu'il s'affiche partout (liste, fiche, Accueil, frise, carte) : les tâches du chantier sont
+ * comptées ici, l'appelant ne donne que le chantier et son bilan.
+ * @param {object} chantier
+ * @param {object} [bilan]  résultat de getChantierBilan
+ */
+export function avancementDuChantier(chantier, bilan) {
+  const taches = chantier?.taches || [];
+  return avancementChantier(chantier, bilan, taches.filter((t) => t.done).length, taches.length);
+}
+
 export default avancementChantier;

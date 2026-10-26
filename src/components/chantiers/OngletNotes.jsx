@@ -30,24 +30,25 @@ export default function OngletNotes({ chantier: ch, memos = [], peutModifier, pe
   const [contenu, setContenu] = useState('');
   const [enCours, setEnCours] = useState(false);
   const [notes, setNotes] = useState(ch.notes || '');
-  const enAttente = useRef(null); // texte tapé, pas encore envoyé
+  const enAttente = useRef(null); // { id, texte } : ce qui est tapé, avec le chantier où il a été tapé, pas encore envoyé
   const minuteur = useRef(null);
   const onNotesRef = useRef(onNotes);
   onNotesRef.current = onNotes;
   const envoyerNotes = useCallback(() => {
     clearTimeout(minuteur.current);
     if (enAttente.current === null) return;
-    const texte = enAttente.current;
+    const { id, texte } = enAttente.current;
     enAttente.current = null;
-    onNotesRef.current(texte);
+    onNotesRef.current(texte, id);
   }, []);
-  // Rien ne se perd en changeant d'onglet ou de chantier : ce qui attend part au démontage
+  // Rien ne se perd en changeant d'onglet ou de chantier : ce qui attend part au démontage, avec l'identifiant du chantier
+  // où le texte a été tapé (relecture de la Task 6, tour 2 : taper dans A puis passer à B avant la pause écrivait dans B)
   useEffect(() => envoyerNotes, [envoyerNotes]);
   // Une valeur revenue de la base (écriture refusée, autre appareil) remplace l'affichage quand rien n'attend d'être envoyé
   useEffect(() => { if (enAttente.current === null) setNotes(ch.notes || ''); }, [ch.notes]);
   const saisirNotes = (texte) => {
     setNotes(texte);
-    enAttente.current = texte;
+    enAttente.current = { id: ch.id, texte };
     clearTimeout(minuteur.current);
     minuteur.current = setTimeout(envoyerNotes, PAUSE_NOTES_MS);
   };
