@@ -5257,7 +5257,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
             </div>
           )}
         <div className={`${cardBg} rounded-2xl border overflow-hidden shadow-e1`}>
-          <div className="overflow-x-auto">
+          <div className="relative overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-fond">

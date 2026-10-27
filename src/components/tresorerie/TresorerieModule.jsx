@@ -2004,7 +2004,7 @@ export default function TresorerieModule({
                 );
               })}
             </div>
-            <div className="hidden sm:block overflow-x-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
+            <div className="relative hidden sm:block overflow-x-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
               <table className="w-full text-sm min-w-[640px]" aria-label="Prévisions de trésorerie">
                 <thead>
                   <tr className={TETE_TABLEAU}>
@@ -2115,7 +2115,7 @@ export default function TresorerieModule({
               texte="Les mouvements sont vos transactions réelles (encaissements, décaissements), avec la TVA ventilée."
               action={peutModifier ? <Bouton icone={Plus} onClick={() => { setEditingMouv(null); setShowMouvModal(true); }}>Créer un mouvement</Bouton> : null} />
           ) : (
-            <div className="overflow-x-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
+            <div className="relative overflow-x-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
               <table className="w-full text-sm min-w-[640px]" aria-label="Mouvements de trésorerie">
                 <thead>
                   <tr className={TETE_TABLEAU}>
