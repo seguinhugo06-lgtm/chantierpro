@@ -6,13 +6,16 @@ import useKeepInViewport from '../../hooks/useKeepInViewport';
  * TabBar — Reusable tab navigation with overflow menu.
  * Shows up to maxVisible tabs, with remaining tabs in a "..." dropdown.
  *
- * @param {Array} tabs - [{ key, label, icon?: LucideIcon, badge?: number, alert?: boolean }]
+ * @param {Array} tabs - [{ key, label, icon?: LucideIcon, badge?: number, alert?: boolean, ton?: 'alerte' }]
+ *   `alert` : pastille rouge (en retard, erreur) ; `ton: 'alerte'` : pastille ambre (à surveiller, à valider)
  * @param {string} activeTab - Currently active tab key
  * @param {Function} onTabChange - Called with tab key when tab is clicked
  * @param {number} maxVisible - Max tabs to show before overflow (default: 5)
  * @param {boolean} isDark  accepté, plus nécessaire : jetons de src/styles/theme.css (refonte du 9 oct.)
  * @param {string} couleur accepté, plus nécessaire : le trait actif est l'accent du thème
  */
+const tonPastille = (tab) => (tab.alert ? 'bg-danger-fond text-danger-texte' : tab.ton === 'alerte' ? 'bg-alerte-fond text-alerte-texte' : 'bg-surface-2 text-encre-2');
+
 export default function TabBar({ tabs = [], activeTab, onTabChange, maxVisible = 5 }) {
   const [showMore, setShowMore] = useState(false);
   const moreRef = useRef(null);
@@ -80,7 +83,7 @@ export default function TabBar({ tabs = [], activeTab, onTabChange, maxVisible =
               <span>{tab.label}</span>
               {typeof tab.badge === 'number' && tab.badge > 0 && (
                 <span className={`min-w-[20px] h-5 px-1.5 rounded-full text-xs font-bold leading-none inline-flex items-center justify-center tabular-nums ${
-                  tab.alert ? 'bg-danger-fond text-danger-texte' : 'bg-surface-2 text-encre-2'
+                  tonPastille(tab)
                 }`}>
                   {tab.badge}
                 </span>
@@ -119,7 +122,7 @@ export default function TabBar({ tabs = [], activeTab, onTabChange, maxVisible =
                       <span className="flex-1">{tab.label}</span>
                       {typeof tab.badge === 'number' && tab.badge > 0 && (
                         <span className={`min-w-[20px] h-5 px-1.5 rounded-full text-xs font-bold leading-none inline-flex items-center justify-center tabular-nums ${
-                          tab.alert ? 'bg-danger-fond text-danger-texte' : 'bg-surface-2 text-encre-2'
+                          tonPastille(tab)
                         }`}>{tab.badge}</span>
                       )}
                     </button>

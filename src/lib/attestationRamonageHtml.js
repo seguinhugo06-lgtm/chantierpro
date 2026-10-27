@@ -12,6 +12,7 @@
  */
 import { echapperHtml as h, couleurCss } from './echapperHtml';
 import { nomImprime, formeImprimee } from './identiteEntreprise';
+import { estSociete } from './mentionsFacture';
 import { marquerDocumentFictif, estDonneesFictives } from './donneesFictives';
 import { dateLue } from './dates';
 import { adresseComplete } from './adresseEntreprise';
@@ -67,7 +68,7 @@ export function buildAttestationRamonageHtml({ ramonage: r, entreprise, preceden
   const rcs = source.rcsVille && source.rcsNumero ? `RCS ${source.rcsVille} ${source.rcsType || 'B'} ${source.rcsNumero}` : (source.rcs ? `RCS ${source.rcs}` : '');
   const e = {
     nom: h(nom),
-    forme: h(`${formeImprimee(source)}${source.capital ? ` au capital de ${source.capital} €` : ''}`),
+    forme: h(`${formeImprimee(source)}${source.capital && estSociete(source) ? ` au capital de ${source.capital} €` : ''}`),
     // L'adresse complète contient déjà « code postal ville » quand Paramètres l'a enregistrée en trois champs
     adresse: h(adresseComplete(source).split('\n').join(', ')),
     tel: h(source.tel || source.telephone),

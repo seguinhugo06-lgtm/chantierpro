@@ -6,8 +6,9 @@ import { estFranchiseTva, tauxTvaParDefaut } from '../../lib/franchiseTva';
 /**
  * Taux de TVA par défaut des nouveaux devis, d'après le régime de TVA (retours d'Hugo, 21-23 oct. 2026 : l'assistant
  * proposait 10 % à une micro-entreprise). Une seule règle : `tauxTvaParDefaut` (src/lib/franchiseTva.js), la même que
- * l'éditeur de devis. En franchise en base (micro-entreprise), le taux est 0 % et la mention de l'art. 293 B du CGI
- * s'imprime, déjà produite par les générateurs : rien à choisir ici.
+ * l'éditeur de devis. Statut « Micro-entreprise » : Mallettico SUPPOSE la franchise en base (la franchise ne tient pas
+ * au statut, avis juriste du 26 oct. 2026, V1) ; le texte dit comment en sortir (statut « Entreprise individuelle (EI) »).
+ * Les autres statuts gardent la liste d'avant le 26 oct., 0 % compris (Q-zero-societe : décision d'Hugo).
  */
 const TAUX = [
   { valeur: 20, libelle: '20 %', detail: 'taux normal' },
@@ -19,8 +20,8 @@ export default function ChoixTva({ entreprise, updateEntreprise }) {
   const id = useId();
   const franchise = estFranchiseTva(entreprise);
   const taux = tauxTvaParDefaut(entreprise);
-  // Un 0 % déjà enregistré hors franchise reste visible (ancien choix « 0 % (franchise TVA) » de la liste)
-  const options = taux === 0 && !franchise ? [...TAUX, { valeur: 0, libelle: '0 %', detail: 'sans TVA' }] : TAUX;
+  // Hors franchise présumée : la liste d'avant, 0 % compris (« 0 % (franchise TVA) »)
+  const options = [...TAUX, { valeur: 0, libelle: '0 %', detail: 'franchise TVA' }];
   return (
     <div role="group" aria-labelledby={id}>
       <div className="flex items-end justify-between gap-2 mb-1.5">
@@ -31,8 +32,8 @@ export default function ChoixTva({ entreprise, updateEntreprise }) {
         <div data-tva-franchise className="flex items-start gap-3 p-3.5 rounded-2xl bg-info-fond text-info-texte">
           <Info size={18} aria-hidden="true" className="flex-shrink-0 mt-0.5" />
           <div className="text-sm">
-            <p className="font-semibold">0 % : franchise en base de TVA</p>
-            <p className="mt-0.5">Micro-entreprise : Mallettico applique la franchise en base de TVA. Vos devis et factures sont à 0 % de TVA et portent la mention « TVA non applicable, art. 293 B du CGI ».</p>
+            <p className="font-semibold">Pas de TVA : franchise en base</p>
+            <p className="mt-0.5">Statut « Micro-entreprise » : Mallettico suppose que vous êtes en franchise en base de TVA. Vos devis et factures n’ajoutent alors aucune TVA et portent la mention « TVA non applicable, art. 293 B du CGI ». Si vous avez dépassé les seuils de la franchise ou opté pour la TVA, choisissez le statut « Entreprise individuelle (EI) » : Mallettico facturera alors la TVA. En cas de doute, demandez à votre service des impôts des entreprises.</p>
           </div>
         </div>
       ) : (

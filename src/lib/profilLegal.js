@@ -19,6 +19,7 @@
  */
 
 import { estEntrepreneurIndividuel, estEirl } from './identiteEntreprise';
+import { champsAdresse } from './adresseEntreprise';
 
 const rempli = (valeur) => (typeof valeur === 'string' ? valeur.trim() !== '' : Boolean(valeur));
 const estEiOuEirl = (e) => estEntrepreneurIndividuel(e) || estEirl(e);
@@ -47,7 +48,12 @@ export const PROFIL_EXIGE = [
     libelle: 'Adresse',
     manque: 'Adresse entreprise manquante',
     pourquoi: 'mention obligatoire',
-    estRempli: (e) => rempli(e.adresse),
+    // Une rue, plus un code postal ou une ville (src/lib/adresseEntreprise.js). Avant (relecture du 26 oct. 2026), une
+    // adresse réduite à la ville, possible avec les trois champs, levait le blocage.
+    estRempli: (e) => {
+      const a = champsAdresse(e);
+      return rempli(a.rue) && (rempli(a.codePostal) || rempli(a.ville));
+    },
   },
   {
     id: 'no_nom',

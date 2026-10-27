@@ -136,3 +136,19 @@ describe('chaque mention mène au bon onglet des Paramètres', () => {
     expect(bloc?.onglet).toBe(onglet);
   });
 });
+
+// Relecture du 26 oct. 2026 : avec les trois champs d'adresse, une adresse réduite à la ville levait le blocage.
+describe('adresse exigée : une rue, plus un code postal ou une ville', () => {
+  const manqueAdresse = (e) => profilManquant(e).some((m) => m.id === 'no_adresse');
+  it('la ville seule, ou le code postal seul, ne suffit pas', () => {
+    expect(manqueAdresse({ adresse: 'Bordeaux', ville: 'Bordeaux' })).toBe(true);
+    expect(manqueAdresse({ adresse: '33300', codePostal: '33300' })).toBe(true);
+    expect(manqueAdresse({ adresse: '33300 Bordeaux', code_postal: '33300', ville: 'Bordeaux' })).toBe(true);
+  });
+  it('une rue et un code postal ou une ville suffisent, quelle que soit la forme enregistrée', () => {
+    expect(manqueAdresse({ adresse: '127 cours du Médoc\n33300 Bordeaux', codePostal: '33300', ville: 'Bordeaux' })).toBe(false);
+    expect(manqueAdresse({ adresse: '127 cours du Médoc', code_postal: '33300' })).toBe(false);
+    expect(manqueAdresse({ adresse: '1 rue du Chantier, 24200 Sarlat' })).toBe(false);
+    expect(manqueAdresse({ adresse: '127 cours du Médoc' })).toBe(true);
+  });
+});

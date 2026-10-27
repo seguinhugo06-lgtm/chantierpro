@@ -1,3 +1,5 @@
+import { SEUIL_PAR_DEFAUT } from './tresorerieReglages';
+
 /**
  * Prévisions de trésorerie : le statut enregistré n'a que deux valeurs, 'prevu' et 'paye'.
  *
@@ -35,7 +37,7 @@ export function normaliserPrevision(prevision) {
  * défaut enregistrée (useTresorerie, colonne de la base) : elle compte comme « non réglé », sans migration. 0 ou vide : pas
  * de seuil.
  */
-export const SEUIL_PAR_DEFAUT = 5000;
+export { SEUIL_PAR_DEFAUT };
 export function seuilAlerteRegle(reglages) {
   const n = Number(reglages?.seuilAlerte);
   if (!Number.isFinite(n) || n <= 0 || n === SEUIL_PAR_DEFAUT) return null;

@@ -25,7 +25,7 @@ export default function EtatProfil({ jauge, onAllerAuChamp, onAssistant }) {
   const mediateur = selonSituation.find((m) => m.id === 'mediateur');
   const groupes = [
     { id: 'obligatoires', titre: 'Bloquent l’envoi', ton: 'text-danger-texte', point: 'bg-danger-point', champs: obligatoires },
-    { id: 'selon-situation', titre: 'À vérifier selon votre situation', sousTitre: 'n’empêchent pas l’envoi', ton: 'text-alerte-texte', point: 'bg-alerte-point', champs: selonSituation },
+    { id: 'selon-situation', titre: 'Obligatoires selon votre situation', sousTitre: 'n’empêchent pas l’envoi', ton: 'text-alerte-texte', point: 'bg-alerte-point', champs: selonSituation },
     { id: 'recommandes', titre: 'Recommandés', ton: 'text-encre-2', point: 'bg-neutre-point', champs: recommandes },
   ].filter((g) => g.champs.length);
 
@@ -48,13 +48,13 @@ export default function EtatProfil({ jauge, onAllerAuChamp, onAssistant }) {
           {aVerifier > 0 && (
             <p data-profil="a-verifier" className="flex items-start gap-1.5 text-sm font-medium text-alerte-texte">
               <AlertTriangle size={17} aria-hidden="true" className="flex-shrink-0 mt-px" />
-              {aVerifier === 1 ? '1 mention à vérifier selon votre situation' : `${aVerifier} mentions à vérifier selon votre situation`}
+              {aVerifier === 1 ? '1 mention obligatoire selon votre situation, à compléter' : `${aVerifier} mentions obligatoires selon votre situation, à compléter`}
             </p>
           )}
           {mediateur && (
             <button type="button" onClick={() => onAllerAuChamp(mediateur.onglet, mediateur.champ)}
               className="min-h-[44px] -my-1 -ml-2 px-2 inline-flex items-center gap-1 rounded-xl text-left text-sm font-semibold text-accent-texte hover:bg-surface-2">
-              Renseigner le médiateur <ChevronRight size={16} aria-hidden="true" className="flex-shrink-0" />
+              Renseigner le médiateur (clients particuliers) <ChevronRight size={16} aria-hidden="true" className="flex-shrink-0" />
             </button>
           )}
         </div>

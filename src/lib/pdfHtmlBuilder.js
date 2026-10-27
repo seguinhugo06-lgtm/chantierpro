@@ -10,6 +10,7 @@ import { lignesTotauxHtml, lignesAcompteHtml } from './totauxDocument';
 import { echeance } from './paiementsFacture';
 import { dateLue } from './dates';
 import { estFranchiseTva, tauxTvaDocument } from './franchiseTva';
+import { estSociete } from './mentionsFacture';
 import { marquerDocumentFictif } from './donneesFictives';
 import { natureDuDocument, piedDePageHtml } from './piedDePageDocument';
 import { blocRetractationHtml, estConcerneParRetractation, lienRetractationEnLigne, mentionsSignatureClientHtml } from './retractation';
@@ -153,7 +154,7 @@ export function buildDocumentHTML(doc, client, chantier, entreprise, options = {
     <div class="logo-section">
       <div class="logo">${entreprise?.nom || 'Mon Entreprise'}</div>
       <div class="entreprise-info">
-        ${entreprise?.formeJuridique ? `<strong>${entreprise.formeJuridique}</strong>${entreprise?.capital ? ` - Capital: ${entreprise.capital} €` : ''}<br>` : ''}
+        ${entreprise?.formeJuridique ? `<strong>${entreprise.formeJuridique}</strong>${entreprise?.capital && estSociete(entreprise) ? ` - Capital: ${entreprise.capital} €` : ''}<br>` : ''}
         ${entreprise?.adresse?.replace(/\n/g, '<br>') || ''}<br>
         ${entreprise?.tel ? `Tél: ${entreprise.tel}` : ''} ${entreprise?.email ? `· ${entreprise.email}` : ''}
       </div>
@@ -294,7 +295,7 @@ export function buildDocumentHTML(doc, client, chantier, entreprise, options = {
   <div class="footer">
     <strong>${entreprise?.nom || ''}</strong>
     ${entreprise?.formeJuridique ? ` · ${entreprise.formeJuridique}` : ''}
-    ${entreprise?.capital ? ` · Capital: ${entreprise.capital} €` : ''}
+    ${entreprise?.capital && estSociete(entreprise) ? ` · Capital: ${entreprise.capital} €` : ''}
     ${entreprise?.adresse ? ` — ${entreprise.adresse.replace(/\n/g, ', ')}` : ''}<br>
     ${entreprise?.siret ? `SIRET: ${entreprise.siret}` : ''}
     ${entreprise?.codeApe ? ` | APE: ${entreprise.codeApe}` : ''}

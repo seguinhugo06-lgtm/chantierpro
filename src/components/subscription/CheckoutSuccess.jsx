@@ -150,7 +150,7 @@ export default function CheckoutSuccess({ isDark: _isDark, couleur: _couleur, se
           <Bouton variante="principal" taille="grande" pleineLargeur iconeFin={ArrowRight} onClick={() => setPage && setPage('dashboard')}>
             Revenir à l'accueil
           </Bouton>
-          <Bouton pleineLargeur onClick={() => setPage && setPage('billing')}>
+          <Bouton pleineLargeur onClick={() => setPage && setPage('plan')}>
             Voir mon abonnement
           </Bouton>
         </div>

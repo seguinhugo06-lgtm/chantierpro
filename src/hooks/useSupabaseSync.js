@@ -9,6 +9,7 @@ import { logger } from '../lib/logger';
 import { normalizeNumero } from '../lib/devis-utils';
 import { scopeToOrg, withOrgScope } from '../lib/queryHelper';
 import { jourLocal } from '../lib/dates';
+import { SEUIL_PAR_DEFAUT } from '../lib/tresorerieReglages';
 
 /**
  * Deep-sanitize a value so it is safely JSON-serializable.
@@ -669,7 +670,7 @@ export const FIELD_MAPPINGS = {
   tresorerie_settings: {
     toSupabase: (item) => ({
       id: item.id,
-      seuil_alerte: item.seuilAlerte ?? 5000,
+      seuil_alerte: item.seuilAlerte ?? SEUIL_PAR_DEFAUT,
       solde_initial: item.soldeInitial ?? 0,
       solde_date: item.soldeDate || jourLocal(),
       regime_tva: item.regimeTva || 'trimestriel',
@@ -677,7 +678,7 @@ export const FIELD_MAPPINGS = {
     }),
     fromSupabase: (row) => ({
       id: row.id,
-      seuilAlerte: row.seuil_alerte ?? 5000,
+      seuilAlerte: row.seuil_alerte ?? SEUIL_PAR_DEFAUT,
       soldeInitial: row.solde_initial ?? 0,
       soldeDate: row.solde_date,
       regimeTva: row.regime_tva || 'trimestriel',

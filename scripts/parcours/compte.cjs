@@ -64,7 +64,7 @@ const lireProfil = (page) => page.evaluate(() => {
     aVerifier: carte?.querySelector('[data-profil="a-verifier"]')?.innerText.trim() || '',
     completude: Number(barre?.getAttribute('aria-valuenow')),
     barreVerte: !!barre?.firstElementChild?.className.includes('bg-succes-point'),
-    mediateur: !!carte && [...carte.querySelectorAll('button')].some((b) => b.innerText.trim() === 'Renseigner le médiateur'),
+    mediateur: !!carte && [...carte.querySelectorAll('button')].some((b) => b.innerText.trim() === 'Renseigner le médiateur (clients particuliers)'),
     groupes,
     assistant: [...document.querySelectorAll('button')].some((b) => b.innerText.trim() === 'Compléter avec l’assistant'),
     debordement: document.documentElement.scrollWidth - innerWidth,
@@ -88,8 +88,8 @@ module.exports = [
       // Démo : SARL complète (capital, RCS, TVA intracom), sans médiateur ni coordonnées de l'assureur décennal
       const complet = await lireProfil(page);
       verifier(complet.bloque === 'Mentions qui bloquent l’envoi : complètes', `rien ne bloque l’envoi, dit en clair (« ${complet.bloque} »)`);
-      verifier(complet.aVerifier === '2 mentions à vérifier selon votre situation' && complet.mediateur,
-        `à part, 2 mentions à vérifier et le lien vers le médiateur (« ${complet.aVerifier} »)`);
+      verifier(complet.aVerifier === '2 mentions obligatoires selon votre situation, à compléter' && complet.mediateur,
+        `à part, 2 mentions obligatoires selon la situation (avis juriste R11) et le lien vers le médiateur (« ${complet.aVerifier} »)`);
       verifier(complet.completude === 100 && !complet.barreVerte, `100 % mais la barre n’est pas verte tant qu’il reste à vérifier (${complet.completude} %)`);
       verifier(!complet.assistant, 'pas d’assistant quand rien ne bloque l’envoi');
       await detailDuProfil(page, { cliquer }, true);

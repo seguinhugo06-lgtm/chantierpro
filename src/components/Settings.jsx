@@ -42,6 +42,8 @@ import LigneListe, { GroupeListe } from './ui/LigneListe';
 import { EnTetePage } from './ui/EnTete';
 import { jourLocal, dateLue } from '../lib/dates';
 import { estEntrepreneurIndividuel, estEirl, nomImprime } from '../lib/identiteEntreprise';
+import { estSociete } from '../lib/mentionsFacture';
+import { minimumPenalites, libelleMinimumPenalites, tauxPenalitesValide } from '../lib/tauxInteretLegal';
 import { URL_SIRENE, profilDepuisSirene } from '../lib/sirene';
 import { chiffreAffairesHT } from '../lib/ventes';
 import { jaugeProfil } from '../lib/jaugeProfil';
@@ -127,6 +129,13 @@ const VILLES_RCS = ['Paris', 'Lyon', 'Marseille', 'Toulouse', 'Nice', 'Nantes', 
 const VALIDITES = [{ valeur: 15, libelle: '15 jours' }, { valeur: 30, libelle: '30 jours' }, { valeur: 60, libelle: '2 mois' }, { valeur: 90, libelle: '3 mois' }];
 const DELAIS = [{ valeur: 0, libelle: 'Comptant' }, { valeur: 14, libelle: '14 jours' }, { valeur: 30, libelle: '30 jours' }, { valeur: 45, libelle: '45 jours' }, { valeur: 60, libelle: '60 jours' }];
 const ACOMPTES = [{ valeur: 0, libelle: 'Pas d’acompte' }, { valeur: 20, libelle: '20 %' }, { valeur: 30, libelle: '30 %' }, { valeur: 40, libelle: '40 %' }, { valeur: 50, libelle: '50 %' }];
+// La valeur enregistrée est toujours proposée, même hors de la liste (25 % choisi au curseur de l'assistant) : avant,
+// le menu affichait « Choisir… » (relecture du 26 oct. 2026)
+const optionsAcompte = (valeur) => {
+  const n = Number(valeur);
+  if (!Number.isFinite(n) || ACOMPTES.some((a) => a.valeur === n)) return ACOMPTES;
+  return [...ACOMPTES, { valeur: n, libelle: `${String(n).replace('.', ',')} %` }].sort((a, b) => a.valeur - b.valeur);
+};
 const TYPES_RCS = [{ valeur: 'A', libelle: 'A : commerçant' }, { valeur: 'B', libelle: 'B : société commerciale' }, { valeur: 'C', libelle: 'C : GIE' }, { valeur: 'D', libelle: 'D : société civile' }];
 const ORGANISMES_RGE = ['Qualibat', 'Qualifelec', 'Qualit\'EnR', 'Qualiopi', 'Autre'].map((v) => ({ valeur: v, libelle: v }));
 
@@ -223,6 +232,10 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
   const [showFraisCalc, setShowFraisCalc] = useState(false);
   const [fraisCharges, setFraisCharges] = useState({});
   const [survolLogo, setSurvolLogo] = useState(false);
+  // Taux de pénalités en cours de saisie (null : pas de saisie), enregistré à la sortie du champ s'il atteint le minimum
+  // légal (avis juriste du 26 oct. 2026, R13 : un taux de 1 % s'imprimait tel quel)
+  const [brouillonPenalites, setBrouillonPenalites] = useState(null);
+  const [penalitesRefusees, setPenalitesRefusees] = useState(false);
 
   // Rubrique Équipe réservée à qui gère l'équipe
   const groupesVisibles = GROUPES.filter((g) => g.id !== 'equipe' || canManageTeam);
@@ -429,6 +442,16 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
   };
 
   const ouvrirAssistant = () => { setShowSetupWizard(true); setWizardStep(0); };
+  // Taux de pénalités : refusé sous le minimum légal du semestre (src/lib/tauxInteretLegal.js), la saisie reste affichée
+  const enregistrerPenalites = () => {
+    if (brouillonPenalites === null) return;
+    if (!tauxPenalitesValide(brouillonPenalites)) { setPenalitesRefusees(true); return; }
+    const vide = String(brouillonPenalites).trim() === '';
+    const taux = vide ? null : Number(String(brouillonPenalites).replace(',', '.'));
+    setPenalitesRefusees(false);
+    setBrouillonPenalites(null);
+    updateEntreprise((p) => ({ ...p, tauxPenalites: taux }), 'tauxPenalites');
+  };
   const rubriqueCourante = groupesVisibles.flatMap((g) => g.rubriques).find((r) => r.cle === tab);
   const formeLibelle = FORMES_JURIDIQUES.find((f) => f.valeur === entreprise.formeJuridique)?.libelle;
   const pageEnregistrement = { enCours: etatEnregistrement.enCours === CLE_PAGE, fait: etatEnregistrement.fait === CLE_PAGE, erreur: !!etatEnregistrement.erreurs[CLE_PAGE] };
@@ -585,16 +608,19 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               </ChampParam>
               <ChoixParam id="settings-field-formeJuridique" cle="formeJuridique" libelle="Statut juridique" titre="Forme juridique"
                 options={FORMES_JURIDIQUES} valeur={entreprise.formeJuridique || ''} onChange={maj('formeJuridique')} vide="Choisir le statut" />
-              {/* Société : forme juridique ET capital social sur les factures (service-public F31808) */}
-              <ChampParam id="settings-field-capital" cle="capital" libelle="Capital social" aide="Obligatoire pour une société.">
-                <div className="flex">
-                  <DebouncedInput id="settings-field-capital" type="number" inputMode="decimal" className={`${CLASSE_CHAMP} rounded-r-none`} placeholder="10000" value={entreprise.capital || ''} onChange={maj('capital')} />
-                  <span className="h-12 px-4 flex items-center border-y border-r rounded-r-xl bg-surface-2 text-encre-3 border-bord-fort">€</span>
-                </div>
-              </ChampParam>
+              {/* Société : forme juridique ET capital social sur les factures (C. com. R123-238). Un entrepreneur individuel
+                  n'a pas de capital : le champ n'est pas proposé, et les documents ne l'impriment pas (avis juriste, R10). */}
+              {estSociete(entreprise) && (
+                <ChampParam id="settings-field-capital" cle="capital" libelle="Capital social" aide="Obligatoire pour une SARL, une EURL, une SAS, une SASU ou une SA (art. R123-238 du Code de commerce).">
+                  <div className="flex">
+                    <DebouncedInput id="settings-field-capital" type="number" inputMode="decimal" className={`${CLASSE_CHAMP} rounded-r-none`} placeholder="10000" value={entreprise.capital || ''} onChange={maj('capital')} />
+                    <span className="h-12 px-4 flex items-center border-y border-r rounded-r-xl bg-surface-2 text-encre-3 border-bord-fort">€</span>
+                  </div>
+                </ChampParam>
+              )}
               {(estEntrepreneurIndividuel(entreprise) || estEirl(entreprise)) && (
                 <ChampParam id="settings-field-nomEntrepreneur" cle="nomEntrepreneur" libelle="Votre prénom et nom" lexique={LEXIQUE.ei} className="md:col-span-2"
-                  aide={<>Sur vos devis et factures, votre nom doit être suivi de « {estEirl(entreprise) ? 'EIRL' : 'EI'} ». Il s’imprimera ainsi : <strong className="text-encre-2">{nomImprime(entreprise) || '—'}</strong></>}>
+                  aide={<>Sur vos devis et factures, votre nom doit être précédé ou suivi immédiatement de « {estEirl(entreprise) ? 'EIRL' : 'EI'} ». Il s’imprimera ainsi : <strong className="text-encre-2">{nomImprime(entreprise) || '—'}</strong></>}>
                   <DebouncedInput id="settings-field-nomEntrepreneur" placeholder="Ex : Hugo Séguin" value={entreprise.nomEntrepreneur || ''} onChange={maj('nomEntrepreneur')} />
                 </ChampParam>
               )}
@@ -677,7 +703,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               <ChampParam id="settings-field-siret" cle="siret" libelle="SIRET (14 chiffres)" lexique={LEXIQUE.siret}>
                 <div className="relative">
                   <DebouncedInput id="settings-field-siret" inputMode="numeric"
-                    className={`${CLASSE_CHAMP} pr-10 tabular-nums ${entreprise.siret && !validateSIRET(entreprise.siret) ? '!border-red-500' : ''}`}
+                    className={`${CLASSE_CHAMP} pr-10 tabular-nums ${entreprise.siret && !validateSIRET(entreprise.siret) ? '!border-alerte-point' : ''}`}
                     aria-invalid={entreprise.siret && !validateSIRET(entreprise.siret) ? true : undefined}
                     placeholder="123 456 789 00012" maxLength={17} value={entreprise.siret || ''} onChange={maj('siret')} />
                   {entreprise.siret && validateSIRET(entreprise.siret) && <Check size={18} aria-label="SIRET valide" className="absolute right-3 top-1/2 -translate-y-1/2 text-succes-texte" />}
@@ -712,7 +738,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               <Info size={18} aria-hidden="true" className="flex-shrink-0 mt-0.5" />
               <div className="text-sm">
                 <p className="font-semibold">Micro-entreprise</p>
-                <p className="mt-0.5">Le RCS n’est pas requis pour votre statut juridique.</p>
+                <p className="mt-0.5">Le RCS ne concerne que les commerçants et les sociétés. Un artisan en micro-entreprise est inscrit au registre national des entreprises (RNE) : il n’a pas de numéro de RCS à saisir.</p>
               </div>
             </div>
           )}
@@ -725,14 +751,15 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                 <p className="mt-0.5">La mention « TVA non applicable, art. 293 B du CGI » est ajoutée d’elle-même sur vos devis et factures.</p>
               </div>
             </div>
-          ) : (
-            <Bloc titre="TVA intracommunautaire" lexique={LEXIQUE.tvaIntra}>
-              <ChampParam id="settings-field-tvaIntra" cle="tvaIntra" libelle="Numéro de TVA" aide="FR suivi de 11 caractères (ex. FR12345678901).">
+          ) : null}
+          {/* Le numéro, pour toutes les formes : un micro-entrepreneur qui a dépassé les seuils de la franchise ou opté pour
+              la TVA en a un (avis juriste du 26 oct. 2026) */}
+          <Bloc titre="TVA intracommunautaire" lexique={LEXIQUE.tvaIntra}>
+              <ChampParam id="settings-field-tvaIntra" cle="tvaIntra" libelle="Numéro de TVA" facultatif={franchiseTva} aide="FR suivi de 11 caractères (ex. FR12345678901).">
                 <DebouncedInput id="settings-field-tvaIntra" className={`${CLASSE_CHAMP} ${entreprise.tvaIntra && !validateTVA(entreprise.tvaIntra) ? '!border-alerte-point' : ''}`} placeholder="FR 12 345678901" value={entreprise.tvaIntra || ''} onChange={maj('tvaIntra', (v) => v.toUpperCase())} />
                 {entreprise.tvaIntra && validateTVA(entreprise.tvaIntra) && <p className="mt-1.5 text-sm text-succes-texte">Format valide</p>}
               </ChampParam>
             </Bloc>
-          )}
 
           <Bloc titre="Qualifications professionnelles">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -879,7 +906,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                 valeur={Number(entreprise.validiteDevis) || 30} onChange={maj('validiteDevis', (v) => parseInt(v, 10))} aide="Art. L111-1 du Code de la consommation." />
               <ChoixParam id="settings-field-delaiPaiement" cle="delaiPaiement" libelle="Délai de paiement" options={DELAIS}
                 valeur={Number(entreprise.delaiPaiement ?? 30)} onChange={maj('delaiPaiement', (v) => parseInt(v, 10))} />
-              <ChoixParam id="settings-field-acompteDefaut" cle="acompteDefaut" libelle="Acompte par défaut" options={ACOMPTES}
+              <ChoixParam id="settings-field-acompteDefaut" cle="acompteDefaut" libelle="Acompte par défaut" options={optionsAcompte(entreprise.acompteDefaut ?? 30)}
                 valeur={Number(entreprise.acompteDefaut ?? 30)} onChange={maj('acompteDefaut', (v) => parseInt(v, 10))} />
               <div className="md:col-span-2">
                 <ChoixTva entreprise={entreprise} updateEntreprise={updateEntreprise} />
@@ -910,13 +937,23 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               taux, lu par les documents et les relances. */}
           <Bloc titre="Pénalités de retard" sousTitre="Art. L441-10 du Code de commerce — imprimé sur les documents de vos clients professionnels">
             <ChampParam id="settings-field-tauxPenalites" cle="tauxPenalites" libelle="Taux annuel" facultatif
-              aide="Laissé vide : taux de la BCE majoré de 10 points. Un taux choisi ne peut être inférieur à 3 fois le taux d’intérêt légal (art. L441-10 II C. com.).">
+              aide={`Laissé vide : taux de la BCE majoré de 10 points. Un taux choisi ne peut pas être inférieur à 3 fois le taux d’intérêt légal, soit ${libelleMinimumPenalites()} (art. L441-10 II du Code de commerce).`}>
               <div className="flex max-w-[14rem]">
-                <input id="settings-field-tauxPenalites" type="number" inputMode="decimal" step="0.01" min="0" max="50" className={`${CLASSE_CHAMP} rounded-r-none`}
-                  value={entreprise.tauxPenalites || ''} placeholder="BCE + 10"
-                  onChange={e => updateEntreprise(p => ({ ...p, tauxPenalites: parseFloat(e.target.value) || null }), 'tauxPenalites')} />
+                <input id="settings-field-tauxPenalites" type="number" inputMode="decimal" step="0.01" min={minimumPenalites()} max="50"
+                  className={`${CLASSE_CHAMP} rounded-r-none ${penalitesRefusees ? '!border-alerte-point' : ''}`}
+                  aria-invalid={penalitesRefusees ? true : undefined}
+                  aria-describedby={penalitesRefusees ? 'settings-field-tauxPenalites-erreur' : undefined}
+                  value={brouillonPenalites ?? (entreprise.tauxPenalites ?? '')} placeholder="BCE + 10"
+                  onChange={(e) => { setBrouillonPenalites(e.target.value); setPenalitesRefusees(false); }}
+                  onBlur={enregistrerPenalites}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); enregistrerPenalites(); } }} />
                 <span className="h-12 px-4 flex items-center border-y border-r rounded-r-xl bg-surface-2 text-encre-3 border-bord-fort">%</span>
               </div>
+              {penalitesRefusees && (
+                <p id="settings-field-tauxPenalites-erreur" role="alert" className="mt-1.5 text-sm font-medium text-danger-texte">
+                  {`Ce taux est inférieur au minimum légal : ${libelleMinimumPenalites()} (3 fois le taux d’intérêt légal, art. L441-10 II du Code de commerce).`}
+                </p>
+              )}
             </ChampParam>
           </Bloc>
 
@@ -1103,7 +1140,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
           {franchiseTva ? (
             <Bloc titre="Franchise en base de TVA">
               <p className="text-sm text-encre-2">
-                En franchise en base de TVA (art. 293 B du CGI), vous ne facturez pas de TVA et n’en déduisez pas. Mallettico l’applique d’après la forme « Micro-entreprise » indiquée dans vos Paramètres.
+                En franchise en base de TVA (art. 293 B du CGI), vous ne facturez pas de TVA et n’en déduisez pas. Mallettico part du principe que vous y êtes si votre statut est « Micro-entreprise » ; sinon, choisissez le statut « Entreprise individuelle (EI) » dans Paramètres › Identité.
               </p>
               {(() => {
                 const n = devis.filter(d => d.type === 'facture' && tvaARegulariser(d, entreprise)).length;

@@ -36,7 +36,205 @@ const etatDuChamp = (page, id) => page.evaluate((i) => {
 const texteDuCorps = (page) => page.evaluate(() => document.body.innerText);
 const fenetreCgu = (page) => page.evaluate(() => [...document.querySelectorAll('[role="dialog"]')].some((d) => /Conditions générales d'utilisation/.test(d.innerText)));
 
+// Frappe au clavier dans un champ, comme au doigt : le champ est vidé, puis le texte tapé touche par touche
+async function viderEtTaper(page, selecteur, texte) {
+  await page.focus(selecteur);
+  // Tout sélectionner (un champ numérique n'a pas de setSelectionRange : select())
+  await page.evaluate((s) => { const el = document.querySelector(s); try { el.setSelectionRange(0, el.value.length); } catch { el.select(); } }, selecteur);
+  await page.keyboard.press('Backspace');
+  if (texte) await page.keyboard.type(texte, { delay: 20 });
+}
+const ecrituresEntreprise = (base) => base.journal.filter((j) => j.m !== 'GET' && j.table === 'entreprise').map((j) => (Array.isArray(j.corps) ? j.corps[0] : j.corps) || {});
+
 module.exports = [
+  {
+    // Relecture du 26 oct. 2026 (I1) : « 127 », une espace, une pause ; la base renvoyait « 127 », qui remplaçait la
+    // saisie : « 127cours ». Même chose après un retour à la ligne dans la rue et sur la ville (« Saint » + espace).
+    nom: 'adresse : une pause après une espace ou un retour à la ligne ne colle pas les mots (réel, 375 px)',
+    reel: true,
+    async executer({ ouvrir, sessionFactice, cliquer, attendre, verifier }) {
+      const base = creerBase({ entreprise: [{ ...MICRO }] });
+      const { page } = await ouvrir({ reel: true, largeur: 375, page: 'settings', session: sessionFactice(UID), supabase: (req, u) => base.reponse(req, u) });
+      await attendre(1500);
+      await rubrique(page, { cliquer }, 'Identité');
+      const rue = '#settings-field-adresse';
+      await viderEtTaper(page, rue, '12 ');
+      await attendre(1400);
+      await page.keyboard.type('rue des Lilas', { delay: 20 });
+      await page.keyboard.press('Enter');
+      await attendre(1400);
+      await page.keyboard.type('Bât B', { delay: 20 });
+      await attendre(1600);
+      const ville = '#settings-field-adresse-ville';
+      await viderEtTaper(page, ville, 'Saint ');
+      await attendre(1400);
+      await page.keyboard.type('Médard', { delay: 20 });
+      await attendre(1600);
+      const champs = await page.evaluate((r, v) => [document.querySelector(r).value, document.querySelector(v).value], rue, ville);
+      verifier(champs[0] === '12 rue des Lilas\nBât B', `la rue tapée reste entière (${JSON.stringify(champs[0])})`);
+      verifier(champs[1] === 'Saint Médard', `la ville tapée reste entière (${JSON.stringify(champs[1])})`);
+      const derniere = ecrituresEntreprise(base).pop() || {};
+      verifier(derniere.adresse === '12 rue des Lilas\nBât B\n33300 Saint Médard' && derniere.ville === 'Saint Médard' && derniere.code_postal === '33300',
+        `adresse complète enregistrée (${JSON.stringify(derniere.adresse)}, ${derniere.code_postal}, ${derniere.ville})`);
+    },
+  },
+  {
+    // Relecture du 26 oct. 2026 (M « état périmé ») : la rue enregistrée, la ville tapée avant le retour de la base
+    // recomposait l'adresse depuis la fiche en mémoire, avec l'ANCIENNE rue. Base lente : 2,5 s par écriture.
+    nom: 'adresse : la ville tapée pendant l’enregistrement de la rue ne remet pas l’ancienne rue (réel, base lente, 375 px)',
+    reel: true,
+    async executer({ ouvrir, sessionFactice, cliquer, attendre, verifier }) {
+      const base = creerBase({ entreprise: [{ ...MICRO }] });
+      const lente = (req, u) => (req.method() !== 'GET' && u.pathname.endsWith('/entreprise')
+        ? new Promise((r) => setTimeout(() => r(base.reponse(req, u)), 2500))
+        : base.reponse(req, u));
+      const { page } = await ouvrir({ reel: true, largeur: 375, page: 'settings', session: sessionFactice(UID), supabase: lente });
+      await attendre(1500);
+      await rubrique(page, { cliquer }, 'Identité');
+      await viderEtTaper(page, '#settings-field-adresse', '12 rue des Lilas');
+      await attendre(1000);
+      await viderEtTaper(page, '#settings-field-adresse-ville', 'Pessac');
+      await attendre(1000);
+      await page.evaluate(() => document.activeElement?.blur());
+      await attendre(6000);
+      const ecrites = ecrituresEntreprise(base).map((c) => c.adresse).filter(Boolean);
+      verifier(ecrites.length >= 2, `deux écritures (${ecrites.length})`);
+      verifier(ecrites[ecrites.length - 1] === '12 rue des Lilas\n33300 Pessac', `la dernière garde la nouvelle rue (${JSON.stringify(ecrites)})`);
+    },
+  },
+  {
+    // Relecture du 26 oct. 2026 (I2) : chaque frappe enregistrait le seuil ; « 5000 » valait le seuil par défaut (« non
+    // réglé ») et le champ se vidait sous les doigts : 50 000 € était impossible à saisir.
+    nom: 'trésorerie : le seuil d’alerte se tape en entier, 5 000 puis 50 000 €, et s’enregistre à la sortie du champ (390 px)',
+    async executer({ ouvrir, cliquer, attendre, verifier }) {
+      const { page } = await ouvrir({ page: 'finances', largeur: 390 });
+      await page.evaluate(() => localStorage.setItem('cp_tresorerie_settings', JSON.stringify({ seuilAlerte: 5000, soldeInitial: 20000, soldeDate: '2026-01-01' })));
+      await page.reload({ waitUntil: 'networkidle0' }).catch(() => {});
+      await attendre(1500);
+      await cliquer(page, 'Paramètres de trésorerie');
+      const lireReglage = () => page.evaluate(() => JSON.parse(localStorage.getItem('cp_tresorerie_settings') || '{}').seuilAlerte);
+      await viderEtTaper(page, '#treso-seuil', '5000');
+      verifier(await page.$eval('#treso-seuil', (e) => e.value) === '5000', 'pendant la frappe, le champ garde « 5000 »');
+      await page.keyboard.press('Tab');
+      await attendre(600);
+      verifier(await lireReglage() === 5000, `5 000 € enregistré à la sortie du champ (${await lireReglage()})`);
+      verifier(await page.evaluate(() => /5 000 € est aussi la valeur enregistrée par défaut/.test(document.body.innerText.replace(/\s+/g, ' '))), '5 000 € : l’écran dit qu’il ne déclenche pas d’alerte');
+      await viderEtTaper(page, '#treso-seuil', '50000');
+      verifier(await page.$eval('#treso-seuil', (e) => e.value) === '50000', 'pendant la frappe, le champ garde « 50000 »');
+      await page.keyboard.press('Enter');
+      await attendre(600);
+      verifier(await lireReglage() === 50000, `50 000 € enregistré à Entrée (${await lireReglage()})`);
+      verifier(await page.$eval('#treso-seuil', (e) => e.value) === '50000', 'le champ affiche 50000 après l’enregistrement');
+    },
+  },
+  {
+    // Avis juriste du 26 oct. 2026 (P2, R13) : le taux de pénalités acceptait 1 %, imprimé tel quel sous le minimum légal.
+    nom: 'paramètres : un taux de pénalités sous le minimum légal est refusé, dit, et la saisie gardée (réel, 1440 px)',
+    reel: true,
+    async executer({ ouvrir, sessionFactice, cliquer, attendre, verifier }) {
+      const base = creerBase({ entreprise: [{ ...ENTREPRISE }] });
+      const { page } = await ouvrir({ reel: true, largeur: 1440, page: 'settings', session: sessionFactice(UID), supabase: (req, u) => base.reponse(req, u) });
+      await attendre(1500);
+      await rubrique(page, { cliquer }, 'Documents');
+      const taux = () => ecrituresEntreprise(base).map((c) => c.settings_json?.reglages?.tauxPenalites).filter((t) => t !== undefined && t !== '' && t !== null);
+      const aide = await page.evaluate(() => document.querySelector('main').innerText.replace(/\s+/g, ' '));
+      verifier(/Un taux choisi ne peut pas être inférieur à 3 fois le taux d’intérêt légal, soit \d+,\d{2} % au (1er|2e) semestre \d{4} \(art\. L441-10 II du Code de commerce\)\./.test(aide), 'l’aide dit le minimum du semestre (R13)');
+      await viderEtTaper(page, '#settings-field-tauxPenalites', '1');
+      await page.keyboard.press('Tab');
+      await attendre(1200);
+      const refus = await page.evaluate(() => ({
+        erreur: document.getElementById('settings-field-tauxPenalites-erreur')?.innerText.replace(/\s+/g, ' ') || '',
+        valeur: document.getElementById('settings-field-tauxPenalites').value,
+      }));
+      verifier(/^Ce taux est inférieur au minimum légal : \d+,\d{2} % au (1er|2e) semestre \d{4} \(3 fois le taux d’intérêt légal, art\. L441-10 II du Code de commerce\)\.$/.test(refus.erreur), `1 % : l’erreur R13 est dite (« ${refus.erreur} »)`);
+      verifier(refus.valeur === '1', 'la saisie est gardée');
+      verifier(taux().length === 0, `1 % n’est pas enregistré (${JSON.stringify(taux())})`);
+      await viderEtTaper(page, '#settings-field-tauxPenalites', '12.4');
+      await page.keyboard.press('Tab');
+      await attendre(1500);
+      verifier(taux().includes(12.4), `12,4 % est enregistré (${JSON.stringify(taux())})`);
+      verifier(await page.evaluate(() => !document.getElementById('settings-field-tauxPenalites-erreur')), 'plus d’erreur');
+    },
+  },
+  {
+    // Relecture du 26 oct. 2026 : le menu de l'acompte affichait « Choisir… » pour un acompte de 25 % choisi au curseur de
+    // l'assistant ; le n° de TVA intracommunautaire redevient proposé dans Légal pour une micro-entreprise (avis juriste).
+    nom: 'paramètres : un acompte de 25 % s’affiche dans son menu ; Légal propose le n° de TVA intracom à une micro-entreprise (réel, 375 px)',
+    reel: true,
+    async executer({ ouvrir, sessionFactice, cliquer, attendre, verifier }) {
+      const base = creerBase({ entreprise: [{ ...MICRO, settings_json: { reglages: { ...MICRO.settings_json.reglages, acompteDefaut: 25 } } }] });
+      const { page } = await ouvrir({ reel: true, largeur: 375, page: 'settings', session: sessionFactice(UID), supabase: (req, u) => base.reponse(req, u) });
+      await attendre(1500);
+      await rubrique(page, { cliquer }, 'Documents');
+      const acompte = await page.evaluate(() => document.getElementById('settings-field-acompteDefaut')?.innerText.trim());
+      verifier(acompte === '25 %', `l’acompte enregistré s’affiche (« ${acompte} »)`);
+      await rubrique(page, { cliquer }, 'Légal');
+      verifier(await page.evaluate(() => !!document.getElementById('settings-field-tvaIntra')), 'Légal propose le n° de TVA intracommunautaire à une micro-entreprise');
+    },
+  },
+  {
+    // Relecture sécurité du 26 oct. 2026 : seul le titulaire du compte gère l'abonnement ; un ouvrier lisait les offres,
+    // le code testeur et « Gérer ou résilier ». Et l'écran « Facturation », inatteignable, mène à Mon plan.
+    nom: 'mon plan : un ouvrier lit le plan sans pouvoir le changer ; « billing » mène à Mon plan (réel, 375 px)',
+    reel: true,
+    async executer({ ouvrir, sessionFactice, attendre, verifier }) {
+      const base = creerBase({ entreprise: [{ ...ENTREPRISE }] }, { role: 'ouvrier' });
+      const { page, browser } = await ouvrir({ reel: true, largeur: 375, page: 'plan', session: sessionFactice(UID), supabase: (req, u) => base.reponse(req, u) });
+      await attendre(1800);
+      const etat = await page.evaluate(() => {
+        const texte = document.querySelector('main')?.innerText || '';
+        const boutons = [...document.querySelectorAll('main button')].map((b) => b.innerText.trim());
+        return {
+          titre: /Mon plan/.test(texte),
+          titulaire: texte.includes('Seul le titulaire du compte gère l\'abonnement.'),
+          passer: boutons.filter((b) => /^Passer au plan/.test(b)),
+          code: boutons.includes("J'ai un code"),
+          gerer: boutons.some((b) => /Gérer ou résilier/.test(b)),
+        };
+      });
+      verifier(etat.titre && etat.titulaire, 'Mon plan dit : « Seul le titulaire du compte gère l’abonnement. »');
+      verifier(etat.passer.length === 0 && !etat.code && !etat.gerer, `ni offre à souscrire, ni code testeur, ni « Gérer ou résilier » (${JSON.stringify(etat)})`);
+      await browser.close();
+
+      const demo = await ouvrir({ page: 'billing', largeur: 375 });
+      await attendre(1200);
+      const page2 = await demo.page.evaluate(() => ({ courante: localStorage.getItem('cp_current_page'), titre: document.querySelector('main h1')?.innerText }));
+      verifier(page2.courante === 'plan' && page2.titre === 'Mon plan', `« billing » mène à Mon plan (${JSON.stringify(page2)})`);
+      await demo.browser.close();
+    },
+  },
+  {
+    // Relecture sécurité du 26 oct. 2026 : l'export comptable (FEC, écritures) s'affichait au rôle « consultation »,
+    // qui n'a pas le droit d'exporter (permissions.js : export: false).
+    nom: 'finances : pas d’export comptable pour le rôle consultation (réel, 1440 px)',
+    reel: true,
+    async executer({ ouvrir, sessionFactice, attendre, verifier }) {
+      const base = creerBase({ entreprise: [{ ...ENTREPRISE }] }, { role: 'readonly' });
+      const { page } = await ouvrir({ reel: true, largeur: 1440, page: 'finances', session: sessionFactice(UID), supabase: (req, u) => base.reponse(req, u) });
+      await attendre(1800);
+      const onglets = await page.evaluate(() => [...document.querySelectorAll('main [role="tab"]')].map((t) => t.innerText.replace(/\s+/g, ' ').trim()));
+      verifier(onglets.includes('Trésorerie'), `Finances s’ouvre (${JSON.stringify(onglets)})`);
+      verifier(!onglets.some((t) => /Export/.test(t)), `pas d’onglet « Export comptable » (${JSON.stringify(onglets)})`);
+      verifier(await page.evaluate(() => !/Télécharger l’export/.test(document.body.innerText)), 'aucun bouton d’export dans la page');
+    },
+  },
+  {
+    // Avis juriste du 26 oct. 2026 (E2, R19) : 25 jours de congés payés et 10 de RTT inventés pour chacun ; R17.
+    nom: 'équipe : congés sans solde inventé, « jours de congés payés posés » et ce qu’ils ne remplacent pas (375 px)',
+    async executer({ ouvrir, attendre, verifier }) {
+      const { page } = await ouvrir({ page: 'equipe', largeur: 375 });
+      await attendre(800);
+      await page.evaluate(() => [...document.querySelectorAll('main [role="tab"]')].find((t) => t.innerText.trim().startsWith('Congés'))?.click());
+      await attendre(800);
+      const etat = await page.evaluate(() => ({
+        texte: document.querySelector('main')?.innerText.replace(/\s+/g, ' ') || '',
+        cartes: [...document.querySelectorAll('[data-equipe="conges-poses"]')].map((c) => c.innerText.replace(/\s+/g, ' ').trim()),
+      }));
+      verifier(etat.cartes.length > 0 && etat.cartes.every((c) => /^\d+j de congés payés posés/.test(c)), `cartes : jours posés seulement (${JSON.stringify(etat.cartes.slice(0, 2))})`);
+      verifier(!/restants|Solde restant|NaN/.test(etat.texte), 'aucun « jours restants » ni solde');
+      verifier(etat.texte.includes('Gardés sur cet appareil seulement : ils ne remplacent ni vos bulletins de paie ni le calcul de votre caisse de congés payés.'), 'ce que la liste ne remplace pas (R17)');
+    },
+  },
   {
     // Retour d'Hugo (3) : « l'onglet Finances défile tout seul au milieu de la page ». Cause : la rangée d'onglets de la
     // trésorerie ramenait son onglet actif sous les yeux avec scrollIntoView, qui fait aussi défiler la page.
@@ -130,6 +328,8 @@ module.exports = [
       const { page } = await ouvrir({ reel: true, largeur: 375, page: 'settings', session: sessionFactice(UID), supabase: (req, u) => base.reponse(req, u) });
       await attendre(1500);
       await rubrique(page, { cliquer }, 'Identité');
+      // Une micro-entreprise n'a pas de capital social : le champ n'est pas proposé (avis juriste, R10)
+      verifier(await page.evaluate(() => !document.getElementById('settings-field-capital')), 'pas de champ « Capital social » pour une micro-entreprise');
       const lus = await page.evaluate(() => ['settings-field-adresse', 'settings-field-adresse-code-postal', 'settings-field-adresse-ville'].map((i) => document.getElementById(i)?.value));
       verifier(JSON.stringify(lus) === JSON.stringify(['127 cours du Médoc', '33300', 'Bordeaux']), `adresse collée relue en trois champs (${JSON.stringify(lus)})`);
       await saisir(page, '#settings-field-adresse-ville', 'Le Bouscat');
@@ -145,7 +345,7 @@ module.exports = [
   {
     // Retours d'Hugo (10) et (9) : l'assistant proposait 10 % de TVA à une micro-entreprise ; et le fond d'une fenêtre de
     // formulaire laissait un « petit jour » en haut. Ici : franchise en base, 0 %, mention 293 B ; le fond couvre l'écran.
-    nom: 'assistant : une micro-entreprise est à 0 % (franchise, art. 293 B), pas à 10 % ; son fond couvre l’écran (réel, 375 et 1440 px)',
+    nom: 'assistant : une micro-entreprise est présumée en franchise (pas de TVA, art. 293 B), avec la sortie dite ; n° de TVA intracom proposé ; fond plein écran (réel, 375 et 1440 px)',
     reel: true,
     async executer({ ouvrir, sessionFactice, cliquer, attendre, verifier }) {
       for (const largeur of [375, 1440]) {
@@ -158,10 +358,14 @@ module.exports = [
           let f = d;
           while (f && getComputedStyle(f).position !== 'fixed') f = f.parentElement;
           const r = f?.getBoundingClientRect();
+          // Le « petit jour » se mesure en haut. En largeur, `html { scrollbar-gutter: stable }` (src/index.css) réserve la
+          // place d'une barre de défilement classique au bureau (6 px) : le fond s'arrête avant, d'où la tolérance.
           return r ? { t: Math.round(r.top), h: Math.round(r.height), w: Math.round(r.width), H: innerHeight, W: innerWidth } : null;
         });
-        verifier(!!fond && fond.t === 0 && fond.h === fond.H && fond.w === fond.W, `le fond de l’assistant couvre l’écran depuis le haut à ${largeur} px (${JSON.stringify(fond)})`);
+        verifier(!!fond && fond.t === 0 && fond.h === fond.H && fond.w >= fond.W - 20, `le fond de l’assistant couvre l’écran depuis le haut à ${largeur} px (${JSON.stringify(fond)})`);
         await cliquer(page, 'Suivant', { dans: '[role="dialog"]' });
+        // Étape 2 : le n° de TVA intracommunautaire, pour toutes les formes (avis juriste du 26 oct. 2026)
+        verifier(await page.evaluate(() => !!document.getElementById('assistant-tvaIntra')), `le n° de TVA intracommunautaire est proposé à une micro-entreprise à ${largeur} px`);
         await cliquer(page, 'Suivant', { dans: '[role="dialog"]' });
         const tva = await page.evaluate(() => {
           const d = [...document.querySelectorAll('[role="dialog"]')].find((x) => /Étape \d sur 5/.test(x.innerText));
@@ -173,8 +377,9 @@ module.exports = [
           };
         });
         verifier(tva.etape, 'étape « Documents » de l’assistant');
-        verifier(/0 % : franchise en base de TVA/.test(tva.franchise) && /TVA non applicable, art\. 293 B du CGI/.test(tva.franchise),
-          `0 %, franchise en base et mention 293 B à ${largeur} px (« ${tva.franchise.slice(0, 120)} »)`);
+        verifier(/Pas de TVA : franchise en base/.test(tva.franchise) && /TVA non applicable, art\. 293 B du CGI/.test(tva.franchise)
+          && /Mallettico suppose que vous êtes en franchise en base de TVA/.test(tva.franchise) && /choisissez le statut « Entreprise individuelle \(EI\) »/.test(tva.franchise),
+          `franchise présumée, mention 293 B et sortie par le statut EI (R1, R2) à ${largeur} px (« ${tva.franchise.slice(0, 160)} »)`);
         verifier(!tva.choisi.some((t) => /10 %/.test(t)), `10 % n’est pas proposé ni choisi (${JSON.stringify(tva.choisi)})`);
         await browser.close();
       }
@@ -378,6 +583,8 @@ module.exports = [
         };
       });
       verifier(d.carte && /Passer au plan Artisan/.test(d.texte) && d.plein === false && !d.upgrade, `« Passer au plan Artisan » en bouton secondaire, plus « Upgrade » (« ${d.texte.slice(0, 80)} »)`);
+      // Le stockage n'est ni compté ni appliqué : pas de jauge « 0 Mo sur 100 Mo » (avis juriste du 26 oct., Q7)
+      verifier(!/Stockage/.test(d.texte), 'pas de jauge de stockage jamais comptée');
       verifier(d.atteintes.length > 0 && d.atteintes.every((t) => /Limite atteinte : \d+ \S+/.test(t)) && !/\d+ \/ \d+/.test(d.texte),
         `une limite dépassée se dit « Limite atteinte », jamais « 10 / 2 » (${JSON.stringify(d.atteintes)})`);
       await accueil.browser.close();

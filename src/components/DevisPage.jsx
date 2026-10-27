@@ -109,6 +109,7 @@ import { remettreFichier, estNatif, ouvrirLienExterne } from '../lib/natif';
 import { captureException } from '../lib/sentry';
 import { imprimerHtml } from '../lib/imprimerHtml';
 import { nomImprime, formeImprimee } from '../lib/identiteEntreprise';
+import { estSociete } from '../lib/mentionsFacture';
 import { profilManquant } from '../lib/profilLegal';
 import { estFranchiseTva, sansTva, franchiseAppliquee, tvaARegulariser, premierTaux, tauxTvaParDefaut, tauxTvaDocument } from '../lib/franchiseTva';
 import { estOuverte, estEnRetard, aTraiter as docATraiter, devisARelancer, joursDepuisEnvoi } from '../lib/ventes';
@@ -1759,6 +1760,8 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     const E = echapperChamps(entreprise) || {};
     // Entrepreneur individuel : « EI » après le nom (C. com. L526-22), même règle que le document du client
     if (entreprise) { E.nom = echap(nomImprime(entreprise)); E.formeJuridique = echap(formeImprimee(entreprise)); }
+    // Le capital d'une société seulement, comme src/lib/devisHtmlBuilder.js (C. com. R123-238 ; une EI n'en a pas)
+    if (!estSociete(entreprise)) E.capital = '';
     const C = echapperChamps(client);
     const CH = echapperChamps(chantier);
     const devisSource = isFacture && doc.devis_source_id ? devis.find(d => d.id === doc.devis_source_id) : null;
@@ -4506,7 +4509,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
                   </button>
                 ))}
               </div>
-              {isMicro && <span className={`text-xs px-2 py-1 rounded ${isDark ? 'text-blue-400 bg-blue-900/50' : 'text-blue-600 bg-blue-100'}`}>TVA non applicable (micro)</span>}
+              {isMicro && <span className={`text-xs px-2 py-1 rounded ${isDark ? 'text-blue-400 bg-blue-900/50' : 'text-blue-600 bg-blue-100'}`}>Franchise en base de TVA</span>}
             </div>
           </div>
           

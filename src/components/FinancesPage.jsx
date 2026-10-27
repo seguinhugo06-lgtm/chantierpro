@@ -61,8 +61,11 @@ export default function FinancesPage({ devis, depenses, clients, chantiers, entr
   // avait aussi son propre « Masquer les montants », qui ne masquait que cette page)
   const modeDiscret = modeDiscretGlobal;
 
-  // Droits : en consultation (rôle « readonly »), rien à ajouter, modifier ni supprimer dans la trésorerie
-  const { getPermission } = usePermissions();
+  // Droits : en consultation (rôle « readonly »), rien à ajouter, modifier ni supprimer dans la trésorerie ; l'export
+  // comptable (FEC, écritures) seulement pour qui a le droit d'exporter (permissions.js : export)
+  const { getPermission, canExportData } = usePermissions();
+  const onglets = canExportData ? TAB_CONFIG : TAB_CONFIG.filter((t) => t.key !== 'export');
+  const ongletAffiche = !canExportData && activeTab === 'export' ? 'tresorerie' : activeTab;
   const peutModifier = getPermission('finances') === 'full';
 
   // Sous-titre : un fait vivant (audit UX § 2.2), pas un slogan. Une seule définition d'une facture à encaisser (ventes.js).
@@ -74,8 +77,8 @@ export default function FinancesPage({ devis, depenses, clients, chantiers, entr
       <EnTetePage titre="Finances" sousTitre={sousTitre} />
 
       <TabBar
-        tabs={TAB_CONFIG}
-        activeTab={activeTab}
+        tabs={onglets}
+        activeTab={ongletAffiche}
         onTabChange={setActiveTab}
         maxVisible={4}
         isDark={isDark}
@@ -83,7 +86,7 @@ export default function FinancesPage({ devis, depenses, clients, chantiers, entr
       />
 
       {/* Tab content — kept mounted, hidden via CSS to preserve state */}
-      <div className="mt-6" style={{ display: activeTab === 'tresorerie' ? 'block' : 'none' }}>
+      <div className="mt-6" style={{ display: ongletAffiche === 'tresorerie' ? 'block' : 'none' }}>
         <ErrorBoundary isDark={isDark} fallback={<ModuleErrorFallback moduleName="Trésorerie" />}>
           <Suspense fallback={<LoadingSpinner />}>
             <TresorerieModule
@@ -104,7 +107,7 @@ export default function FinancesPage({ devis, depenses, clients, chantiers, entr
         </ErrorBoundary>
       </div>
 
-      <div className="mt-6" style={{ display: activeTab === 'export' ? 'block' : 'none' }}>
+      {canExportData && <div className="mt-6" style={{ display: ongletAffiche === 'export' ? 'block' : 'none' }}>
         <ErrorBoundary isDark={isDark} fallback={<ModuleErrorFallback moduleName="Export comptable" />}>
           <Suspense fallback={<LoadingSpinner />}>
             <ExportComptable
@@ -120,9 +123,9 @@ export default function FinancesPage({ devis, depenses, clients, chantiers, entr
             />
           </Suspense>
         </ErrorBoundary>
-      </div>
+      </div>}
 
-      <div className="mt-6" style={{ display: activeTab === 'analytique' ? 'block' : 'none' }}>
+      <div className="mt-6" style={{ display: ongletAffiche === 'analytique' ? 'block' : 'none' }}>
         <ErrorBoundary isDark={isDark} fallback={<ModuleErrorFallback moduleName="Analytique" />}>
           <Suspense fallback={<LoadingSpinner />}>
             <AnalyticsPremium
@@ -142,7 +145,7 @@ export default function FinancesPage({ devis, depenses, clients, chantiers, entr
         </ErrorBoundary>
       </div>
 
-      <div className="mt-6" style={{ display: activeTab === 'rapports' ? 'block' : 'none' }}>
+      <div className="mt-6" style={{ display: ongletAffiche === 'rapports' ? 'block' : 'none' }}>
         <ErrorBoundary isDark={isDark} fallback={<ModuleErrorFallback moduleName="Rapports" />}>
           <Suspense fallback={<LoadingSpinner />}>
             <RapportsTab

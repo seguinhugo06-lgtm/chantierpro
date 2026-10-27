@@ -824,7 +824,7 @@ export default function DevisComposer({
             {showOptions && (
               <div className={`px-4 pb-4 space-y-3 border-t border-bord pt-3`}>
                 {franchise ? (
-                  <p className="text-xs text-encre-2">TVA non applicable, art. 293 B du CGI (micro-entreprise) : aucune TVA n'est ajoutée.</p>
+                  <p className="text-xs text-encre-2">Franchise en base de TVA (art. 293 B du CGI) : aucune TVA n'est ajoutée.</p>
                 ) : (
                 <div>
                   <label className={LIBELLE}>TVA — appliquer à tout le devis</label>

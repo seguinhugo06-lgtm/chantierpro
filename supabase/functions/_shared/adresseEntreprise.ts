@@ -19,10 +19,15 @@ export interface AdresseEntreprise {
 const nettoyer = (v: unknown) => String(v ?? '').trim();
 const LIGNE_CP = /^(\d{5})(?:\s+(.*))?$/;
 const COLLE = /^(.*?\S)[\s,]*(\d{5})\s*([^\d\n]*[^\d\s\n,][^\d\n]*)$/;
+// COLLE coûte un temps quadratique sur une très longue ligne (relecture sécurité du 26 oct. 2026 : 80 ko, 5,6 s, le
+// passage quotidien des rappels aurait été coupé) : jamais au-delà de 200 caractères, et l'entrée est tronquée à 500.
+const LONGUEUR_LIGNE_COLLEE_MAX = 200;
+const LONGUEUR_ADRESSE_MAX = 500;
+const colle = (ligne: string) => (ligne.length <= LONGUEUR_LIGNE_COLLEE_MAX ? COLLE.exec(ligne) : null);
 const normaliser = (s: string) => nettoyer(s).replace(/\s+/g, ' ').toLowerCase();
 
 function champsAdresse(e: AdresseEntreprise) {
-  const lignes = String(e?.adresse ?? '').replace(/\r/g, '').split('\n').map(nettoyer).filter(Boolean);
+  const lignes = String(e?.adresse ?? '').slice(0, LONGUEUR_ADRESSE_MAX).replace(/\r/g, '').split('\n').map(nettoyer).filter(Boolean);
   const cp = nettoyer(e?.codePostal ?? e?.code_postal);
   const ville = nettoyer(e?.ville);
 
@@ -33,7 +38,15 @@ function champsAdresse(e: AdresseEntreprise) {
       const m = LIGNE_CP.exec(lignes[k]);
       if (normaliser(lignes[k]) === attendue || (cp && m && m[1] === cp)) { i = k; break; }
     }
-    if (i === -1) return { rue: lignes.join('\n'), codePostal: cp, ville, suite: '' };
+    if (i === -1) {
+      // Adresse collée (« …Médoc33300Bordeaux ») avec les colonnes déjà remplies : la ville n'est pas répétée
+      const derniere = lignes.length - 1;
+      const m = derniere >= 0 ? colle(lignes[derniere]) : null;
+      if (m && cp && m[2] === cp) {
+        return { rue: [...lignes.slice(0, derniere), nettoyer(m[1]).replace(/,$/, '')].join('\n'), codePostal: cp, ville, suite: '' };
+      }
+      return { rue: lignes.join('\n'), codePostal: cp, ville, suite: '' };
+    }
     return { rue: lignes.slice(0, i).join('\n'), codePostal: cp, ville, suite: lignes.slice(i + 1).join('\n') };
   }
 
@@ -42,7 +55,7 @@ function champsAdresse(e: AdresseEntreprise) {
     if (m) return { rue: lignes.slice(0, k).join('\n'), codePostal: m[1], ville: nettoyer(m[2]), suite: lignes.slice(k + 1).join('\n') };
   }
   const derniere = lignes.length - 1;
-  const m = derniere >= 0 ? COLLE.exec(lignes[derniere]) : null;
+  const m = derniere >= 0 ? colle(lignes[derniere]) : null;
   if (m) {
     return { rue: [...lignes.slice(0, derniere), nettoyer(m[1]).replace(/,$/, '')].join('\n'), codePostal: m[2], ville: nettoyer(m[3]), suite: '' };
   }

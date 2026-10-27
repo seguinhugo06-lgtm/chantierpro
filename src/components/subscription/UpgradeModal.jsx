@@ -25,6 +25,7 @@ import Modal from '../ui/Modal';
 import { Bouton } from '../ui/Bouton';
 import Pastille from '../ui/Pastille';
 import { Segmente } from '../ui/Onglets';
+import { usePermissions } from '../../hooks/usePermissions';
 
 const PLAN_ICONS = { gratuit: Zap, artisan: Hammer, equipe: Users };
 
@@ -38,6 +39,8 @@ export default function UpgradeModal() {
   const setSubscription = useSubscriptionStore((s) => s.setSubscription);
   const [billing, setBilling] = useState('monthly');
   const [loadingPlan, setLoadingPlan] = useState(null);
+  // Seul le titulaire du compte gère l'abonnement : les autres rôles voient les offres, sans bouton de paiement
+  const { canAccessBilling } = usePermissions();
 
   const handleSelectPlan = useCallback(async (planId) => {
     if (planId === currentPlanId || planId === 'gratuit') return;
@@ -94,6 +97,9 @@ export default function UpgradeModal() {
         </div>
       )}
     >
+      {!canAccessBilling && (
+        <p className="mb-3 p-3 rounded-xl bg-surface-2 text-sm text-encre-2">Seul le titulaire du compte gère l'abonnement.</p>
+      )}
       {currentPlanId === 'gratuit' && (
         <p className="flex items-center gap-2 text-sm text-encre-3 mb-3">
           <Lock size={14} aria-hidden="true" />
@@ -178,7 +184,7 @@ export default function UpgradeModal() {
                 ))}
               </ul>
 
-              <Bouton
+              {canAccessBilling && <Bouton
                 className="mt-4"
                 pleineLargeur
                 variante={plan.id === planPrincipal ? 'principal' : 'secondaire'}
@@ -188,7 +194,7 @@ export default function UpgradeModal() {
                 disabled={loadingPlan === plan.id}
               >
                 Passer au plan {plan.name}
-              </Bouton>
+              </Bouton>}
             </div>
           );
         })}

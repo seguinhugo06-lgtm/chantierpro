@@ -81,7 +81,54 @@ const poserEntrepriseDemo = `
     }
   } catch (e) { /* iframe sans stockage */ }`;
 
+// Fiche d'une entreprise posée avant le chargement (même mécanisme que la micro-entreprise ci-dessus)
+const poserEntreprise = (cle, ligne, app) => `
+  try {
+    if (!sessionStorage.getItem(${JSON.stringify(cle)})) {
+      sessionStorage.setItem(${JSON.stringify(cle)}, '1');
+      localStorage.setItem('mallettico_entreprises', ${JSON.stringify(JSON.stringify([ligne]))});
+      localStorage.setItem('mallettico_entreprise_active_id', ${JSON.stringify(ligne.id)});
+      localStorage.setItem('mallettico_entreprise_migrated', 'true');
+      localStorage.setItem('cp_entreprise', ${JSON.stringify(JSON.stringify(app))});
+    }
+  } catch (e) { /* iframe sans stockage */ }`;
+const FICHE_CAPITAL = {
+  nom: 'Élec Exemple', siret: '123 456 789 00012', adresse: '15 rue des Artisans', code_postal: '75012', ville: 'Paris', tva_defaut: 20,
+  decennale_assureur: 'AXA', decennale_numero: 'DEC-1', capital: '10000',
+};
+const FICHE_CAPITAL_APP = {
+  nom: 'Élec Exemple', siret: '123 456 789 00012', adresse: '15 rue des Artisans', codePostal: '75012', ville: 'Paris', tvaDefaut: 20,
+  decennaleAssureur: 'AXA', decennaleNumero: 'DEC-1', capital: '10000',
+};
+
 module.exports = [
+  {
+    // Avis juriste du 26 oct. 2026 (M4, R10) : une société imprime son capital (C. com. R123-238) ; un entrepreneur
+    // individuel n'en a pas, et un capital resté sur sa fiche ne s'imprime pas. Aperçu réel : le générateur de DevisPage.
+    nom: 'aperçu du devis : le capital d’une SARL s’imprime, celui d’une EI avec un capital rempli, non',
+    async executer({ ouvrir, attendre, verifier }) {
+      for (const [forme, imprime] of [['EI', false], ['SARL', true]]) {
+        const id = `ent-capital-${forme.toLowerCase()}`;
+        const ligne = { ...FICHE_CAPITAL, id, forme_juridique: forme, settings_json: { reglages: forme === 'EI' ? { nomEntrepreneur: 'Julien Exemple' } : {} } };
+        const app = { ...FICHE_CAPITAL_APP, id, formeJuridique: forme, ...(forme === 'EI' ? { nomEntrepreneur: 'Julien Exemple' } : {}) };
+        const { page, browser } = await ouvrir({ page: 'devis', largeur: 1440, avantChargement: poserEntreprise(`parcours-capital-${forme}`, ligne, app) });
+        await attendre(800);
+        const ouvert = await page.evaluate(() => {
+          const b = [...document.querySelectorAll('[data-ui="LigneListe"] > button')].find((x) => /DEV-\d{4}-\d{5}/.test(x.innerText || ''));
+          if (b) b.click();
+          return !!b;
+        });
+        verifier(ouvert, `un devis ouvert (${forme})`);
+        await attendre(900);
+        await actionFiche(page, attendre, ['Aperçu', 'Aperçu du document']);
+        await attendre(1200);
+        const html = await page.evaluate(() => [...document.querySelectorAll('iframe')].map((f) => f.getAttribute('srcdoc') || '').find((x) => x.length > 100) || '');
+        verifier(html.length > 100, `aperçu affiché (${forme})`);
+        verifier(/Capital: 10000 €/.test(html) === imprime, `${forme} : capital ${imprime ? 'imprimé' : 'absent'} (${(html.match(/.{0,40}Capital.{0,20}/) || ['aucun'])[0]})`);
+        await browser.close();
+      }
+    },
+  },
   {
     // Q-identite-demo (11 oct. 2026) : rien de ce qui est filmé ne passe pour une vraie entreprise
     nom: 'compte de démonstration : bandeau à l’écran, filigrane « EXEMPLE » sur l’aperçu du document',

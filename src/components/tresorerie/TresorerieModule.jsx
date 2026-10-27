@@ -32,6 +32,7 @@ import { useExportComptable } from '../../hooks/useExportComptable';
 import useKeepInViewport from '../../hooks/useKeepInViewport';
 import { formatClientName } from '../../lib/formatters';
 import { statutPrevision, estPrevisionMiroir, seuilAlerteRegle } from '../../lib/previsions';
+import { SEUIL_PAR_DEFAUT } from '../../lib/tresorerieReglages';
 import TuileChiffre from '../ui/TuileChiffre';
 import Modal from '../ui/Modal';
 import Champ from '../ui/Champ';
@@ -586,6 +587,11 @@ export default function TresorerieModule({
   const [editingItem, setEditingItem] = useState(null);
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [showSettingsPanel, setShowSettingsPanel] = useState(false);
+  // Seuil d'alerte en cours de saisie (null : pas de saisie). Enregistré à la sortie du champ ou à Entrée. Avant (relecture
+  // du 26 oct. 2026), chaque frappe enregistrait : « 5000 » valait le seuil par défaut, donc « non réglé », et le champ se
+  // vidait sous les doigts ; 50 000 € était impossible à saisir.
+  const [brouillonSeuil, setBrouillonSeuil] = useState(null);
+  const [seuilParDefautSaisi, setSeuilParDefautSaisi] = useState(false);
   const settingsPanelRef = useRef(null);
   useKeepInViewport(settingsPanelRef, showSettingsPanel);
   const [showMouvModal, setShowMouvModal] = useState(false);
@@ -1475,13 +1481,20 @@ export default function TresorerieModule({
     : 'Calculé sans solde de départ : réglez-le dans les paramètres de trésorerie';
   const libelleProjection = period === '1m' ? 'Solde estimé fin de mois' : `Solde estimé dans ${periodMonths(period)} mois`;
   const horsAssistant = !showWizard || wizardStep >= 2;
+  const enregistrerSeuil = () => {
+    if (brouillonSeuil === null) return;
+    const n = parseInt(brouillonSeuil, 10);
+    updateSettings({ seuilAlerte: Number.isFinite(n) && n > 0 ? n : 0 });
+    setSeuilParDefautSaisi(n === SEUIL_PAR_DEFAUT);
+    setBrouillonSeuil(null);
+  };
   const ignorerSeuil = () => { setAlertDismissed(true); try { localStorage.setItem('cp_treso_alert_dismissed', '1'); } catch { /* préférence non enregistrée : quota plein ou navigation privée */ } };
   const bandeau = !horsAssistant ? null
     : negativeMonth ? {
       id: 'negatif',
       titre: 'Solde estimé négatif prévu',
       ligne: `${negativeMonth.moisLong} : ${formatMoney(negativeMonth.balance)}`,
-      texte: 'D’après vos factures à encaisser, vos prévisions et la moyenne de vos derniers mois. Relancez vos factures impayées ou décalez une dépense.',
+      texte: 'Estimation d’après vos factures à encaisser et vos prévisions ; pour un mois sans prévision, d’après la moyenne de vos derniers mois. Pistes : relancer les factures impayées, ou décaler une dépense qui peut attendre.',
     }
       : (seuil !== null && soldeActuel < seuil && !alertDismissed) ? {
         id: 'seuil',
@@ -1526,16 +1539,21 @@ export default function TresorerieModule({
                   </div>
                   <div>
                     <label htmlFor="treso-seuil" className="block text-sm font-medium mb-1 text-encre-2">Seuil d’alerte (€) <span className="font-normal text-encre-3">(facultatif)</span></label>
-                    <input id="treso-seuil" type="number" inputMode="numeric" value={seuil ?? ''} placeholder="Aucun" disabled={!peutModifier}
-                      onChange={(e) => updateSettings({ seuilAlerte: parseInt(e.target.value, 10) || 0 })}
+                    <input id="treso-seuil" type="number" inputMode="numeric" min="0" step="100" value={brouillonSeuil ?? (seuil ?? '')} placeholder="Aucun" disabled={!peutModifier}
+                      onChange={(e) => setBrouillonSeuil(e.target.value)}
+                      onBlur={enregistrerSeuil}
+                      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); enregistrerSeuil(); } }}
                       className={CHAMP_PANNEAU} />
                     <p className="text-sm mt-1 text-encre-3">Une alerte si le solde estimé passe sous ce montant. Vide : aucune alerte.</p>
+                    {seuilParDefautSaisi && (
+                      <p role="status" className="text-sm mt-1 text-alerte-texte">5 000 € est aussi la valeur enregistrée par défaut des anciens comptes : elle ne déclenche pas d’alerte. Choisissez un autre montant.</p>
+                    )}
                   </div>
                   <div className="pt-3 mt-1 border-t border-bord">
                     {franchiseImposee ? (
                       <>
                         <p className="text-sm font-medium mb-1 text-encre-2">Régime de TVA</p>
-                        <p className="text-sm text-encre">Franchise en base de TVA (art. 293 B du CGI) : pas de TVA facturée ni déductible. Mallettico l’applique d’après la forme « Micro-entreprise » indiquée dans Paramètres.</p>
+                        <p className="text-sm text-encre">Franchise en base de TVA (art. 293 B du CGI) : pas de TVA facturée ni déductible. Mallettico part du principe que vous y êtes si votre statut est « Micro-entreprise » ; sinon, choisissez le statut « Entreprise individuelle (EI) » dans Paramètres › Identité.</p>
                       </>
                     ) : (
                       <>
@@ -1775,7 +1793,7 @@ export default function TresorerieModule({
             <span className="flex-1 min-w-0">
               <span className="block text-base font-semibold text-encre">TVA de l’année</span>
               <span className="block text-sm text-encre-2 tabular-nums truncate">
-                {tvaTotal.net >= 0 ? 'Solde estimé' : 'Crédit estimé'} : {formatMoney(Math.abs(tvaTotal.net))}
+                {tvaTotal.net >= 0 ? 'TVA à payer estimée' : 'Crédit de TVA estimé'} : {formatMoney(Math.abs(tvaTotal.net))}
               </span>
             </span>
             <ChevronRight size={18} aria-hidden="true" className="flex-shrink-0 text-encre-3" />
@@ -2330,7 +2348,7 @@ export default function TresorerieModule({
                   const rows = isQuarterly
                     ? tvaQuarterly.map(q => `${q.label};${q.collectee.toFixed(2)};${q.deductible.toFixed(2)};${q.net.toFixed(2)}`)
                     : tvaMonthly.map(m => `${m.mois};${m.collectee.toFixed(2)};${m.deductible.toFixed(2)};${(m.collectee - m.deductible).toFixed(2)}`);
-                  const csv = 'Période;TVA facturée (débits);TVA déductible;Solde estimé (débits)\n' + rows.join('\n');
+                  const csv = 'Période;TVA facturée (débits);TVA déductible;TVA à payer estimée (débits)\n' + rows.join('\n');
                   const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
                   remettreFichier(blob, `resume_tva_${new Date().getFullYear()}.csv`)
                     .then((r) => { if (r !== 'annule') toast.success('Résumé TVA exporté', 'Le fichier CSV est prêt.'); });
@@ -2364,7 +2382,7 @@ export default function TresorerieModule({
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                 <TuileChiffre libelle="TVA facturée" valeur={formatMoney(tvaTotal.collectee)} contexte="Sur vos factures émises (régime des débits)" />
                 <TuileChiffre libelle="TVA déductible" valeur={formatMoney(tvaTotal.deductible)} contexte="Sur vos achats et dépenses" />
-                <TuileChiffre libelle={tvaTotal.net >= 0 ? 'Solde estimé (débits)' : 'Crédit estimé (débits)'} valeur={formatMoney(Math.abs(tvaTotal.net))}
+                <TuileChiffre libelle={tvaTotal.net >= 0 ? 'TVA à payer estimée (débits)' : 'Crédit de TVA estimé (débits)'} valeur={formatMoney(Math.abs(tvaTotal.net))}
                   contexte="Sans option pour les débits, la TVA de vos travaux est due à l’encaissement (art. 269 du CGI) : le montant à déclarer peut différer." />
                 {tvaNextDeadline && (
                   <TuileChiffre libelle="Prochaine échéance" valeur={tvaNextDeadline.label} contexte={`Déclaration ${tvaNextDeadline.period}`} />

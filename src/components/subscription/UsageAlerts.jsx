@@ -7,18 +7,19 @@
  */
 
 import { useSubscriptionStore, PLANS, PLAN_ORDER } from '../../stores/subscriptionStore';
-import { ArrowRight, FileText, Users, Building2, Camera, HardDrive, HardHat } from 'lucide-react';
+import { ArrowRight, FileText, Users, Building2, Camera, HardHat } from 'lucide-react';
+import { usePermissions } from '../../hooks/usePermissions';
 import { Bouton } from '../ui/Bouton';
 
 const pluriel = (n, un, plusieurs) => `${n} ${n > 1 ? plusieurs : un}`;
 
-// `limite(n)` : la phrase de la limite, pour « Limite atteinte : … ».
+// `limite(n)` : la phrase de la limite, pour « Limite atteinte : … ». Pas de jauge de stockage : il n'est ni compté ni
+// appliqué (`computeLiveUsage` renvoie 0) ; une jauge « 0 Mo sur 100 Mo » serait un placebo (avis juriste du 26 oct., Q7).
 const RESOURCE_CONFIG = {
   devis: { label: 'Devis ce mois', icon: FileText, unit: '', limite: (n) => `${pluriel(n, 'devis', 'devis')} ce mois` },
   clients: { label: 'Clients', icon: Users, unit: '', limite: (n) => pluriel(n, 'client', 'clients') },
   chantiers: { label: 'Chantiers', icon: Building2, unit: '', limite: (n) => pluriel(n, 'chantier', 'chantiers') },
   photos: { label: 'Photos', icon: Camera, unit: '', limite: (n) => pluriel(n, 'photo', 'photos') },
-  storage_mb: { label: 'Stockage', icon: HardDrive, unit: 'Mo', limite: (n) => `${n} Mo de stockage` },
   equipe: { label: 'Équipe', icon: HardHat, unit: '', limite: (n) => pluriel(n, 'collaborateur', 'collaborateurs') }
 };
 
@@ -69,6 +70,8 @@ export default function UsageAlerts({ isDark: _isDark, couleur: _couleur }) {
   const plan = PLANS[planId] || PLANS.gratuit;
   const isFree = planId === 'gratuit';
   const planSuivant = PLANS[PLAN_ORDER[PLAN_ORDER.indexOf(planId) + 1]];
+  // Seul le titulaire du compte gère l'abonnement
+  const { canAccessBilling } = usePermissions();
 
   // Ressources proches de leur limite (80 %) ou au-delà
   const warnings = Object.entries(plan.limits).filter(([key, limit]) => {
@@ -107,7 +110,7 @@ export default function UsageAlerts({ isDark: _isDark, couleur: _couleur }) {
             </p>
           </div>
         </div>
-        {isFree && planSuivant && (
+        {canAccessBilling && isFree && planSuivant && (
           <Bouton variante="secondaire" taille="compacte" iconeFin={ArrowRight} onClick={() => openUpgradeModal()}>
             Passer au plan {planSuivant.name}
           </Bouton>
@@ -135,7 +138,7 @@ export default function UsageAlerts({ isDark: _isDark, couleur: _couleur }) {
       </div>
 
       {/* Sur un plan payant proche d'une limite : un lien vers les offres (le plan Gratuit a déjà son bouton) */}
-      {warnings.length > 0 && !isTrial && !isFree && (
+      {canAccessBilling && warnings.length > 0 && !isTrial && !isFree && (
         <div className="mt-3 pt-3 border-t border-bord">
           <button
             type="button"

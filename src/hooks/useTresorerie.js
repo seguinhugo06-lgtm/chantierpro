@@ -13,6 +13,7 @@ import supabase, { isDemo, auth } from '../supabaseClient';
 import { saveItem, deleteItem, FIELD_MAPPINGS } from './useSupabaseSync';
 import { logger } from '../lib/logger';
 import { normaliserPrevision, statutPrevision } from '../lib/previsions';
+import { SEUIL_PAR_DEFAUT } from '../lib/tresorerieReglages';
 import { toast } from '../stores/toastStore';
 import { captureException } from '../lib/sentry';
 import { messageEcritureRefusee, estEcritureDifferable } from '../lib/erreursEcriture';
@@ -39,7 +40,7 @@ const REGLEMENTS_KEY = 'cp_tresorerie_reglements';
 const MOUVEMENTS_KEY = 'cp_tresorerie_mouvements';
 
 const DEFAULT_SETTINGS = {
-  seuilAlerte: 5000,
+  seuilAlerte: SEUIL_PAR_DEFAUT,
   soldeInitial: 0,
   soldeDate: '2026-01-01',
   regimeTva: 'trimestriel',

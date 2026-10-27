@@ -26,7 +26,7 @@ import { Avatar } from './ui/LigneListe';
 import { remettreFichier } from '../lib/natif';
 import { tauxFacture, coutHoraire, coutDesPointages } from '../lib/tauxEquipe';
 import { decompteHeures, lundiDe, dimancheDe } from '../lib/paie';
-import { jourLocal, dateLue } from '../lib/dates';
+import { jourLocal, dateLue, estCeMois } from '../lib/dates';
 import { telInternational } from '../lib/messageRelance';
 
 // Lazy-load optional heavy dependencies to prevent crashes
@@ -48,6 +48,7 @@ const useSmartClockingStub = () => ({
 
 // Storage key for timer persistence
 const TIMER_STORAGE_KEY = 'mallettico_equipe_timer';
+
 
 // #6: Filter out test/demo chantiers from quick pointage
 const FILTERED_TEST_NAMES = ['test', 'demo', 'essai', 'test1', 'test2', 'brouillon'];
@@ -351,8 +352,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
   const weekHeuresEnAttente = weekEnAttente.reduce((s, p) => s + (p.heures || 0), 0);
   // Heures à valider d'une personne sur le mois (la carte ne montrait que les validées : « 0 h ce mois »)
   const getHeuresMoisEnAttente = (empId) => {
-    const now = new Date();
-    return pointages.filter(p => p.employeId === empId && !p.approuve && !p.verrouille && new Date(p.date).getMonth() === now.getMonth()).reduce((s, p) => s + (p.heures || 0), 0);
+    return pointages.filter(p => p.employeId === empId && !p.approuve && !p.verrouille && estCeMois(p.date)).reduce((s, p) => s + (p.heures || 0), 0);
   };
 
   // #1 Fix: heuresCible = nombre d'employés actifs × heures contractuelles hebdo (35h par défaut)
@@ -537,7 +537,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
   const validerSemaine = async () => {
     const confirmed = await confirm({
       title: 'Valider la semaine',
-      message: 'Valider et verrouiller les heures de la semaine ? Cette action est irreversible.',
+      message: 'Valider et verrouiller les heures de la semaine ? Cette action est irréversible.',
       variant: 'warning'
     });
     if (!confirmed) return;
@@ -741,8 +741,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
   };
 
   const getHeuresMois = (empId) => {
-    const now = new Date();
-    return pointages.filter(p => p.employeId === empId && new Date(p.date).getMonth() === now.getMonth() && p.approuve).reduce((s, p) => s + (p.heures || 0), 0);
+    return pointages.filter(p => p.employeId === empId && estCeMois(p.date) && p.approuve).reduce((s, p) => s + (p.heures || 0), 0);
   };
 
   const callPhone = (tel) => {
@@ -895,8 +894,10 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
   const getCongeBalance = (empId) => {
     const approved = conges.filter(c => c.employeId === empId && c.status === 'approved');
     const totalUsed = approved.reduce((s, c) => s + getWorkingDays(c.dateDebut, c.dateFin), 0);
-    // Convention: 25 jours congés payés + 10 RTT par an
-    return { cpTotal: 25, cpUsed: approved.filter(c => c.type === 'conge_paye').reduce((s, c) => s + getWorkingDays(c.dateDebut, c.dateFin), 0), rttTotal: 10, rttUsed: approved.filter(c => c.type === 'rtt').reduce((s, c) => s + getWorkingDays(c.dateDebut, c.dateFin), 0), totalUsed };
+    // Les jours posés seulement. Plus de total (« 25 jours de congés payés + 10 RTT » pour chacun) : les droits s'acquièrent
+    // au mois travaillé, aucun RTT n'est dû par la loi, et dans le bâtiment la caisse de congés payés les calcule (avis
+    // juriste du 26 oct. 2026, E2, R19)
+    return { cpUsed: approved.filter(c => c.type === 'conge_paye').reduce((s, c) => s + getWorkingDays(c.dateDebut, c.dateFin), 0), rttUsed: approved.filter(c => c.type === 'rtt').reduce((s, c) => s + getWorkingDays(c.dateDebut, c.dateFin), 0), totalUsed };
   };
 
   // ====== CHAT FUNCTIONS ======
@@ -939,7 +940,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
   const getEmployeeStats = useCallback((empId) => {
     const now = new Date();
     const empPointages = pointages.filter(p => p.employeId === empId);
-    const monthPointages = empPointages.filter(p => new Date(p.date).getMonth() === now.getMonth());
+    const monthPointages = empPointages.filter(p => estCeMois(p.date, now));
     const monthHours = monthPointages.reduce((s, p) => s + (p.heures || 0), 0);
     const totalHours = empPointages.reduce((s, p) => s + (p.heures || 0), 0);
     const avgDaily = empPointages.length > 0 ? totalHours / new Set(empPointages.map(p => p.date)).size : 0;
@@ -1055,12 +1056,12 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
           </div>
           <div>
             <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Téléphone</label>
-            <input type="tel" className={`w-full px-4 py-2.5 border rounded-xl min-h-[44px] ${inputBg} ${formErrors.telephone ? '!border-red-500' : ''}`} value={form.telephone} onChange={e => setForm(p => ({...p, telephone: e.target.value}))} placeholder="06 12 34 56 78" />
+            <input type="tel" className={`w-full px-4 py-2.5 border rounded-xl min-h-[44px] ${inputBg} ${formErrors.telephone ? '!border-alerte-point' : ''}`} value={form.telephone} onChange={e => setForm(p => ({...p, telephone: e.target.value}))} placeholder="06 12 34 56 78" />
             {formErrors.telephone && <p className="text-alerte-texte text-xs mt-1">{formErrors.telephone}</p>}
           </div>
           <div>
             <label className={`block text-sm font-medium mb-1 ${textPrimary}`}>Email</label>
-            <input type="email" className={`w-full px-4 py-2.5 border rounded-xl min-h-[44px] ${inputBg} ${formErrors.email ? '!border-red-500' : ''}`} value={form.email} onChange={e => setForm(p => ({...p, email: e.target.value}))} placeholder="email@example.com" />
+            <input type="email" className={`w-full px-4 py-2.5 border rounded-xl min-h-[44px] ${inputBg} ${formErrors.email ? '!border-alerte-point' : ''}`} value={form.email} onChange={e => setForm(p => ({...p, email: e.target.value}))} placeholder="email@example.com" />
             {formErrors.email && <p className="text-alerte-texte text-xs mt-1">{formErrors.email}</p>}
           </div>
           <div>
@@ -1531,7 +1532,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
           { key: 'conges', label: 'Congés', icon: CalendarOff },
           { key: 'st', label: 'Sous-traitants', icon: UserCheck, badge: sousTraitantsList.length },
           ...(isSousTraitants && voitPrix ? [{ key: 'couts', label: 'Coûts', icon: Euro }] : []),
-          { key: 'validation', label: 'Validation', icon: CheckSquare, badge: pointagesEnAttente?.length || 0, alert: true },
+          { key: 'validation', label: 'Validation', icon: CheckSquare, badge: pointagesEnAttente?.length || 0, ton: 'alerte' },
           { key: 'planning', label: 'Planning', icon: CalendarDays },
           { key: 'historique', label: 'Historique', icon: FileSpreadsheet },
           { key: 'productivite', label: 'Productivité', icon: BarChart3 },
@@ -2236,7 +2237,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                 </div>
                 <div>
                   <h3 className={`font-semibold ${textPrimary}`}>Signatures employés</h3>
-                  <p className={`text-sm ${textMuted}`}>Validation par signature digitale de la feuille d'heures</p>
+                  <p className={`text-sm ${textMuted}`}>Validation de la feuille d’heures par la signature de l’employé</p>
                 </div>
               </div>
 
@@ -2300,7 +2301,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                         <p className={`text-sm ${textMuted}`}>
                           {equipe.find(e => e.id === signatureModal.employeId)?.prenom} {equipe.find(e => e.id === signatureModal.employeId)?.nom} — {signatureModal.pointageIds.length} pointage(s)
                         </p>
-                        <p className={`text-sm ${textMuted}`}>La signature est enregistrée sur cet appareil.</p>
+                        <p className={`text-sm ${textMuted}`}>La signature n’est gardée que sur cet appareil. Les heures validées, elles, sont enregistrées dans votre compte.</p>
                       </div>
                       <button onClick={() => { setSignatureModal({ open: false, pointageIds: [], employeId: null }); setSignatureData(null); }} aria-label="Fermer" className={`w-11 h-11 flex items-center justify-center rounded-xl hover:bg-surface-2`}>
                         <X size={20} aria-hidden="true" className={textMuted} />
@@ -2637,7 +2638,8 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                       </div>
                       <div>
                         <p className={`font-medium ${textPrimary}`}>{pendingCount > 0 ? `${pendingCount} demande${pendingCount > 1 ? 's' : ''} en attente` : 'Aucune demande en attente'}</p>
-                        <p className={`text-sm ${textMuted}`}>{conges.filter(c => c.status === 'approved').length} congé(s) approuvé(s) · enregistrés sur cet appareil</p>
+                        <p className={`text-sm ${textMuted}`}>{conges.filter(c => c.status === 'approved').length} congé(s) approuvé(s)</p>
+                        <p className={`text-sm ${textMuted}`}>Gardés sur cet appareil seulement : ils ne remplacent ni vos bulletins de paie ni le calcul de votre caisse de congés payés.</p>
                       </div>
                     </div>
                     <motion.button
@@ -2663,21 +2665,9 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                             </div>
                             <p className={`text-xs font-medium truncate ${textPrimary}`}>{emp.prenom}</p>
                           </div>
-                          <div className="space-y-1">
-                            <div className="flex justify-between text-xs">
-                              <span className={textMuted}>CP</span>
-                              <span className={`font-semibold ${bal.cpUsed >= bal.cpTotal ? 'text-alerte-texte' : textPrimary}`}>{bal.cpTotal - bal.cpUsed}j restants</span>
-                            </div>
-                            <div className={`w-full h-1.5 rounded-full bg-bord`}>
-                              <div className="h-full rounded-full bg-info-point" style={{ width: `${Math.min((bal.cpUsed / bal.cpTotal) * 100, 100)}%` }} />
-                            </div>
-                            <div className="flex justify-between text-xs">
-                              <span className={textMuted}>RTT</span>
-                              <span className={`font-semibold ${bal.rttUsed >= bal.rttTotal ? 'text-alerte-texte' : textPrimary}`}>{bal.rttTotal - bal.rttUsed}j restants</span>
-                            </div>
-                            <div className={`w-full h-1.5 rounded-full bg-bord`}>
-                              <div className="h-full rounded-full bg-neutre-point" style={{ width: `${Math.min((bal.rttUsed / bal.rttTotal) * 100, 100)}%` }} />
-                            </div>
+                          <div className="space-y-1 text-sm" data-equipe="conges-poses">
+                            <p className={textPrimary}><span className="font-semibold tabular-nums">{bal.cpUsed}j</span> de congés payés posés</p>
+                            {bal.rttUsed > 0 && <p className={textMuted}>RTT posés : <span className="tabular-nums">{bal.rttUsed}j</span></p>}
                           </div>
                         </div>
                       );
@@ -2874,12 +2864,6 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                             {congeForm.dateDebut && congeForm.dateFin && new Date(congeForm.dateFin) >= new Date(congeForm.dateDebut) && (
                               <div className={`p-3 rounded-xl text-sm bg-info-fond text-info-texte`}>
                                 <strong>{getWorkingDays(congeForm.dateDebut, congeForm.dateFin)}</strong> jour(s) ouvré(s)
-                                {congeForm.employeId && (() => {
-                                  const bal = getCongeBalance(congeForm.employeId);
-                                  const remaining = congeForm.type === 'conge_paye' ? bal.cpTotal - bal.cpUsed : congeForm.type === 'rtt' ? bal.rttTotal - bal.rttUsed : null;
-                                  if (remaining !== null) return <span> — Solde restant: <strong>{remaining}j</strong></span>;
-                                  return null;
-                                })()}
                               </div>
                             )}
                             <div>
@@ -3382,7 +3366,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                     )}
                     <div>
                       <p className={`text-xs ${textMuted}`}>Congés</p>
-                      <p className={`text-sm font-semibold ${textPrimary}`}>{bal.cpTotal - bal.cpUsed}j CP + {bal.rttTotal - bal.rttUsed}j RTT</p>
+                      <p className={`text-sm font-semibold ${textPrimary}`}>Congés posés : {bal.cpUsed + bal.rttUsed}j (sur cet appareil)</p>
                     </div>
                   </div>
 

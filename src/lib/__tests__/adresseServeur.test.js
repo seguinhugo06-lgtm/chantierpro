@@ -30,3 +30,31 @@ describe('adresse de l\'entreprise : la copie serveur suit la règle de l\'app',
     expect(adresseCompleteServeur(FICHES[2]).split('\n').join(', ')).toBe('127 cours du Médoc, 33300 Bordeaux');
   });
 });
+
+// Relecture sécurité du 26 oct. 2026 (S1) : l'expression des adresses collées coûtait un temps quadratique (80 ko :
+// 5,6 s, le passage quotidien des rappels aurait été coupé). Les deux copies restent rapides sur 100 000 caractères.
+describe('adresse : une entrée très longue ne bloque ni l\'app ni le serveur', () => {
+  const LONGUES = [
+    { adresse: 'a '.repeat(50000) },
+    { adresse: '1'.repeat(100000) },
+    { adresse: 'a1 '.repeat(33334) },
+    { adresse: `${'x'.repeat(99990)}33300Bordeaux` },
+    { adresse: `${'7 '.repeat(50000)}`, code_postal: '33300', ville: 'Bordeaux' },
+    // Le cas de la relecture : un code postal, une longue suite de lettres, puis un chiffre (retour arrière quadratique)
+    { adresse: `x12345${'a'.repeat(99993)}1` },
+    { adresse: `x12345${'a'.repeat(99993)}1`, code_postal: '12345', ville: 'Ville' },
+  ];
+  it.each([['app', adresseComplete], ['serveur', adresseCompleteServeur]])('%s : 100 000 caractères en moins de 50 ms', (_, fn) => {
+    for (const fiche of LONGUES) {
+      const debut = performance.now();
+      fn(fiche);
+      expect(performance.now() - debut).toBeLessThan(50);
+    }
+  });
+
+  it('adresse collée avec les colonnes déjà remplies : « 33300 Bordeaux » une seule fois, dans les deux copies', () => {
+    const fiche = { adresse: '127 cours du Médoc33300Bordeaux', code_postal: '33300', ville: 'Bordeaux' };
+    expect(adresseComplete(fiche)).toBe('127 cours du Médoc\n33300 Bordeaux');
+    expect(adresseCompleteServeur(fiche)).toBe('127 cours du Médoc\n33300 Bordeaux');
+  });
+});

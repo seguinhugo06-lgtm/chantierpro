@@ -134,11 +134,10 @@ export default function AssistantProfil({
             <ChampParam id="assistant-codeApe" cle="codeApe" libelle="Code APE" facultatif lexique={LEXIQUE.ape}>
               <DebouncedInput id="assistant-codeApe" type="text" value={entreprise.codeApe || ''} onChange={(v) => updateEntreprise((p) => ({ ...p, codeApe: v.toUpperCase() }), 'codeApe')} placeholder="4321A" maxLength={5} />
             </ChampParam>
-            {!estFranchiseTva(entreprise) && (
-              <ChampParam id="assistant-tvaIntra" cle="tvaIntra" libelle="N° de TVA intracommunautaire" lexique={LEXIQUE.tvaIntra}>
-                <DebouncedInput id="assistant-tvaIntra" type="text" value={entreprise.tvaIntra || ''} onChange={(v) => updateEntreprise((p) => ({ ...p, tvaIntra: v.toUpperCase() }), 'tvaIntra')} placeholder="FR12345678901" />
-              </ChampParam>
-            )}
+            {/* Pour toutes les formes : un micro-entrepreneur qui a dépassé les seuils ou opté pour la TVA en a un (avis juriste du 26 oct.) */}
+            <ChampParam id="assistant-tvaIntra" cle="tvaIntra" libelle="N° de TVA intracommunautaire" facultatif={estFranchiseTva(entreprise)} lexique={LEXIQUE.tvaIntra}>
+              <DebouncedInput id="assistant-tvaIntra" type="text" value={entreprise.tvaIntra || ''} onChange={(v) => updateEntreprise((p) => ({ ...p, tvaIntra: v.toUpperCase() }), 'tvaIntra')} placeholder="FR12345678901" />
+            </ChampParam>
           </>
         )}
 

@@ -194,7 +194,7 @@ const EntrepriseSettingsPage = memo(function EntrepriseSettingsPage({
 
               {/* Expanded details */}
               {isExpanded && (
-                <div className={`px-4 pb-4 pt-1 border-t ${'border-bord'}`}>
+                <div className="px-4 pb-4 pt-1 border-t border-bord">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                     {ent.adresse && (
                       <div className="flex items-start gap-2">

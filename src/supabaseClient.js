@@ -1,3 +1,4 @@
+import { CLES_PROPRES_AU_COMPTE } from './lib/clesCompte';
 import { createClient } from '@supabase/supabase-js';
 import { logger } from './lib/logger';
 import { urlPublique } from './lib/urlPublique';
@@ -94,11 +95,11 @@ export const auth = {
     } catch (e) {
       error = e;
     }
-    // Recherches récentes, copie de la fiche entreprise et invitation en attente : propres au compte (sur un
-    // téléphone partagé, le suivant les voyait ; la fiche pouvait être recopiée dans son organisation, et
-    // l'invitation l'aurait conduit à rejoindre l'équipe d'un autre)
+    // Données propres au compte (src/lib/clesCompte.js) : recherches récentes, copie de la fiche entreprise, invitation en
+    // attente, congés et signatures d'Équipe, séquence post-chantier… Sur un téléphone partagé, le suivant les voyait ; la
+    // fiche pouvait être recopiée dans son organisation, et l'invitation l'aurait conduit à rejoindre l'équipe d'un autre.
     try {
-      for (const cle of ['mallettico_recent_items', 'cp_entreprise', 'cp_entreprises', 'cp_pending_invitation']) localStorage.removeItem(cle);
+      for (const cle of CLES_PROPRES_AU_COMPTE) localStorage.removeItem(cle);
     } catch { /* stockage indisponible */ }
     if (error) {
       // Serveur injoignable (hors ligne) : supabase-js garde alors la session, et le compte était de nouveau

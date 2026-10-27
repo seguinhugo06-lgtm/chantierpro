@@ -85,6 +85,14 @@ export function ChampParam({ id, idLibelle, cle, libelle, facultatif = false, le
 // écrite à la sortie du champ et quand le champ disparaît (changement d'onglet ou de page). Avant (recette du
 // 9 oct. 2026), le minuteur était annulé au démontage : un code APE tapé puis « Accueil » touché dans la
 // seconde n'était jamais enregistré, sans message.
+// Même texte aux espaces et retours à la ligne de bout près : ce que l'enregistrement retire (adresse composée ligne
+// par ligne). La valeur revenue de la base ne remplace la frappe que si elle en diffère vraiment. Avant (relecture du
+// 26 oct. 2026) : « 127 » + espace + pause, la base renvoyait « 127 », qui remplaçait la saisie : « 127cours ».
+const memeSaisie = (a, b) => {
+  const net = (v) => String(v ?? '').replace(/\r/g, '').split('\n').map((l) => l.trim()).filter(Boolean).join('\n');
+  return net(a) === net(b);
+};
+
 function useSaisieDifferee(value, onChange, delay) {
   const [localValue, setLocalValue] = useState(value ?? '');
   const timerRef = useRef(null);
@@ -93,7 +101,8 @@ function useSaisieDifferee(value, onChange, delay) {
   onChangeRef.current = onChange;
 
   useEffect(() => {
-    if (attenteRef.current === null) setLocalValue(value ?? '');
+    if (attenteRef.current !== null) return;
+    setLocalValue((local) => (memeSaisie(local, value ?? '') ? local : (value ?? '')));
   }, [value]);
 
   const vider = useCallback(() => {

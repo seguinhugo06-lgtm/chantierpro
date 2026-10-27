@@ -23,6 +23,7 @@ import { echeance } from './paiementsFacture';
 import { franchiseAppliquee, tauxTvaDocument, premierTaux } from './franchiseTva';
 import { imprimerHtml } from './imprimerHtml';
 import { nomImprime, formeImprimee } from './identiteEntreprise';
+import { estSociete } from './mentionsFacture';
 import { dateLue } from './dates';
 import { signatureDuClient } from './signatureDocument';
 import { finValidite } from './validiteDevis';
@@ -465,7 +466,8 @@ function buildEntrepriseFields(entreprise) {
     // Entrepreneur individuel : « EI » après le nom (C. com. L526-22), forme « Entrepreneur individuel (…) »
     nom: h(nomImprime(entreprise)),
     formeJuridique: h(formeImprimee(entreprise)),
-    capital: h(entreprise?.capital || ''),
+    // Le capital d'une société seulement : un entrepreneur individuel n'en a pas (C. com. R123-238 ; avis juriste du 26 oct. 2026)
+    capital: estSociete(entreprise) ? h(entreprise?.capital || '') : '',
     adresse: h(entreprise?.adresse),
     ville: h(entreprise?.ville),
     codePostal: h(entreprise?.code_postal || entreprise?.codePostal),

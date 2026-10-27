@@ -984,7 +984,8 @@ export default function App() {
       tresorerie: 'finances', entretien: 'dashboard',
       signatures: 'devis', export: 'finances', analytique: 'finances',
       admin: 'settings', rentabilite: 'settings',
-      pricing: 'profil', billing: 'profil',
+      // Abonnement : « Mon plan » (l'écran Facturation n'est plus atteint ; avant, billing menait à profil puis aux Paramètres)
+      pricing: 'plan', billing: 'plan',
     };
     if (REDIRECTS[page]) setPage(REDIRECTS[page]);
   }, [page]);

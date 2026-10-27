@@ -489,7 +489,7 @@ export default function TVAManager({
           <p className={`font-semibold ${textPrimary}`}>Franchise en base de TVA</p>
           <p className={`text-sm mt-1 ${textMuted}`}>
             En franchise en base de TVA (art. 293 B du CGI), vous ne facturez pas de TVA et n’en déduisez pas : pas de déclaration CA3.
-            Mallettico l’applique d’après la forme « Micro-entreprise » indiquée dans vos Paramètres.
+            Mallettico part du principe que vous y êtes si votre statut est « Micro-entreprise » ; sinon, choisissez le statut « Entreprise individuelle (EI) » dans Paramètres › Identité.
           </p>
         </div>
         {aRegulariser > 0 && (

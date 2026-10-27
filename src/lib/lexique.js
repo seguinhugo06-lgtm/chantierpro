@@ -11,7 +11,7 @@ export const LEXIQUE = {
   },
   ape: {
     mot: 'le code APE',
-    texte: 'Code de 4 chiffres et une lettre que l\'Insee attribue d\'après votre activité principale. Il sert aux statistiques : il ne vous autorise ni ne vous interdit aucun métier.',
+    texte: 'Code de 4 chiffres et une lettre que l\'Insee attribue d\'après votre activité principale. Il sert aux statistiques : il ne vous autorise ni ne vous interdit aucun métier. L\'Insee le remplace au 1er janvier 2027 (nouvelle nomenclature) : le nouveau code se consulte sur sirene.gouv.fr.',
   },
   tvaIntra: {
     mot: 'le numéro de TVA intracommunautaire',
@@ -19,7 +19,7 @@ export const LEXIQUE = {
   },
   ei: {
     mot: 'l’EI',
-    texte: 'Entrepreneur individuel : vous exercez en votre nom, sans société. Sur vos devis et factures, votre nom doit être suivi de « EI » ou de « entrepreneur individuel ».',
+    texte: 'Entrepreneur individuel : vous exercez en votre nom, sans société. Sur vos devis et factures, votre nom doit être précédé ou suivi immédiatement de « EI » ou de « entrepreneur individuel » (de « EIRL » si vous êtes en EIRL).',
   },
   rcs: {
     mot: 'le RCS et le RM',
@@ -27,6 +27,6 @@ export const LEXIQUE = {
   },
   decennale: {
     mot: 'la décennale',
-    texte: 'Assurance de responsabilité décennale : pendant 10 ans après la réception des travaux, elle couvre les dommages qui menacent la solidité de l\'ouvrage ou le rendent impropre à son usage. Obligatoire pour les travaux de construction.',
+    texte: 'Assurance de responsabilité décennale : pendant 10 ans après la réception des travaux, elle couvre les dommages qui compromettent la solidité de l\'ouvrage ou le rendent impropre à sa destination. Obligatoire pour les travaux de construction ; en général pas pour un dépannage ni pour de l\'entretien. En cas de doute, demandez à votre assureur.',
   },
 };

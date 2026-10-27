@@ -22,6 +22,10 @@
 const nettoyer = (v) => String(v ?? '').trim();
 const LIGNE_CP = /^(\d{5})(?:\s+(.*))?$/;
 const COLLE = /^(.*?\S)[\s,]*(\d{5})\s*([^\d\n]*[^\d\s\n,][^\d\n]*)$/;
+// COLLE coûte un temps quadratique sur une très longue ligne (relecture sécurité du 26 oct. 2026 : 80 ko, 5,6 s) : une
+// ligne d'adresse collée ne dépasse pas 200 caractères (le champ de la rue est limité à 200), au-delà on ne la coupe pas.
+export const LONGUEUR_LIGNE_COLLEE_MAX = 200;
+const colle = (ligne) => (ligne.length <= LONGUEUR_LIGNE_COLLEE_MAX ? COLLE.exec(ligne) : null);
 const normaliser = (s) => nettoyer(s).replace(/\s+/g, ' ').toLowerCase();
 
 /**
@@ -42,7 +46,15 @@ export function champsAdresse(entreprise) {
       const m = LIGNE_CP.exec(lignes[k]);
       if (normaliser(lignes[k]) === attendue || (cp && m && m[1] === cp)) { i = k; break; }
     }
-    if (i === -1) return { rue: lignes.join('\n'), codePostal: cp, ville, suite: '' };
+    if (i === -1) {
+      // Adresse collée (« …Médoc33300Bordeaux ») avec les colonnes déjà remplies : la ville n'est pas répétée
+      const derniere = lignes.length - 1;
+      const m = derniere >= 0 ? colle(lignes[derniere]) : null;
+      if (m && cp && m[2] === cp) {
+        return { rue: [...lignes.slice(0, derniere), nettoyer(m[1]).replace(/,$/, '')].join('\n'), codePostal: cp, ville, suite: '' };
+      }
+      return { rue: lignes.join('\n'), codePostal: cp, ville, suite: '' };
+    }
     return { rue: lignes.slice(0, i).join('\n'), codePostal: cp, ville, suite: lignes.slice(i + 1).join('\n') };
   }
 
@@ -51,7 +63,7 @@ export function champsAdresse(entreprise) {
     if (m) return { rue: lignes.slice(0, k).join('\n'), codePostal: m[1], ville: nettoyer(m[2]), suite: lignes.slice(k + 1).join('\n') };
   }
   const derniere = lignes.length - 1;
-  const m = derniere >= 0 ? COLLE.exec(lignes[derniere]) : null;
+  const m = derniere >= 0 ? colle(lignes[derniere]) : null;
   if (m) {
     return { rue: [...lignes.slice(0, derniere), nettoyer(m[1]).replace(/,$/, '')].join('\n'), codePostal: m[2], ville: nettoyer(m[3]), suite: '' };
   }

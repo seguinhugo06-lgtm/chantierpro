@@ -14,7 +14,6 @@ import {
   Filter,
   ChevronLeft,
   ChevronRight,
-  Mail,
 } from 'lucide-react';
 import { remettreFichier } from '../../lib/natif';
 import { estEmise } from '../../lib/ventes';
@@ -22,7 +21,6 @@ import { estFranchiseTva } from '../../lib/franchiseTva';
 import { montantsDepense } from '../../lib/tvaDepenses';
 import { ecrituresDepense } from '../../lib/ecrituresAchat';
 import { ecrituresPaiement } from '../../lib/ecrituresBanque';
-import { dateLue } from '../../lib/dates';
 import { captureException } from '../../lib/sentry';
 import Carte from '../ui/Carte';
 import TuileChiffre from '../ui/TuileChiffre';
@@ -760,24 +758,8 @@ export default function ExportComptable({
             <Bouton variante="principal" icone={Download} chargement={exportEnCours} disabled={filteredEntries.length === 0} onClick={handleExport}>
               Télécharger l’export
             </Bouton>
-            {/* L'e-mail du comptable n'a pas de champ dans Paramètres : le lien « Configurer l'email comptable », qui menait
-                aux Paramètres sans ce champ, est retiré (relecture de la Task 8, 26 oct. 2026). */}
-            {entreprise?.emailComptable ? (
-              <Bouton icone={Mail} disabled={filteredEntries.length === 0}
-                onClick={() => {
-                  // La période affichée vient des dates réellement sélectionnées :
-                  // le libellé du préréglage devient faux dès qu'on ajuste une date.
-                  const periode = [dateFrom, dateTo].filter(Boolean)
-                    .map((d) => dateLue(d).toLocaleDateString('fr-FR'))
-                    .join(' au ');
-                  const subject = encodeURIComponent(`Export comptable ${periode} — ${entreprise?.nom || 'Mallettico'}`);
-                  const body = encodeURIComponent(`Bonjour,\n\nVeuillez trouver ci-joint l'export comptable pour la période du ${periode}.\n\nCordialement,\n${entreprise?.nom || ''}`);
-                  window.open(`mailto:${entreprise.emailComptable}?subject=${subject}&body=${body}`, '_blank');
-                  toast.info('Export prêt', 'Joignez le fichier téléchargé à votre e-mail.');
-                }}>
-                Envoyer à mon comptable
-              </Bouton>
-            ) : null}
+            {/* « Envoyer à mon comptable » retiré : l'e-mail du comptable n'a pas de champ dans Paramètres, le bouton ne
+                s'affichait jamais (relectures de la Task 8, 26 oct. 2026). */}
             {filteredEntries.length === 0 && (
               <p className="text-sm text-encre-3">Aucune écriture pour la période choisie</p>
             )}

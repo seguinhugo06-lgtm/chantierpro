@@ -32,4 +32,13 @@ export function dateLue(valeur) {
   return m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(valeur);
 }
 
+/**
+ * La date est-elle du mois en cours ? Même année ET même mois, lue comme `dateLue`. Avant (relecture du 26 oct. 2026),
+ * Équipe comparait le mois seul : un pointage d'octobre 2025 comptait dans « ce mois » en octobre 2026.
+ */
+export function estCeMois(valeur, maintenant = new Date()) {
+  const d = dateLue(valeur);
+  return d.getFullYear() === maintenant.getFullYear() && d.getMonth() === maintenant.getMonth();
+}
+
 export default jourLocal;

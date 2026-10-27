@@ -12,7 +12,8 @@ import {
   Zap, Hammer, ExternalLink, Clock,
 } from 'lucide-react';
 import { useSubscriptionStore, PLANS, PLAN_ORDER } from '../../stores/subscriptionStore';
-import { MENTION_TVA_ABONNEMENT, prixAbonnement, prixAbonne, economieAnnuelle, moisOffertsCommuns } from '../../stores/prixAbonnement';
+import { MENTION_TVA_ABONNEMENT, prixAbonnement, prixAbonne, periodeAbonne, economieAnnuelle, moisOffertsCommuns } from '../../stores/prixAbonnement';
+import { usePermissions } from '../../hooks/usePermissions';
 import { createCheckoutSession, createPortalSession, utiliserCodeTesteur } from '../../services/subscriptionsApi';
 import { toast } from '../../stores/toastStore';
 import { auth, isDemo } from '../../supabaseClient';
@@ -41,7 +42,10 @@ export default function PlanPage({ isDark: _isDark, couleur: _couleur, setPage }
   const plan = PLANS[planId] || PLANS.gratuit;
 
   // Local state
-  const [billing, setBilling] = useState('monthly');
+  // Un abonné à l'année voit d'abord sa période dans la grille des offres
+  const [billing, setBilling] = useState(() => (periodeAbonne(sub) === 'an' ? 'yearly' : 'monthly'));
+  // Seul le titulaire du compte gère l'abonnement (offres, code testeur, page Stripe) : les autres rôles le lisent
+  const { canAccessBilling } = usePermissions();
   const [loadingPlan, setLoadingPlan] = useState(null);
   const [cancelling, setCancelling] = useState(false);
 
@@ -122,15 +126,15 @@ export default function PlanPage({ isDark: _isDark, couleur: _couleur, setPage }
 
   const handleCancel = useCallback(async () => {
     const finPeriode = sub?.current_period_end
-      ? dateLue(sub.current_period_end).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
-      : 'la fin de votre période';
+      ? `jusqu’au ${dateLue(sub.current_period_end).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}`
+      : 'jusqu’à la fin de la période payée';
     if (isDemo) {
       toast.info('Mode démo', 'La page Stripe n\'est pas disponible en mode démo.');
       return;
     }
     const ok = await confirm({
       title: 'Gérer ou résilier votre abonnement',
-      message: `La page sécurisée de Stripe va s'ouvrir : vous pouvez y changer de carte, retrouver vos factures ou résilier. Si vous résiliez, vous gardez l'accès jusqu'au ${finPeriode} et vos données sont conservées.`,
+      message: `La page sécurisée de Stripe va s'ouvrir : vous pouvez y changer de carte, retrouver vos factures ou résilier. Si vous résiliez, vous gardez l'accès ${finPeriode} ; ensuite votre compte passe au plan Gratuit et vos données sont conservées.`,
       confirmText: 'Continuer vers Stripe',
       cancelText: 'Rester ici',
       variant: 'info',
@@ -255,12 +259,12 @@ export default function PlanPage({ isDark: _isDark, couleur: _couleur, setPage }
             </div>
 
             <div className="flex items-center gap-2 flex-wrap">
-              {isPaid && !isDemo && !offreTesteur && (
+              {canAccessBilling && isPaid && !isDemo && !offreTesteur && (
                 <Bouton icone={CreditCard} iconeFin={ExternalLink} onClick={handlePortal} chargement={portalLoading} disabled={portalLoading}>
                   Mes factures et paiement
                 </Bouton>
               )}
-              {sub?.cancel_at_period_end && !offreTesteur && (
+              {canAccessBilling && sub?.cancel_at_period_end && !offreTesteur && (
                 <Bouton variante="principal" onClick={handleReactivate}>Réactiver</Bouton>
               )}
             </div>
@@ -351,16 +355,18 @@ export default function PlanPage({ isDark: _isDark, couleur: _couleur, setPage }
                   {isCurrent ? (
                     <p className="w-full min-h-[44px] flex items-center justify-center text-sm font-medium text-encre-3">C'est votre plan</p>
                   ) : isHigher ? (
-                    <Bouton
-                      variante={estOffreSuivante ? 'principal' : 'secondaire'}
-                      pleineLargeur
-                      iconeFin={ArrowRight}
-                      onClick={() => handleSelectPlan(pid)}
-                      chargement={loadingPlan === pid}
-                      disabled={loadingPlan === pid}
-                    >
-                      Passer au plan {p.name}
-                    </Bouton>
+                    canAccessBilling ? (
+                      <Bouton
+                        variante={estOffreSuivante ? 'principal' : 'secondaire'}
+                        pleineLargeur
+                        iconeFin={ArrowRight}
+                        onClick={() => handleSelectPlan(pid)}
+                        chargement={loadingPlan === pid}
+                        disabled={loadingPlan === pid}
+                      >
+                        Passer au plan {p.name}
+                      </Bouton>
+                    ) : null
                   ) : (
                     <p className="w-full min-h-[44px] flex items-center justify-center text-sm text-encre-3">Inclus dans votre plan</p>
                   )}
@@ -370,8 +376,12 @@ export default function PlanPage({ isDark: _isDark, couleur: _couleur, setPage }
           </div>
         </div>
 
+        {!canAccessBilling && (
+          <p className="mt-6 text-center text-sm text-encre-2" data-plan-titulaire="">Seul le titulaire du compte gère l'abonnement.</p>
+        )}
+
         {/* Gérer ou résilier : un lien discret sous les offres (la page Stripe fait les deux) */}
-        {isPaid && !offreTesteur && !sub?.cancel_at_period_end && (
+        {canAccessBilling && isPaid && !offreTesteur && !sub?.cancel_at_period_end && (
           <div className="mt-6 text-center">
             <button
               type="button"
@@ -385,7 +395,7 @@ export default function PlanPage({ isDark: _isDark, couleur: _couleur, setPage }
         )}
 
         {/* Code testeur : replié en bas */}
-        {!isPaid && (
+        {canAccessBilling && !isPaid && (
           <div className="mt-6 text-center">
             <button
               type="button"

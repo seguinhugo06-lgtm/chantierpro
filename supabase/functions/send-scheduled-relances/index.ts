@@ -183,7 +183,8 @@ function resolveVariables(template: string, doc: any, client: any, entreprise: a
 }
 
 function buildRelanceEmailHtml(body: string, entreprise: any, options: any = {}): string {
-  const color = entreprise?.couleur || '#f97316';
+  // Couleur de la fiche, posée dans le style de l'e-mail : seulement une couleur #RRGGBB (comme ramonage.ts), sinon celle par défaut
+  const color = /^#[0-9a-f]{6}$/i.test(String(entreprise?.couleur || '')) ? String(entreprise.couleur) : '#f97316';
   const nom = entreprise?.nom || 'Votre entreprise';
   const adresse = entreprise?.adresse || '';
   const tel = entreprise?.tel || entreprise?.telephone || '';
