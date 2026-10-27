@@ -55,10 +55,7 @@ const AdminHelp = lazyWithRetry(() => import('./components/admin-help/AdminHelp'
 const QuickClientModal = lazyWithRetry(() => import('./components/QuickClientModal'), 'QuickClient');
 const QuickChantierModal = lazyWithRetry(() => import('./components/QuickChantierModal'), 'QuickChantier');
 const CommandPalette = lazyWithRetry(() => import('./components/CommandPalette'), 'CommandPalette');
-const BibliothequeOuvrages = lazyWithRetry(() => import('./components/catalogue/BibliothequeOuvrages'), 'Bibliothèque');
 const ExportComptable = lazyWithRetry(() => import('./components/export/ExportComptable'), 'ExportComptable');
-const BillingDashboard = lazyWithRetry(() => import('./components/subscription/BillingDashboard'), 'Billing');
-const PricingPage = lazyWithRetry(() => import('./components/subscription/PricingPage'), 'Pricing');
 const CheckoutSuccess = lazyWithRetry(() => import('./components/subscription/CheckoutSuccess'), 'Checkout');
 const AnalyticsPremium = lazyWithRetry(() => import('./components/AnalyticsPremium'), 'AnalyticsPremium');
 const ImportModal = lazyWithRetry(() => import('./components/ImportModal'), 'Import');
@@ -175,7 +172,6 @@ export default function App() {
     catalogue, setCatalogue, addCatalogueItem: dataAddCatalogueItem, updateCatalogueItem: dataUpdateCatalogueItem, deleteCatalogueItem: dataDeleteCatalogueItem, deductStock,
     paiements, addPaiement: dataAddPaiement,
     echanges, addEchange: dataAddEchange,
-    ouvrages, setOuvrages, addOuvrage: dataAddOuvrage, updateOuvrage: dataUpdateOuvrage, deleteOuvrage: dataDeleteOuvrage,
     planningEvents, setPlanningEvents, addPlanningEvent: dataAddPlanningEvent, updatePlanningEvent: dataUpdatePlanningEvent, deletePlanningEvent: dataDeletePlanningEvent,
     memos, addMemo, updateMemo, deleteMemo, toggleMemo,
     getChantierBilan,
@@ -253,7 +249,6 @@ export default function App() {
   const [selectedDevis, setSelectedDevis] = useState(null);
   const [createMode, setCreateMode] = useState({ devis: false, chantier: false, client: false });
   const [showDictee, setShowDictee] = useState(false);
-  const [aiPrefill, setAiPrefill] = useState(null); // IA devis pre-fill data (stays local until user confirms)
   const [editDevisId, setEditDevisId] = useState(null); // devis à ouvrir directement dans l'éditeur (dictée)
   // Multi-entreprise context
   const {
@@ -1932,7 +1927,7 @@ export default function App() {
           <ErrorBoundary isDark={isDark} showDetails={true}>
             <Suspense fallback={<div className="flex items-center justify-center py-12"><div className="w-8 h-8 border-4 border-accent/20 border-t-accent rounded-full animate-spin" /></div>}>
               {page === 'dashboard' && <Dashboard clients={clients} devis={devis} chantiers={chantiers} events={planningEvents} depenses={depenses} pointages={pointages} equipe={equipe} ajustements={ajustements} catalogue={catalogue} entreprise={entreprise} getChantierBilan={getChantierBilan} addDevis={addDevis} setPage={setPage} setSelectedChantier={setSelectedChantier} setSelectedDevis={setSelectedDevis} setCreateMode={setCreateMode} modeDiscret={modeDiscret} couleur={couleur} isDark={isDark} user={user} memos={memos} addMemo={addMemo} toggleMemo={toggleMemo} ouvrirDevis={ouvrirDevis} />}
-              {page === 'devis' && <DevisPage clients={clients} setClients={setClients} addClient={addClient} devis={devis} setDevis={setDevis} chantiers={chantiers} catalogue={catalogue} entreprise={entreprise} onSubmit={addDevis} onUpdate={updateDevis} onDelete={deleteDevis} modeDiscret={modeDiscret} selectedDevis={selectedDevis} setSelectedDevis={setSelectedDevis} isDark={isDark} couleur={couleur} createMode={createMode.devis} setCreateMode={(v) => setCreateMode(p => ({...p, devis: v}))} addChantier={addChantier} setPage={setPage} setSelectedChantier={setSelectedChantier} addEchange={addEchange} paiements={paiements} addPaiement={addPaiement} generateNextNumero={generateNextNumero} aiPrefill={aiPrefill} setAiPrefill={setAiPrefill} editDevisId={editDevisId} setEditDevisId={setEditDevisId} demande={demandeDevis} setDemande={setDemandeDevis} />}
+              {page === 'devis' && <DevisPage clients={clients} addClient={addClient} devis={devis} setDevis={setDevis} chantiers={chantiers} catalogue={catalogue} entreprise={entreprise} onSubmit={addDevis} onUpdate={updateDevis} onDelete={deleteDevis} modeDiscret={modeDiscret} selectedDevis={selectedDevis} setSelectedDevis={setSelectedDevis} isDark={isDark} couleur={couleur} createMode={createMode.devis} setCreateMode={(v) => setCreateMode(p => ({...p, devis: v}))} addChantier={addChantier} setPage={setPage} setSelectedChantier={setSelectedChantier} addEchange={addEchange} paiements={paiements} addPaiement={addPaiement} generateNextNumero={generateNextNumero} editDevisId={editDevisId} setEditDevisId={setEditDevisId} demande={demandeDevis} setDemande={setDemandeDevis} />}
               {page === 'chantiers' && <Chantiers nouveauDevisPour={(clientId, chantierId) => { setCreateMode(p => ({ ...p, devis: { clientId, chantierId } })); setPage('devis'); }} chantiers={chantiers} addChantier={addChantier} updateChantier={updateChantier} clients={clients} depenses={depenses} pointages={pointages} equipe={equipe} devis={devis} paiements={paiements} ajustements={ajustements} addAjustement={addAjustement} deleteAjustement={deleteAjustement} getChantierBilan={getChantierBilan} couleur={couleur} modeDiscret={modeDiscret} entreprise={entreprise} selectedChantier={selectedChantier} setSelectedChantier={setSelectedChantier} catalogue={catalogue} deductStock={deductStock} isDark={isDark} createMode={createMode.chantier} setCreateMode={(v) => setCreateMode(p => ({...p, chantier: v}))} setPage={setPage} memos={memos} addMemo={addMemo} toggleMemo={toggleMemo} onPlanEvent={(data) => { setPlanningPrefill(data); setPage('planning'); }} addDevis={addDevis} generateNextNumero={generateNextNumero} ouvrirDevis={ouvrirDevis} />}
               {(page === 'tasks' || page === 'planning' || page === 'memos') && (
                 <TasksAndPlanning
@@ -1947,7 +1942,6 @@ export default function App() {
               )}
               {page === 'clients' && <Clients clients={clients} setClients={setClients} updateClient={updateClient} deleteClient={deleteClient} devis={devis} chantiers={chantiers} echanges={echanges} onSubmit={addClient} couleur={couleur} setPage={setPage} setSelectedChantier={setSelectedChantier} setSelectedDevis={setSelectedDevis} isDark={isDark} modeDiscret={modeDiscret} createMode={createMode.client} setCreateMode={(v) => setCreateMode(p => ({...p, client: v}))} nouveauDevisPour={(clientId) => { setCreateMode(p => ({ ...p, devis: { clientId } })); setPage('devis'); }} nouveauChantierPour={(clientId) => { setCreateMode(p => ({ ...p, chantier: { clientId } })); setPage('chantiers'); }} ouvrirDevis={ouvrirDevis} memos={memos} addMemo={addMemo} updateMemo={updateMemo} deleteMemo={deleteMemo} toggleMemo={toggleMemo} onImportClients={() => { setImportType('clients'); setShowImport(true); }} entreprise={entreprise} />}
               {page === 'catalogue' && <Catalogue entreprise={entreprise} catalogue={catalogue} setCatalogue={setCatalogue} addCatalogueItem={addCatalogueItem} updateCatalogueItem={updateCatalogueItem} deleteCatalogueItem={deleteCatalogueItem} chantiers={chantiers} equipe={equipe} devis={devis} updateDevis={updateDevis} clients={clients} couleur={couleur} isDark={isDark} modeDiscret={modeDiscret} setPage={setPage} />}
-              {page === 'ouvrages' && <BibliothequeOuvrages catalogue={catalogue} ouvragesProp={ouvrages} setOuvragesProp={setOuvrages} addOuvrage={dataAddOuvrage} updateOuvrage={dataUpdateOuvrage} deleteOuvrage={dataDeleteOuvrage} isDark={isDark} couleur={couleur} />}
               {page === 'export' && <FeatureGuard feature="export_comptable"><ExportComptable devis={devis} depenses={depenses} chantiers={chantiers} clients={clients} entreprise={entreprise} isDark={isDark} couleur={couleur} /></FeatureGuard>}
               {page === 'plan' && <PlanPage isDark={isDark} couleur={couleur} setPage={setPage} />}
               {page === 'analytique' && <AnalyticsPremium modeDiscret={modeDiscret} devis={devis} clients={clients} chantiers={chantiers} depenses={depenses} equipe={equipe} paiements={paiements} pointages={pointages} isDark={isDark} couleur={couleur} showToast={showToast} setPage={setPage} />}
@@ -1955,8 +1949,6 @@ export default function App() {
               {page === 'equipe' && <Equipe equipe={equipe} setEquipe={setEquipe} addEmployee={addEmployee} updateEmployee={updateEmployee} deleteEmployee={deleteEmployee} pointages={pointages} setPointages={setPointages} addPointage={addPointage} chantiers={chantiers} planningEvents={planningEvents} couleur={couleur} isDark={isDark} modeDiscret={modeDiscret} setPage={setPage} />}
               {page === 'garanties' &&<GarantiesDashboard isDark={isDark} couleur={couleur} showToast={showToast} user={user} chantiers={chantiers} />}
               {page === 'admin' &&<AdminHelp chantiers={chantiers} clients={clients} devis={devis} depenses={depenses} entreprise={entreprise} isDark={isDark} couleur={couleur} />}
-              {page === 'pricing' && <PricingPage isDark={isDark} couleur={couleur} setPage={setPage} />}
-              {page === 'billing' && <BillingDashboard isDark={isDark} couleur={couleur} />}
               {page === 'checkout-success' && <CheckoutSuccess isDark={isDark} couleur={couleur} setPage={setPage} />}
               {page === 'settings' && <Settings entreprise={entreprise} setEntreprise={setEntreprise} user={user} devis={devis} depenses={depenses} clients={clients} chantiers={chantiers} isDark={isDark} modeDiscret={modeDiscret} couleur={couleur} setPage={setPage} />}
               {page === 'cgv' && <LegalPages page="cgv" isDark={isDark} couleur={couleur} setPage={setPage} />}

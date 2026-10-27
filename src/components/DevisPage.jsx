@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo, Suspense, lazy } from 'react';
-import { Plus, ArrowLeft, Download, Trash2, Send, Mail, MessageCircle, Edit3, Check, X, FileText, Receipt, Clock, Search, ChevronRight, ChevronUp, ChevronDown, Star, Eye, Pen, CreditCard, CheckCircle, AlertTriangle, XCircle, Building2, Copy, TrendingUp, Sparkles, PenTool, Loader2, Link2, Zap, ArrowUpDown, Bell, RotateCcw, BarChart3, BellRing, ClipboardList, LayoutGrid, List, Kanban, Droplets, Paintbrush, Flag, Smartphone }  from 'lucide-react';
+import { Plus, Download, Trash2, Send, Mail, MessageCircle, Edit3, Check, X, FileText, Receipt, Clock, Search, ChevronRight, ChevronUp, ChevronDown, Star, Eye, Pen, CreditCard, CheckCircle, AlertTriangle, XCircle, Building2, Copy, PenTool, Loader2, Link2, Zap, ArrowUpDown, Bell, RotateCcw, BarChart3, BellRing, ClipboardList, LayoutGrid, List, Kanban, Flag, Smartphone }  from 'lucide-react';
 import supabase, { isDemo } from '../supabaseClient';
 import { useSubscriptionStore, PLANS } from '../stores/subscriptionStore';
 const PipelineKanban = lazy(() => import('./pipeline/PipelineKanban'));
@@ -34,12 +34,9 @@ const chargerALaDemande = (importer) => {
 };
 
 const PaymentModal = chargerALaDemande(() => import('./PaymentModal'));
-const TemplateSelector = chargerALaDemande(() => import('./TemplateSelector'));
 const SignaturePad = chargerALaDemande(() => import('./SignaturePad'));
-const SmartTemplateWizard = chargerALaDemande(() => import('./SmartTemplateWizard'));
 const DevisWizard = chargerALaDemande(() => import('./DevisWizard'));
 const DevisComposer = chargerALaDemande(() => import('./DevisComposer'));
-const CatalogBrowser = chargerALaDemande(() => import('./CatalogBrowser'));
 const DevisExpressModal = chargerALaDemande(() => import('./DevisExpressModal'));
 const AvoirCreationModal = chargerALaDemande(() => import('./modals/AvoirCreationModal'));
 import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/Tabs';
@@ -111,7 +108,7 @@ import { imprimerHtml } from '../lib/imprimerHtml';
 import { nomImprime, formeImprimee } from '../lib/identiteEntreprise';
 import { estSociete } from '../lib/mentionsFacture';
 import { profilManquant } from '../lib/profilLegal';
-import { estFranchiseTva, sansTva, franchiseAppliquee, tvaARegulariser, premierTaux, tauxTvaParDefaut, tauxTvaDocument } from '../lib/franchiseTva';
+import { estFranchiseTva, sansTva, franchiseAppliquee, tvaARegulariser, tauxTvaParDefaut, tauxTvaDocument } from '../lib/franchiseTva';
 import { estOuverte, estEnRetard, aTraiter as docATraiter, devisARelancer, joursDepuisEnvoi } from '../lib/ventes';
 import { urlPublique } from '../lib/urlPublique';
 import { FONCTIONS } from '../lib/fonctions';
@@ -163,7 +160,7 @@ export const AVOIR_MOTIFS = {
   autre: 'Autre',
 };
 
-export default function DevisPage({ clients, setClients, addClient, devis, setDevis, chantiers, catalogue, entreprise, onSubmit, onUpdate, onDelete, modeDiscret, selectedDevis, setSelectedDevis, isDark, couleur, createMode, setCreateMode, addChantier, setPage, setSelectedChantier, addEchange, paiements = [], addPaiement, generateNextNumero, aiPrefill, setAiPrefill, editDevisId, setEditDevisId, demande, setDemande }) {
+export default function DevisPage({ clients, addClient, devis, setDevis, chantiers, catalogue, entreprise, onSubmit, onUpdate, onDelete, modeDiscret, selectedDevis, setSelectedDevis, isDark, couleur, createMode, setCreateMode, addChantier, setPage, setSelectedChantier, addEchange, paiements = [], addPaiement, generateNextNumero, editDevisId, setEditDevisId, demande, setDemande }) {
   const { confirm } = useConfirm();
   const { showToast } = useToast();
 
@@ -176,7 +173,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   const { orgId } = useOrg();
 
   // Template operations from DataContext
-  const { customTemplates: ctxTemplates, addTemplate, deleteTemplate: deleteCtxTemplate, templateUsages, trackTemplateUsage, updateClient: ctxUpdateClient } = useData();
+  const { customTemplates: ctxTemplates, addTemplate, templateUsages, trackTemplateUsage, updateClient: ctxUpdateClient } = useData();
 
   // Enrich template usages with actual template data for "recently used" display
   const enrichedRecentTemplates = useMemo(() => {
@@ -223,7 +220,6 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
   // Theme classes
   const cardBg = "bg-surface border-bord";
-  const inputBg = "bg-surface border-bord-fort text-encre placeholder:text-encre-3";
   const textPrimary = "text-encre";
   const textSecondary = "text-encre-2";
   const textMuted = "text-encre-2";
@@ -266,20 +262,13 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   const [viewMode, setViewMode] = useState('cards'); // 'cards' | 'table'
   const [tableSortBy, setTableSortBy] = useState('date'); // date, numero, client, montant, statut
   const [tableSortDir, setTableSortDir] = useState('desc'); // 'asc' | 'desc'
-  const [catalogueSearch, setCatalogueSearch] = useState('');
-  const debouncedCatalogueSearch = useDebounce(catalogueSearch, 300);
   // Centralized modal management - reduces cognitive load
   const {
-    showClientModal, setShowClientModal,
     showAcompteModal, setShowAcompteModal,
-    showPreview, setShowPreview,
     showChantierModal, setShowChantierModal,
     showPdfPreview, setShowPdfPreview,
     showPaymentModal, setShowPaymentModal,
-    showTemplateSelector, setShowTemplateSelector,
-    showSmartWizard, setShowSmartWizard,
     showSignaturePad, setShowSignaturePad,
-    showCatalogBrowser, setShowCatalogBrowser,
   } = useDevisModals();
 
   // DevisWizard uses direct useState (NOT useDevisModals) to avoid centralized modal conflicts
@@ -336,11 +325,7 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   };
   // Montant TTC de la facture d'acompte telle qu'elle sera créée (lignes par taux, arrondies)
   const ttcAcompte = (pct) => calculerTotaux(lignesFactureAcompte(selected, pct, { tauxDefaut: tauxTvaParDefaut(entreprise) }), { tauxDefaut: tauxTvaParDefaut(entreprise), franchise: isMicro }).totalTTC;
-  const [newClient, setNewClient] = useState({ nom: '', telephone: '' });
   const [snackbar, setSnackbar] = useState(null);
-  const canvasRef = useRef(null);
-  const [isDrawing, setIsDrawing] = useState(false);
-  const [signataireName, setSignataireName] = useState('');
   const [actionLoading, setActionLoading] = useState(null); // 'pdf' | 'duplicate' | null
   const [chantierForm, setChantierForm] = useState({ nom: '', adresse: '' });
   const [pdfContent, setPdfContent] = useState('');
@@ -392,8 +377,6 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
   });
   const [templateName, setTemplateName] = useState('');
   const [templateCategory, setTemplateCategory] = useState('Mes modèles');
-  const [showSignatureLinkModal, setShowSignatureLinkModal] = useState(false);
-  const [signatureLinkUrl] = useState(null);
   const [showSendConfirmation, setShowSendConfirmation] = useState(null); // { clientName, montant, canal, doc }
   const [showCreationSuccess, setShowCreationSuccess] = useState(null); // { devis, numero }
 
@@ -432,20 +415,6 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       }
     }
   }, [selected?.id, selected?.echeancier_id]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const [form, setForm] = useState({
-    type: 'devis',
-    clientId: '',
-    chantierId: '',
-    date: jourLocal(),
-    validite: entreprise?.validiteDevis || 30,
-    sections: [{ id: '1', titre: '', lignes: [] }],
-    tvaDefaut: tauxTvaParDefaut(entreprise),
-    remise: 0,
-    retenueGarantie: false, // Retenue de garantie 5% (BTP)
-    conditionsPaiement: entreprise?.conditionsPaiementDefaut || '30_jours',
-    notes: ''
-  });
 
   // Franchise en base (art. 293 B CGI) : aucune TVA sur les documents créés (src/lib/franchiseTva.js)
   const isMicro = estFranchiseTva(entreprise);
@@ -516,29 +485,6 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     setEditDevisId?.(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editDevisId, devis]);
-
-  // AI Prefill: populate form with IA-generated data (devis stays local until user confirms)
-  useEffect(() => {
-    if (!aiPrefill) return;
-    const lignes = (aiPrefill.lignes || []).map((l, i) => ({
-      id: `ia_${i}_${Date.now()}`,
-      description: l.designation || l.description || '',
-      quantite: l.quantite || 1,
-      unite: l.unite || 'u',
-      prixUnitaire: l.prixUnitaire || 0,
-    }));
-    setForm(prev => ({
-      ...prev,
-      type: 'devis',
-      clientId: aiPrefill.client_id || '',
-      tvaDefaut: aiPrefill.tvaRate ?? prev.tvaDefaut,
-      validite: aiPrefill.validite || prev.validite,
-      notes: [aiPrefill.objet || aiPrefill.description || '', aiPrefill.notes || ''].filter(Boolean).join('\n'),
-      sections: [{ id: '1', titre: aiPrefill.objet || aiPrefill.description || '', lignes }],
-    }));
-    setMode('create');
-    setAiPrefill?.(null); // Consume the prefill data
-  }, [aiPrefill, setAiPrefill]);
 
   const statusOrder = { brouillon: 0, envoye: 1, accepte: 2, acompte_facture: 3, facture: 4, payee: 5, refuse: 6 };
 
@@ -711,146 +657,6 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     return ht * (1 + tvaRate / 100);
   };
 
-  // Calcul des totaux avec multi-taux TVA et marge
-  const calculateTotals = () => {
-    let totalHT = 0;
-    let totalCoutAchat = 0;
-    const tvaParTaux = {}; // { 10: { base: 0, montant: 0 }, 20: {...} }
-
-    form.sections.forEach(s => s.lignes.forEach(l => {
-      const montant = getLineTotal(l);
-      const taux = l.tva !== undefined ? l.tva : form.tvaDefaut;
-      const coutAchat = (l.prixAchat || 0) * (l.quantite || 0);
-      totalHT += montant;
-      totalCoutAchat += coutAchat;
-
-      if (!tvaParTaux[taux]) tvaParTaux[taux] = { base: 0, montant: 0 };
-      tvaParTaux[taux].base += montant;
-      tvaParTaux[taux].montant += montant * (taux / 100);
-    }));
-
-    const remiseAmount = totalHT * (form.remise / 100);
-    const htApresRemise = totalHT - remiseAmount;
-
-    // Recalculer TVA après remise (proportionnel)
-    const ratioRemise = totalHT > 0 ? htApresRemise / totalHT : 1;
-    Object.keys(tvaParTaux).forEach(taux => {
-      tvaParTaux[taux].base *= ratioRemise;
-      tvaParTaux[taux].montant *= ratioRemise;
-    });
-
-    const totalTVA = Object.values(tvaParTaux).reduce((s, t) => s + t.montant, 0);
-
-    // Calcul marge
-    const marge = htApresRemise - totalCoutAchat;
-    const tauxMarge = htApresRemise > 0 ? (marge / htApresRemise) * 100 : 0;
-
-    // Retenue de garantie (5% du TTC, applicable aux travaux BTP)
-    const ttcBrut = htApresRemise + (isMicro ? 0 : totalTVA);
-    const retenueGarantie = form.retenueGarantie ? ttcBrut * 0.05 : 0;
-    const ttcNet = ttcBrut - retenueGarantie;
-
-    return {
-      totalHT,
-      totalCoutAchat,
-      remiseAmount,
-      htApresRemise,
-      tvaParTaux,
-      totalTVA: isMicro ? 0 : totalTVA,
-      ttc: ttcBrut,
-      retenueGarantie,
-      ttcNet,
-      marge,
-      tauxMarge
-    };
-  };
-  const totals = calculateTotals();
-
-  // Ajouter ligne avec TVA par défaut
-  const addLigne = (item, sectionId) => {
-    const ligne = { 
-      id: generateId(), 
-      description: item.nom || '', 
-      quantite: 1, 
-      unite: item.unite || 'unité', 
-      prixUnitaire: item.prix || 0, 
-      prixAchat: item.prixAchat || 0, 
-      montant: item.prix || 0,
-      tva: form.tvaDefaut // TVA par ligne
-    };
-    setForm(p => ({ ...p, sections: p.sections.map(s => s.id === sectionId ? { ...s, lignes: [...s.lignes, ligne] } : s) }));
-  };
-
-  const updateLigne = (sectionId, ligneId, field, value) => {
-    setForm(p => ({ ...p, sections: p.sections.map(s => {
-      if (s.id !== sectionId) return s;
-      return { ...s, lignes: s.lignes.map(l => {
-        if (l.id !== ligneId) return l;
-        const updated = { ...l, [field]: value };
-        if (field === 'quantite' || field === 'prixUnitaire') updated.montant = (parseFloat(updated.quantite) || 0) * (parseFloat(updated.prixUnitaire) || 0);
-        return updated;
-      })};
-    })}));
-  };
-
-  const removeLigne = (sectionId, ligneId) => setForm(p => ({ ...p, sections: p.sections.map(s => s.id === sectionId ? { ...s, lignes: s.lignes.filter(l => l.id !== ligneId) } : s) }));
-
-  const moveLigne = (sectionId, ligneIdx, direction) => {
-    setForm(p => ({
-      ...p,
-      sections: p.sections.map(s => {
-        if (s.id !== sectionId) return s;
-        const arr = [...s.lignes];
-        const target = ligneIdx + direction;
-        if (target < 0 || target >= arr.length) return s;
-        [arr[ligneIdx], arr[target]] = [arr[target], arr[ligneIdx]];
-        return { ...s, lignes: arr };
-      })
-    }));
-  };
-
-  // === Sub-items (sous-lignes informatives) ===
-  const addSubItem = (sectionId, ligneId) => {
-    setForm(prev => ({
-      ...prev,
-      sections: prev.sections.map(s => {
-        if (s.id !== sectionId) return s;
-        return { ...s, lignes: s.lignes.map(l => {
-          if (l.id !== ligneId) return l;
-          return { ...l, subItems: [...(l.subItems || []), { id: `sub_${Date.now()}`, description: '', quantite: 1, prixUnitaire: 0 }] };
-        })};
-      })
-    }));
-  };
-
-  const updateSubItem = (sectionId, ligneId, subIdx, field, value) => {
-    setForm(prev => ({
-      ...prev,
-      sections: prev.sections.map(s => {
-        if (s.id !== sectionId) return s;
-        return { ...s, lignes: s.lignes.map(l => {
-          if (l.id !== ligneId) return l;
-          const subItems = [...(l.subItems || [])];
-          subItems[subIdx] = { ...subItems[subIdx], [field]: value };
-          return { ...l, subItems };
-        })};
-      })
-    }));
-  };
-
-  const removeSubItem = (sectionId, ligneId, subIdx) => {
-    setForm(prev => ({
-      ...prev,
-      sections: prev.sections.map(s => {
-        if (s.id !== sectionId) return s;
-        return { ...s, lignes: s.lignes.map(l => {
-          if (l.id !== ligneId) return l;
-          return { ...l, subItems: (l.subItems || []).filter((_, i) => i !== subIdx) };
-        })};
-      })
-    }));
-  };
-
   // Génération numéro unique garanti (format: DEV-2026-00001 / FAC-2026-00001)
   // Version synchrone (fallback local)
   // In-memory cursor for local fallback to prevent race conditions
@@ -877,82 +683,6 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       try { return await generateNextNumero(type); } catch (e) { /* fallback */ }
     }
     return generateNumeroLocal(type);
-  };
-
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const handleCreate = async () => {
-    if (isSubmitting) return; // Guard against double-submit
-    if (!form.clientId) return showToast('Sélectionnez un client', 'error');
-    if (form.sections.every(s => s.lignes.length === 0)) return showToast('Ajoutez des lignes', 'error');
-
-    setIsSubmitting(true);
-    try {
-      const client = clients.find(c => c.id === form.clientId);
-      const numero = await generateNumero(form.type);
-      const docType = form.type;
-
-      const newDevis = await onSubmit({
-        numero,
-        type: form.type,
-        client_id: form.clientId,
-        client_nom: client ? `${client.prenom || ''} ${client.nom}`.trim() : '',
-        chantier_id: form.chantierId,
-        date: form.date,
-        validite: form.validite,
-        statut: 'brouillon',
-        sections: form.sections,
-        lignes: form.sections.flatMap(s => s.lignes),
-        tvaParTaux: totals.tvaParTaux,
-        tvaDetails: totals.tvaParTaux,
-        tvaRate: form.tvaDefaut,
-        remise: form.remise,
-        total_ht: totals.htApresRemise,
-        tva: totals.totalTVA,
-        total_ttc: totals.ttc,
-        retenueGarantie: form.retenueGarantie,
-        retenue_montant: totals.retenueGarantie,
-        ttc_net: totals.ttcNet,
-        marge: totals.marge,
-        tauxMarge: totals.tauxMarge,
-        conditionsPaiement: form.conditionsPaiement,
-        notes: form.notes,
-        ...totauxEnregistres(form.sections.flatMap(s => s.lignes), { remise: form.remise, tauxDefaut: form.tvaDefaut }),
-      });
-
-      // Reset form
-      setForm({
-        type: 'devis',
-        clientId: '',
-        chantierId: '',
-        date: jourLocal(),
-        validite: entreprise?.validiteDevis || 30,
-        sections: [{ id: '1', titre: '', lignes: [] }],
-        tvaDefaut: tauxTvaParDefaut(entreprise),
-        remise: 0,
-        retenueGarantie: false,
-        notes: ''
-      });
-
-      // Redirect to detail view of the created devis
-      if (newDevis?.id) {
-        setSelected(newDevis);
-        setMode('preview');
-        setSnackbar({
-          type: 'success',
-          message: `${docType === 'facture' ? 'Facture' : 'Devis'} ${numero} créé avec succès`
-        });
-      } else {
-        // Fallback to list if no devis returned
-        setMode('list');
-        setSnackbar({ type: 'success', message: `${docType === 'facture' ? 'Facture' : 'Devis'} ${numero} créé` });
-      }
-    } catch (err) {
-      // Error creating devis logged silently
-      showToast(mapError(err), 'error');
-    } finally {
-      setIsSubmitting(false);
-    }
   };
 
   // Dupliquer un devis/facture
@@ -1066,14 +796,6 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     });
   };
 
-  // Canvas signature
-  useEffect(() => { if (mode === 'sign' && canvasRef.current) { const ctx = canvasRef.current.getContext('2d'); ctx.strokeStyle = '#000'; ctx.lineWidth = 2; ctx.lineCap = 'round'; } }, [mode]);
-  const startDraw = (e) => { setIsDrawing(true); const ctx = canvasRef.current?.getContext('2d'); if (!ctx) return; const rect = canvasRef.current.getBoundingClientRect(); ctx.beginPath(); ctx.moveTo((e.touches ? e.touches[0].clientX : e.clientX) - rect.left, (e.touches ? e.touches[0].clientY : e.clientY) - rect.top); };
-  const draw = (e) => { if (!isDrawing) return; e.preventDefault(); const ctx = canvasRef.current?.getContext('2d'); if (!ctx) return; const rect = canvasRef.current.getBoundingClientRect(); ctx.lineTo((e.touches ? e.touches[0].clientX : e.clientX) - rect.left, (e.touches ? e.touches[0].clientY : e.clientY) - rect.top); ctx.stroke(); };
-  const endDraw = () => setIsDrawing(false);
-  const clearCanvas = () => canvasRef.current?.getContext('2d').clearRect(0, 0, 350, 180);
-  const saveSignature = () => { if (!selected) return; onUpdate(selected.id, { signature: canvasRef.current?.toDataURL() || 'signed', signataire: signataireName || '', signatureDate: new Date().toISOString(), statut: 'accepte' }, { silencieux: true }); setMode('list'); setSelected(null); setSignataireName(''); setSnackbar({ type: 'success', message: 'Devis signé et accepté !' }); };
-
   // New signature pad handler (react-signature-canvas)
   const handleSignatureSave = async (signatureData) => {
     if (!selected) return;
@@ -1097,108 +819,6 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       : { type: 'success', message: 'Devis signé et accepté ✓' });
     // Exemplaire signé par e-mail, avec l'accord du client (L221-9) : envoyé aussitôt (tâche confirmation-client)
     if (signatureData.exemplaireParEmail && enregistre !== false) await envoyerExemplaireSigne({ ...selected, ...signe }, { accordDonne: true });
-  };
-
-  // Template selection handler
-  const handleTemplateSelect = (templateData) => {
-    setForm(prev => ({
-      ...prev,
-      sections: [{
-        id: '1',
-        titre: templateData.template.nom,
-        lignes: templateData.lignes
-      }]
-    }));
-    // Track template usage
-    if (templateData.template?.id) {
-      trackTemplateUsage(templateData.template.id);
-    }
-    setSnackbar({ type: 'success', message: `Modèle "${templateData.template.nom}" appliqué` });
-  };
-
-  // Smart Template Wizard handler - creates complete devis from wizard
-  const handleSmartDevisCreate = async (devisData) => {
-    // Validate required data
-    if (!devisData || !devisData.clientId || !devisData.sections?.length) {
-      setSnackbar({ type: 'error', message: 'Données du devis incomplètes' });
-      return;
-    }
-
-    // Generate numero
-    const numero = await generateNumero('devis');
-
-    // Flatten all lines for total calculation and lignes array
-    const allLignes = [];
-    devisData.sections.forEach(section => {
-      if (section?.lignes) {
-        section.lignes.forEach(ligne => {
-          allLignes.push({
-            ...ligne,
-            section: section.titre
-          });
-        });
-      }
-    });
-
-    // Build tvaParTaux from lignes for multi-rate TVA support
-    const tvaParTaux = {};
-    allLignes.forEach(l => {
-      const rate = l.tva !== undefined ? l.tva : premierTaux(devisData.tvaDefaut, tauxTvaParDefaut(entreprise));
-      const montant = (parseFloat(l.quantite) || 1) * (parseFloat(l.prixUnitaire || l.prix_unitaire) || 0);
-      if (!tvaParTaux[rate]) tvaParTaux[rate] = { base: 0, montant: 0 };
-      tvaParTaux[rate].base += montant;
-      tvaParTaux[rate].montant += montant * (rate / 100);
-    });
-
-    // Create the devis object
-    const newDevis = {
-      id: generateId(),
-      numero,
-      type: 'devis',
-      statut: 'brouillon',
-      client_id: devisData.clientId,
-      chantier_id: null,
-      date: devisData.date,
-      validite: devisData.validite,
-      sections: devisData.sections,
-      lignes: allLignes,
-      tvaRate: premierTaux(devisData.tvaDefaut, tauxTvaParDefaut(entreprise)),
-      tvaParTaux,
-      tvaDetails: tvaParTaux,
-      remise: devisData.remise || 0,
-      notes: devisData.notes,
-      total_ht: devisData.total_ht,
-      tva: devisData.total_tva,
-      total_tva: devisData.total_tva,
-      total_ttc: devisData.total_ttc,
-      cout_revient: devisData.cout_revient,
-      marge: devisData.marge,
-      marge_pourcent: devisData.marge_pourcent,
-      template: devisData.template,
-      ...totauxEnregistres(allLignes, { remise: devisData.remise, tauxDefaut: devisData.tvaDefaut }),
-    };
-
-    // Submit the devis
-    const created = await onSubmit(newDevis);
-    if (!created) return; // refus : l'assistant reste ouvert
-
-    // Close wizard and navigate directly to the new devis
-    setShowSmartWizard(false);
-    setSelected(created || newDevis);
-    setMode('preview');
-
-    // Show success notification with action to view
-    setSnackbar({
-      type: 'success',
-      message: `Devis ${numero} cree`,
-      action: {
-        label: 'Voir',
-        onClick: () => {
-          // Already in preview mode, just dismiss snackbar
-          setSnackbar(null);
-        }
-      }
-    });
   };
 
   // Payment creation handler
@@ -2662,31 +2282,6 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
     />
   );
 
-  // === SIGNATURE VIEW ===
-  if (mode === 'sign' && selected) return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-2 sm:gap-4"><button onClick={() => setMode('preview')} className="p-2 hover:bg-slate-100 rounded-xl">←</button><h2 className="text-2xl font-bold">Signature Client</h2></div>
-      <div className="bg-white rounded-2xl border p-6 text-center">
-        <p className="mb-4">Signature pour <strong>{selected.numero}</strong></p>
-        <p className="text-3xl font-bold mb-6" style={{color: couleur}}>{formatMoney(selected.total_ttc)}</p>
-        <input
-          type="text"
-          value={signataireName}
-          onChange={e => setSignataireName(e.target.value)}
-          placeholder="Nom du signataire"
-          className="w-64 mx-auto px-4 py-2 border rounded-lg text-center mb-4 block"
-        />
-        <canvas ref={canvasRef} width={350} height={180} className="border-2 border-dashed rounded-xl mx-auto touch-none" onMouseDown={startDraw} onMouseMove={draw} onMouseUp={endDraw} onMouseLeave={endDraw} onTouchStart={startDraw} onTouchMove={draw} onTouchEnd={endDraw} />
-        <p className="text-sm text-slate-500 mt-2">Dessinez votre signature ci-dessus</p>
-        <div className="flex justify-center gap-4 mt-4">
-          <button onClick={clearCanvas} className="px-6 py-3 bg-slate-100 hover:bg-slate-200 rounded-xl flex items-center gap-1.5 min-h-[44px] transition-colors"><X size={16} />Effacer</button>
-          <button onClick={saveSignature} className="px-6 py-3 rounded-xl flex items-center gap-1.5 min-h-[44px] hover:shadow-lg transition-all bg-accent text-sur-accent"><Check size={16} />Valider</button>
-        </div>
-      </div>
-      <Snackbar />
-    </div>
-  );
-
   // Fenêtre « Sauvegarder comme modèle », montée par la liste ET par la fiche. Avant (recette du 9 oct. 2026), elle
   // n'existait que dans la liste : « Enregistrer comme modèle » du menu de la fiche ne faisait rien.
   const fenetreModele = (
@@ -4131,27 +3726,6 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
           onEcheancierCreated={handleEcheancierCreated}
         />
 
-        {/* Modal Preview */}
-        {showPreview && (
-          <div className="fixed inset-0 bg-black/80 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
-            <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-4xl h-[95vh] sm:h-auto sm:max-h-[90vh] overflow-hidden flex flex-col">
-              <div className="flex items-center justify-between p-4 border-b">
-                <h3 className="font-bold">Aperçu {selected.type === 'facture' ? 'Facture' : 'Devis'}</h3>
-                <div className="flex gap-2">
-                  <button onClick={() => downloadPDF(selected)} className="px-4 py-2 bg-blue-500 text-white rounded-xl"> Télécharger</button>
-                  <button onClick={() => setShowPreview(false)} className="p-2 hover:bg-slate-100 rounded-xl">x</button>
-                </div>
-              </div>
-              <div className="flex-1 overflow-auto p-6 bg-slate-100">
-                <div className="bg-white shadow-lg rounded-lg p-8 max-w-2xl mx-auto">
-                  <div className="text-center mb-6"><p className="text-2xl font-bold" style={{color: couleur}}>{selected.type === 'facture' ? 'FACTURE' : 'DEVIS'}</p><p className="text-slate-500">{selected.numero}</p></div>
-                  <p className="text-sm text-slate-500">Ceci est un aperçu. Cliquez sur "Télécharger" pour obtenir le PDF complet.</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* Créer le chantier du devis : feuille du bas au téléphone (ui/Modal) */}
         <Modal isOpen={!!showChantierModal} onClose={() => setShowChantierModal(false)} size="md">
           <ModalHeader>
@@ -4214,79 +3788,6 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         />
 
         {fenetresEnvoi}
-
-        {showSignatureLinkModal && signatureLinkUrl && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={() => setShowSignatureLinkModal(false)}>
-            <div className={`bg-surface rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md shadow-2xl p-5`} onClick={e => e.stopPropagation()}>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className={`text-lg font-bold text-encre`}>Lien de signature</h3>
-                <button onClick={() => setShowSignatureLinkModal(false)} className={`p-1 rounded-lg hover:bg-surface-2`}>
-                  <X size={20} className="text-encre-3" />
-                </button>
-              </div>
-              <p className={`text-sm mb-4 text-encre-2`}>
-                Partagez ce lien avec votre client pour qu'il puisse signer le devis <strong>{selected?.numero}</strong> en ligne.
-              </p>
-              {/* URL display + copy */}
-              <div className={`flex items-center gap-2 p-3 rounded-xl mb-4 bg-surface-2`}>
-                <input
-                  type="text"
-                  readOnly
-                  value={signatureLinkUrl}
-                  className={`flex-1 text-sm bg-transparent outline-none text-encre-2`}
-                />
-                <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(signatureLinkUrl);
-                    showToast('Lien copié !', 'success');
-                  }}
-                  className="px-3 py-1.5 rounded-lg text-sm font-medium bg-accent text-sur-accent"
-                >
-                  <Copy size={14} />
-                </button>
-              </div>
-              {/* Share buttons */}
-              <div className="flex gap-2">
-                <button
-                  onClick={() => {
-                    const client = clients.find(c => c.id === selected?.client_id);
-                    const phone = telInternational(client?.telephone || '');
-                    const text = `Bonjour, veuillez signer votre devis ${selected?.numero} en ligne :\n${signatureLinkUrl}`;
-                    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`, '_blank');
-                    setShowSignatureLinkModal(false);
-                  }}
-                  className="flex-1 px-3 py-2 rounded-lg text-sm font-medium bg-green-500 hover:bg-green-600 text-white flex items-center justify-center gap-2"
-                >
-                  WhatsApp
-                </button>
-                <button
-                  onClick={() => {
-                    const client = clients.find(c => c.id === selected?.client_id);
-                    const phone = (client?.telephone || '').replace(/\s/g, '');
-                    const text = `Signez votre devis ${selected?.numero}: ${signatureLinkUrl}`;
-                    window.location.href = `sms:${phone}?body=${encodeURIComponent(text)}`;
-                    setShowSignatureLinkModal(false);
-                  }}
-                  className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-2 ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-200 hover:bg-slate-300 text-slate-700'}`}
-                >
-                  SMS
-                </button>
-                <button
-                  onClick={() => {
-                    const client = clients.find(c => c.id === selected?.client_id);
-                    const subject = `Signature devis ${selected?.numero}`;
-                    const body = `Bonjour,%0A%0AVeuillez signer votre devis en ligne :%0A${encodeURIComponent(signatureLinkUrl)}%0A%0ACordialement`;
-                    window.location.href = `mailto:${client?.email || ''}?subject=${subject}&body=${body}`;
-                    setShowSignatureLinkModal(false);
-                  }}
-                  className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-2 ${isDark ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-slate-200 hover:bg-slate-300 text-slate-700'}`}
-                >
-                  Email
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
 
         <CorrectionEncaissementModal
           paiement={correctionDe?.paiement || null}
@@ -4372,511 +3873,6 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
       {devisWizardElement}
       {devisComposerElement}
     </>
-    );
-  }
-
-  // === CREATE VIEW ===
-  if (mode === 'create') {
-    const favoris = catalogue?.filter(c => c.favori) || [];
-    const catalogueFiltered = catalogue?.filter(c => !debouncedCatalogueSearch || c.nom?.toLowerCase().includes(debouncedCatalogueSearch.toLowerCase())) || [];
-    return (
-      <div className="space-y-6">
-        <div className="flex items-center gap-2 sm:gap-4">
-          <button onClick={() => {
-            const hasData = form.clientId || (form.sections?.[0]?.lignes?.length > 0);
-            if (hasData) {
-              if (window.confirm('Abandonner ce devis ? Les données non sauvegardées seront perdues.')) {
-                setMode('list');
-                setForm({ type: 'devis', clientId: '', chantierId: '', date: jourLocal(), validite: entreprise?.validiteDevis || 30, sections: [{ id: '1', titre: '', lignes: [] }], tvaDefaut: (entreprise?.tvaDefaut ?? 10), remise: 0, retenueGarantie: false, conditionsPaiement: entreprise?.conditionsPaiementDefaut || '30_jours', notes: '' });
-              }
-            } else {
-              setMode('list');
-            }
-          }} className={`p-2.5 hover:bg-surface-2 rounded-xl min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors`}><ArrowLeft size={20} /></button>
-          <h2 className={`text-lg sm:text-2xl font-bold ${textPrimary}`}>Nouveau {form.type}</h2>
-          <button
-            onClick={() => {
-              const hasData = form.clientId || (form.sections?.[0]?.lignes?.length > 0);
-              if (hasData) {
-                if (window.confirm('Abandonner ce devis ? Les données non sauvegardées seront perdues.')) {
-                  setMode('list');
-                  setForm({ type: 'devis', clientId: '', chantierId: '', date: jourLocal(), validite: entreprise?.validiteDevis || 30, sections: [{ id: '1', titre: '', lignes: [] }], tvaDefaut: (entreprise?.tvaDefaut ?? 10), remise: 0, retenueGarantie: false, conditionsPaiement: entreprise?.conditionsPaiementDefaut || '30_jours', notes: '' });
-                }
-              } else {
-                setMode('list');
-              }
-            }}
-            className={`text-sm px-3 py-1.5 rounded-lg min-h-[44px] text-encre-3 hover:text-encre-2 hover:bg-surface-2`}
-          >
-            Annuler
-          </button>
-        </div>
-
-        {/* Chemin rapide : Devis Express (guidé, plein largeur) */}
-        <button
-          onClick={() => setShowSmartWizard(true)}
-          className={`w-full p-4 rounded-xl border-2 flex items-center gap-3 transition-all hover:shadow-lg group text-left ${isDark ? 'border-orange-500/50 hover:border-orange-400 bg-gradient-to-r from-orange-900/20 to-amber-900/20' : 'border-orange-300 hover:border-orange-400 bg-gradient-to-r from-orange-50 to-amber-50'}`}
-        >
-          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center bg-gradient-to-br from-orange-500 to-red-500 group-hover:scale-110 transition-transform flex-shrink-0">
-            <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className={`font-semibold ${textPrimary} text-sm sm:text-base`}>Devis Express</p>
-            <p className={`text-xs sm:text-sm ${textMuted}`}>Le plus rapide — devis guidé en 2 clics</p>
-          </div>
-          <ChevronRight size={18} className={`${textMuted} group-hover:translate-x-1 transition-transform flex-shrink-0`} />
-        </button>
-
-        {/* Ou partir d'un modèle métier */}
-        <div>
-          <p className={`text-xs font-medium mb-2 ${textMuted}`}>Ou partir d'un modèle</p>
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-            {[
-              { label: 'Rénovation SDB', icon: Droplets, sections: [{ titre: 'Démolition', items: [{ description: 'Dépose sanitaires existants' }, { description: 'Démolition carrelage mural et sol' }] }, { titre: 'Plomberie', items: [{ description: 'Alimentation eau chaude/froide' }, { description: 'Évacuation' }] }, { titre: 'Carrelage', items: [{ description: 'Pose carrelage sol' }, { description: 'Pose faïence murale' }] }, { titre: 'Sanitaires', items: [{ description: 'Pose douche italienne' }, { description: 'Pose meuble vasque' }, { description: 'Pose WC suspendu' }] }] },
-              { label: 'Peinture', icon: Paintbrush, sections: [{ titre: 'Préparation', items: [{ description: 'Protection sols et meubles' }, { description: 'Lessivage murs' }, { description: 'Rebouchage fissures' }] }, { titre: 'Peinture', items: [{ description: 'Peinture murs 2 couches' }, { description: 'Peinture plafond' }, { description: 'Peinture boiseries' }] }] },
-              { label: 'Électricité', icon: Zap, sections: [{ titre: 'Installation', items: [{ description: 'Pose tableau électrique' }, { description: 'Tirage de câbles' }, { description: 'Pose prises et interrupteurs' }, { description: 'Pose éclairages' }] }] },
-              { label: 'Devis vierge', icon: FileText, sections: [{ titre: 'Prestations', items: [] }] },
-            ].map(tpl => (
-              <button
-                key={tpl.label}
-                onClick={() => {
-                  const sections = tpl.sections.map(s => ({
-                    id: `sec_${Date.now()}_${Math.random().toString(36).slice(2,6)}`,
-                    titre: s.titre,
-                    lignes: s.items.map(item => ({
-                      id: `item_${Date.now()}_${Math.random().toString(36).slice(2,6)}`,
-                      description: item.description || '',
-                      quantite: 1,
-                      unite: 'u',
-                      prixUnitaire: 0,
-                      tva: form.tvaDefaut ?? 10,
-                      subItems: [],
-                    })),
-                  }));
-                  setForm(prev => ({ ...prev, sections }));
-                  showToast?.(`Modèle "${tpl.label}" chargé`, 'success');
-                }}
-                className={`p-3 rounded-xl border text-center transition-all hover:shadow-md border-bord hover:border-bord-fort bg-surface`}
-              >
-                <tpl.icon size={20} className="mx-auto mb-1" style={{ color: couleur }} />
-                <p className={`text-xs font-medium ${textPrimary}`}>{tpl.label}</p>
-              </button>
-            ))}
-            {/* Accès au sélecteur de modèles complet (bibliothèque + enregistrés) */}
-            <button
-              onClick={() => setShowTemplateSelector(true)}
-              className={`p-3 rounded-xl border border-dashed text-center transition-all hover:shadow-md ${isDark ? 'border-slate-600 hover:border-slate-500 bg-slate-800' : 'border-slate-300 hover:border-slate-400 bg-white'}`}
-            >
-              <FileText size={20} className={`mx-auto mb-1 ${textMuted}`} />
-              <p className={`text-xs font-medium ${textMuted}`}>Autres modèles</p>
-            </button>
-          </div>
-        </div>
-
-        <div className={`${cardBg} rounded-xl sm:rounded-2xl border p-4 sm:p-6 space-y-4 sm:space-y-6`}>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
-            <div><label className={`block text-sm mb-1 ${textPrimary}`}>Type</label><select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.type} onChange={e => setForm(p => ({...p, type: e.target.value}))}><option value="devis">Devis</option><option value="facture">Facture</option></select></div>
-            <div><label className={`block text-sm mb-1 ${textPrimary}`}>Client *</label><div className="flex gap-2"><select className={`flex-1 min-w-0 px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.clientId} onChange={e => setForm(p => ({...p, clientId: e.target.value}))}><option value="">Choisir...</option>{clients.map(c => <option key={c.id} value={c.id}>{c.nom}</option>)}</select><button onClick={() => setShowClientModal(true)} aria-label="Nouveau client" title="Nouveau client" className="px-3 py-2 rounded-xl min-h-[44px] flex items-center justify-center flex-shrink-0 hover:shadow-md transition-all text-accent-texte" style={{background: `${couleur}20`}}><Plus size={18} /></button></div></div>
-            <div><label className={`block text-sm mb-1 ${textPrimary}`}>Chantier</label><select className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.chantierId} onChange={e => setForm(p => ({...p, chantierId: e.target.value}))}><option value="">Aucun</option>{chantiers.map(c => <option key={c.id} value={c.id}>{c.nom}</option>)}</select></div>
-            <div><label className={`block text-sm mb-1 ${textPrimary}`}>Date</label><input type="date" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.date} onChange={e => setForm(p => ({...p, date: e.target.value}))} /></div>
-          </div>
-          
-          {/* TVA par défaut - Quick Buttons pour Jean-Marc fatigue */}
-          <div className={`p-3 bg-fond rounded-xl`}>
-            <div className="flex flex-wrap items-center gap-3">
-              <span className={`text-sm ${textMuted}`}>TVA:</span>
-              <div className="flex gap-2 flex-wrap">
-                {[
-                  { value: 20, label: '20%', sub: 'normal' },
-                  { value: 10, label: '10%', sub: 'renovation' },
-                  { value: 5.5, label: '5,5%', sub: 'eco-reno' },
-                  { value: 0, label: '0%', sub: 'exonere' }
-                ].map(opt => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => setForm(p => ({...p, tvaDefaut: opt.value}))}
-                    className={`px-3 py-2 rounded-xl text-sm font-medium transition-all min-h-[44px] ${
-                      form.tvaDefaut === opt.value
-                        ? 'text-white shadow-lg scale-[1.02]'
-                        : isDark
-                          ? 'bg-slate-600 text-slate-300 hover:bg-slate-500'
-                          : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
-                    }`}
-                    style={form.tvaDefaut === opt.value ? { backgroundColor: couleur } : {}}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-              {isMicro && <span className={`text-xs px-2 py-1 rounded ${isDark ? 'text-blue-400 bg-blue-900/50' : 'text-blue-600 bg-blue-100'}`}>Franchise en base de TVA</span>}
-            </div>
-          </div>
-          
-          {favoris.length >= 3 && <div className={`rounded-xl p-4 border ${isDark ? 'bg-amber-900/30 border-amber-700' : 'bg-amber-50 border-amber-100'}`}><p className={`text-sm font-medium mb-2 ${textPrimary}`}>⭐ Favoris</p><div className="flex gap-2 flex-wrap overflow-x-auto pb-1">{favoris.map(item => <button key={item.id} onClick={() => addLigne(item, form.sections[0].id)} className={`px-3 py-2 border rounded-lg text-sm transition-all ${isDark ? 'bg-slate-700 hover:bg-slate-600 border-slate-600 hover:border-amber-500 hover:shadow-md hover:-translate-y-0.5 active:scale-95' : 'bg-white hover:bg-amber-50 border-slate-200 hover:border-amber-300 hover:shadow-md hover:-translate-y-0.5 active:scale-95'}`}><span className={textPrimary}>{item.nom}</span> <span className="text-amber-600 font-semibold">{item.prix}€</span></button>)}</div></div>}
-          {/* Catalogue section with visual browser button */}
-          <div className="space-y-3">
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <Search size={18} className={`absolute left-3 top-1/2 -translate-y-1/2 ${textMuted}`} />
-                <input
-                  placeholder="Rechercher dans le catalogue..."
-                  aria-label="Rechercher dans le catalogue"
-                  value={catalogueSearch}
-                  onChange={e => setCatalogueSearch(e.target.value)}
-                  className={`w-full pl-10 pr-4 py-2.5 border rounded-xl ${inputBg}`}
-                />
-              </div>
-              <button
-                onClick={() => setShowCatalogBrowser(true)}
-                className="px-4 py-2.5 rounded-xl font-medium flex items-center gap-2 transition-all hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] text-accent-texte"
-                style={{ backgroundColor: `${couleur}15`, border: `1px solid ${couleur}30` }}
-              >
-                <Sparkles size={18} />
-                <span className="hidden sm:inline">Parcourir</span>
-              </button>
-            </div>
-            {catalogueSearch && (
-              <div className={`border rounded-xl max-h-40 overflow-y-auto border-bord bg-surface`}>
-                {catalogueFiltered.map(item => (
-                  <button
-                    key={item.id}
-                    onClick={() => { addLigne(item, form.sections[0].id); setCatalogueSearch(''); }}
-                    className={`w-full flex justify-between px-4 py-2 hover:bg-surface-2 border-b last:border-0 text-left`}
-                  >
-                    <span>{item.nom}</span>
-                    <span className="text-slate-500">{item.prix}€/{item.unite}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-          
-          {/* Lignes du devis - Cards pour mobile, compact pour desktop */}
-          {form.sections.map(section => (
-            <div key={section.id} className="space-y-3">
-              {/* Header with count */}
-              <div className="flex items-center justify-between">
-                <p className={`text-sm font-medium ${textMuted}`}>
-                  {section.lignes.length} ligne{section.lignes.length > 1 ? 's' : ''} • Total: {(section.lignes.reduce((s, l) => s + getLineTotal(l), 0)).toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
-                </p>
-              </div>
-
-              {/* Line items as cards */}
-              <div className="space-y-3">
-                {section.lignes.map((l, idx) => (
-                  <div
-                    key={l.id}
-                    className={`border-2 rounded-xl p-4 transition-all hover:shadow-md border-bord bg-surface`}
-                  >
-                    {/* Top row: Description + Total + Delete */}
-                    <div className="flex items-start gap-3 mb-3">
-                      <div className="flex-1">
-                        <input
-                          value={l.description}
-                          onChange={e => updateLigne(section.id, l.id, 'description', e.target.value)}
-                          placeholder="Description de l'article..."
-                          className={`w-full px-3 py-2 border rounded-lg font-medium ${inputBg}`}
-                        />
-                      </div>
-                      <div className="text-right flex-shrink-0">
-                        <p className="text-lg font-bold tabular-nums transition-all text-accent-texte">
-                          {getLineTotal(l).toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €
-                        </p>
-                        <p className={`text-xs ${textMuted}`}>HT</p>
-                      </div>
-                      <div className="flex flex-col gap-0.5">
-                        {idx > 0 && (
-                          <button onClick={() => moveLigne(section.id, idx, -1)} className={`p-1 rounded transition-colors hover:bg-surface-2 text-encre-3`} aria-label="Monter la ligne">
-                            <ChevronUp size={14} />
-                          </button>
-                        )}
-                        {idx < section.lignes.length - 1 && (
-                          <button onClick={() => moveLigne(section.id, idx, 1)} className={`p-1 rounded transition-colors hover:bg-surface-2 text-encre-3`} aria-label="Descendre la ligne">
-                            <ChevronDown size={14} />
-                          </button>
-                        )}
-                      </div>
-                      <button
-                        onClick={() => removeLigne(section.id, l.id)}
-                        className={`p-2 rounded-lg transition-colors ${isDark ? 'hover:bg-red-900/30 text-red-400' : 'hover:bg-red-50 text-red-400 hover:text-red-600'}`}
-                        aria-label="Supprimer la ligne"
-                      >
-                        <X size={18} />
-                      </button>
-                    </div>
-
-                    {/* Bottom row: Qty stepper + Unit + Price + TVA buttons */}
-                    <div className="flex flex-wrap items-center gap-3">
-                      {/* Quantity with stepper */}
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => updateLigne(section.id, l.id, 'quantite', Math.max(0, (l.quantite || 0) - 1))}
-                          className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'}`}
-                          aria-label="Diminuer la quantité"
-                        >
-                          <span className="text-lg font-bold">−</span>
-                        </button>
-                        <input
-                          type="number"
-                          value={l.quantite || ''}
-                          onChange={e => updateLigne(section.id, l.id, 'quantite', e.target.value === '' ? 0 : parseFloat(e.target.value) || 0)}
-                          className={`w-14 h-8 px-2 border rounded-lg text-center font-medium ${inputBg}`}
-                        />
-                        <button
-                          onClick={() => updateLigne(section.id, l.id, 'quantite', (l.quantite || 0) + 1)}
-                          className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'}`}
-                          aria-label="Augmenter la quantité"
-                        >
-                          <span className="text-lg font-bold">+</span>
-                        </button>
-                      </div>
-
-                      {/* Unit */}
-                      <input
-                        value={l.unite}
-                        onChange={e => updateLigne(section.id, l.id, 'unite', e.target.value)}
-                        className={`w-16 h-8 px-2 border rounded-lg text-center text-sm ${inputBg}`}
-                        placeholder="unité"
-                      />
-
-                      <span className={`${textMuted}`}>×</span>
-
-                      {/* Price */}
-                      <div className="flex items-center gap-1">
-                        <input
-                          type="number"
-                          value={l.prixUnitaire || ''}
-                          onChange={e => updateLigne(section.id, l.id, 'prixUnitaire', e.target.value === '' ? 0 : parseFloat(e.target.value) || 0)}
-                          className={`w-20 sm:w-24 h-8 px-2 border rounded-lg text-right font-medium text-sm sm:text-base ${inputBg}`}
-                          placeholder="Prix"
-                          inputMode="decimal"
-                        />
-                        <span className={`text-sm ${textMuted}`}>€</span>
-                      </div>
-
-                      {/* TVA quick buttons */}
-                      <div className="flex items-center gap-1 ml-auto">
-                        <span className={`text-xs ${textMuted} mr-1`}>TVA:</span>
-                        {[20, 10, 5.5, 0].map(tvaOpt => {
-                          const currentTva = l.tva !== undefined ? l.tva : form.tvaDefaut;
-                          const isSelected = currentTva === tvaOpt;
-                          return (
-                            <button
-                              key={tvaOpt}
-                              onClick={() => updateLigne(section.id, l.id, 'tva', tvaOpt)}
-                              className={`px-2 py-1 rounded-md text-xs font-medium transition-all ${
-                                isSelected
-                                  ? 'text-white shadow-sm'
-                                  : isDark
-                                    ? 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                              }`}
-                              style={isSelected ? { backgroundColor: couleur } : {}}
-                            >
-                              {tvaOpt === 5.5 ? '5,5' : tvaOpt}%
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    {/* Sous-lignes (informatives, non comptées dans le total) */}
-                    {(l.subItems || []).length > 0 && (
-                      <div className="pl-8 mt-2 space-y-1.5">
-                        {l.subItems.map((sub, subIdx) => (
-                          <div key={sub.id} className={`flex items-center gap-2 py-1.5 px-3 rounded-lg bg-fond`}>
-                            <span className={`text-xs ${textMuted}`}>↳</span>
-                            <input
-                              value={sub.description}
-                              onChange={e => updateSubItem(section.id, l.id, subIdx, 'description', e.target.value)}
-                              placeholder="Détail..."
-                              className={`flex-1 px-2 py-1 border rounded text-xs ${inputBg}`}
-                            />
-                            <input
-                              type="number"
-                              value={sub.quantite || ''}
-                              onChange={e => updateSubItem(section.id, l.id, subIdx, 'quantite', e.target.value === '' ? 0 : parseFloat(e.target.value) || 0)}
-                              className={`w-14 px-2 py-1 border rounded text-xs text-center ${inputBg}`}
-                              placeholder="Qté"
-                            />
-                            <input
-                              type="number"
-                              value={sub.prixUnitaire || ''}
-                              onChange={e => updateSubItem(section.id, l.id, subIdx, 'prixUnitaire', e.target.value === '' ? 0 : parseFloat(e.target.value) || 0)}
-                              className={`w-20 px-2 py-1 border rounded text-xs text-right ${inputBg}`}
-                              placeholder="Prix"
-                            />
-                            <span className={`text-xs ${textMuted}`}>€</span>
-                            <button
-                              onClick={() => removeSubItem(section.id, l.id, subIdx)}
-                              className={`p-1 rounded transition-colors ${isDark ? 'hover:bg-red-900/30 text-red-400' : 'hover:bg-red-50 text-red-400 hover:text-red-600'}`}
-                              aria-label="Supprimer la sous-ligne"
-                            >
-                              <X size={14} />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    <button
-                      onClick={() => addSubItem(section.id, l.id)}
-                      className={`mt-1 ml-8 text-xs px-2 py-1 rounded-lg transition-colors text-encre-3 hover:text-encre-2 hover:bg-surface-2`}
-                    >
-                      + Sous-ligne
-                    </button>
-                  </div>
-                ))}
-              </div>
-
-              {/* Add line button */}
-              <button
-                onClick={() => addLigne({ nom: '', prix: 0, unite: 'unité' }, section.id)}
-                className={`w-full py-3 border-2 rounded-xl flex items-center justify-center gap-2 transition-all hover:shadow-md ${isDark ? 'border-slate-600 hover:border-slate-500 hover:bg-slate-800' : 'border-slate-300 hover:border-slate-400 hover:bg-slate-50'}`}
-              >
-                <Plus size={18} className="text-accent-texte" />
-                <span className="font-medium text-accent-texte">Ajouter une ligne</span>
-              </button>
-              {/* B2: Inline error when no lines */}
-              {section.lignes.length === 0 && (
-                <p className={`text-xs font-medium flex items-center gap-1.5 mt-1 ${isDark ? 'text-red-400' : 'text-red-600'}`}>
-                  <AlertTriangle size={12} /> Ajoutez au moins une prestation pour calculer le montant total
-                </p>
-              )}
-            </div>
-          ))}
-          
-          {/* Options */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <div><label className={`block text-sm mb-1 ${textPrimary}`}>Remise globale %</label><input type="number" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.remise} onChange={e => setForm(p => ({...p, remise: parseFloat(e.target.value) || 0}))} /></div>
-            <div><label className={`block text-sm mb-1 ${textPrimary}`}>Validité (jours)</label><input type="number" className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} value={form.validite} onChange={e => setForm(p => ({...p, validite: e.target.value.replace(/\D/g, '')}))} onBlur={() => setForm(p => ({ ...p, validite: parseInt(p.validite, 10) > 0 ? parseInt(p.validite, 10) : 30 }))} /></div>
-            <div>
-              <label className={`block text-sm mb-1 ${textPrimary}`}>Conditions de paiement</label>
-              <select value={form.conditionsPaiement} onChange={e => setForm(p => ({...p, conditionsPaiement: e.target.value}))} className={`w-full px-3 py-2.5 border rounded-xl ${inputBg}`}>
-                {Object.entries(CONDITIONS_PAIEMENT).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className={`block text-sm mb-1 ${textPrimary}`}>Retenue de garantie</label>
-              <label className={`flex items-center gap-3 px-4 py-2.5 border rounded-xl cursor-pointer ${form.retenueGarantie ? (isDark ? 'border-amber-500 bg-amber-900/20' : 'border-amber-400 bg-amber-50') : inputBg}`}>
-                <input type="checkbox" checked={form.retenueGarantie} onChange={e => setForm(p => ({...p, retenueGarantie: e.target.checked}))} className="w-4 h-4 rounded" />
-                <span className={`text-sm ${textPrimary}`}>5% (BTP)</span>
-              </label>
-            </div>
-          </div>
-          
-          {/* Totaux avec multi-TVA et marge */}
-          <div className="flex flex-col sm:flex-row justify-end gap-4">
-            {/* Aperçu marge (visible seulement pour l'artisan, pas sur le PDF) */}
-            {!modeDiscret && totals.totalCoutAchat > 0 && (
-              <div className={`w-full sm:w-64 p-4 rounded-xl border ${totals.marge >= 0 ? (isDark ? 'bg-emerald-900/20 border-emerald-800' : 'bg-emerald-50 border-emerald-200') : (isDark ? 'bg-red-900/20 border-red-800' : 'bg-red-50 border-red-200')}`}>
-                <div className="flex items-center gap-2 mb-2">
-                  <TrendingUp size={16} className={totals.marge >= 0 ? 'text-emerald-500' : 'text-red-500'} />
-                  <span className={`text-sm font-medium ${textPrimary}`}>Votre marge</span>
-                  <span className={`text-xs px-1.5 py-0.5 rounded ${isDark ? 'bg-slate-600 text-slate-300' : 'bg-slate-200 text-slate-600'}`}>privé</span>
-                </div>
-                <div className="space-y-1">
-                  <div className={`flex justify-between text-sm ${textSecondary}`}>
-                    <span>Coût d'achat</span>
-                    <span>{modeDiscret ? '·····' : formatMoney(totals.totalCoutAchat)}</span>
-                  </div>
-                  <div className={`flex justify-between font-medium ${totals.marge >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                    <span>Marge brute</span>
-                    <span>{modeDiscret ? '·····' : formatMoney(totals.marge)}</span>
-                  </div>
-                  <div className={`flex justify-between text-sm ${totals.marge >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                    <span>Taux de marge</span>
-                    <span>{modeDiscret ? '··' : totals.tauxMarge.toFixed(1)}%</span>
-                  </div>
-                </div>
-                {totals.tauxMarge < 20 && totals.tauxMarge >= 0 && (
-                  <p className={`text-xs mt-2 ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>Marge faible - verifiez vos prix</p>
-                )}
-                {totals.marge < 0 && (
-                  <p className={`text-xs mt-2 ${isDark ? 'text-red-400' : 'text-red-600'}`}>Attention: marge negative!</p>
-                )}
-              </div>
-            )}
-            <div className={`w-full sm:w-72 p-4 rounded-xl bg-fond`}>
-              <div className={`flex justify-between py-1 ${textPrimary}`}><span>Total HT</span><span>{formatMoney(totals.totalHT)}</span></div>
-              {form.remise > 0 && <div className="flex justify-between py-1 text-red-500"><span>Remise {form.remise}%</span><span>-{formatMoney(totals.remiseAmount)}</span></div>}
-              {!isMicro && Object.entries(totals.tvaParTaux).filter(([_, data]) => data.base > 0).sort((a, b) => parseFloat(a[0]) - parseFloat(b[0])).map(([taux, data]) => (
-                <div key={taux} className={`flex justify-between py-1 text-sm ${textSecondary}`}>
-                  <span>TVA {pourcent(taux)}</span>
-                  <span>{formatMoney(data.montant)}</span>
-                </div>
-              ))}
-              {isMicro && <div className={`text-xs py-1 ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>TVA non applicable (art. 293B CGI)</div>}
-              <div className={`flex justify-between py-2 border-t font-bold mt-1 border-bord text-accent-texte`}><span>Total TTC</span><span>{formatMoney(totals.ttc)}</span></div>
-              {form.retenueGarantie && (
-                <>
-                  <div className={`flex justify-between py-1 text-sm ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>
-                    <span>Retenue garantie 5%</span>
-                    <span>-{formatMoney(totals.retenueGarantie)}</span>
-                  </div>
-                  <div className={`flex justify-between py-1 font-medium ${textPrimary}`}>
-                    <span>Net à payer</span>
-                    <span>{formatMoney(totals.ttcNet)}</span>
-                  </div>
-                  <p className={`text-xs mt-1 ${textMuted}`}>Retenue libérée après 1 an</p>
-                </>
-              )}
-            </div>
-          </div>
-          
-          {/* Sticky Footer with Save Actions */}
-        </div>
-        <div className={`sticky bottom-0 left-0 right-0 p-4 border-t shadow-lg bg-surface border-bord`}>
-          <div className="flex flex-col sm:flex-row justify-between items-center gap-3 max-w-full">
-            <div className={`text-sm ${textMuted} hidden sm:block`}>
-              {form.sections[0]?.lignes?.length || 0} ligne{(form.sections[0]?.lignes?.length || 0) > 1 ? 's' : ''} • Total: <span className="font-bold text-accent-texte">{formatMoney(totals.ttc)}</span>
-            </div>
-            <div className="flex flex-wrap justify-center sm:justify-end gap-2 sm:gap-3">
-              <button onClick={() => setMode('list')} className={`px-4 py-2.5 rounded-xl flex items-center gap-1.5 min-h-[44px] transition-colors ${isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'}`}>
-                <X size={16} />
-                <span>Annuler</span>
-              </button>
-              <button onClick={() => { handleCreate(); }} disabled={isSubmitting} className={`px-5 py-2.5 rounded-xl flex items-center gap-1.5 min-h-[44px] transition-all font-medium disabled:opacity-50 border border-bord-fort text-encre-2 hover:bg-surface-2`}>
-                <FileText size={16} />
-                <span>Enregistrer brouillon</span>
-              </button>
-              <button onClick={() => { handleCreate(); }} disabled={isSubmitting} className="px-6 py-2.5 text-white rounded-xl flex items-center gap-2 min-h-[44px] hover:shadow-lg transition-all font-semibold disabled:opacity-50" style={{background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)`}}>
-                <Check size={18} />
-                <span>{isSubmitting ? 'Création...' : `Créer le ${form.type}`}</span>
-              </button>
-            </div>
-          </div>
-        </div>
-        {showClientModal && <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4"><div className={`${cardBg} rounded-t-2xl sm:rounded-2xl p-6 w-full sm:max-w-md`}><h3 className="font-bold mb-4">Nouveau client</h3><div className="space-y-4"><input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Nom *" value={newClient.nom} onChange={e => setNewClient(p => ({...p, nom: e.target.value}))} /><input className={`w-full px-4 py-2.5 border rounded-xl ${inputBg}`} placeholder="Téléphone" value={newClient.telephone} onChange={e => setNewClient(p => ({...p, telephone: e.target.value}))} /></div><div className="flex justify-end gap-3 mt-6"><button onClick={() => setShowClientModal(false)} className={`px-4 py-2 rounded-xl bg-surface-2`}>Annuler</button><button onClick={() => { if (newClient.nom) { const c = { id: generateId(), ...newClient }; setClients(prev => [...prev, c]); setForm(p => ({...p, clientId: c.id})); setShowClientModal(false); setNewClient({ nom: '', telephone: '' }); }}} className="px-4 py-2 rounded-xl bg-accent text-sur-accent">Créer</button></div></div></div>}
-
-        {/* Template Selector Modal - also needed in create mode */}
-        <TemplateSelector
-          isOpen={showTemplateSelector}
-          onClose={() => setShowTemplateSelector(false)}
-          onSelectTemplate={handleTemplateSelect}
-          customTemplates={ctxTemplates}
-          onDeleteTemplate={(id) => {
-            deleteCtxTemplate(id);
-            showToast('Modèle supprimé', 'success');
-          }}
-          isDark={isDark}
-          couleur={couleur}
-        />
-
-        {/* Smart Template Wizard - also needed in create mode */}
-        <SmartTemplateWizard
-          isOpen={showSmartWizard}
-          onClose={() => setShowSmartWizard(false)}
-          onCreateDevis={handleSmartDevisCreate}
-          clients={clients}
-          addClient={addClient}
-          entreprise={entreprise}
-          isDark={isDark}
-          couleur={couleur}
-        />
-
-        <Snackbar />
-      </div>
     );
   }
 
@@ -5471,32 +4467,6 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
 
       {fenetreModele}
 
-      {/* Template Selector Modal */}
-      <TemplateSelector
-        isOpen={showTemplateSelector}
-        onClose={() => setShowTemplateSelector(false)}
-        onSelectTemplate={handleTemplateSelect}
-        customTemplates={ctxTemplates}
-        onDeleteTemplate={(id) => {
-          deleteCtxTemplate(id);
-          showToast('Modèle supprimé', 'success');
-        }}
-        isDark={isDark}
-        couleur={couleur}
-      />
-
-      {/* Smart Template Wizard - 2-click devis creation */}
-      <SmartTemplateWizard
-        isOpen={showSmartWizard}
-        onClose={() => setShowSmartWizard(false)}
-        onCreateDevis={handleSmartDevisCreate}
-        clients={clients}
-        addClient={addClient}
-        entreprise={entreprise}
-        isDark={isDark}
-        couleur={couleur}
-      />
-
       {/* Devis Wizard - uses extracted variable (shared with preview mode) */}
       {devisWizardElement}
       {/* Devis Composer - nouveau parcours single-canvas (shared with preview mode) */}
@@ -5510,20 +4480,6 @@ export default function DevisPage({ clients, setClients, addClient, devis, setDe
         document={selected}
         client={selected ? clients.find(c => c.id === selected.client_id) : null}
         entreprise={entreprise}
-        isDark={isDark}
-        couleur={couleur}
-      />
-
-      {/* Catalog Browser Modal */}
-      <CatalogBrowser
-        isOpen={showCatalogBrowser}
-        onClose={() => setShowCatalogBrowser(false)}
-        catalogue={catalogue}
-        onSelectItem={(item) => {
-          if (mode === 'create' && form.sections?.[0]?.id) {
-            addLigne(item, form.sections[0].id);
-          }
-        }}
         isDark={isDark}
         couleur={couleur}
       />
