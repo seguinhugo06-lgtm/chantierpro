@@ -563,7 +563,7 @@ export default function ClientPortal({
   if (loading) {
     return (
       <div className="min-h-screen bg-[#f5f5f5] flex flex-col items-center justify-center gap-4">
-        <Loader2 className="w-10 h-10 animate-spin" style={{ color: couleurProp || '#f97316' }} />
+        <Loader2 className={`w-10 h-10 animate-spin${couleurProp ? '' : ' text-encre-3'}`} style={couleurProp ? { color: couleurProp } : undefined} aria-hidden="true" />
         <p className="text-slate-600 text-sm">Chargement de votre espace client...</p>
       </div>
     );

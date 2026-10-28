@@ -42,7 +42,7 @@ export default function PortalLoader(props) {
   if (loading) {
     return (
       <div className="min-h-screen bg-[#f5f5f5] flex items-center justify-center">
-        <Building2 size={48} className="text-orange-500 animate-bounce" />
+        <Building2 size={48} className="text-encre-3 animate-bounce" aria-hidden="true" />
       </div>
     );
   }
@@ -51,7 +51,7 @@ export default function PortalLoader(props) {
     return (
       <div className="min-h-screen bg-[#f5f5f5] flex items-center justify-center">
         <div className="text-center p-8 max-w-md">
-          <Building2 size={48} className="text-orange-500 mx-auto mb-4" />
+          <Building2 size={48} className="text-encre-3 mx-auto mb-4" aria-hidden="true" />
           <h2 className="text-xl font-bold text-slate-800 mb-2">
             Espace client indisponible
           </h2>
@@ -61,7 +61,7 @@ export default function PortalLoader(props) {
           </p>
           <button
             onClick={() => window.location.reload()}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-orange-500 text-white rounded-xl font-medium hover:bg-orange-600 transition-colors shadow-lg"
+            className="inline-flex items-center gap-2 px-6 py-3 min-h-[44px] bg-accent text-sur-accent rounded-full font-medium hover:opacity-90 transition-opacity shadow-e1"
           >
             <RefreshCw size={18} />
             Recharger la page

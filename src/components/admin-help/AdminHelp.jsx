@@ -91,16 +91,9 @@ export default function AdminHelp({
   const cardBg = 'bg-surface';
   const borderColor = 'border-bord';
 
-  // Calcul échéances proches (exemple statique - à connecter aux vraies données)
-  const today = new Date();
-  const deadlines = [
-    { id: 1, title: 'DSN Janvier', date: '2026-02-05', type: 'social' },
-    { id: 2, title: 'TVA T4 2025', date: '2026-01-20', type: 'fiscal' },
-    { id: 3, title: 'Renouvellement décennale', date: '2026-03-15', type: 'assurance' },
-  ].map(d => ({
-    ...d,
-    daysLeft: Math.ceil((new Date(d.date) - today) / (1000 * 60 * 60 * 24)),
-  })).sort((a, b) => a.daysLeft - b.daysLeft);
+  // Aucune échéance n'est encore tirée des données de l'artisan : la liste reste vide plutôt que d'afficher
+  // des exemples inventés (trois dates de début 2026 s'affichaient « dépassées », dont une fausse décennale en retard)
+  const deadlines = [];
 
   // Upcoming alerts based on settings
   const activeAlerts = useMemo(() => {
@@ -276,6 +269,9 @@ export default function AdminHelp({
                   Voir tout
                 </button>
               </div>
+              {deadlines.length === 0 && (
+                <p className={`text-sm ${textMuted}`}>Aucune échéance enregistrée pour votre entreprise. Le calendrier rappelle les grandes dates fiscales et sociales.</p>
+              )}
               <div className="space-y-2">
                 {deadlines.slice(0, 3).map(d => {
                   const urgency = getUrgencyStyle(d.daysLeft);

@@ -144,7 +144,7 @@ export default function PublicPaymentPage({ payToken }) {
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center gap-4 p-4">
-        <Loader2 className="w-10 h-10 animate-spin text-orange-500" />
+        <Loader2 className="w-10 h-10 animate-spin text-encre-3" aria-hidden="true" />
         <p className="text-slate-600 text-sm">Chargement de votre facture...</p>
       </div>
     );

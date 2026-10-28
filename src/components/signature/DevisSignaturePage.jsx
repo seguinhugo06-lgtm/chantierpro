@@ -217,7 +217,7 @@ export default function DevisSignaturePage({ signatureToken }) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="w-10 h-10 animate-spin mx-auto mb-4" style={{ color: '#f97316' }} />
+          <Loader2 className="w-10 h-10 animate-spin mx-auto mb-4 text-encre-3" aria-hidden="true" />
           <p className="text-slate-600">Chargement du devis...</p>
         </div>
       </div>
