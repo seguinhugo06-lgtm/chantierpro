@@ -94,7 +94,7 @@ export const TabsTrigger = React.forwardRef(
     };
 
     // Styles par variante - min-h-[44px] for touch targets on mobile
-    const baseStyles = 'inline-flex items-center justify-center whitespace-nowrap px-4 py-2 min-h-[44px] sm:min-h-[36px] text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2';
+    const baseStyles = 'inline-flex items-center justify-center whitespace-nowrap px-4 py-2 min-h-[44px] sm:min-h-[36px] text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2';
 
     const variantStyles = {
       default: isSelected
@@ -104,7 +104,7 @@ export const TabsTrigger = React.forwardRef(
         ? cn('text-encre', 'border-b-2 border-current -mb-px font-semibold')
         : cn('text-encre-3 hover:text-encre-2', 'border-b-2 border-transparent -mb-px'),
       pills: isSelected
-        ? 'bg-primary-500 text-white rounded-full'
+        ? 'bg-accent text-sur-accent rounded-full'
         : cn('text-encre-2 hover:bg-surface-2', 'rounded-full'),
     };
 
@@ -150,7 +150,7 @@ export const TabsContent = React.forwardRef(
         aria-labelledby={`tab-${value}`}
         tabIndex={0}
         className={cn(
-          'mt-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 rounded-lg',
+          'mt-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 rounded-lg',
           className
         )}
         {...props}

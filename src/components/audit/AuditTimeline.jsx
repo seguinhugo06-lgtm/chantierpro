@@ -19,8 +19,8 @@ import { usePermissions } from '../../hooks/usePermissions';
  */
 export default function AuditTimeline({
   entries: toutes = [],
-  isDark,
-  couleur,
+  isDark: _isDark, // accepté, plus nécessaire : jetons du thème
+  couleur: _couleur, // idem : l'accent du thème
   modeDiscret,
   isLoading,
   emptyMessage = 'Aucun historique disponible',
@@ -41,7 +41,7 @@ export default function AuditTimeline({
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="animate-spin w-6 h-6 border-2 border-t-transparent rounded-full" style={{ borderColor: couleur, borderTopColor: 'transparent' }} />
+        <div className="animate-spin w-6 h-6 border-2 border-accent border-t-transparent rounded-full" />
       </div>
     );
   }
@@ -58,15 +58,13 @@ export default function AuditTimeline({
   return (
     <div className="relative">
       {/* Vertical line */}
-      <div className={`absolute left-4 top-0 bottom-0 w-px ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`} />
+      <div className={`absolute left-4 top-0 bottom-0 w-px bg-bord`} />
 
       <div className="space-y-1">
         {entries.map((entry, idx) => (
           <AuditEntry
             key={entry.id || idx}
             entry={entry}
-            isDark={isDark}
-            couleur={couleur}
             modeDiscret={modeDiscret}
             textPrimary={textPrimary}
             textSecondary={textSecondary}
@@ -85,14 +83,12 @@ export default function AuditTimeline({
 
 function AuditEntry({
   entry,
-  isDark,
-  couleur,
   modeDiscret,
   textPrimary,
   textSecondary,
   textMuted,
   borderColor,
-  cardBg,
+  cardBg: _cardBg,
   onViewSnapshot,
   showEntityBadge,
 }) {
@@ -114,11 +110,8 @@ function AuditEntry({
     <div className="relative pl-10 pb-4">
       {/* Dot */}
       <div
-        className="absolute left-2.5 top-1 w-3 h-3 rounded-full border-2 z-10"
-        style={{
-          backgroundColor: isDark ? '#1e293b' : '#ffffff',
-          borderColor: actionInfo.color,
-        }}
+        className="absolute left-2.5 top-1 w-3 h-3 rounded-full border-2 z-10 bg-surface"
+        style={{ borderColor: actionInfo.color }}
       />
 
       <div className={`rounded-lg p-3 hover:bg-surface-2 transition-colors`}>
@@ -128,7 +121,7 @@ function AuditEntry({
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-sm">{actionInfo.emoji}</span>
               {showEntityBadge && (
-                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-surface-2 text-encre-3`}>
+                <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium bg-surface-2 text-encre-3`}>
                   {entityLabel}
                 </span>
               )}
@@ -142,7 +135,7 @@ function AuditEntry({
                   {formatStatut(changes.statut.old)}
                 </span>
                 <span className={textMuted}>→</span>
-                <span className="px-1.5 py-0.5 rounded font-medium text-accent-texte" style={{ background: `${couleur}20` }}>
+                <span className="px-1.5 py-0.5 rounded font-medium text-accent-texte bg-accent/10">
                   {formatStatut(changes.statut.new)}
                 </span>
               </div>
@@ -194,7 +187,6 @@ function AuditEntry({
                   key={field}
                   field={field}
                   change={change}
-                  isDark={isDark}
                   textSecondary={textSecondary}
                   textMuted={textMuted}
                   modeDiscret={modeDiscret}
@@ -208,7 +200,7 @@ function AuditEntry({
   );
 }
 
-function ChangeRow({ field, change, isDark, textSecondary, textMuted, modeDiscret }) {
+function ChangeRow({ field, change, textSecondary, textMuted, modeDiscret }) {
   const label = FIELD_LABELS[field] || field;
 
   // Special handling for arrays (lignes) — just show count diff

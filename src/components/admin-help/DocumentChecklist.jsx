@@ -41,7 +41,7 @@ const CHECKLIST_TEMPLATE = [
   },
 ];
 
-export default function DocumentChecklist({ isDark = false, couleur = '#f97316', chantiers = [] }) {
+export default function DocumentChecklist({ isDark: _isDark = false, couleur: _couleur, chantiers = [] }) {
   const [selectedChantier, setSelectedChantier] = useState(null);
 
   // Load checklists from localStorage
@@ -107,22 +107,22 @@ export default function DocumentChecklist({ isDark = false, couleur = '#f97316',
             <p className={`text-sm ${textMuted}`}>Documents obligatoires</p>
           </div>
           <div className="text-right">
-            <p className="text-xl font-bold" style={{ color: completion === 100 ? '#22c55e' : couleur }}>{completion}%</p>
+            <p className={`text-xl font-bold ${completion === 100 ? 'text-succes-texte' : 'text-accent-texte'}`}>{completion}%</p>
           </div>
         </div>
 
         {/* Progress bar */}
-        <div className={`h-2 rounded-full overflow-hidden ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`}>
+        <div className={`h-2 rounded-full overflow-hidden bg-bord`}>
           <div
-            className="h-full rounded-full transition-all"
-            style={{ width: `${completion}%`, background: completion === 100 ? '#22c55e' : couleur }}
+            className={`h-full rounded-full transition-all ${completion === 100 ? 'bg-succes-point' : 'bg-accent'}`}
+            style={{ width: `${completion}%` }}
           />
         </div>
 
         {completion === 100 && (
-          <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-center">
-            <Shield className="text-emerald-500 mx-auto mb-2" size={24} />
-            <p className="font-medium text-emerald-700">Chantier conforme</p>
+          <div className="p-4 rounded-xl bg-succes-fond border border-succes-point/40 text-center">
+            <Shield className="text-succes-texte mx-auto mb-2" size={24} />
+            <p className="font-medium text-succes-texte">Chantier conforme</p>
           </div>
         )}
 
@@ -145,21 +145,21 @@ export default function DocumentChecklist({ isDark = false, couleur = '#f97316',
                       onClick={() => toggleItem(selectedChantier.id, item.id)}
                       className={`w-full p-3 rounded-lg flex items-center gap-3 text-left transition-all ${
                         isChecked
-                          ? 'bg-emerald-50 border border-emerald-200'
+                          ? 'bg-succes-fond border border-succes-point/40'
                           : 'bg-fond'
                       }`}
                     >
                       <div className={`w-5 h-5 rounded flex items-center justify-center flex-shrink-0 ${
-                        isChecked ? 'bg-emerald-500 text-white' : 'bg-surface border border-bord-fort'
+                        isChecked ? 'bg-succes-point text-white' : 'bg-surface border border-bord-fort'
                       }`}>
                         {isChecked && <Check size={12} />}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className={`text-sm font-medium ${isChecked ? 'text-emerald-700' : textPrimary}`}>
+                        <p className={`text-sm font-medium ${isChecked ? 'text-succes-texte' : textPrimary}`}>
                           {item.name}
-                          {item.required && <span className="text-red-500 ml-1">*</span>}
+                          {item.required && <span className="text-encre-2 font-bold ml-1">*</span>}
                         </p>
-                        <p className={`text-xs ${isChecked ? 'text-emerald-600' : textMuted}`}>{item.description}</p>
+                        <p className={`text-xs ${isChecked ? 'text-succes-texte' : textMuted}`}>{item.description}</p>
                       </div>
                     </button>
                   );
@@ -197,21 +197,21 @@ export default function DocumentChecklist({ isDark = false, couleur = '#f97316',
               >
                 <div className="flex items-center gap-3">
                   <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                    completion === 100 ? 'bg-emerald-100' : 'bg-amber-100'
+                    completion === 100 ? 'bg-succes-fond' : 'bg-alerte-fond'
                   }`}>
                     {completion === 100 ? (
-                      <Shield className="text-emerald-500" size={20} />
+                      <Shield className="text-succes-texte" size={20} />
                     ) : (
-                      <CheckSquare className="text-amber-500" size={20} />
+                      <CheckSquare className="text-alerte-texte" size={20} />
                     )}
                   </div>
                   <div className="text-left">
                     <p className={`font-medium ${textPrimary}`}>{chantier.nom}</p>
                     <div className="flex items-center gap-2 mt-1">
-                      <div className={`w-16 h-1.5 rounded-full ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`}>
+                      <div className={`w-16 h-1.5 rounded-full bg-bord`}>
                         <div
-                          className="h-full rounded-full"
-                          style={{ width: `${completion}%`, background: completion === 100 ? '#22c55e' : couleur }}
+                          className={`h-full rounded-full ${completion === 100 ? 'bg-succes-point' : 'bg-accent'}`}
+                          style={{ width: `${completion}%` }}
                         />
                       </div>
                       <span className={`text-xs ${textMuted}`}>{completion}%</span>

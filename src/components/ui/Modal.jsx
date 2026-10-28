@@ -585,7 +585,7 @@ export function ConfirmModal({
   const variantColors = {
     danger: 'bg-danger-500 hover:bg-danger-600 focus:ring-danger-500',
     warning: 'bg-warning-500 hover:bg-warning-600 focus:ring-warning-500',
-    info: 'bg-primary-500 hover:bg-primary-600 focus:ring-primary-500',
+    info: 'bg-accent hover:brightness-95 focus:ring-accent',
     success: 'bg-success-500 hover:bg-success-600 focus:ring-success-500',
   };
 
@@ -662,7 +662,7 @@ export function AlertModal({
       <ModalFooter>
         <button
           onClick={onClose}
-          className="px-4 py-2.5 rounded-xl text-sm font-medium text-white bg-primary-500 hover:bg-primary-600 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          className="px-4 py-2.5 rounded-xl text-sm font-medium text-white bg-accent hover:brightness-95 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
           {buttonText}
         </button>

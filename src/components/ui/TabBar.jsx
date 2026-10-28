@@ -2,6 +2,8 @@ import { useState, useRef, useEffect } from 'react';
 import { MoreHorizontal } from 'lucide-react';
 import useKeepInViewport from '../../hooks/useKeepInViewport';
 
+const tonPastille = (tab) => (tab.alert ? 'bg-danger-fond text-danger-texte' : tab.ton === 'alerte' ? 'bg-alerte-fond text-alerte-texte' : 'bg-surface-2 text-encre-2');
+
 /**
  * TabBar — Reusable tab navigation with overflow menu.
  * Shows up to maxVisible tabs, with remaining tabs in a "..." dropdown.
@@ -14,8 +16,6 @@ import useKeepInViewport from '../../hooks/useKeepInViewport';
  * @param {boolean} isDark  accepté, plus nécessaire : jetons de src/styles/theme.css (refonte du 9 oct.)
  * @param {string} couleur accepté, plus nécessaire : le trait actif est l'accent du thème
  */
-const tonPastille = (tab) => (tab.alert ? 'bg-danger-fond text-danger-texte' : tab.ton === 'alerte' ? 'bg-alerte-fond text-alerte-texte' : 'bg-surface-2 text-encre-2');
-
 export default function TabBar({ tabs = [], activeTab, onTabChange, maxVisible = 5 }) {
   const [showMore, setShowMore] = useState(false);
   const moreRef = useRef(null);

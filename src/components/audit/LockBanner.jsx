@@ -24,8 +24,8 @@ export default function LockBanner({
   userId,
   userName = '',
   orgId = null,
-  isDark,
-  couleur,
+  isDark: _isDark,
+  couleur: _couleur,
 }) {
   const [lockState, setLockState] = useState({ isLocked: false, lockedBy: null, lockedByMe: false });
   const heartbeatCleanup = useRef(null);
@@ -102,27 +102,19 @@ export default function LockBanner({
   if (!lockState.isLocked || lockState.lockedByMe) return null;
 
   return (
-    <div className={`rounded-xl border p-3 flex items-center gap-3 ${
-      isDark
-        ? 'bg-amber-900/20 border-amber-700/50 text-amber-300'
-        : 'bg-amber-50 border-amber-200 text-amber-800'
-    }`}>
+    <div className={`rounded-xl border p-3 flex items-center gap-3 bg-alerte-fond border-alerte-point/40 text-alerte-texte`}>
       <Lock size={18} className="shrink-0" />
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium">
           Verrouillé par {lockState.lockedBy}
         </p>
-        <p className={`text-xs ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>
+        <p className={`text-xs text-alerte-texte`}>
           Ce document est en cours de modification par un autre utilisateur.
         </p>
       </div>
       <button
         onClick={handleForceUnlock}
-        className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors ${
-          isDark
-            ? 'bg-amber-800/50 hover:bg-amber-800 text-amber-200'
-            : 'bg-amber-100 hover:bg-amber-200 text-amber-800'
-        }`}
+        className="shrink-0 px-3 min-h-[44px] rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors bg-surface text-alerte-texte border border-alerte-point/40 hover:brightness-95"
       >
         <Unlock size={12} />
         Déverrouiller

@@ -17,8 +17,8 @@ export default function VersionSelector({
   currentVersion = null,
   onSelectVersion,
   onCompareVersions,
-  isDark,
-  couleur,
+  isDark: _isDark,
+  couleur: _couleur,
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const ref = useRef(null);
@@ -83,7 +83,7 @@ export default function VersionSelector({
                         Version {snap.version}
                       </span>
                       {isLatest && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded-full font-bold text-accent-texte" style={{ background: `${couleur}20` }}>
+                        <span className="text-xs px-1.5 py-0.5 rounded-full font-bold text-accent-texte bg-accent/10">
                           Dernière
                         </span>
                       )}
@@ -105,9 +105,7 @@ export default function VersionSelector({
                         onCompareVersions(snap, snapshots[0]);
                         setIsOpen(false);
                       }}
-                      className={`p-1.5 rounded-lg shrink-0 transition-colors ${
-                        isDark ? 'hover:bg-slate-600' : 'hover:bg-slate-200'
-                      }`}
+                      className={`p-1.5 rounded-lg shrink-0 transition-colors hover:bg-bord`}
                       title="Comparer avec la dernière version"
                     >
                       <ArrowLeftRight size={14} className={textMuted} />

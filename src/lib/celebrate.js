@@ -38,7 +38,7 @@ export function confetti({ particleCount = 110, duration = 2400, colors } = {}) 
   canvas.height = H * dpr;
   ctx.scale(dpr, dpr);
 
-  const palette = colors || ['#f97316', '#10b981', '#6366f1', '#f59e0b', '#ef4444', '#3b82f6', '#ec4899'];
+  const palette = colors || ['#EE7B20', '#10b981', '#6366f1', '#f59e0b', '#ef4444', '#3b82f6', '#ec4899'];
   const parts = Array.from({ length: particleCount }, () => ({
     x: W / 2 + (Math.random() - 0.5) * W * 0.35,
     y: H * 0.32 + (Math.random() - 0.5) * 50,

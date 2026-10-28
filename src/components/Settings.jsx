@@ -663,7 +663,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                         <p className="font-bold text-lg text-encre break-words">{nomImprime(entreprise) || entreprise.nom || 'Nom de l’entreprise'}</p>
                         {entreprise.slogan && <p className="text-sm text-encre-3 italic">{entreprise.slogan}</p>}
                         {entreprise.formeJuridique && (
-                          <p className="text-sm text-encre-3">{entreprise.formeJuridique}{entreprise.capital && ` · Capital : ${entreprise.capital} €`}</p>
+                          <p className="text-sm text-encre-3">{entreprise.formeJuridique}{estSociete(entreprise) && entreprise.capital ? ` · Capital : ${entreprise.capital} €` : null}</p>
                         )}
                         {entreprise.adresse ? (
                           <p className="text-sm text-encre-3 whitespace-pre-line mt-1">{adresseComplete(entreprise)}</p>

@@ -5,7 +5,7 @@ import TexteCgu from './legal/TexteCgu';
 
 // Identité de l'éditeur (COMPANY, ADRESSE) : src/lib/editeur.js, partagée avec le texte des CGU (TexteCgu.jsx)
 
-export default function LegalPages({ page, couleur, setPage }) {
+export default function LegalPages({ page, couleur: _couleur, setPage }) {
   // Theme classes
   const mainBg = 'bg-fond';
   const cardBg = 'bg-surface border-bord';
@@ -13,7 +13,6 @@ export default function LegalPages({ page, couleur, setPage }) {
   const textSecondary = 'text-encre-2';
   const tableBorder = 'border-bord-fort';
   const tableHeaderBg = 'bg-surface-2';
-  const linkStyle = { color: couleur };
 
   const pageConfig = {
     cgv: { title: 'Conditions Générales de Vente', icon: FileText },
@@ -156,7 +155,7 @@ export default function LegalPages({ page, couleur, setPage }) {
         </P>
         <P>
           Pour exercer ce droit, l'utilisateur doit adresser sa demande par email à l'adresse :
-          <span style={linkStyle}> {COMPANY.email}</span>.
+          <span className="text-accent-texte"> {COMPANY.email}</span>.
         </P>
         <P>
           Le remboursement sera effectué dans un délai de 14 jours suivant la réception de la demande,
@@ -401,14 +400,14 @@ export default function LegalPages({ page, couleur, setPage }) {
           <li><strong className={textPrimary}>Droit d'accès (Art. 15 RGPD) :</strong> obtenir la confirmation que des données le concernant sont traitées et en obtenir une copie</li>
           <li><strong className={textPrimary}>Droit de rectification (Art. 16 RGPD) :</strong> demander la correction de données inexactes ou incomplètes</li>
           <li><strong className={textPrimary}>Droit à l'effacement (Art. 17 RGPD) :</strong> demander la suppression de ses données personnelles (« droit à l'oubli ») ; comment supprimer son compte et ce qui est effacé :{' '}
-            <button type="button" onClick={() => setPage('supprimer-mon-compte')} style={linkStyle} className="underline font-medium">Supprimer mon compte</button></li>
+            <button type="button" onClick={() => setPage('supprimer-mon-compte')} className="text-accent-texte underline font-medium">Supprimer mon compte</button></li>
           <li><strong className={textPrimary}>Droit à la portabilité (Art. 20 RGPD) :</strong> recevoir ses données dans un format structuré, couramment utilisé et lisible par machine (JSON, CSV)</li>
           <li><strong className={textPrimary}>Droit d'opposition (Art. 21 RGPD) :</strong> s'opposer au traitement de ses données pour des motifs légitimes</li>
           <li><strong className={textPrimary}>Droit à la limitation (Art. 18 RGPD) :</strong> demander la limitation du traitement de ses données</li>
         </UL>
         <P>
           Pour exercer ces droits, l'utilisateur peut contacter le responsable du traitement à l'adresse :
-          <span style={linkStyle}> {COMPANY.dpo}</span>.
+          <span className="text-accent-texte"> {COMPANY.dpo}</span>.
           Une réponse sera apportée dans un délai d'un mois à compter de la réception de la demande.
         </P>
       </Section>
@@ -448,14 +447,14 @@ export default function LegalPages({ page, couleur, setPage }) {
       <Section title="Article 9 - Contact et réclamations">
         <P>
           Pour toute question relative à la protection des données personnelles, l'utilisateur peut
-          contacter : <span style={linkStyle}>{COMPANY.dpo}</span>.
+          contacter : <span className="text-accent-texte">{COMPANY.dpo}</span>.
         </P>
         <P>
           Si l'utilisateur estime que ses droits ne sont pas respectés, il peut introduire une
           réclamation auprès de la Commission Nationale de l'Informatique et des Libertés (CNIL) :
         </P>
         <UL>
-          <li>Site web : <span style={linkStyle}>www.cnil.fr</span></li>
+          <li>Site web : <span className="text-accent-texte">www.cnil.fr</span></li>
           <li>Adresse : CNIL, 3 Place de Fontenoy, TSA 80715, 75334 Paris Cedex 07</li>
           <li>Téléphone : 01 53 73 22 22</li>
         </UL>
@@ -475,7 +474,7 @@ export default function LegalPages({ page, couleur, setPage }) {
           <li>SIREN : {COMPANY.siren}</li>
           {COMPANY.rcs && <li>RCS : {COMPANY.rcs}</li>}
           {COMPANY.tva && <li>Numéro de TVA intracommunautaire : {COMPANY.tva}</li>}
-          <li>Email : <span style={linkStyle}>{COMPANY.email}</span></li>
+          <li>Email : <span className="text-accent-texte">{COMPANY.email}</span></li>
           {COMPANY.tel && <li>Téléphone : {COMPANY.tel}</li>}
         </UL>
       </Section>
@@ -484,7 +483,7 @@ export default function LegalPages({ page, couleur, setPage }) {
         <UL>
           <li>Nom : <strong className={textPrimary}>{COMPANY.directeur}</strong></li>
           <li>Qualité : {COMPANY.qualite}</li>
-          <li>Email : <span style={linkStyle}>{COMPANY.email}</span></li>
+          <li>Email : <span className="text-accent-texte">{COMPANY.email}</span></li>
         </UL>
       </Section>
 
@@ -493,7 +492,7 @@ export default function LegalPages({ page, couleur, setPage }) {
           <UL>
             <li>Hébergeur : <strong className={textPrimary}>Vercel Inc.</strong></li>
             <li>Adresse : 440 N Barranca Ave #4133, Covina, CA 91723, États-Unis</li>
-            <li>Site web : <span style={linkStyle}>vercel.com</span></li>
+            <li>Site web : <span className="text-accent-texte">vercel.com</span></li>
           </UL>
         </SubSection>
         <SubSection title="Base de données et stockage">
@@ -501,7 +500,7 @@ export default function LegalPages({ page, couleur, setPage }) {
             <li>Hébergeur : <strong className={textPrimary}>Supabase Inc.</strong></li>
             <li>Adresse : 970 Toa Payoh North #07-04, Singapore 318992</li>
             <li>Infrastructure : Amazon Web Services (AWS), région eu-west-3 (Paris, France)</li>
-            <li>Site web : <span style={linkStyle}>supabase.com</span></li>
+            <li>Site web : <span className="text-accent-texte">supabase.com</span></li>
           </UL>
         </SubSection>
       </Section>
@@ -529,8 +528,7 @@ export default function LegalPages({ page, couleur, setPage }) {
           Pour en savoir plus sur la collecte et le traitement des données, veuillez consulter notre{' '}
           <button
             onClick={() => setPage('confidentialite')}
-            className="underline font-medium hover:opacity-80 transition-opacity"
-            style={linkStyle}
+            className="text-accent-texte underline font-medium hover:opacity-80 transition-opacity"
           >
             Politique de Confidentialité
           </button>.
@@ -543,8 +541,7 @@ export default function LegalPages({ page, couleur, setPage }) {
           consultez notre{' '}
           <button
             onClick={() => setPage('confidentialite')}
-            className="underline font-medium hover:opacity-80 transition-opacity"
-            style={linkStyle}
+            className="text-accent-texte underline font-medium hover:opacity-80 transition-opacity"
           >
             Politique de Confidentialité
           </button>.
@@ -576,7 +573,7 @@ export default function LegalPages({ page, couleur, setPage }) {
         <P>
           Pour toute question ou demande d'information concernant le site, ou tout signalement de
           contenu ou d'activités illicites, l'utilisateur peut contacter l'éditeur à l'adresse
-          email suivante : <span style={linkStyle}>{COMPANY.email}</span>.
+          email suivante : <span className="text-accent-texte">{COMPANY.email}</span>.
         </P>
       </Section>
     </>
@@ -613,13 +610,13 @@ export default function LegalPages({ page, couleur, setPage }) {
       </Section>
       <Section title="Sans accès à l'application">
         <P>
-          Écrivez à <a href={`mailto:${COMPANY.dpo}?subject=Supprimer%20mon%20compte`} style={linkStyle} className="underline font-medium">{COMPANY.dpo}</a> depuis l'adresse e-mail de votre compte, avec l'objet «&nbsp;Supprimer mon compte&nbsp;».
+          Écrivez à <a href={`mailto:${COMPANY.dpo}?subject=Supprimer%20mon%20compte`} className="text-accent-texte underline font-medium">{COMPANY.dpo}</a> depuis l'adresse e-mail de votre compte, avec l'objet «&nbsp;Supprimer mon compte&nbsp;».
           Nous vérifions que la demande vient bien de vous. Si un abonnement payant est en cours, nous le résilions. Si d'autres membres utilisent votre équipe, nous vous demandons d'abord de confirmer qu'ils perdront l'accès à l'espace de l'entreprise.
           Puis nous supprimons le compte et les données décrites ci-dessus. Vous recevez une réponse dans un délai d'un mois au plus (RGPD, art. 12).
         </P>
         <P>
           Pour en savoir plus sur vos données et vos droits :{' '}
-          <button type="button" onClick={() => setPage('confidentialite')} style={linkStyle} className="underline font-medium">politique de confidentialité</button>.
+          <button type="button" onClick={() => setPage('confidentialite')} className="text-accent-texte underline font-medium">politique de confidentialité</button>.
         </P>
       </Section>
     </>
@@ -693,7 +690,7 @@ export default function LegalPages({ page, couleur, setPage }) {
           une fonctionnalité du service, vous pouvez nous contacter :
         </P>
         <UL>
-          <li>Email : <span style={linkStyle}>{COMPANY.email}</span></li>
+          <li>Email : <span className="text-accent-texte">{COMPANY.email}</span></li>
           {COMPANY.tel && <li>Téléphone : {COMPANY.tel}</li>}
         </UL>
         <P>
@@ -708,7 +705,7 @@ export default function LegalPages({ page, couleur, setPage }) {
           de notre part, vous avez le droit de saisir le Défenseur des droits :
         </P>
         <UL>
-          <li>Formulaire en ligne : <span style={linkStyle}>https://formulaire.defenseurdesdroits.fr</span></li>
+          <li>Formulaire en ligne : <span className="text-accent-texte">https://formulaire.defenseurdesdroits.fr</span></li>
           <li>Par courrier : Défenseur des droits, Libre réponse 71120, 75342 Paris Cedex 07</li>
           <li>Par téléphone : 09 69 39 00 00</li>
         </UL>
@@ -748,11 +745,8 @@ export default function LegalPages({ page, couleur, setPage }) {
             <span className="hidden sm:inline">Retour</span>
           </button>
           <div className="flex items-center gap-3">
-            <div
-              className="w-10 h-10 rounded-lg flex items-center justify-center"
-              style={{ backgroundColor: couleur + '20' }}
-            >
-              <Icon className="w-5 h-5" style={{ color: couleur }} />
+            <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-accent/10">
+              <Icon className="w-5 h-5 text-accent-texte" aria-hidden="true" />
             </div>
             <h1 className={`text-lg sm:text-xl font-bold ${textPrimary}`}>
               {config.title}

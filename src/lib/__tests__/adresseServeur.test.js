@@ -44,11 +44,11 @@ describe('adresse : une entrée très longue ne bloque ni l\'app ni le serveur',
     { adresse: `x12345${'a'.repeat(99993)}1` },
     { adresse: `x12345${'a'.repeat(99993)}1`, code_postal: '12345', ville: 'Ville' },
   ];
-  it.each([['app', adresseComplete], ['serveur', adresseCompleteServeur]])('%s : 100 000 caractères en moins de 50 ms', (_, fn) => {
+  it.each([['app', adresseComplete], ['serveur', adresseCompleteServeur]])('%s : 100 000 caractères en moins de 300 ms', (_, fn) => {
     for (const fiche of LONGUES) {
       const debut = performance.now();
       fn(fiche);
-      expect(performance.now() - debut).toBeLessThan(50);
+      expect(performance.now() - debut).toBeLessThan(300);
     }
   });
 

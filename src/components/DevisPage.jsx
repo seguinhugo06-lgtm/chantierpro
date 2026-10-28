@@ -4417,6 +4417,7 @@ export default function DevisPage({ clients, addClient, devis, setDevis, chantie
               key={d.id}
               onClick={ouvrir}
               piedEnLigne
+              titreEntier
               aria-label={`Ouvrir ${d.numero || (d.type === 'facture' ? 'la facture' : 'le devis')}`}
               titre={(isOrphan || isNameless) ? <span className="text-alerte-texte">{isOrphan ? 'Aucun client' : 'Client sans nom'}</span> : clientName}
               montant={montantCarte}

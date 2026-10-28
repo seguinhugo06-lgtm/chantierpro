@@ -550,7 +550,7 @@ export default function TaskDetail({ memo, onUpdate, onDelete, onClose, chantier
             >
               <option value="">Aucune</option>
               {PRIORITIES.map(p => (
-                <option key={p.value} value={p.value}>{p.dot} {p.label}</option>
+                <option key={p.value} value={p.value}>{p.label}</option>
               ))}
             </select>
           </div>

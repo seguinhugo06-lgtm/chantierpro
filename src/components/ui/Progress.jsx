@@ -9,7 +9,7 @@ const sizeStyles = {
 };
 
 const variantStyles = {
-  default: 'bg-primary-500',
+  default: 'bg-accent',
   success: 'bg-success-500',
   warning: 'bg-warning-500',
   danger: 'bg-danger-500',
@@ -40,11 +40,11 @@ export const Progress = React.forwardRef(
       <div className={cn('w-full', className)} ref={ref} {...props}>
         {(showLabel || label) && (
           <div className="flex justify-between items-center mb-1">
-            <span className="text-sm font-medium text-gray-700">
+            <span className="text-sm font-medium text-encre-2">
               {label}
             </span>
             {showLabel && (
-              <span className="text-sm font-medium text-gray-600">
+              <span className="text-sm font-medium text-encre-2">
                 {Math.round(percentage)}%
               </span>
             )}
@@ -52,7 +52,7 @@ export const Progress = React.forwardRef(
         )}
         <div
           className={cn(
-            'w-full rounded-full bg-gray-200 overflow-hidden',
+            'w-full rounded-full bg-bord overflow-hidden',
             sizeStyles[size]
           )}
           role="progressbar"
@@ -110,7 +110,7 @@ export const CircularProgress = React.forwardRef(
     const offset = circumference - (percentage / 100) * circumference;
 
     const colorMap = {
-      default: 'text-primary-500',
+      default: 'text-accent-texte',
       success: 'text-success-500',
       warning: 'text-warning-500',
       danger: 'text-danger-500',
@@ -151,7 +151,7 @@ export const CircularProgress = React.forwardRef(
           />
         </svg>
         {showLabel && (
-          <span className="absolute text-sm font-semibold text-gray-700">
+          <span className="absolute text-sm font-semibold text-encre-2">
             {Math.round(percentage)}%
           </span>
         )}

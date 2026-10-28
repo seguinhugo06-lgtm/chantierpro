@@ -16,12 +16,13 @@ import { cn } from '../../lib/utils';
 
 // ============ CARD VARIANTS ============
 
-const getCardVariants = (isDark) => ({
-  default: isDark ? 'bg-slate-800 border border-slate-700/50 shadow-sm' : 'bg-white border border-gray-100 shadow-sm',
-  elevated: 'bg-surface shadow-md',
+// Jetons du thème : clair et sombre sont gérés par les variables (isDark reste accepté, plus nécessaire).
+const cardVariants = {
+  default: 'bg-surface border border-bord shadow-e1',
+  elevated: 'bg-surface shadow-e2',
   outlined: 'bg-surface border border-bord',
   ghost: 'bg-transparent',
-});
+};
 
 const cardPadding = {
   none: '',
@@ -40,7 +41,7 @@ export const Card = React.forwardRef(
       variant = 'default',
       padding = 'none',
       hoverable = false,
-      isDark = false,
+      isDark: _isDark = false,
       children,
       ...props
     },
@@ -51,7 +52,7 @@ export const Card = React.forwardRef(
         ref={ref}
         className={cn(
           'rounded-2xl transition-all duration-200',
-          getCardVariants(isDark)[variant],
+          cardVariants[variant],
           cardPadding[padding],
           hoverable && 'hover:shadow-lg hover:-translate-y-0.5 cursor-pointer',
           className
@@ -84,7 +85,7 @@ export const CardHeader = React.forwardRef(
                 </h3>
               )}
               {description && (
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-encre-3">
                   {description}
                 </p>
               )}
@@ -116,13 +117,13 @@ CardContent.displayName = 'CardContent';
 // ============ CARD FOOTER ============
 
 export const CardFooter = React.forwardRef(
-  ({ className, bordered = false, isDark = false, ...props }, ref) => {
+  ({ className, bordered = false, isDark: _isDark = false, ...props }, ref) => {
     return (
       <div
         ref={ref}
         className={cn(
           'flex items-center p-5 sm:p-6 pt-0',
-          bordered && cn('pt-5 sm:pt-6 mt-0 border-t', isDark ? 'border-slate-700' : 'border-gray-100'),
+          bordered && 'pt-5 sm:pt-6 mt-0 border-t border-bord',
           className
         )}
         {...props}
@@ -134,11 +135,11 @@ CardFooter.displayName = 'CardFooter';
 
 // ============ CARD SKELETON ============
 
-export function CardSkeleton({ className, rows = 3, isDark = false }) {
+export function CardSkeleton({ className, rows = 3, isDark: _isDark = false }) {
   const skeletonBg = 'bg-surface-2';
   const skeletonBgLight = 'bg-fond';
   return (
-    <Card className={cn('animate-pulse', className)} isDark={isDark}>
+    <Card className={cn('animate-pulse', className)}>
       <CardContent>
         <div className="space-y-3">
           {Array.from({ length: rows }).map((_, i) => (
@@ -166,20 +167,20 @@ export function CardSkeleton({ className, rows = 3, isDark = false }) {
 
 // ============ STAT CARD ============
 
-export function StatCard({ label, value, subtext, trend, icon: Icon, className, isDark = false }) {
+export function StatCard({ label, value, subtext, trend, icon: Icon, className, isDark: _isDark = false }) {
   const trendColors = {
-    up: 'text-emerald-400',
-    down: 'text-red-400',
-    warning: 'text-amber-400',
+    up: 'text-succes-texte',
+    down: 'text-danger-texte',
+    warning: 'text-alerte-texte',
     neutral: 'text-encre-3',
   };
 
   const textPrimary = 'text-encre';
   const textSecondary = 'text-encre-3';
-  const iconColor = isDark ? 'text-slate-700' : 'text-slate-300';
+  const iconColor = 'text-bord-fort';
 
   return (
-    <Card className={cn('relative overflow-hidden p-6', className)} isDark={isDark}>
+    <Card className={cn('relative overflow-hidden p-6', className)}>
       {Icon && <Icon className={cn('absolute right-4 top-4 w-8 h-8', iconColor)} aria-hidden="true" />}
       <p className={cn('text-sm font-medium', textSecondary)}>{label}</p>
       <p className={cn('text-3xl font-bold mt-1', textPrimary)}>{value}</p>

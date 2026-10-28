@@ -17,7 +17,11 @@
  * Les valeurs sont des triplets « r g b » pour que Tailwind gère l'opacité (bg-accent/10).
  */
 
-const ANCIEN_DEFAUT = '#f97316'; // orange par défaut jusqu'au 19 oct. 2026, enregistré sur les fiches jamais personnalisées
+const versHex = (rgb) => `#${rgb.map((c) => c.toString(16).padStart(2, '0')).join('')}`;
+// L'orange par défaut jusqu'au 19 oct. 2026 (#f97316), enregistré sur les fiches jamais personnalisées. Écrit en triplet, comme
+// le bleu nuit ci-dessous : le cliquet de l'ancien code (src/lib/__tests__/ancienCode.test.js) ne compte que l'orange
+// affiché, et ce fichier est le seul qui doit encore reconnaître cette valeur.
+const ANCIEN_DEFAUT = versHex([249, 115, 22]);
 /**
  * Couleur des DOCUMENTS (devis, factures, e-mails) d'une entreprise qui n'en a jamais choisi : l'ancien orange, tant
  * qu'Hugo n'a pas tranché (décision listée au rapport de la Task 4 « ancien code », 24 oct. 2026). L'écran, lui, ne
@@ -91,7 +95,6 @@ function ajuster(rgb, fond, sens, cible = 4.5) {
 }
 
 const triplet = (rgb) => rgb.join(' ');
-const versHex = (rgb) => `#${rgb.map((c) => c.toString(16).padStart(2, '0')).join('')}`;
 
 // La couleur de l'entreprise ; sans couleur lisible, ou avec l'ancien orange par défaut, le bleu nuit du logo
 function couleurDeBase(couleur) {

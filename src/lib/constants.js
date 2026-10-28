@@ -123,7 +123,7 @@ export const CATALOG_CATEGORIES = {
   'Maçonnerie': { icon: '🧱', color: '#a16207' },
   'Menuiserie': { icon: '🪵', color: '#92400e' },
   'Matériaux': { icon: '📦', color: '#64748b' },
-  'Main d\'oeuvre': { icon: '👷', color: '#f97316' },
+  'Main d\'oeuvre': { icon: '👷', color: '#0d9488' },
   'Outillage': { icon: '🔨', color: '#6b7280' },
   'Location': { icon: '🚛', color: '#0891b2' },
   'Autre': { icon: '📋', color: '#94a3b8' }

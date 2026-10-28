@@ -13,6 +13,9 @@
  *   - blocs de texte qui se chevauchent (dans une même couche : le contenu qui défile sous une
  *     barre fixe opaque n'est pas un chevauchement) ;
  *   - contenu impossible à faire sortir de sous une barre fixe du bas, même défilé jusqu'au bout ;
+ *   - libellés masqués (`.sr-only`) qui sortent du défilement qui les contient : leur repère (plus proche ancêtre
+ *     positionné) est hors du conteneur qui défile, si bien que le libellé, placé au bout du tableau, élargit la page
+ *     (cause du « +56 px » du Catalogue à 768 px, puis de Finances : Tasks 7 et 8 ; règle `th { position: relative }`) ;
  *   - erreurs JavaScript.
  *
  * Aucun serveur : le build dist/ (construit SANS .env → mode démo) est servi par
@@ -66,7 +69,20 @@ function mesurer() {
     const cls = (typeof el.className === 'string' ? el.className : '').split(' ').filter(Boolean).slice(0, 4).join('.');
     return `${el.tagName.toLowerCase()}${cls ? '.' + cls : ''}${t ? ` « ${t} »` : ''}`;
   };
-  const res = { debordementPage: document.documentElement.scrollWidth - W, horsEcran: [], coupes: [], chevauchements: [] };
+  const res = { debordementPage: document.documentElement.scrollWidth - W, horsEcran: [], coupes: [], chevauchements: [], libellesHorsDefilement: [] };
+  // Libellé masqué dont le repère est HORS du défilement qui le contient, et qui s'y trouve hors de la zone visible.
+  for (const el of document.body.querySelectorAll('.sr-only')) {
+    let defilement = null, repere = null;
+    for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
+      const s = getComputedStyle(p);
+      if (!repere && s.position !== 'static') repere = p;
+      if (!defilement && /^(auto|scroll)$/.test(s.overflowX)) defilement = p; // un conteneur qui DÉFILE : « hidden » ne défile pas, rien n'y est élargi
+    }
+    if (!defilement || (repere && defilement.contains(repere))) continue;
+    const r = el.getBoundingClientRect(), d = defilement.getBoundingClientRect();
+    if (r.left > d.right + 1 || r.right < d.left - 1) res.libellesHorsDefilement.push(decrire(el));
+    if (res.libellesHorsDefilement.length >= 10) break;
+  }
   // Couche d'un élément : son ancêtre position:fixed le plus proche (ou le document).
   const couche = (el) => { for (let p = el; p && p !== document.body; p = p.parentElement) if (getComputedStyle(p).position === 'fixed') return p; return document.body; };
 
@@ -269,9 +285,10 @@ async function auditerMenus(page) {
       await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
       await page.screenshot({ path: path.join(SORTIE, capture) });
       const n = !atteinte ? 0 : (m.debordementPage > 1 ? 1 : 0) + m.horsEcran.length + m.coupes.length
-        + m.chevauchements.length + menus.length + masques.length;
+        + m.chevauchements.length + menus.length + masques.length + m.libellesHorsDefilement.length;
       rapport.push({ page: p, largeur: W, atteinte, defauts: n, debordementPage: m.debordementPage,
-        horsEcran: m.horsEcran, coupes: m.coupes, menus, chevauchements: m.chevauchements, masques, erreursJS: [...erreurs], capture });
+        horsEcran: m.horsEcran, coupes: m.coupes, menus, chevauchements: m.chevauchements, masques,
+        libellesHorsDefilement: m.libellesHorsDefilement, erreursJS: [...erreurs], capture });
       process.stdout.write(`${p}@${W}: ${n}\n`);
     }
     await page.close();
@@ -280,10 +297,10 @@ async function auditerMenus(page) {
 
   fs.writeFileSync(path.join(SORTIE, 'rapport.json'), JSON.stringify(rapport, null, 1));
   const L = ['# Audit d’interface', '', `Généré le ${new Date().toLocaleString('fr-FR')} sur dist/ (mode démo).`, '',
-    '| Page | Largeur | Défauts | Débordement page | Hors écran | Boutons coupés | Menus coupés | Chevauchements | Sous la barre | Erreurs JS |',
-    '|---|---|---|---|---|---|---|---|---|---|'];
+    '| Page | Largeur | Défauts | Débordement page | Hors écran | Boutons coupés | Menus coupés | Chevauchements | Sous la barre | Libellés masqués | Erreurs JS |',
+    '|---|---|---|---|---|---|---|---|---|---|---|'];
   for (const r of [...rapport].sort((a, b) => b.defauts - a.defauts)) {
-    L.push(`| ${r.page}${r.atteinte ? '' : ' (non atteinte)'} | ${r.largeur} | ${r.defauts} | ${r.debordementPage > 1 ? '+' + r.debordementPage + ' px' : '—'} | ${r.horsEcran.length} | ${r.coupes.length} | ${r.menus.length} | ${r.chevauchements.length} | ${r.masques.length} | ${r.erreursJS.length} |`);
+    L.push(`| ${r.page}${r.atteinte ? '' : ' (non atteinte)'} | ${r.largeur} | ${r.defauts} | ${r.debordementPage > 1 ? '+' + r.debordementPage + ' px' : '—'} | ${r.horsEcran.length} | ${r.coupes.length} | ${r.menus.length} | ${r.chevauchements.length} | ${r.masques.length} | ${r.libellesHorsDefilement.length} | ${r.erreursJS.length} |`);
   }
   L.push('', '## Détail', '');
   for (const r of rapport.filter((x) => x.defauts > 0 || x.erreursJS.length)) {
@@ -293,6 +310,7 @@ async function auditerMenus(page) {
     r.menus.forEach((h) => L.push(`- Menu coupé : « ${h.declencheur} » → ${h.sort.join(' ; ')}`));
     r.chevauchements.forEach((h) => L.push(`- Chevauchement : ${h.a} ✕ ${h.b}`));
     r.masques.forEach((h) => L.push(`- Inaccessible : ${h}`));
+    r.libellesHorsDefilement.forEach((h) => L.push(`- Libellé masqué hors de son défilement (il élargit la page) : ${h}`));
     r.erreursJS.forEach((e) => L.push(`- Erreur JS : ${e}`));
     L.push('');
   }

@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useCallback, useMemo } from 'react';
+import { COULEUR_DOCUMENTS_DEFAUT } from '../lib/theme';
 
 /**
  * AppContext - Global app settings (theme, brand, user preferences)
@@ -12,7 +13,7 @@ export function AppProvider({ children, initialValues = {} }) {
   const [isDark, setIsDark] = useState(initialValues.isDark ?? false);
 
   // Brand color
-  const [couleur, setCouleur] = useState(initialValues.couleur ?? '#f97316');
+  const [couleur, setCouleur] = useState(initialValues.couleur ?? COULEUR_DOCUMENTS_DEFAUT);
 
   // Discrete mode (hides sensitive financial data)
   const [modeDiscret, setModeDiscret] = useState(initialValues.modeDiscret ?? false);

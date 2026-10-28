@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Plus, Send, Trash2, MoreHorizontal, FileText, Search, Phone, ArrowUpDown, Receipt } from 'lucide-react';
-import { appliquerTheme } from '../../lib/theme';
+import { appliquerTheme, COULEUR_DOCUMENTS_DEFAUT } from '../../lib/theme';
 import { statutsDe } from '../../lib/statuts';
 import { formatMoney } from '../../lib/formatters';
 import { Bouton, BoutonIcone } from '../ui/Bouton';
@@ -22,7 +22,7 @@ import { ChampRecherche, BoutonVolet, SegmentDefilant, PucesActives } from '../u
 // ════════════════════════════════════════════════════════
 
 const ACCENTS = [
-  { nom: 'Orange Mallettico', hex: '#f97316' },
+  { nom: 'Orange Mallettico', hex: COULEUR_DOCUMENTS_DEFAUT },
   { nom: 'Bleu', hex: '#2563eb' },
   { nom: 'Vert', hex: '#16a34a' },
   { nom: 'Ardoise', hex: '#334155' },

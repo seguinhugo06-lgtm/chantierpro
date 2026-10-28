@@ -310,52 +310,6 @@ export const calculateGlobalKPIs = (chantiers, data) => {
 };
 
 /**
- * Obtient la couleur associee a un niveau de marge
- * @param {number} tauxMarge - Taux de marge en %
- * @returns {Object} { bg, text, border }
- */
-export const getMarginColor = (tauxMarge, isDark = false) => {
-  if (tauxMarge < 0) {
-    return {
-      bg: isDark ? 'bg-red-900/30' : 'bg-red-50',
-      text: isDark ? 'text-red-400' : 'text-red-600',
-      border: isDark ? 'border-red-800' : 'border-red-200',
-      hex: '#ef4444'
-    };
-  }
-  if (tauxMarge < MARGIN_THRESHOLDS.CRITICAL) {
-    return {
-      bg: isDark ? 'bg-red-900/20' : 'bg-red-50',
-      text: isDark ? 'text-red-400' : 'text-red-600',
-      border: isDark ? 'border-red-800' : 'border-red-200',
-      hex: '#ef4444'
-    };
-  }
-  if (tauxMarge < MARGIN_THRESHOLDS.WARNING) {
-    return {
-      bg: isDark ? 'bg-amber-900/20' : 'bg-amber-50',
-      text: isDark ? 'text-amber-400' : 'text-amber-600',
-      border: isDark ? 'border-amber-800' : 'border-amber-200',
-      hex: '#f59e0b'
-    };
-  }
-  if (tauxMarge < MARGIN_THRESHOLDS.GOOD) {
-    return {
-      bg: isDark ? 'bg-yellow-900/20' : 'bg-yellow-50',
-      text: isDark ? 'text-yellow-400' : 'text-yellow-600',
-      border: isDark ? 'border-yellow-800' : 'border-yellow-200',
-      hex: '#eab308'
-    };
-  }
-  return {
-    bg: isDark ? 'bg-emerald-900/20' : 'bg-emerald-50',
-    text: isDark ? 'text-emerald-400' : 'text-emerald-600',
-    border: isDark ? 'border-emerald-800' : 'border-emerald-200',
-    hex: '#10b981'
-  };
-};
-
-/**
  * Formate un montant en euros
  * @param {number} amount - Montant
  * @param {boolean} modeDiscret - Masquer le montant
@@ -383,7 +337,6 @@ export default {
   calculateChantierMargin,
   generateChantierAlerts,
   calculateGlobalKPIs,
-  getMarginColor,
   formatMoney,
   formatPercent
 };

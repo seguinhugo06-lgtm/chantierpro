@@ -26,9 +26,9 @@ export const CATEGORIES = [
 ];
 
 export const PRIORITIES = [
-  { value: 'haute', label: 'Haute', ton: 'alerte', dot: '🟠' },
-  { value: 'moyenne', label: 'Moyenne', ton: 'neutre', dot: '🟡' },
-  { value: 'basse', label: 'Basse', ton: 'neutre', dot: '🟢' },
+  { value: 'haute', label: 'Haute', ton: 'alerte' },
+  { value: 'moyenne', label: 'Moyenne', ton: 'neutre' },
+  { value: 'basse', label: 'Basse', ton: 'neutre' },
 ];
 
 export const PRIORITY_ORDER = { haute: 0, moyenne: 1, basse: 2 };

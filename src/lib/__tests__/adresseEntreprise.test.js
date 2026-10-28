@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { champsAdresse, adresseComposee, adresseComplete, majAdresse } from '../adresseEntreprise';
+import { champsAdresse, adresseComposee, adresseComplete, LONGUEUR_ADRESSE_MAX } from '../adresseEntreprise';
 
 describe('adresse de l\'entreprise en trois champs', () => {
   it('relit une adresse sur plusieurs lignes (Paramètres d\'avant le 26 oct. 2026)', () => {
@@ -35,15 +35,14 @@ describe('adresse de l\'entreprise en trois champs', () => {
     expect(adresseComplete({ adresse: '5 place du Marché', code_postal: '24200', ville: 'Sarlat' })).toBe('5 place du Marché\n24200 Sarlat');
   });
 
-  it('modifier un champ réécrit l\'adresse complète et les deux colonnes', () => {
-    const e = { adresse: '127 cours du Médoc33300Bordeaux' };
-    expect(majAdresse(e, 'ville', 'Bordeaux Lac')).toEqual({ adresse: '127 cours du Médoc\n33300 Bordeaux Lac', codePostal: '33300', ville: 'Bordeaux Lac' });
-    const apres = { adresse: '127 cours du Médoc\n33300 Bordeaux', codePostal: '33300', ville: 'Bordeaux' };
-    expect(majAdresse(apres, 'codePostal', '33000')).toEqual({ adresse: '127 cours du Médoc\n33000 Bordeaux', codePostal: '33000', ville: 'Bordeaux' });
-    expect(majAdresse(apres, 'rue', '12 rue Neuve')).toEqual({ adresse: '12 rue Neuve\n33300 Bordeaux', codePostal: '33300', ville: 'Bordeaux' });
-    // Ville seule, puis code postal seul : rien ne se perd au tour suivant
-    const villeSeule = majAdresse({}, 'ville', 'Sarlat');
-    expect(villeSeule).toEqual({ adresse: 'Sarlat', codePostal: '', ville: 'Sarlat' });
-    expect(majAdresse(villeSeule, 'rue', '1 rue Basse')).toEqual({ adresse: '1 rue Basse\nSarlat', codePostal: '', ville: 'Sarlat' });
+  // LIGNE_CP (comme COLLE) coûte un temps quadratique sur une très longue ligne : 100 000 caractères, 10 s. La copie
+  // serveur tronquait l'adresse à 500 caractères ; la copie de l'app, pas (relecture ciblée de la Task 8, 27 oct. 2026).
+  it('une adresse de 100 000 caractères est tronquée à 500 avant toute lecture, sans attendre', () => {
+    const pernicieuse = `12345${' '.repeat(50000)}${'x'.repeat(50000)}\u2028y`;
+    const debutMesure = performance.now();
+    const a = champsAdresse({ adresse: pernicieuse });
+    expect(performance.now() - debutMesure).toBeLessThan(300);
+    expect(a.rue.length + a.ville.length).toBeLessThanOrEqual(LONGUEUR_ADRESSE_MAX);
+    expect(adresseComplete({ adresse: 'a'.repeat(100000) }).length).toBeLessThanOrEqual(LONGUEUR_ADRESSE_MAX);
   });
 });

@@ -21,6 +21,9 @@
 
 const nettoyer = (v) => String(v ?? '').trim();
 const LIGNE_CP = /^(\d{5})(?:\s+(.*))?$/;
+// Comme la copie serveur : l'adresse est tronquée à 500 caractères avant toute lecture. LIGNE_CP (comme COLLE) coûte un
+// temps quadratique sur une très longue ligne ; une adresse réelle en fait moins de 200.
+export const LONGUEUR_ADRESSE_MAX = 500;
 const COLLE = /^(.*?\S)[\s,]*(\d{5})\s*([^\d\n]*[^\d\s\n,][^\d\n]*)$/;
 // COLLE coûte un temps quadratique sur une très longue ligne (relecture sécurité du 26 oct. 2026 : 80 ko, 5,6 s) : une
 // ligne d'adresse collée ne dépasse pas 200 caractères (le champ de la rue est limité à 200), au-delà on ne la coupe pas.
@@ -34,7 +37,7 @@ const normaliser = (s) => nettoyer(s).replace(/\s+/g, ' ').toLowerCase();
  */
 export function champsAdresse(entreprise) {
   const e = entreprise || {};
-  const lignes = String(e.adresse ?? '').replace(/\r/g, '').split('\n').map(nettoyer).filter(Boolean);
+  const lignes = String(e.adresse ?? '').slice(0, LONGUEUR_ADRESSE_MAX).replace(/\r/g, '').split('\n').map(nettoyer).filter(Boolean);
   const cp = nettoyer(e.codePostal ?? e.code_postal);
   const ville = nettoyer(e.ville);
 
@@ -81,13 +84,4 @@ export function adresseComposee({ rue = '', codePostal = '', ville = '', suite =
 /** L'adresse complète d'une fiche, quelle que soit sa forme d'enregistrement (sans répéter le code postal ni la ville). */
 export function adresseComplete(entreprise) {
   return adresseComposee(champsAdresse(entreprise));
-}
-
-/**
- * Les champs à enregistrer quand l'artisan modifie l'un des trois champs (`champ` : 'rue' | 'codePostal' | 'ville').
- * `adresse` est l'adresse complète (lue par les documents), `codePostal` et `ville` les colonnes.
- */
-export function majAdresse(entreprise, champ, valeur) {
-  const a = { ...champsAdresse(entreprise), [champ]: valeur };
-  return { adresse: adresseComposee(a), codePostal: nettoyer(a.codePostal), ville: nettoyer(a.ville) };
 }

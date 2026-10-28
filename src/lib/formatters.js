@@ -42,36 +42,6 @@ export function formatTrend(value, showSign = true) {
   return `${sign}${rounded}%`;
 }
 
-/**
- * Détermine la couleur d'un trend
- * @param {number} value - Valeur du trend
- * @param {boolean} [inverted=false] - Inverser logique (ex: pour dépenses, moins = mieux)
- * @returns {string} Classe Tailwind de couleur
- */
-export function getTrendColor(value, inverted = false, isDark = false) {
-  if (value == null || value === 0) return 'text-encre-3';
-
-  const isPositive = inverted ? value < 0 : value > 0;
-  return isPositive
-    ? (isDark ? 'text-emerald-400' : 'text-emerald-600')
-    : (isDark ? 'text-red-400' : 'text-red-600');
-}
-
-/**
- * Détermine la couleur de fond d'un trend badge
- * @param {number} value - Valeur du trend
- * @param {boolean} [inverted=false] - Inverser logique
- * @returns {string} Classes Tailwind de couleur pour badge
- */
-export function getTrendBgColor(value, inverted = false, isDark = false) {
-  if (value == null || value === 0) return 'bg-surface-2 text-encre-2';
-
-  const isPositive = inverted ? value < 0 : value > 0;
-  return isPositive
-    ? (isDark ? 'bg-emerald-900/30 text-emerald-400' : 'bg-emerald-50 text-emerald-700')
-    : (isDark ? 'bg-red-900/30 text-red-400' : 'bg-red-50 text-red-700');
-}
-
 // ============ CLIENT NAME FORMATTING ============
 
 /**
@@ -310,38 +280,6 @@ const STATUS_LABELS = {
   suspendu: 'Suspendu'
 };
 
-const STATUS_COLORS_LIGHT = {
-  brouillon: 'bg-slate-100 text-slate-700',
-  envoye: 'bg-blue-100 text-blue-700',
-  accepte: 'bg-emerald-100 text-emerald-700',
-  refuse: 'bg-red-100 text-red-700',
-  expire: 'bg-amber-100 text-amber-700',
-  emise: 'bg-blue-100 text-blue-700',
-  payee: 'bg-emerald-100 text-emerald-700',
-  partiel: 'bg-amber-100 text-amber-700',
-  impayee: 'bg-red-100 text-red-700',
-  planifie: 'bg-slate-100 text-slate-700',
-  en_cours: 'bg-blue-100 text-blue-700',
-  termine: 'bg-emerald-100 text-emerald-700',
-  suspendu: 'bg-amber-100 text-amber-700'
-};
-
-const STATUS_COLORS_DARK = {
-  brouillon: 'bg-slate-700 text-slate-300',
-  envoye: 'bg-blue-900/30 text-blue-400',
-  accepte: 'bg-emerald-900/30 text-emerald-400',
-  refuse: 'bg-red-900/30 text-red-400',
-  expire: 'bg-amber-900/30 text-amber-400',
-  emise: 'bg-blue-900/30 text-blue-400',
-  payee: 'bg-emerald-900/30 text-emerald-400',
-  partiel: 'bg-amber-900/30 text-amber-400',
-  impayee: 'bg-red-900/30 text-red-400',
-  planifie: 'bg-slate-700 text-slate-300',
-  en_cours: 'bg-blue-900/30 text-blue-400',
-  termine: 'bg-emerald-900/30 text-emerald-400',
-  suspendu: 'bg-amber-900/30 text-amber-400'
-};
-
 /**
  * Obtient le label d'un statut
  * @param {string} status - Code du statut
@@ -349,17 +287,6 @@ const STATUS_COLORS_DARK = {
  */
 export function getStatusLabel(status) {
   return STATUS_LABELS[status] || capitalize(status?.replace(/_/g, ' ') || '');
-}
-
-/**
- * Obtient les classes de couleur d'un statut
- * @param {string} status - Code du statut
- * @returns {string} Classes Tailwind
- */
-export function getStatusColor(status, isDark = false) {
-  const colors = isDark ? STATUS_COLORS_DARK : STATUS_COLORS_LIGHT;
-  const fallback = 'bg-surface-2 text-encre-2';
-  return colors[status] || fallback;
 }
 
 // ============ DOCUMENT NUMBER FORMATTING ============

@@ -63,9 +63,6 @@ export const PLANS = {
       { name: 'Catalogue complet et bibliothèque : plus de 1 000 prestations chiffrées', included: true }
     ],
     badge: null,
-    color: '#6B7280',
-    borderColor: '#D1D5DB',
-    bgColor: '#F3F4F6',
     support: 'communautaire'
   },
   artisan: {
@@ -104,9 +101,6 @@ export const PLANS = {
       { name: 'Vous + 1 collaborateur', included: true }
     ],
     badge: 'Pour un artisan seul',
-    color: '#F97316',
-    borderColor: '#FB923C',
-    bgColor: '#FED7AA',
     support: 'email'
   },
   equipe: {
@@ -143,9 +137,6 @@ export const PLANS = {
       { name: 'Vous + 10 collaborateurs, chacun avec son rôle', included: true }
     ],
     badge: 'Pour une équipe',
-    color: '#8B5CF6',
-    borderColor: '#A78BFA',
-    bgColor: '#EDE9FE',
     support: 'prioritaire'
   }
 };

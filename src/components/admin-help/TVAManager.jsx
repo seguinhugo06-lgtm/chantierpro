@@ -90,8 +90,8 @@ function generatePeriodOptions() {
 }
 
 export default function TVAManager({
-  isDark = false,
-  couleur = '#f97316',
+  isDark: _isDark = false,
+  couleur: _couleur,
   devis = [],
   depenses = [],
   entreprise = null,
@@ -201,10 +201,10 @@ export default function TVAManager({
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className={`p-4 rounded-xl ${cardBg} border ${borderColor}`}>
           <div className="flex items-center gap-2 mb-2">
-            <TrendingUp size={18} className="text-red-500" />
+            <TrendingUp size={18} className="text-alerte-texte" />
             <p className={`text-sm ${textMuted}`}>TVA facturée</p>
           </div>
-          <p className="text-xl font-bold text-red-500">
+          <p className="text-xl font-bold text-alerte-texte">
             {fmt(tvaSummary.collected)} €
           </p>
           <p className={`text-xs ${textMuted} mt-1`}>{tvaSummary.facturesCount} factures</p>
@@ -212,10 +212,10 @@ export default function TVAManager({
 
         <div className={`p-4 rounded-xl ${cardBg} border ${borderColor}`}>
           <div className="flex items-center gap-2 mb-2">
-            <TrendingDown size={18} className="text-emerald-500" />
+            <TrendingDown size={18} className="text-succes-texte" />
             <p className={`text-sm ${textMuted}`}>TVA déductible</p>
           </div>
-          <p className="text-xl font-bold text-emerald-500">
+          <p className="text-xl font-bold text-succes-texte">
             {fmt(tvaSummary.deductible)} €
           </p>
           <p className={`text-xs ${textMuted} mt-1`}>{tvaSummary.depensesCount} achats</p>
@@ -226,14 +226,14 @@ export default function TVAManager({
           )}
         </div>
 
-        <div className={`p-4 rounded-xl border-2 ${tvaSummary.due > 0 ? (isDark ? 'border-red-700 bg-red-900/30' : 'border-red-300 bg-red-50') : (isDark ? 'border-emerald-700 bg-emerald-900/30' : 'border-emerald-300 bg-emerald-50')}`}>
+        <div className={`p-4 rounded-xl border-2 ${tvaSummary.due > 0 ? 'border-alerte-point/40 bg-alerte-fond' : 'border-succes-point/40 bg-succes-fond'}`}>
           <div className="flex items-center gap-2 mb-2">
-            <Euro size={18} className={tvaSummary.due > 0 ? 'text-red-600' : 'text-emerald-600'} />
-            <p className={`text-sm ${tvaSummary.due > 0 ? (isDark ? 'text-red-400' : 'text-red-700') : (isDark ? 'text-emerald-400' : 'text-emerald-700')}`}>
+            <Euro size={18} className={tvaSummary.due > 0 ? 'text-alerte-texte' : 'text-succes-texte'} />
+            <p className={`text-sm ${tvaSummary.due > 0 ? 'text-alerte-texte' : 'text-succes-texte'}`}>
               {tvaSummary.due >= 0 ? 'Solde estimé (débits)' : 'Crédit estimé (débits)'}
             </p>
           </div>
-          <p className={`text-xl font-bold ${tvaSummary.due > 0 ? 'text-red-600' : 'text-emerald-600'}`}>
+          <p className={`text-xl font-bold ${tvaSummary.due > 0 ? 'text-alerte-texte' : 'text-succes-texte'}`}>
             {fmt(Math.abs(tvaSummary.due))} €
           </p>
         </div>
@@ -293,14 +293,14 @@ export default function TVAManager({
       </div>
 
       {/* 2025 changes alert */}
-      <div className={`p-4 rounded-xl ${isDark ? 'bg-amber-900/30' : 'bg-amber-50'} border ${isDark ? 'border-amber-700' : 'border-amber-200'}`}>
+      <div className={`p-4 rounded-xl bg-alerte-fond border border-alerte-point/40`}>
         <div className="flex items-start gap-3">
-          <AlertTriangle className="text-amber-500 flex-shrink-0 mt-0.5" size={18} />
+          <AlertTriangle className="text-alerte-texte flex-shrink-0 mt-0.5" size={18} />
           <div>
-            <p className={`font-medium text-sm ${isDark ? 'text-amber-300' : 'text-amber-800'}`}>
+            <p className={`font-medium text-sm text-alerte-texte`}>
               Changement 2025
             </p>
-            <p className={`text-sm mt-1 ${isDark ? 'text-amber-200' : 'text-amber-700'}`}>
+            <p className={`text-sm mt-1 text-alerte-texte`}>
               Chaudières gaz/fioul : TVA 20% (au lieu de 10%)
             </p>
           </div>
@@ -335,7 +335,7 @@ export default function TVAManager({
           <div className="flex items-center gap-3">
             <button
               onClick={() => setActiveTab('dashboard')}
-              className={`p-2 rounded-xl ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'}`}
+              className={`p-2 rounded-xl bg-surface-2 hover:bg-bord`}
               aria-label="Retour"
             >
               <ArrowLeft size={18} />
@@ -368,8 +368,8 @@ export default function TVAManager({
                 className={`flex items-center px-4 py-3 gap-4 ${
                   field.highlight
                     ? (tvaSummary.due > 0
-                      ? (isDark ? 'bg-red-900/20' : 'bg-red-50')
-                      : (isDark ? 'bg-emerald-900/20' : 'bg-emerald-50'))
+                      ? 'bg-alerte-fond'
+                      : 'bg-succes-fond')
                     : ''
                 }`}
               >
@@ -398,7 +398,7 @@ export default function TVAManager({
                   ) : (
                     <p className={`text-sm font-medium ${field.bold ? 'text-base font-bold' : ''} ${
                       field.highlight
-                        ? (tvaSummary.due > 0 ? 'text-red-600' : 'text-emerald-600')
+                        ? (tvaSummary.due > 0 ? 'text-alerte-texte' : 'text-succes-texte')
                         : textPrimary
                     }`}>
                       {fmt(field.value)} €
@@ -410,11 +410,11 @@ export default function TVAManager({
           </div>
         </div>
 
-        <div className={`p-4 rounded-xl ${isDark ? 'bg-blue-900/30' : 'bg-blue-50'} border ${isDark ? 'border-blue-800' : 'border-blue-200'}`}>
+        <div className={`p-4 rounded-xl bg-info-fond border border-info-point/40`}>
           <div className="flex items-start gap-2">
-            <HelpCircle className="text-blue-500 flex-shrink-0 mt-0.5" size={16} />
+            <HelpCircle className="text-info-texte flex-shrink-0 mt-0.5" size={16} />
             <div>
-              <p className={`text-sm ${isDark ? 'text-blue-200' : 'text-blue-700'}`}>
+              <p className={`text-sm text-info-texte`}>
                 <strong>Note :</strong> Montants calculés sur vos factures émises (régime des débits). Sans option pour les débits, la TVA de vos travaux est due à l’encaissement (art. 269 du CGI) : déclarez la TVA des sommes encaissées sur la période. La TVA des dépenses n’est comptée que lorsqu’elle est saisie ; la
                 sous-traitance autoliquidée (art. 283-2 nonies du CGI) n’est pas prise en compte. Vérifiez les montants avant
                 de les reporter sur votre déclaration.
@@ -431,7 +431,7 @@ export default function TVAManager({
       <div className="flex items-center gap-3">
         <button
           onClick={() => setActiveTab('dashboard')}
-          className={`p-2 rounded-xl ${isDark ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-100 hover:bg-slate-200'}`}
+          className={`p-2 rounded-xl bg-surface-2 hover:bg-bord`}
           aria-label="Retour"
         >
           <ArrowLeft size={18} />
@@ -467,10 +467,10 @@ export default function TVAManager({
         ))}
       </div>
 
-      <div className={`p-4 rounded-xl ${isDark ? 'bg-blue-900/30' : 'bg-blue-50'} border ${isDark ? 'border-blue-800' : 'border-blue-200'}`}>
+      <div className={`p-4 rounded-xl bg-info-fond border border-info-point/40`}>
         <div className="flex items-start gap-2">
-          <HelpCircle className="text-blue-500 flex-shrink-0 mt-0.5" size={16} />
-          <p className={`text-sm ${isDark ? 'text-blue-200' : 'text-blue-700'}`}>
+          <HelpCircle className="text-info-texte flex-shrink-0 mt-0.5" size={16} />
+          <p className={`text-sm text-info-texte`}>
             <strong>Règle :</strong> Taux réduits (5.5% / 10%) uniquement pour logements de +2 ans. Neuf = 20%.
           </p>
         </div>

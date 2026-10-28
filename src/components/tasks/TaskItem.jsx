@@ -1,4 +1,4 @@
-import { Calendar, Tag, Building2, Users, CheckCircle2, Circle, Clock, Repeat } from 'lucide-react';
+import { Calendar, Tag, Building2, Users, CheckCircle2, Circle, Clock, Repeat, CalendarCheck, Flag, Trash2, CheckSquare, Square, ArrowRight } from 'lucide-react';
 import { CATEGORIES, PRIORITIES, TASK_STATUSES, classesTon } from './constants';
 import { isOverdue, isToday, formatDateFR, formatTimeFR, today } from './helpers';
 
@@ -73,7 +73,9 @@ export default function TaskItem({
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5">
           <p className={`text-sm leading-snug flex-1 ${memo.is_done ? 'line-through' : ''} text-encre`}>
-            {priority && <span className="mr-1.5" title={`Priorité ${priority.label}`}>{priority.dot}</span>}
+            {priority && priority.ton !== 'neutre' && (
+              <span className={`inline-block w-2 h-2 rounded-full mr-1.5 align-middle ${classesTon(priority.ton).point}`} title={`Priorité ${priority.label.toLowerCase()}`} />
+            )}
             {memo.recurrence && (
               <span className="mr-1 inline-flex items-center" title="Récurrent">
                 <Repeat size={12} className="text-accent-texte" />
@@ -101,7 +103,7 @@ export default function TaskItem({
                 <>
                   {formatDateFR(memo.due_date)}
                   {memo.due_date_end && memo.due_date_end >= memo.due_date && (
-                    <span>{'\u2192'} {formatDateFR(memo.due_date_end)}</span>
+                    <span className="inline-flex items-center gap-1"><ArrowRight size={10} aria-hidden="true" /> {formatDateFR(memo.due_date_end)}</span>
                   )}
                 </>
               )}
@@ -142,7 +144,7 @@ export default function TaskItem({
                   : 'bg-surface-2 text-encre-2'
               }`}
             >
-              {stDone === stTotal ? '☑' : '◻'} {stDone}/{stTotal}
+              {stDone === stTotal ? <CheckSquare size={12} aria-hidden="true" /> : <Square size={12} aria-hidden="true" />} {stDone}/{stTotal}
             </span>
           )}
           {assignedMember && (
@@ -162,23 +164,26 @@ export default function TaskItem({
           {onQuickDate && (
             <button
               onClick={(e) => { e.stopPropagation(); onQuickDate(memo.id); }}
-              className="p-1 rounded text-xs hover:bg-surface-2"
+              className="p-1.5 rounded text-encre-2 hover:bg-surface-2"
               title="Mettre à aujourd'hui"
-            >📅</button>
+              aria-label="Mettre à aujourd'hui"
+            ><CalendarCheck size={16} aria-hidden="true" /></button>
           )}
           {onQuickPriority && (
             <button
               onClick={(e) => { e.stopPropagation(); onQuickPriority(memo.id); }}
-              className="p-1 rounded text-xs hover:bg-surface-2"
+              className="p-1.5 rounded text-encre-2 hover:bg-surface-2"
               title="Priorité haute"
-            >🟠</button>
+              aria-label="Priorité haute"
+            ><Flag size={16} aria-hidden="true" /></button>
           )}
           {onQuickDelete && (
             <button
               onClick={(e) => { e.stopPropagation(); onQuickDelete(memo.id); }}
-              className="p-1 rounded text-xs hover:bg-surface-2"
+              className="p-1.5 rounded text-encre-2 hover:bg-surface-2"
               title="Supprimer"
-            >🗑️</button>
+              aria-label="Supprimer"
+            ><Trash2 size={16} aria-hidden="true" /></button>
           )}
         </div>
       )}

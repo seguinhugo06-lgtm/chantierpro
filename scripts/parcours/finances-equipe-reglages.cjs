@@ -352,17 +352,22 @@ module.exports = [
         const base = creerBase({ entreprise: [{ ...MICRO }] });
         const { page, browser } = await ouvrir({ reel: true, largeur, page: 'settings', session: sessionFactice(UID), supabase: (req, u) => base.reponse(req, u) });
         await attendre(1500);
+        const cadre = () => page.evaluate(() => { const r = document.querySelector('main').getBoundingClientRect(); return { x: Math.round(r.left), w: Math.round(r.width) }; });
+        const avant = await cadre();
         await cliquer(page, 'Compléter avec l’assistant');
         const fond = await page.evaluate(() => {
           const d = [...document.querySelectorAll('[role="dialog"]')].find((x) => /Étape 1 sur 5/.test(x.innerText));
           let f = d;
           while (f && getComputedStyle(f).position !== 'fixed') f = f.parentElement;
           const r = f?.getBoundingClientRect();
-          // Le « petit jour » se mesure en haut. En largeur, `html { scrollbar-gutter: stable }` (src/index.css) réserve la
-          // place d'une barre de défilement classique au bureau (6 px) : le fond s'arrête avant, d'où la tolérance.
+          // Le fond couvre l'écran EXACTEMENT : en haut (le « petit jour ») et en largeur (`html { scrollbar-gutter: stable }`
+          // réservait 6 px au bureau que le fond ne couvrait pas : `.fixed.inset-0 { right: calc(100% - 100vw) }`, src/index.css).
           return r ? { t: Math.round(r.top), h: Math.round(r.height), w: Math.round(r.width), H: innerHeight, W: innerWidth } : null;
         });
-        verifier(!!fond && fond.t === 0 && fond.h === fond.H && fond.w >= fond.W - 20, `le fond de l’assistant couvre l’écran depuis le haut à ${largeur} px (${JSON.stringify(fond)})`);
+        verifier(!!fond && fond.t === 0 && fond.h === fond.H && fond.w === fond.W, `le fond de l’assistant couvre l’écran, du haut au bord droit, à ${largeur} px (${JSON.stringify(fond)})`);
+        // ... sans que la page saute : son contenu garde sa place et sa largeur à l'ouverture de la fenêtre
+        const apres = await cadre();
+        verifier(avant.x === apres.x && avant.w === apres.w, `la page ne saute pas à l’ouverture de la fenêtre à ${largeur} px (${JSON.stringify(avant)} puis ${JSON.stringify(apres)})`);
         await cliquer(page, 'Suivant', { dans: '[role="dialog"]' });
         // Étape 2 : le n° de TVA intracommunautaire, pour toutes les formes (avis juriste du 26 oct. 2026)
         verifier(await page.evaluate(() => !!document.getElementById('assistant-tvaIntra')), `le n° de TVA intracommunautaire est proposé à une micro-entreprise à ${largeur} px`);

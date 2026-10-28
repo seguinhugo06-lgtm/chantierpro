@@ -53,19 +53,19 @@ function ModalSkeleton() {
   return (
     <div className="p-6 space-y-4">
       <div className="flex items-center gap-4">
-        <div className="h-10 w-10 bg-slate-200 rounded-xl animate-pulse" />
+        <div className="h-10 w-10 bg-bord rounded-xl animate-pulse" />
         <div className="space-y-2 flex-1">
-          <div className="h-6 w-48 bg-slate-200 rounded animate-pulse" />
-          <div className="h-4 w-32 bg-slate-200 rounded animate-pulse" />
+          <div className="h-6 w-48 bg-bord rounded animate-pulse" />
+          <div className="h-4 w-32 bg-bord rounded animate-pulse" />
         </div>
       </div>
       <div className="space-y-3">
-        <div className="h-4 w-full bg-slate-200 rounded animate-pulse" />
-        <div className="h-4 w-3/4 bg-slate-200 rounded animate-pulse" />
-        <div className="h-4 w-1/2 bg-slate-200 rounded animate-pulse" />
+        <div className="h-4 w-full bg-bord rounded animate-pulse" />
+        <div className="h-4 w-3/4 bg-bord rounded animate-pulse" />
+        <div className="h-4 w-1/2 bg-bord rounded animate-pulse" />
       </div>
       <div className="flex items-center justify-center py-8">
-        <Loader2 className="h-8 w-8 animate-spin text-primary-500" />
+        <Loader2 className="h-8 w-8 animate-spin text-accent-texte" />
       </div>
     </div>
   );
@@ -77,18 +77,18 @@ function ModalSkeleton() {
 function ModalNotFound({ component, onClose }) {
   return (
     <div className="p-6 text-center">
-      <div className="w-16 h-16 mx-auto mb-4 bg-danger-100 rounded-full flex items-center justify-center">
-        <X size={32} className="text-danger-500" />
+      <div className="w-16 h-16 mx-auto mb-4 bg-danger-fond rounded-full flex items-center justify-center">
+        <X size={32} className="text-danger-texte" />
       </div>
-      <h3 className="text-lg font-semibold text-slate-900 mb-2">
+      <h3 className="text-lg font-semibold text-encre mb-2">
         Modal non trouvee
       </h3>
-      <p className="text-slate-500 mb-4">
+      <p className="text-encre-3 mb-4">
         Le composant "{component}" n'existe pas dans le registre.
       </p>
       <button
         onClick={onClose}
-        className="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors"
+        className="px-4 py-2 bg-surface-2 text-encre-2 rounded-lg hover:bg-bord transition-colors"
       >
         Fermer
       </button>
@@ -161,7 +161,7 @@ export default function ModalContainer() {
             <motion.div
               className={`
                 relative w-full ${sizeClasses[modal.size]}
-                bg-white rounded-2xl shadow-2xl overflow-hidden
+                bg-surface rounded-2xl shadow-2xl overflow-hidden
                 max-h-[90vh] flex flex-col
               `}
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -180,7 +180,7 @@ export default function ModalContainer() {
               {modal.closable !== false && (
                 <button
                   onClick={() => closeModal(modal.id)}
-                  className="absolute top-4 right-4 z-10 p-2 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500"
+                  className="absolute top-4 right-4 z-10 p-2 rounded-lg text-encre-3 hover:text-encre-2 hover:bg-surface-2 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                   aria-label="Fermer"
                 >
                   <X size={20} />

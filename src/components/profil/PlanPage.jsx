@@ -6,7 +6,7 @@
  * plan comparison with billing toggle, and logout.
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   Users, CreditCard, LogOut, Check, ArrowRight,
   Zap, Hammer, ExternalLink, Clock,
@@ -44,6 +44,12 @@ export default function PlanPage({ isDark: _isDark, couleur: _couleur, setPage }
   // Local state
   // Un abonné à l'année voit d'abord sa période dans la grille des offres
   const [billing, setBilling] = useState(() => (periodeAbonne(sub) === 'an' ? 'yearly' : 'monthly'));
+  // L'abonnement est relu en base : il arrive souvent après le premier rendu (l'état part du plan Gratuit). La période
+  // affichée le suit alors, tant que l'abonné n'a pas choisi lui-même Mensuel ou Annuel (avant : elle restait « Mensuel »).
+  const periodeChoisie = useRef(false);
+  useEffect(() => {
+    if (!periodeChoisie.current) setBilling(periodeAbonne(sub) === 'an' ? 'yearly' : 'monthly');
+  }, [sub]);
   // Seul le titulaire du compte gère l'abonnement (offres, code testeur, page Stripe) : les autres rôles le lisent
   const { canAccessBilling } = usePermissions();
   const [loadingPlan, setLoadingPlan] = useState(null);
@@ -279,7 +285,7 @@ export default function PlanPage({ isDark: _isDark, couleur: _couleur, setPage }
             <Segmente
               ariaLabel="Facturation"
               valeur={billing}
-              onChange={setBilling}
+              onChange={(v) => { periodeChoisie.current = true; setBilling(v); }}
               options={[
                 { valeur: 'monthly', libelle: 'Mensuel' },
                 { valeur: 'yearly', libelle: moisOffertsCommuns(PLANS) > 0 ? `Annuel · ${moisOffertsCommuns(PLANS)} mois offerts` : 'Annuel' },

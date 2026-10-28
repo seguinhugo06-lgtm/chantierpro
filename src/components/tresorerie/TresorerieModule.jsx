@@ -543,10 +543,11 @@ function MouvementModal({ isOpen, onClose, onSave, editItem }) {
 
 // isDark et couleur restent acceptés : jetons du thème (clair, sombre, accent de l'entreprise)
 // peutModifier : faux en lecture seule (rôle « readonly », Finances en consultation) — rien à ajouter, modifier ni supprimer
+// peutExporter : le droit d'export (canExportData), comme l'onglet « Export comptable » — sans lui, aucun bouton de fichier CSV
 export default function TresorerieModule({
   devis = [], depenses = [], chantiers: _chantiers = [], clients = [],
   entreprise, isDark: _isDark = false, couleur: _couleur, setPage: _setPage, ouvrirDocument,
-  modeDiscret = false, paiements = [], peutModifier = true,
+  modeDiscret = false, paiements = [], peutModifier = true, peutExporter = true,
 }) {
   // Helper: mask financial amounts when modeDiscret is active
   const formatMoney = useCallback((amount) => modeDiscret ? '••••\u00a0€' : formatCurrency(amount), [modeDiscret]);
@@ -1957,7 +1958,7 @@ export default function TresorerieModule({
                   options={[{ valeur: 'all', libelle: 'Tous statuts' }, { valeur: 'prevu', libelle: 'Prévu' }, { valeur: 'paye', libelle: 'Payé' }]}
                   valeur={mouvStatutFilter} onChange={setMouvStatutFilter} />
               </div>
-              <Bouton taille="compacte" icone={FileText} onClick={() => exportMouvementsCSV()}>Export CSV</Bouton>
+              {peutExporter && <Bouton taille="compacte" icone={FileText} onClick={() => exportMouvementsCSV()}>Export CSV</Bouton>}
             </div>
           )}
         </div>
@@ -2334,7 +2335,7 @@ export default function TresorerieModule({
                 </p>
               </div>
             </div>
-            {(settings.regimeTva || 'trimestriel') !== 'franchise' && (
+            {(settings.regimeTva || 'trimestriel') !== 'franchise' && peutExporter && (
               <div className="flex flex-wrap items-center gap-2">
                 {/* Export « CA3 » retiré (relecture juridique du 10 oct. 2026) : une seule colonne au lieu de « base hors
                     taxe » et « taxe due », une année au lieu d'un mois ou d'un trimestre, lignes du millésime 2026

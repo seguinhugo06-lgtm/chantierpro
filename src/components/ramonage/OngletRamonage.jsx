@@ -107,7 +107,7 @@ export default function OngletRamonage({ client, entreprise, setPage, setSelecte
               <p className="text-sm font-medium text-encre-2 mb-2">Quel appareil ?</p>
               <GroupeListe>
                 {appareils.map((a) => (
-                  <LigneListe key={a.appareil_ref} titre={descriptionAppareil(a.dernier)} meta={`Dernier passage le ${jourFr(jourDe(a.dernier.realise_le), true)}`}
+                  <LigneListe key={a.appareil_ref} titreEntier titre={descriptionAppareil(a.dernier)} meta={`Dernier passage le ${jourFr(jourDe(a.dernier.realise_le), true)}`}
                     onClick={() => setSaisie({ precedent: a.dernier })} />
                 ))}
                 <LigneListe titre="Un autre appareil" meta="Nouvel appareil pour ce client" onClick={() => setSaisie({ precedent: null })} />
@@ -135,6 +135,7 @@ export default function OngletRamonage({ client, entreprise, setPage, setSelecte
                     return (
                       <LigneListe
                         key={p.id}
+                        titreEntier
                         onClick={() => setFicheId(p.id)}
                         // Comme la fiche papier : date, méthode, prix et n° de facture ; le prochain ramonage est en tête
                         titre={`${jourFr(jourDe(p.realise_le), true)} · ${METHODE_COURTE[p.methode] || ''}`}

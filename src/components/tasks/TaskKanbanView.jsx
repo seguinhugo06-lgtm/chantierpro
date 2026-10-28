@@ -6,7 +6,7 @@
  *  - Drag-and-drop HTML5 natif entre colonnes
  *  - Cartes avec priorité, catégorie, échéance, sous-tâches
  *  - Filtrage par search/category/priority
- *  - Bouton "+ Ajouter" par colonne
+ *  - « Ajouter une tâche » par colonne : un titre à saisir, la tâche naît dans cette colonne
  *  - Responsive mobile (scroll horizontal)
  */
 
@@ -155,7 +155,22 @@ function KanbanColumn({
   onSelect, onDragStart, onDrop, onAddMemo,
 }) {
   const [isDragOver, setIsDragOver] = useState(false);
+  // Ajout rapide : null = fermé ; sinon le titre en cours de saisie
+  const [titreNouvelle, setTitreNouvelle] = useState(null);
+  const [creation, setCreation] = useState(false);
   const Icon = column.icon;
+
+  const ajouter = async () => {
+    const titre = (titreNouvelle || '').trim();
+    if (!titre || creation) return;
+    setCreation(true);
+    try {
+      const cree = await onAddMemo(column.id, titre);
+      if (cree) setTitreNouvelle(null); // refus (droits, limite) : le titre reste saisi
+    } finally {
+      setCreation(false);
+    }
+  };
 
   const handleDragOver = (e) => {
     e.preventDefault();
@@ -235,16 +250,51 @@ function KanbanColumn({
         )}
       </div>
 
-      {/* Add button : seulement pour qui peut créer des tâches */}
+      {/* Ajouter une tâche : seulement pour qui peut créer des tâches */}
       {onAddMemo && (
-        <div className={`p-2 border-t border-bord`}>
-          <button
-            onClick={() => onAddMemo(column.id)}
-            className={`w-full flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-colors text-encre-3 hover:bg-surface-2 hover:text-encre-2`}
-          >
-            <Plus size={14} />
-            Ajouter
-          </button>
+        <div className="p-2 border-t border-bord">
+          {titreNouvelle === null ? (
+            <button
+              type="button"
+              onClick={() => setTitreNouvelle('')}
+              className="w-full min-h-[44px] flex items-center justify-center gap-1.5 rounded-lg text-sm font-medium transition-colors text-encre-2 hover:bg-surface-2 hover:text-encre"
+            >
+              <Plus size={16} aria-hidden="true" />
+              Ajouter une tâche
+            </button>
+          ) : (
+            <form
+              onSubmit={(e) => { e.preventDefault(); ajouter(); }}
+              onKeyDown={(e) => { if (e.key === 'Escape') setTitreNouvelle(null); }}
+              className="space-y-2"
+            >
+              <label htmlFor={`kanban-nouvelle-${column.id}`} className="sr-only">Titre de la tâche</label>
+              <input
+                id={`kanban-nouvelle-${column.id}`}
+                autoFocus
+                value={titreNouvelle}
+                onChange={(e) => setTitreNouvelle(e.target.value)}
+                placeholder="Titre de la tâche"
+                className="w-full h-12 px-3.5 rounded-xl border border-bord-fort bg-surface text-base text-encre placeholder:text-encre-3 focus:outline-none focus:border-accent focus:ring-4 focus:ring-accent/20"
+              />
+              <div className="flex gap-2">
+                <button
+                  type="submit"
+                  disabled={!titreNouvelle.trim() || creation}
+                  className="flex-1 min-h-[44px] rounded-xl text-sm font-semibold bg-accent text-sur-accent hover:brightness-95 disabled:opacity-50"
+                >
+                  {creation ? 'Ajout…' : 'Ajouter'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTitreNouvelle(null)}
+                  className="min-h-[44px] px-3 rounded-xl text-sm font-medium text-encre-2 hover:bg-surface-2"
+                >
+                  Annuler
+                </button>
+              </div>
+            </form>
+          )}
         </div>
       )}
     </div>
@@ -354,9 +404,10 @@ export default function TaskKanbanView({
   }, [updateMemo, peutModifier]);
 
   // Handle add memo in specific column
-  const handleAddMemo = useCallback((status) => {
-    if (!addMemo || !peutCreer) return;
-    addMemo({
+  const handleAddMemo = useCallback(async (status, text) => {
+    if (!addMemo || !peutCreer || !text) return null;
+    return addMemo({
+      text,
       status,
       is_done: status === 'termine',
     });

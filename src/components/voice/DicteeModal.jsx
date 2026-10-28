@@ -61,7 +61,7 @@ const euros = (n) =>
 const TAUX_TVA = [20, 10, 5.5, 0];
 
 /** Champ de saisie compact, aligné sur les conventions du reste de l'app. */
-function Champ({ label, value, onChange, isDark, type = 'text', placeholder, largeur = '' }) {
+function Champ({ label, value, onChange, type = 'text', placeholder, largeur = '' }) {
   const inputBg = 'bg-surface border-bord-fort text-encre placeholder:text-encre-3';
   return (
     <label className={`block ${largeur}`}>
@@ -78,14 +78,13 @@ function Champ({ label, value, onChange, isDark, type = 'text', placeholder, lar
 }
 
 /** Bloc repliable avec interrupteur « je crée / je ne crée pas ». */
-function Carte({ icone: Icone, titre, sousTitre, actif, onToggle, isDark, couleur, children, badge, liaison }) {
+function Carte({ icone: Icone, titre, sousTitre, actif, onToggle, children, badge, liaison }) {
   const cardBg = 'bg-surface border-bord';
   return (
     <div className={`rounded-2xl border ${cardBg} overflow-hidden transition-opacity ${actif ? '' : 'opacity-50'}`}>
       <div className="flex items-center gap-3 p-3 sm:p-4">
         <div
-          className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 text-accent-texte"
-          style={{ background: `${couleur}18` }}
+          className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 text-accent-texte bg-accent/10"
         >
           <Icone size={18} />
         </div>
@@ -94,8 +93,7 @@ function Carte({ icone: Icone, titre, sousTitre, actif, onToggle, isDark, couleu
             {titre}
             {badge && (
               <span
-                className="ml-2 text-[11px] font-medium px-2 py-0.5 rounded-full align-middle text-accent-texte"
-                style={{ background: `${couleur}18` }}
+                className="ml-2 text-xs font-medium px-2 py-0.5 rounded-full align-middle text-accent-texte bg-accent/10"
               >
                 {badge}
               </span>
@@ -112,12 +110,11 @@ function Carte({ icone: Icone, titre, sousTitre, actif, onToggle, isDark, couleu
           aria-label={`${actif ? 'Ne pas créer' : 'Créer'} : ${titre}`}
           onClick={onToggle}
           className={`relative w-11 h-6 rounded-full shrink-0 transition-colors ${
-            actif ? '' : isDark ? 'bg-slate-600' : 'bg-slate-300'
+            actif ? 'bg-accent' : 'bg-bord-fort'
           }`}
-          style={actif ? { background: couleur } : undefined}
         >
           <span
-            className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all ${actif ? 'left-[22px]' : 'left-0.5'}`}
+            className={`absolute top-0.5 w-5 h-5 rounded-full bg-surface transition-all ${actif ? 'left-[22px]' : 'left-0.5'}`}
           />
         </button>
       </div>
@@ -126,7 +123,7 @@ function Carte({ icone: Icone, titre, sousTitre, actif, onToggle, isDark, couleu
         <div className={`mx-3 sm:mx-4 mb-3 flex items-start gap-1.5 text-xs rounded-lg px-2.5 py-2 ${
           liaison.ok
             ? 'bg-fond text-encre-2'
-            : isDark ? 'bg-amber-500/10 text-amber-200' : 'bg-amber-50 text-amber-800'
+            : 'bg-alerte-fond text-alerte-texte'
         }`}>
           {liaison.ok ? <Link2 size={13} className="shrink-0 mt-0.5" /> : <AlertTriangle size={13} className="shrink-0 mt-0.5" />}
           <span>{liaison.texte}</span>
@@ -140,8 +137,8 @@ function Carte({ icone: Icone, titre, sousTitre, actif, onToggle, isDark, couleu
 export default function DicteeModal({
   isOpen,
   onClose,
-  isDark = false,
-  couleur = '#f97316',
+  isDark: _isDark = false,
+  couleur: _couleur,
   clients = [],
   chantiers = [],
   catalogue = [],
@@ -536,10 +533,9 @@ export default function DicteeModal({
     >
       <div ref={panneauRef} className={`w-full sm:max-w-2xl sm:rounded-3xl rounded-t-3xl border ${cardBg} max-h-[92vh] flex flex-col`}>
         {/* En-tête */}
-        <div className="flex items-center gap-3 p-4 border-b border-slate-200/20 shrink-0">
+        <div className="flex items-center gap-3 p-4 border-b border-bord shrink-0">
           <div
-            className="w-9 h-9 rounded-xl flex items-center justify-center text-accent-texte"
-            style={{ background: `${couleur}18` }}
+            className="w-9 h-9 rounded-xl flex items-center justify-center text-accent-texte bg-accent/10"
           >
             <Mic size={18} />
           </div>
@@ -562,14 +558,13 @@ export default function DicteeModal({
         {/* Récap collant — ce qui sera créé, sans avoir à scroller */}
         {etape === 'relecture' && !rienASoumettre && (
           <div
-            className={`px-4 py-2.5 border-b border-slate-200/20 flex items-center gap-2 flex-wrap shrink-0 bg-fond`}
+            className={`px-4 py-2.5 border-b border-bord flex items-center gap-2 flex-wrap shrink-0 bg-fond`}
           >
             <span className={`text-xs font-medium ${textMuted}`}>À créer :</span>
             {recap.map((r) => (
               <span
                 key={r}
-                className="text-xs font-semibold px-2 py-1 rounded-lg text-accent-texte"
-                style={{ background: `${couleur}18` }}
+                className="text-xs font-semibold px-2 py-1 rounded-lg text-accent-texte bg-accent/10"
               >
                 {r}
               </span>
@@ -580,7 +575,7 @@ export default function DicteeModal({
         <div className="overflow-y-auto overscroll-contain p-4 space-y-4 flex-1">
           {/* ── Micro non supporté ─────────────────────────────────────────── */}
           {!dictation.supported && etape === 'parler' && (
-            <div className={`rounded-xl p-3 text-sm flex gap-2 ${isDark ? 'bg-amber-500/10 text-amber-200' : 'bg-amber-50 text-amber-800'}`}>
+            <div className={`rounded-xl p-3 text-sm flex gap-2 bg-alerte-fond text-alerte-texte`}>
               <AlertTriangle size={18} className="shrink-0 mt-0.5" />
               <div>
                 <strong>La dictée vocale n'est pas disponible sur ce navigateur.</strong>
@@ -602,19 +597,15 @@ export default function DicteeModal({
                   disabled={!dictation.supported}
                   aria-label={dictation.listening ? 'Arrêter la dictée' : 'Démarrer la dictée'}
                   className={`w-20 h-20 rounded-full flex items-center justify-center transition-transform active:scale-95 disabled:opacity-40 ${
-                    dictation.listening ? 'animate-pulse' : ''
+                    dictation.listening ? 'animate-pulse ring-[12px] ring-accent/15' : ''
                   } bg-accent text-sur-accent`}
-                  style={{
-                    boxShadow: dictation.listening ? `0 0 0 12px ${couleur}22` : 'none',
-                  }}
                 >
                   {dictation.listening ? <MicOff size={30} /> : <Mic size={30} />}
                 </button>
 
                 {/* Retour visuel réel : chrono et nombre de mots entendus */}
                 <p
-                  className={`mt-3 text-sm font-medium ${dictation.listening ? '' : textMuted}`}
-                  style={dictation.listening ? { color: couleur } : undefined}
+                  className={`mt-3 text-sm font-medium ${dictation.listening ? 'text-accent-texte' : textMuted}`}
                   aria-live="polite"
                 >
                   {dictation.listening
@@ -634,7 +625,7 @@ export default function DicteeModal({
 
                 {dictation.permission === 'refusee' && (
                   <div className="mt-3 max-w-xs text-center">
-                    <p className="text-xs font-medium text-red-500">Le micro est bloqué pour ce site.</p>
+                    <p className="text-xs font-medium text-danger-texte">Le micro est bloqué pour ce site.</p>
                     <p className={`mt-1 text-xs ${textMuted}`}>
                       Touchez le cadenas 🔒 à gauche de l’adresse, autorisez le micro,
                       puis rechargez la page. Vous pouvez aussi taper votre texte ci-dessous.
@@ -669,7 +660,7 @@ export default function DicteeModal({
                 {/* L'analyse refuse au-delà de 5 000 caractères : on prévient avant
                     de laisser quelqu'un parler dix minutes pour rien. */}
                 {texteDicte.length > 3500 && (
-                  <p className={`text-xs mt-1 ${texteDicte.length > 4800 ? 'text-amber-600' : textMuted}`}>
+                  <p className={`text-xs mt-1 ${texteDicte.length > 4800 ? 'text-alerte-texte' : textMuted}`}>
                     {texteDicte.length} / 5 000 caractères
                     {texteDicte.length > 4800 && ' — coupez en deux dictées'}
                   </p>
@@ -677,7 +668,7 @@ export default function DicteeModal({
               </div>
 
               {(dictation.error || erreur) && (
-                <div className={`rounded-xl p-3 text-sm ${isDark ? 'bg-red-500/10 text-red-200' : 'bg-red-50 text-red-700'}`}>
+                <div className={`rounded-xl p-3 text-sm bg-danger-fond text-danger-texte`}>
                   {dictation.error || erreur}
                 </div>
               )}
@@ -733,7 +724,7 @@ export default function DicteeModal({
 
               {/* Les doutes de l'analyse, dits franchement plutôt que masqués */}
               {incertitudes.length > 0 && (
-                <div className={`rounded-xl p-3 text-sm ${isDark ? 'bg-amber-500/10 text-amber-200' : 'bg-amber-50 text-amber-800'}`}>
+                <div className={`rounded-xl p-3 text-sm bg-alerte-fond text-alerte-texte`}>
                   <div className="flex gap-2">
                     <AlertTriangle size={16} className="shrink-0 mt-0.5" />
                     <div>
@@ -747,7 +738,7 @@ export default function DicteeModal({
               )}
 
               {clientExistant && (
-                <div className={`rounded-xl p-3 text-sm ${isDark ? 'bg-emerald-500/10 text-emerald-200' : 'bg-emerald-50 text-emerald-800'}`}>
+                <div className={`rounded-xl p-3 text-sm bg-succes-fond text-succes-texte`}>
                   Client reconnu : <strong>{[clientExistant.prenom, clientExistant.nom].filter(Boolean).join(' ')}</strong>.
                   Aucun doublon ne sera créé.
                   {/* Homonymes, conjoints, frères : l'artisan doit pouvoir dire non. */}
@@ -766,16 +757,16 @@ export default function DicteeModal({
                   icone={User} titre="Nouveau client"
                   sousTitre={[client.prenom, client.nom].filter(Boolean).join(' ')}
                   actif={clientActif} onToggle={() => setClientActif((v) => !v)}
-                  isDark={isDark} couleur={couleur}
+                 
                 >
                   <div className="grid grid-cols-2 gap-2">
-                    <Champ label="Prénom" value={client.prenom} onChange={(v) => setClient({ ...client, prenom: v })} isDark={isDark} />
-                    <Champ label="Nom" value={client.nom} onChange={(v) => setClient({ ...client, nom: v })} isDark={isDark} />
-                    <Champ label="Téléphone" value={client.telephone} onChange={(v) => setClient({ ...client, telephone: v })} isDark={isDark} />
-                    <Champ label="Email" type="email" value={client.email} onChange={(v) => setClient({ ...client, email: v })} isDark={isDark} />
-                    <Champ label="Adresse" value={client.adresse} onChange={(v) => setClient({ ...client, adresse: v })} isDark={isDark} largeur="col-span-2" />
-                    <Champ label="Code postal" value={client.codePostal} onChange={(v) => setClient({ ...client, codePostal: v })} isDark={isDark} />
-                    <Champ label="Ville" value={client.ville} onChange={(v) => setClient({ ...client, ville: v })} isDark={isDark} />
+                    <Champ label="Prénom" value={client.prenom} onChange={(v) => setClient({ ...client, prenom: v })} />
+                    <Champ label="Nom" value={client.nom} onChange={(v) => setClient({ ...client, nom: v })} />
+                    <Champ label="Téléphone" value={client.telephone} onChange={(v) => setClient({ ...client, telephone: v })} />
+                    <Champ label="Email" type="email" value={client.email} onChange={(v) => setClient({ ...client, email: v })} />
+                    <Champ label="Adresse" value={client.adresse} onChange={(v) => setClient({ ...client, adresse: v })} largeur="col-span-2" />
+                    <Champ label="Code postal" value={client.codePostal} onChange={(v) => setClient({ ...client, codePostal: v })} />
+                    <Champ label="Ville" value={client.ville} onChange={(v) => setClient({ ...client, ville: v })} />
                   </div>
                 </Carte>
               )}
@@ -785,7 +776,7 @@ export default function DicteeModal({
                 item.existant ? (
                   <div
                     key={idx}
-                    className={`rounded-xl p-3 text-sm ${isDark ? 'bg-emerald-500/10 text-emerald-200' : 'bg-emerald-50 text-emerald-800'}`}
+                    className={`rounded-xl p-3 text-sm bg-succes-fond text-succes-texte`}
                   >
                     Chantier reconnu : <strong>{item.existant.nom}</strong>. Aucun doublon ne sera créé.
                   </div>
@@ -799,7 +790,7 @@ export default function DicteeModal({
                     onToggle={() =>
                       setListeChantiers((l) => l.map((it, j) => (j === idx ? { ...it, actif: !it.actif } : it)))
                     }
-                    isDark={isDark} couleur={couleur}
+                   
                     liaison={
                       nomClient
                         ? { ok: true, texte: `Sera rattaché à ${nomClient}.` }
@@ -807,9 +798,9 @@ export default function DicteeModal({
                     }
                   >
                     <div className="grid grid-cols-2 gap-2">
-                      <Champ label="Nom du chantier" value={item.data.nom} onChange={(v) => majChantier(idx, 'nom', v)} isDark={isDark} largeur="col-span-2" />
-                      <Champ label="Adresse des travaux" value={item.data.adresse} onChange={(v) => majChantier(idx, 'adresse', v)} isDark={isDark} placeholder={client?.adresse || ''} />
-                      <Champ label="Ville" value={item.data.ville} onChange={(v) => majChantier(idx, 'ville', v)} isDark={isDark} placeholder={client?.ville || ''} />
+                      <Champ label="Nom du chantier" value={item.data.nom} onChange={(v) => majChantier(idx, 'nom', v)} largeur="col-span-2" />
+                      <Champ label="Adresse des travaux" value={item.data.adresse} onChange={(v) => majChantier(idx, 'adresse', v)} placeholder={client?.adresse || ''} />
+                      <Champ label="Ville" value={item.data.ville} onChange={(v) => majChantier(idx, 'ville', v)} placeholder={client?.ville || ''} />
                     </div>
                   </Carte>
                 )
@@ -827,7 +818,7 @@ export default function DicteeModal({
                   }
                   badge={lignesSansPrix ? `${lignesSansPrix} prix à compléter` : null}
                   actif={docActif} onToggle={() => setDocActif((v) => !v)}
-                  isDark={isDark} couleur={couleur}
+                 
                   liaison={
                     nomClient
                       ? { ok: true, texte: `Au nom de ${nomClient}.` }
@@ -888,7 +879,7 @@ export default function DicteeModal({
                             onChange={(e) => majLigne(i, 'prixUnitaire', e.target.value.replace(',', '.'))}
                             aria-label="Prix unitaire" placeholder="Prix €"
                             className={`px-2 py-1.5 rounded-lg border text-sm ${
-                              !l.prixUnitaire ? 'border-amber-400' : 'bg-surface border-bord-fort'
+                              !l.prixUnitaire ? 'border-alerte-point' : 'bg-surface border-bord-fort'
                             } bg-surface`}
                           />
                           <div className={`px-2 py-1.5 text-sm text-right font-medium ${textPrimary}`}>
@@ -962,7 +953,7 @@ export default function DicteeModal({
               )}
 
               {erreur && (
-                <div className={`rounded-xl p-3 text-sm ${isDark ? 'bg-red-500/10 text-red-200' : 'bg-red-50 text-red-700'}`}>
+                <div className={`rounded-xl p-3 text-sm bg-danger-fond text-danger-texte`}>
                   {erreur}
                 </div>
               )}
@@ -971,7 +962,7 @@ export default function DicteeModal({
         </div>
 
         {/* Pied : actions */}
-        <div className="p-4 border-t border-slate-200/20 flex gap-2 shrink-0">
+        <div className="p-4 border-t border-bord flex gap-2 shrink-0">
           {etape === 'parler' && (
             <button
               onClick={() => lancerAnalyse(texteDicte)}

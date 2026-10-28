@@ -52,8 +52,8 @@ export default function AdminHelp({
   devis = [],
   depenses = [],
   entreprise = {},
-  isDark = false,
-  couleur = '#f97316',
+  isDark: _isDark = false,
+  couleur: _couleur,
 }) {
   const [activeSection, setActiveSection] = useState('overview');
   const [expandedFaq, setExpandedFaq] = useState(null);
@@ -120,11 +120,10 @@ export default function AdminHelp({
 
   // Helper pour les couleurs d'urgence
   const getUrgencyStyle = (days) => {
-    if (days < 0) return { text: 'text-red-600', bg: isDark ? 'bg-red-900/40' : 'bg-red-100', badge: 'bg-red-100 text-red-700' };
-    if (days <= 7) return { text: 'text-red-500', bg: isDark ? 'bg-red-900/30' : 'bg-red-50', badge: 'bg-red-100 text-red-600' };
+    if (days < 0) return { text: 'text-danger-texte', bg: 'bg-danger-fond', badge: 'bg-danger-fond text-danger-texte' };
     if (days <= 14) return { text: 'text-alerte-texte', bg: 'bg-alerte-fond', badge: 'bg-alerte-fond text-alerte-texte' };
-    if (days <= 30) return { text: 'text-yellow-600', bg: isDark ? 'bg-yellow-900/30' : 'bg-yellow-50', badge: 'bg-yellow-100 text-yellow-700' };
-    return { text: 'text-green-500', bg: 'bg-fond', badge: 'bg-green-100 text-green-600' };
+    if (days <= 30) return { text: 'text-encre-2', bg: 'bg-surface-2', badge: 'bg-surface-2 text-encre-2' };
+    return { text: 'text-succes-texte', bg: 'bg-fond', badge: 'bg-succes-fond text-succes-texte' };
   };
 
   // Quick actions
@@ -160,7 +159,7 @@ export default function AdminHelp({
             {/* Header */}
             <div className={`p-5 rounded-2xl ${cardBg} border ${borderColor}`}>
               <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${couleur}20` }}>
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-accent/10">
                   <HelpCircle size={20} className="text-accent-texte" />
                 </div>
                 <div>
@@ -177,21 +176,21 @@ export default function AdminHelp({
                 <p className={`text-sm font-medium ${textMuted}`}>Chantiers actifs</p>
               </div>
               <div className={`p-4 rounded-xl ${cardBg} border ${borderColor} shadow-sm text-center`}>
-                <p className="text-3xl font-bold text-amber-500">{stats.devisEnAttente}</p>
+                <p className="text-3xl font-bold text-alerte-texte">{stats.devisEnAttente}</p>
                 <p className={`text-sm font-medium ${textMuted}`}>Devis en attente</p>
               </div>
               <div className={`p-4 rounded-xl ${cardBg} border ${borderColor} shadow-sm text-center`}>
-                <p className="text-3xl font-bold text-red-500">{stats.facturesImpayees}</p>
+                <p className="text-3xl font-bold text-alerte-texte">{stats.facturesImpayees}</p>
                 <p className={`text-sm font-medium ${textMuted}`}>Factures impayées</p>
               </div>
             </div>
 
             {/* Email Alert Banner */}
             {activeAlerts.length > 0 && (
-              <div className={`p-4 rounded-xl border ${isDark ? 'bg-red-900/20 border-red-800' : 'bg-red-50 border-red-200'}`}>
+              <div className="p-4 rounded-xl border bg-alerte-fond border-alerte-point/40">
                 <div className="flex items-center gap-2 mb-2">
-                  <BellRing size={18} className="text-red-500" />
-                  <h2 className={`font-semibold text-red-500`}>{activeAlerts.length} alerte{activeAlerts.length > 1 ? 's' : ''} active{activeAlerts.length > 1 ? 's' : ''}</h2>
+                  <BellRing size={18} className="text-alerte-texte" aria-hidden="true" />
+                  <h2 className="font-semibold text-alerte-texte">{activeAlerts.length} alerte{activeAlerts.length > 1 ? 's' : ''} active{activeAlerts.length > 1 ? 's' : ''}</h2>
                 </div>
                 <div className="space-y-1.5">
                   {activeAlerts.map(a => {
@@ -227,17 +226,17 @@ export default function AdminHelp({
               <div className="grid grid-cols-3 gap-3">
                 <div className={`p-3 rounded-lg text-center bg-fond`}>
                   <p className={`text-xs ${textMuted} mb-1`}>TVA facturée</p>
-                  <p className="text-lg font-bold text-emerald-500">{tvaStats.tvaCollectee.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} €</p>
+                  <p className="text-lg font-bold text-succes-texte">{tvaStats.tvaCollectee.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} €</p>
                   <p className={`text-xs ${textMuted}`}>{tvaStats.facturesCount} facture{tvaStats.facturesCount > 1 ? 's' : ''}</p>
                 </div>
                 <div className={`p-3 rounded-lg text-center bg-fond`}>
                   <p className={`text-xs ${textMuted} mb-1`}>TVA déductible</p>
-                  <p className="text-lg font-bold text-blue-500">{tvaStats.tvaDeductible.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} €</p>
+                  <p className="text-lg font-bold text-info-texte">{tvaStats.tvaDeductible.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} €</p>
                   <p className={`text-xs ${textMuted}`}>{tvaStats.depensesCount} dépense{tvaStats.depensesCount > 1 ? 's' : ''}{tvaStats.depensesSansTva > 0 ? `, dont ${tvaStats.depensesSansTva} sans TVA saisie` : ''}</p>
                 </div>
                 <div className={`p-3 rounded-lg text-center bg-fond`}>
                   <p className={`text-xs ${textMuted} mb-1`}>Solde estimé (débits)</p>
-                  <p className={`text-lg font-bold ${tvaStats.tvaADeclarer >= 0 ? 'text-red-500' : 'text-emerald-500'}`}>
+                  <p className={`text-lg font-bold ${tvaStats.tvaADeclarer >= 0 ? 'text-alerte-texte' : 'text-succes-texte'}`}>
                     {tvaStats.tvaADeclarer.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} €
                   </p>
                   <p className={`text-xs ${textMuted}`}>{tvaStats.tvaADeclarer >= 0 ? 'Sur vos factures émises' : 'Crédit estimé'}</p>
@@ -254,7 +253,7 @@ export default function AdminHelp({
                   <button
                     key={action.id}
                     onClick={() => setActiveSection(action.id)}
-                    className={`p-5 rounded-xl ${cardBg} border ${borderColor} text-left transition-all hover:shadow-lg hover:scale-[1.02] hover:border-slate-300 active:scale-98 cursor-pointer`}
+                    className={`p-5 rounded-xl ${cardBg} border ${borderColor} text-left transition-all hover:shadow-lg hover:scale-[1.02] hover:border-bord-fort active:scale-98 cursor-pointer`}
                   >
                     <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-3 shadow-sm" style={{ backgroundColor: `${action.color}20` }}>
                       <action.icon size={24} style={{ color: action.color }} />
@@ -326,7 +325,7 @@ export default function AdminHelp({
                 >
                   {alertSettings.emailEnabled
                     ? <ToggleRight size={32} className="text-accent-texte" />
-                    : <ToggleLeft size={32} className={isDark ? 'text-slate-600' : 'text-slate-300'} />
+                    : <ToggleLeft size={32} className="text-encre-3" />
                   }
                 </button>
               </div>
@@ -352,10 +351,10 @@ export default function AdminHelp({
                           onClick={() => saveAlertSettings({ ...alertSettings, daysBeforeAlert: d })}
                           className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${
                             alertSettings.daysBeforeAlert === d
-                              ? 'text-white'
+                              ? 'bg-accent text-sur-accent'
                               : 'bg-surface-2 text-encre-2'
                           }`}
-                          style={alertSettings.daysBeforeAlert === d ? { backgroundColor: couleur } : {}}
+                          aria-pressed={alertSettings.daysBeforeAlert === d}
                         >
                           J-{d}
                         </button>
@@ -377,7 +376,7 @@ export default function AdminHelp({
                         })}>
                           {alertSettings.alertTypes[t.key]
                             ? <ToggleRight size={24} style={{ color: t.color }} />
-                            : <ToggleLeft size={24} className={isDark ? 'text-slate-600' : 'text-slate-300'} />
+                            : <ToggleLeft size={24} className="text-encre-3" />
                           }
                         </button>
                       </div>
@@ -399,10 +398,11 @@ export default function AdminHelp({
                     <button
                       onClick={() => setExpandedFaq(expandedFaq === i ? null : i)}
                       className={`w-full p-4 text-left flex items-center justify-between gap-3 group ${textPrimary} hover:bg-opacity-80 transition-colors`}
+                      aria-expanded={expandedFaq === i}
                     >
                       <span className="text-sm font-medium flex-1">{faq.q}</span>
-                      <div className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all ${expandedFaq === i ? 'rotate-90' : ''}`} style={{ backgroundColor: expandedFaq === i ? `${couleur}20` : (isDark ? 'rgba(148,163,184,0.2)' : 'rgba(148,163,184,0.3)') }}>
-                        <ChevronRight size={22} className={`transition-all ${expandedFaq === i ? '' : 'text-encre-3'} group-hover:text-slate-700`} style={expandedFaq === i ? { color: couleur } : {}} />
+                      <div className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all ${expandedFaq === i ? 'rotate-90 bg-accent/10' : 'bg-surface-2'}`}>
+                        <ChevronRight size={22} aria-hidden="true" className={`transition-all ${expandedFaq === i ? 'text-accent-texte' : 'text-encre-3'} group-hover:text-encre`} />
                       </div>
                     </button>
                     {expandedFaq === i && (
@@ -440,16 +440,16 @@ export default function AdminHelp({
         );
 
       case 'tva':
-        return <TVAManager isDark={isDark} couleur={couleur} devis={devis} depenses={depenses} entreprise={entreprise} />;
+        return <TVAManager devis={devis} depenses={depenses} entreprise={entreprise} />;
 
       case 'calendar':
-        return <AdminCalendar isDark={isDark} couleur={couleur} />;
+        return <AdminCalendar />;
 
       case 'checklist':
-        return <DocumentChecklist isDark={isDark} couleur={couleur} chantiers={chantiers} />;
+        return <DocumentChecklist chantiers={chantiers} />;
 
       case 'conformite':
-        return <ConformityReport isDark={isDark} couleur={couleur} entreprise={entreprise} chantiers={chantiers} />;
+        return <ConformityReport entreprise={entreprise} chantiers={chantiers} />;
 
       default:
         return null;
@@ -466,12 +466,11 @@ export default function AdminHelp({
             onClick={() => setActiveSection(section.id)}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl whitespace-nowrap text-sm font-medium transition-all min-h-[44px] ${
               activeSection === section.id
-                ? 'text-white shadow-lg'
-                : isDark
-                  ? 'bg-slate-800 text-slate-400 hover:text-white'
-                  : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200'
+                ? 'bg-accent text-sur-accent shadow-e1'
+                : 'bg-surface text-encre-2 hover:text-encre border border-bord'
             }`}
-            style={activeSection === section.id ? { background: couleur } : {}}
+            aria-pressed={activeSection === section.id}
+            aria-label={section.label}
           >
             <section.icon size={16} />
             <span className="hidden sm:inline">{section.label}</span>

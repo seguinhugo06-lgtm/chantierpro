@@ -52,7 +52,7 @@ const CONFORMITY_CATEGORIES = [
   },
 ];
 
-export default function ConformityReport({ isDark = false, couleur = '#f97316' }) {
+export default function ConformityReport({ isDark: _isDark = false, couleur: _couleur }) {
   const { showToast } = useToast();
   const [checkedItems, setCheckedItems] = useState(() => {
     try { const s = localStorage.getItem('cp_conformity_checklist'); return s ? JSON.parse(s) : {}; }
@@ -123,22 +123,22 @@ export default function ConformityReport({ isDark = false, couleur = '#f97316' }
           </div>
         </div>
         {score === 100 && (
-          <p className="text-sm text-emerald-600 mt-3">Bravo, vous êtes en conformité !</p>
+          <p className="text-sm text-succes-texte mt-3">Bravo, vous êtes en conformité !</p>
         )}
       </div>
 
       {/* Missing items alert */}
       {missing.length > 0 && (
-        <div className={`p-4 rounded-xl ${isDark ? 'bg-red-900/30' : 'bg-red-50'} border ${isDark ? 'border-red-700' : 'border-red-200'}`}>
+        <div className={`p-4 rounded-xl bg-danger-fond border border-danger-point/40`}>
           <div className="flex items-center gap-2 mb-2">
-            <AlertTriangle size={18} className="text-red-500" />
-            <p className={`font-medium ${isDark ? 'text-red-300' : 'text-red-700'}`}>
+            <AlertTriangle size={18} className="text-danger-texte" />
+            <p className={`font-medium text-danger-texte`}>
               {missing.length} élément{missing.length > 1 ? 's' : ''} manquant{missing.length > 1 ? 's' : ''}
             </p>
           </div>
           <div className="space-y-1">
             {missing.slice(0, 3).map((item, i) => (
-              <p key={i} className={`text-sm ${isDark ? 'text-red-200' : 'text-red-600'}`}>
+              <p key={i} className={`text-sm text-danger-texte`}>
                 • {item.name} ({item.category})
               </p>
             ))}
@@ -180,20 +180,20 @@ export default function ConformityReport({ isDark = false, couleur = '#f97316' }
                         onClick={() => handleToggleItem(item.id)}
                         className={`w-full p-3 rounded-lg flex items-center gap-3 text-left ${
                           checkedItems[item.id]
-                            ? 'bg-emerald-50 border border-emerald-200'
+                            ? 'bg-succes-fond border border-succes-point/40'
                             : 'bg-fond'
                         }`}
                       >
                         <div className={`w-5 h-5 rounded flex items-center justify-center ${
                           checkedItems[item.id]
-                            ? 'bg-emerald-500 text-white'
+                            ? 'bg-succes-point text-white'
                             : 'bg-surface border border-bord-fort'
                         }`}>
                           {checkedItems[item.id] && <Check size={12} />}
                         </div>
-                        <span className={`text-sm ${checkedItems[item.id] ? 'text-emerald-700' : textPrimary}`}>
+                        <span className={`text-sm ${checkedItems[item.id] ? 'text-succes-texte' : textPrimary}`}>
                           {item.name}
-                          {item.required && <span className="text-red-500 ml-1">*</span>}
+                          {item.required && <span className="text-encre-2 font-bold ml-1">*</span>}
                         </span>
                       </button>
                     ))}

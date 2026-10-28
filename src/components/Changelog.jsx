@@ -107,14 +107,15 @@ const CHANGELOG = [
   },
 ];
 
+// Tons du thème : le contraste est garanti, clair et sombre (un nouveau, un amélioré, un corrigé : pas des erreurs)
 const typeConfig = {
-  new: { label: 'Nouveau', icon: Sparkles, color: 'emerald', bg: 'bg-emerald-100 text-emerald-700' },
-  improve: { label: 'Amélioré', icon: Zap, color: 'blue', bg: 'bg-blue-100 text-blue-700' },
-  fix: { label: 'Corrigé', icon: Bug, color: 'amber', bg: 'bg-amber-100 text-amber-700' },
-  security: { label: 'Sécurité', icon: Shield, color: 'red', bg: 'bg-red-100 text-red-700' },
+  new: { label: 'Nouveau', icon: Sparkles, bg: 'bg-succes-fond text-succes-texte' },
+  improve: { label: 'Amélioré', icon: Zap, bg: 'bg-info-fond text-info-texte' },
+  fix: { label: 'Corrigé', icon: Bug, bg: 'bg-alerte-fond text-alerte-texte' },
+  security: { label: 'Sécurité', icon: Shield, bg: 'bg-neutre-fond text-neutre-texte' },
 };
 
-export default function Changelog({ isDark, couleur, setPage }) {
+export default function Changelog({ isDark: _isDark, couleur: _couleur, setPage }) {
   const [expandedVersion, setExpandedVersion] = useState(CHANGELOG[0]?.version);
 
   const cardBg = 'bg-surface border-bord';
@@ -127,9 +128,10 @@ export default function Changelog({ isDark, couleur, setPage }) {
       <div className="flex items-center gap-3 mb-6">
         <button
           onClick={() => setPage('dashboard')}
-          className={`p-2 rounded-xl transition-colors ${isDark ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-slate-200 text-slate-500'}`}
+          className="p-2 w-11 h-11 flex items-center justify-center rounded-xl transition-colors hover:bg-bord text-encre-3"
+          aria-label="Retour à l'accueil"
         >
-          <ArrowLeft size={20} />
+          <ArrowLeft size={20} aria-hidden="true" />
         </button>
         <div>
           <h1 className={`text-2xl font-bold ${textPrimary}`}>Changelog</h1>
@@ -148,17 +150,14 @@ export default function Changelog({ isDark, couleur, setPage }) {
                 onClick={() => setExpandedVersion(isExpanded ? null : release.version)}
                 className={`w-full flex items-center gap-4 p-4 sm:p-5 text-left transition-colors hover:bg-surface-2`}
               >
-                <div
-                  className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
-                  style={{ background: `${couleur}20` }}
-                >
+                <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 bg-accent/10">
                   <Package size={20} className="text-accent-texte" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className={`font-bold text-base ${textPrimary}`}>v{release.version}</span>
                     {release.highlights && (
-                      <span className="px-2 py-0.5 text-[10px] font-bold uppercase rounded-full bg-accent text-sur-accent">
+                      <span className="px-2 py-0.5 text-xs font-bold rounded-full bg-accent text-sur-accent">
                         Dernier
                       </span>
                     )}
@@ -180,18 +179,8 @@ export default function Changelog({ isDark, couleur, setPage }) {
                       const Icon = config.icon;
                       return (
                         <li key={idx} className="flex items-start gap-3">
-                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium flex-shrink-0 mt-0.5 ${
-                            isDark
-                              ? change.type === 'new' ? 'bg-emerald-900/40 text-emerald-300'
-                                : change.type === 'improve' ? 'bg-blue-900/40 text-blue-300'
-                                : change.type === 'fix' ? 'bg-amber-900/40 text-amber-300'
-                                : 'bg-red-900/40 text-red-300'
-                              : change.type === 'new' ? 'bg-emerald-100 text-emerald-700'
-                                : change.type === 'improve' ? 'bg-blue-100 text-blue-700'
-                                : change.type === 'fix' ? 'bg-amber-100 text-amber-700'
-                                : 'bg-red-100 text-red-700'
-                          }`}>
-                            <Icon size={10} />
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium flex-shrink-0 mt-0.5 ${config.bg}`}>
+                            <Icon size={12} aria-hidden="true" />
                             {config.label}
                           </span>
                           <span className={`text-sm text-encre-2`}>{change.text}</span>

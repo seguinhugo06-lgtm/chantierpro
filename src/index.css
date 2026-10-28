@@ -74,6 +74,16 @@ html {
   scrollbar-gutter: stable;
 }
 
+/* Un libellé masqué (`span.sr-only`, position: absolute) se place dans le bloc de son plus proche ancêtre positionné. Dans une
+   cellule d'en-tête (« Actions » d'une colonne de boutons), si aucun ancêtre n'est positionné jusqu'au conteneur qui
+   défile, le libellé sort du défilement et élargit la PAGE (Catalogue +56 px à 768 px, Finances +296 px : Task 7 puis 8).
+   Les cellules d'en-tête sont donc toujours le repère de leurs libellés masqués ; l'audit d'interface vérifie que
+   chaque `.sr-only` reste dans son défilement (scripts/audit-ui.cjs). Une classe `sticky` ou `absolute` sur une
+   cellule l'emporte : cette règle ne vaut que pour les cellules sans position. */
+th {
+  position: relative;
+}
+
 /* Hide scrollbar for horizontal tab bars on mobile */
 .scrollbar-none,
 .scrollbar-hide {
@@ -223,6 +233,28 @@ button:active {
    jour » au-dessus des formulaires (retour d'Hugo sur « Au Bon Volt », 23 oct. 2026 ; mesuré : fond à 16 px du haut). */
 .fixed.inset-0 {
   margin: 0 !important;
+  /* ... et il va jusqu'au bord droit de la fenêtre. `html { scrollbar-gutter: stable }` réserve la place d'une barre de
+     défilement (6 px au bureau) : quand une fenêtre verrouille le défilement, cette bande reste vide et le fond, qui
+     mesure 100 % de la zone utile, s'arrêtait 6 px avant le bord (relecture de la Task 8, 27 oct. 2026). 100vw compte
+     la gouttière, 100 % non : la différence est exactement la bande. Sans barre (téléphone, barres flottantes) : 0. La
+     page, elle, ne bouge pas : sa largeur ne change pas à l'ouverture. */
+  right: calc(100% - 100vw);
+}
+
+/* Listes natives (<select>) : la flèche est dessinée par l'app, de la couleur de l'encre secondaire. Celle du navigateur
+   restait foncée sur le fond bleu-noir du mode sombre, même avec `color-scheme: dark` (relevé sur le ramonage, Task 9 :
+   « la flèche est illisible »). Les listes qui posent déjà leur propre flèche (`appearance-none`) sont laissées telles quelles. */
+select:not([multiple]):not([size]):not(.appearance-none) {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 1.1rem;
+  padding-right: 2.5rem;
+}
+[data-theme='sombre'] select:not([multiple]):not([size]):not(.appearance-none) {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
 }
 
 /* Disable text selection on buttons */
@@ -656,228 +688,6 @@ input:focus, select:focus, textarea:focus {
   overflow: visible;
   clip: auto;
   white-space: normal;
-}
-
-/* ============================================
-   FullCalendar Custom Styles
-   ============================================ */
-
-/* Base calendar styles */
-.fc {
-  --fc-border-color: #e5e7eb;
-  --fc-button-text-color: #374151;
-  --fc-button-bg-color: #f9fafb;
-  --fc-button-border-color: #d1d5db;
-  --fc-button-hover-bg-color: #f3f4f6;
-  --fc-button-hover-border-color: #9ca3af;
-  --fc-button-active-bg-color: #e5e7eb;
-  --fc-today-bg-color: rgba(249, 115, 22, 0.08);
-  --fc-neutral-bg-color: #f9fafb;
-  --fc-list-event-hover-bg-color: #f3f4f6;
-  --fc-page-bg-color: #ffffff;
-  font-family: inherit;
-}
-
-/* Dark mode */
-.dark .fc {
-  --fc-border-color: #334155;
-  --fc-button-text-color: #e2e8f0;
-  --fc-button-bg-color: #1e293b;
-  --fc-button-border-color: #475569;
-  --fc-button-hover-bg-color: #334155;
-  --fc-button-hover-border-color: #64748b;
-  --fc-button-active-bg-color: #475569;
-  --fc-today-bg-color: rgba(249, 115, 22, 0.15);
-  --fc-neutral-bg-color: #0f172a;
-  --fc-list-event-hover-bg-color: #1e293b;
-  --fc-page-bg-color: #0f172a;
-}
-
-/* Day headers */
-.fc .fc-col-header-cell {
-  padding: 0.75rem 0;
-  font-weight: 600;
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: #6b7280;
-}
-
-.dark .fc .fc-col-header-cell {
-  color: #9ca3af;
-}
-
-/* Day cells */
-.fc .fc-daygrid-day {
-  min-height: 100px;
-}
-
-.fc .fc-daygrid-day-frame {
-  padding: 0.25rem;
-}
-
-.fc .fc-daygrid-day-number {
-  padding: 0.5rem;
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: #374151;
-}
-
-.dark .fc .fc-daygrid-day-number {
-  color: #e2e8f0;
-}
-
-/* Today highlight */
-.fc .fc-day-today {
-  background-color: var(--fc-today-bg-color) !important;
-}
-
-.fc .fc-day-today .fc-daygrid-day-number {
-  background-color: #f97316;
-  color: white;
-  border-radius: 9999px;
-  width: 1.75rem;
-  height: 1.75rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* Events */
-.fc .fc-event {
-  border-radius: 0.375rem;
-  font-size: 0.75rem;
-  padding: 0.125rem 0.25rem;
-  border-width: 0;
-  border-left-width: 3px;
-  cursor: pointer;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
-}
-
-.fc .fc-event:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
-}
-
-.fc .fc-event-main {
-  padding: 0.125rem;
-}
-
-.fc .fc-event-title {
-  font-weight: 600;
-}
-
-.fc .fc-event-time {
-  font-weight: 400;
-  opacity: 0.8;
-}
-
-/* Time grid */
-.fc .fc-timegrid-slot {
-  height: 3rem;
-}
-
-.fc .fc-timegrid-slot-label {
-  font-size: 0.75rem;
-  color: #6b7280;
-}
-
-.dark .fc .fc-timegrid-slot-label {
-  color: #9ca3af;
-}
-
-/* Now indicator */
-.fc .fc-timegrid-now-indicator-line {
-  border-color: #ef4444;
-  border-width: 2px;
-}
-
-.fc .fc-timegrid-now-indicator-arrow {
-  border-color: #ef4444;
-  border-top-color: transparent;
-  border-bottom-color: transparent;
-}
-
-/* More link */
-.fc .fc-more-link {
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: #f97316;
-  padding: 0.25rem;
-}
-
-.fc .fc-more-link:hover {
-  color: #ea580c;
-  text-decoration: underline;
-}
-
-/* Popover */
-.fc .fc-popover {
-  border-radius: 0.5rem;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
-  border: 1px solid var(--fc-border-color);
-}
-
-.fc .fc-popover-header {
-  background: var(--fc-neutral-bg-color);
-  padding: 0.5rem 0.75rem;
-  font-weight: 600;
-  border-radius: 0.5rem 0.5rem 0 0;
-}
-
-.fc .fc-popover-body {
-  padding: 0.5rem;
-}
-
-/* Drag and drop */
-.fc .fc-event.fc-event-dragging {
-  opacity: 0.8;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
-}
-
-.fc .fc-event.fc-event-resizing {
-  opacity: 0.9;
-}
-
-/* Selection */
-.fc .fc-highlight {
-  background: rgba(249, 115, 22, 0.15);
-}
-
-/* Scrollbar in calendar */
-.fc .fc-scroller {
-  scrollbar-width: thin;
-}
-
-.fc .fc-scroller::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-.fc .fc-scroller::-webkit-scrollbar-thumb {
-  background: rgba(100, 116, 139, 0.3);
-  border-radius: 3px;
-}
-
-/* Mobile responsiveness */
-@media (max-width: 640px) {
-  .fc .fc-daygrid-day {
-    min-height: 60px;
-  }
-
-  .fc .fc-daygrid-day-number {
-    font-size: 0.75rem;
-    padding: 0.25rem;
-  }
-
-  .fc .fc-event {
-    font-size: 0.625rem;
-  }
-
-  .fc .fc-col-header-cell {
-    font-size: 0.625rem;
-    padding: 0.5rem 0;
-  }
 }
 
 /* ============================================

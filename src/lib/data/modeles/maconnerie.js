@@ -5,7 +5,7 @@
 export const MACONNERIE_MODELES = {
   nom: 'Maçonnerie',
   icon: '🧱',
-  color: '#f97316',
+  color: '#a16207',
   modeles: [
     {
       id: 'ouverture-mur-porteur',

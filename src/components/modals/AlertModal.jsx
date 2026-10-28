@@ -20,9 +20,9 @@ export default function AlertModal({
   const typeConfig = {
     info: {
       icon: Info,
-      bgColor: 'bg-primary-100',
-      iconColor: 'text-primary-500',
-      buttonColor: 'bg-primary-500 hover:bg-primary-600'
+      bgColor: 'bg-accent/10',
+      iconColor: 'text-accent-texte',
+      buttonColor: 'bg-accent hover:brightness-95'
     },
     warning: {
       icon: AlertTriangle,

@@ -23,11 +23,13 @@ export const SITUATION_STATUS_LABELS = {
   payee: 'Payée',
 };
 
+// Un statut = un mot et un ton (src/lib/statuts.js) : brouillon neutre, validée et facturée chez le client (info), payée
+// acquise (succès). Les tons suivent le thème clair et sombre : plus de classes par mode.
 export const SITUATION_STATUS_COLORS = {
-  brouillon: { light: 'bg-gray-100 text-gray-700', dark: 'bg-slate-700 text-slate-300' },
-  validee: { light: 'bg-blue-100 text-blue-700', dark: 'bg-blue-900/40 text-blue-300' },
-  facturee: { light: 'bg-green-100 text-green-700', dark: 'bg-green-900/40 text-green-300' },
-  payee: { light: 'bg-emerald-100 text-emerald-700', dark: 'bg-emerald-900/40 text-emerald-300' },
+  brouillon: 'bg-neutre-fond text-neutre-texte',
+  validee: 'bg-info-fond text-info-texte',
+  facturee: 'bg-info-fond text-info-texte',
+  payee: 'bg-succes-fond text-succes-texte',
 };
 
 export const DEFAULT_RETENUE_GARANTIE_PCT = 5;

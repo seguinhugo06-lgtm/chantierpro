@@ -1,13 +1,14 @@
 import { useState, useMemo } from 'react';
 import {
-  Calendar, Bell, Clock, AlertTriangle, Check, Plus,
-  ChevronLeft, ChevronRight, X
+  Calendar, Clock, ChevronLeft, ChevronRight, Banknote, Users, Scale, CalendarDays,
 } from 'lucide-react';
 import { jourLocal, dateLue } from '../../lib/dates';
+import Modal, { ModalHeader, ModalTitle, ModalBody, ModalFooter } from '../ui/Modal';
+import { Bouton } from '../ui/Bouton';
 
 /**
  * AdminCalendar - Rappels intelligents et calendrier personnalisé
- * Alertes push, échéances fiscales/sociales, snooze personnalisé
+ * Échéances fiscales et sociales
  */
 
 const ECHEANCES_2026 = [
@@ -32,171 +33,26 @@ const ECHEANCES_2026 = [
   { id: 'ir', date: '2026-05-31', title: 'Déclaration Impôt Revenu', type: 'fiscal', priority: 'high' },
 
   // Septembre
-  { id: 'efacture', date: '2026-09-01', title: '⚡ E-Facture obligatoire', type: 'legal', priority: 'critical' },
+  { id: 'efacture', date: '2026-09-01', title: 'E-Facture obligatoire', type: 'legal', priority: 'critical' },
 ];
 
-const REMINDER_PRESETS = [
-  { label: '1 jour avant', days: 1 },
-  { label: '3 jours avant', days: 3 },
-  { label: '1 semaine avant', days: 7 },
-  { label: '2 semaines avant', days: 14 },
-];
-
-// Add Reminder Modal Component
-function AddReminderModal({ isOpen, onClose, onAdd, isDark, couleur }) {
-  const [form, setForm] = useState({
-    title: '',
-    date: jourLocal(),
-    type: 'custom',
-    priority: 'medium',
-    notes: ''
-  });
-
-  const textPrimary = 'text-encre';
-  const textMuted = 'text-encre-2';
-  const cardBg = 'bg-surface';
-  const inputBg = 'bg-surface border-bord-fort';
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!form.title || !form.date) return;
-    onAdd(form);
-    setForm({ title: '', date: '', type: 'custom', priority: 'medium', notes: '' });
-  };
-
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className={`relative max-w-md w-full p-6 rounded-3xl ${cardBg} shadow-2xl`}>
-        <div className="flex items-center justify-between mb-6">
-          <h3 className={`text-lg font-bold ${textPrimary}`}>Ajouter un rappel</h3>
-          <button onClick={onClose} className={`p-2 rounded-lg hover:bg-surface-2`}>
-            <X size={20} className={textMuted} />
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Title */}
-          <div>
-            <label className={`block text-sm font-medium mb-1.5 ${textPrimary}`}>Titre du rappel *</label>
-            <input
-              type="text"
-              value={form.title}
-              onChange={(e) => setForm(f => ({ ...f, title: e.target.value }))}
-              placeholder="Ex: Relancer client Dupont"
-              className={`w-full px-4 py-3 rounded-xl border ${inputBg} focus:ring-2 focus:ring-opacity-50`}
-              style={{ focusRingColor: couleur }}
-              required
-            />
-          </div>
-
-          {/* Date */}
-          <div>
-            <label className={`block text-sm font-medium mb-1.5 ${textPrimary}`}>Date *</label>
-            <input
-              type="date"
-              value={form.date}
-              onChange={(e) => setForm(f => ({ ...f, date: e.target.value }))}
-              className={`w-full px-4 py-3 rounded-xl border ${inputBg}`}
-              required
-            />
-          </div>
-
-          {/* Type */}
-          <div>
-            <label className={`block text-sm font-medium mb-1.5 ${textPrimary}`}>Type</label>
-            <div className="grid grid-cols-4 gap-2">
-              {[
-                { id: 'custom', label: '📅 Perso' },
-                { id: 'fiscal', label: '💰 Fiscal' },
-                { id: 'social', label: '👥 Social' },
-                { id: 'legal', label: '⚖️ Légal' },
-              ].map(t => (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() => setForm(f => ({ ...f, type: t.id }))}
-                  className={`px-3 py-2 rounded-xl text-sm transition-all ${
-                    form.type === t.id
-                      ? 'text-white'
-                      : 'bg-surface-2 text-encre-2'
-                  }`}
-                  style={form.type === t.id ? { background: couleur } : {}}
-                >
-                  {t.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Priority */}
-          <div>
-            <label className={`block text-sm font-medium mb-1.5 ${textPrimary}`}>Priorité</label>
-            <div className="grid grid-cols-3 gap-2">
-              {[
-                { id: 'low', label: 'Basse', color: 'bg-blue-500' },
-                { id: 'medium', label: 'Moyenne', color: 'bg-amber-500' },
-                { id: 'high', label: 'Haute', color: 'bg-red-500' },
-              ].map(p => (
-                <button
-                  key={p.id}
-                  type="button"
-                  onClick={() => setForm(f => ({ ...f, priority: p.id }))}
-                  className={`px-3 py-2 rounded-xl text-sm font-medium transition-all ${
-                    form.priority === p.id
-                      ? `${p.color} text-white`
-                      : 'bg-surface-2 text-encre-2'
-                  }`}
-                >
-                  {p.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Notes */}
-          <div>
-            <label className={`block text-sm font-medium mb-1.5 ${textPrimary}`}>Notes (optionnel)</label>
-            <textarea
-              value={form.notes}
-              onChange={(e) => setForm(f => ({ ...f, notes: e.target.value }))}
-              placeholder="Détails supplémentaires..."
-              rows={2}
-              className={`w-full px-4 py-3 rounded-xl border ${inputBg} resize-none`}
-            />
-          </div>
-
-          {/* Actions */}
-          <div className="flex gap-3 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className={`flex-1 py-3 rounded-xl font-medium ${isDark ? 'bg-slate-700 text-white hover:bg-slate-600' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
-            >
-              Annuler
-            </button>
-            <button
-              type="submit"
-              className="flex-1 py-3 rounded-xl font-medium transition-all hover:shadow-lg bg-accent text-sur-accent"
-            >
-              Ajouter
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
+// Les types d'échéance : une icône et deux libellés (court pour les boutons)
+const TYPES_ECHEANCE = {
+  custom: { icone: CalendarDays, court: 'Perso' },
+  fiscal: { icone: Banknote, court: 'Fiscal' },
+  social: { icone: Users, court: 'Social' },
+  legal: { icone: Scale, court: 'Légal' },
+};
+const typeDe = (type) => TYPES_ECHEANCE[type] || TYPES_ECHEANCE.custom;
+function IconeType({ type, size = 22, className = '' }) {
+  const Icone = typeDe(type).icone;
+  return <Icone size={size} className={`flex-shrink-0 text-encre-2 ${className}`} aria-hidden="true" />;
 }
 
-export default function AdminCalendar({ isDark = false, couleur = '#f97316' }) {
-  const [currentMonth, setCurrentMonth] = useState(new Date(2026, 0)); // Janvier 2026
+export default function AdminCalendar({ isDark: _isDark = false, couleur: _couleur }) {
+  const [currentMonth, setCurrentMonth] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth())); // le mois en cours
   const [selectedDate, setSelectedDate] = useState(null);
-  const [showAddReminder, setShowAddReminder] = useState(false);
   const [filter, setFilter] = useState('all');
-  const [customReminders, setCustomReminders] = useState([]);
-  const [snoozed, setSnoozed] = useState({});
 
   const textPrimary = 'text-encre';
   const textMuted = 'text-encre-2';
@@ -261,29 +117,14 @@ export default function AdminCalendar({ isDark = false, couleur = '#f97316' }) {
     });
   }, [filteredEcheances]);
 
-  const handleSnooze = (eventId, days) => {
-    const newDate = new Date();
-    newDate.setDate(newDate.getDate() + days);
-    setSnoozed(prev => ({ ...prev, [eventId]: newDate.toISOString() }));
-  };
-
   const getPriorityStyle = (priority) => {
     switch (priority) {
       case 'critical':
-        return { bg: 'bg-red-500', text: 'text-red-500', light: isDark ? 'bg-red-900/30' : 'bg-red-50' };
+        return { bg: 'bg-danger-point', text: 'text-danger-texte', light: 'bg-danger-fond' };
       case 'high':
-        return { bg: 'bg-amber-500', text: 'text-amber-500', light: isDark ? 'bg-amber-900/30' : 'bg-amber-50' };
+        return { bg: 'bg-alerte-point', text: 'text-alerte-texte', light: 'bg-alerte-fond' };
       default:
-        return { bg: 'bg-blue-500', text: 'text-blue-500', light: isDark ? 'bg-blue-900/30' : 'bg-blue-50' };
-    }
-  };
-
-  const getTypeIcon = (type) => {
-    switch (type) {
-      case 'fiscal': return '💰';
-      case 'social': return '👥';
-      case 'legal': return '⚖️';
-      default: return '📅';
+        return { bg: 'bg-info-point', text: 'text-info-texte', light: 'bg-info-fond' };
     }
   };
 
@@ -297,34 +138,27 @@ export default function AdminCalendar({ isDark = false, couleur = '#f97316' }) {
             Ne rate plus aucune échéance
           </p>
         </div>
-        <button
-          onClick={() => setShowAddReminder(true)}
-          className="px-4 py-2 rounded-xl font-medium flex items-center gap-2 hover:shadow-lg transition-shadow bg-accent text-sur-accent"
-        >
-          <Plus size={16} />
-          Ajouter rappel
-        </button>
       </div>
 
       {/* Filter tabs */}
       <div className="flex gap-2 overflow-x-auto pb-2">
         {[
           { id: 'all', label: 'Tout', icon: Calendar },
-          { id: 'fiscal', label: 'Fiscal', icon: null, emoji: '💰' },
-          { id: 'social', label: 'Social', icon: null, emoji: '👥' },
-          { id: 'legal', label: 'Légal', icon: null, emoji: '⚖️' },
+          { id: 'fiscal', label: 'Fiscal', icon: Banknote },
+          { id: 'social', label: 'Social', icon: Users },
+          { id: 'legal', label: 'Légal', icon: Scale },
         ].map(f => (
           <button
             key={f.id}
             onClick={() => setFilter(f.id)}
-            className={`px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${
+            className={`min-h-[44px] px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all inline-flex items-center gap-1.5 ${
               filter === f.id
-                ? 'text-white'
+                ? 'bg-accent text-sur-accent'
                 : 'bg-surface-2 text-encre-2'
             }`}
-            style={filter === f.id ? { background: couleur } : {}}
+            aria-pressed={filter === f.id}
           >
-            {f.emoji || (f.icon && <f.icon size={14} className="inline mr-1" />)}
+            <f.icon size={14} aria-hidden="true" />
             {f.label}
           </button>
         ))}
@@ -336,18 +170,20 @@ export default function AdminCalendar({ isDark = false, couleur = '#f97316' }) {
         <div className="flex items-center justify-between mb-4">
           <button
             onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1))}
-            className={`p-2 rounded-lg hover:bg-surface-2`}
+            className="p-2 w-11 h-11 flex items-center justify-center rounded-lg hover:bg-surface-2"
+            aria-label="Mois précédent"
           >
-            <ChevronLeft size={20} className={textMuted} />
+            <ChevronLeft size={20} className={textMuted} aria-hidden="true" />
           </button>
           <h3 className={`font-bold ${textPrimary}`}>
             {currentMonth.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
           </h3>
           <button
             onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1))}
-            className={`p-2 rounded-lg hover:bg-surface-2`}
+            className="p-2 w-11 h-11 flex items-center justify-center rounded-lg hover:bg-surface-2"
+            aria-label="Mois suivant"
           >
-            <ChevronRight size={20} className={textMuted} />
+            <ChevronRight size={20} className={textMuted} aria-hidden="true" />
           </button>
         </div>
 
@@ -375,12 +211,11 @@ export default function AdminCalendar({ isDark = false, couleur = '#f97316' }) {
                   !day.isCurrentMonth
                     ? 'opacity-30'
                     : isToday
-                      ? 'ring-2 ring-offset-2'
+                      ? 'ring-2 ring-accent ring-offset-2 ring-offset-surface'
                       : hasEvents
                         ? 'cursor-pointer hover:scale-105'
                         : ''
                 } hover:bg-surface-2`}
-                style={isToday ? { ringColor: couleur } : {}}
               >
                 <span className={`text-sm ${isToday ? 'font-bold' : ''} ${textPrimary}`}>
                   {day.date.getDate()}
@@ -411,7 +246,7 @@ export default function AdminCalendar({ isDark = false, couleur = '#f97316' }) {
         <div className="space-y-2">
           {upcomingEvents.length === 0 ? (
             <p className={`text-center py-6 ${textMuted}`}>
-              Aucune échéance dans les 30 prochains jours 🎉
+              Aucune échéance dans les 30 prochains jours
             </p>
           ) : (
             upcomingEvents.map(event => {
@@ -425,7 +260,7 @@ export default function AdminCalendar({ isDark = false, couleur = '#f97316' }) {
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex items-start gap-3">
-                      <span className="text-xl">{getTypeIcon(event.type)}</span>
+                      <IconeType type={event.type} className="mt-0.5" />
                       <div>
                         <p className={`font-medium ${textPrimary}`}>{event.title}</p>
                         <p className={`text-sm ${textMuted} mt-1`}>
@@ -434,21 +269,9 @@ export default function AdminCalendar({ isDark = false, couleur = '#f97316' }) {
                       </div>
                     </div>
                     <div className="text-right">
-                      <span className={`text-sm font-bold ${daysLeft <= 7 ? 'text-red-500' : daysLeft <= 14 ? 'text-amber-500' : textMuted}`}>
+                      <span className={`text-sm font-bold ${daysLeft <= 7 ? 'text-danger-texte' : daysLeft <= 14 ? 'text-alerte-texte' : textMuted}`}>
                         J-{daysLeft}
                       </span>
-                      <div className="flex gap-1 mt-2">
-                        {REMINDER_PRESETS.slice(0, 2).map(preset => (
-                          <button
-                            key={preset.days}
-                            onClick={() => handleSnooze(event.id, preset.days)}
-                            className={`text-xs px-2 py-1 rounded bg-surface hover:bg-surface-2`}
-                          >
-                            <Bell size={10} className="inline mr-1" />
-                            {preset.label}
-                          </button>
-                        ))}
-                      </div>
                     </div>
                   </div>
                 </div>
@@ -459,58 +282,33 @@ export default function AdminCalendar({ isDark = false, couleur = '#f97316' }) {
       </div>
 
       {/* Fun messages */}
-      <div className={`p-4 rounded-xl ${isDark ? 'bg-emerald-900/30' : 'bg-emerald-50'} border ${isDark ? 'border-emerald-700' : 'border-emerald-200'}`}>
-        <p className={`text-sm ${isDark ? 'text-emerald-300' : 'text-emerald-700'}`}>
-          💬 <em>"Oups, l'URSSAF attend ta DSN – ne les fais pas attendre !"</em>
+      <div className={`p-4 rounded-xl bg-succes-fond border border-succes-point/40`}>
+        <p className={`text-sm text-succes-texte`}>
+          <em>"Oups, l'URSSAF attend ta DSN – ne les fais pas attendre !"</em>
         </p>
       </div>
 
-      {/* Add Reminder Modal */}
-      {showAddReminder && (
-        <AddReminderModal
-          isOpen={showAddReminder}
-          onClose={() => setShowAddReminder(false)}
-          onAdd={(reminder) => {
-            setCustomReminders(prev => [...prev, { ...reminder, id: `custom-${Date.now()}` }]);
-            setShowAddReminder(false);
-          }}
-          isDark={isDark}
-          couleur={couleur}
-        />
-      )}
-
       {/* Event detail modal */}
-      {selectedDate && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/60" onClick={() => setSelectedDate(null)} />
-          <div className={`relative max-w-md w-full p-6 rounded-3xl ${cardBg}`}>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className={`font-bold ${textPrimary}`}>
-                {selectedDate.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
-              </h3>
-              <button onClick={() => setSelectedDate(null)} className={textMuted}>
-                <X size={20} />
-              </button>
+      <Modal isOpen={!!selectedDate} onClose={() => setSelectedDate(null)} size="sm">
+        <ModalHeader>
+          <ModalTitle>
+            {selectedDate ? selectedDate.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }) : ''}
+          </ModalTitle>
+        </ModalHeader>
+        <ModalBody className="space-y-3">
+          {selectedDate && getEventsForDate(selectedDate).map(event => (
+            <div key={event.id} className={`p-4 rounded-xl ${getPriorityStyle(event.priority).light}`}>
+              <div className="flex items-center gap-2">
+                <IconeType type={event.type} size={18} />
+                <p className={`font-medium ${textPrimary}`}>{event.title}</p>
+              </div>
             </div>
-            <div className="space-y-3">
-              {getEventsForDate(selectedDate).map(event => (
-                <div key={event.id} className={`p-4 rounded-xl ${getPriorityStyle(event.priority).light}`}>
-                  <div className="flex items-center gap-2">
-                    <span>{getTypeIcon(event.type)}</span>
-                    <p className={`font-medium ${textPrimary}`}>{event.title}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <button
-              onClick={() => setSelectedDate(null)}
-              className={`w-full mt-4 py-3 rounded-xl font-medium bg-surface-2 text-encre-2`}
-            >
-              Fermer
-            </button>
-          </div>
-        </div>
-      )}
+          ))}
+        </ModalBody>
+        <ModalFooter>
+          <Bouton variante="secondaire" onClick={() => setSelectedDate(null)}>Fermer</Bouton>
+        </ModalFooter>
+      </Modal>
     </div>
   );
 }

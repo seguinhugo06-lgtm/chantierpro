@@ -8,6 +8,7 @@ import { useState, useCallback, memo } from 'react';
 import { X, Building2, FileText, Shield, CreditCard, Settings } from 'lucide-react';
 import { COULEUR_DOCUMENTS_DEFAUT } from '../../lib/theme';
 import { champsAdresse, adresseComposee } from '../../lib/adresseEntreprise';
+import { estSociete } from '../../lib/mentionsFacture';
 import ChampChoix from '../ui/ChampChoix';
 
 // « Micro-entreprise » : la valeur que reconnaît la franchise de TVA (avant : « Auto-entrepreneur »,
@@ -326,7 +327,9 @@ const EntrepriseFormModal = memo(function EntrepriseFormModal({
 
           {tab === 'legal' && (
             <>
-              <div className="grid grid-cols-2 gap-3">
+              {/* Le capital social n'existe que pour une société : un entrepreneur individuel n'en a pas, et les documents
+                  ne l'impriment pas pour lui (même règle que Paramètres › Mon entreprise). */}
+              <div className={`grid gap-3 ${estSociete(form) ? 'grid-cols-2' : 'grid-cols-1'}`}>
                 <div>
                   <label id="entreprise-form-forme-libelle" htmlFor="entreprise-form-forme" className={`block text-sm font-medium mb-1 ${tc.label}`}>
                     Forme juridique
@@ -335,18 +338,20 @@ const EntrepriseFormModal = memo(function EntrepriseFormModal({
                   <ChampChoix id="entreprise-form-forme" idLibelle="entreprise-form-forme-libelle" titre="Forme juridique" vide="Choisir…"
                     options={FORMES} valeur={form.formeJuridique} onChange={(v) => updateField('formeJuridique', v)} />
                 </div>
-                <div>
-                  <label className={`block text-sm font-medium mb-1 ${tc.label}`}>
-                    Capital
-                  </label>
-                  <input
-                    type="text"
-                    value={form.capital}
-                    onChange={e => updateField('capital', e.target.value)}
-                    className={inputCls}
-                    placeholder="10 000 €"
-                  />
-                </div>
+                {estSociete(form) && (
+                  <div>
+                    <label className={`block text-sm font-medium mb-1 ${tc.label}`}>
+                      Capital
+                    </label>
+                    <input
+                      type="text"
+                      value={form.capital}
+                      onChange={e => updateField('capital', e.target.value)}
+                      className={inputCls}
+                      placeholder="10 000 €"
+                    />
+                  </div>
+                )}
               </div>
 
               <div>

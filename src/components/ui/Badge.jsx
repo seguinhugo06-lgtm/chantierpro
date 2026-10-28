@@ -1,26 +1,25 @@
 import * as React from 'react';
 import { cn } from '../../lib/utils';
 
-// WCAG AA compliant variant styles
-const getVariantStyles = (isDark) => ({
-  default: isDark ? 'bg-slate-700 text-gray-100 border-slate-600' : 'bg-gray-100 text-gray-800 border-gray-200',
+// Tons du thème (src/lib/statuts.js : un statut = un mot et un ton) : contrastes garantis, clair et sombre.
+const variantStyles = {
+  default: 'bg-neutre-fond text-neutre-texte border-bord',
   secondary: 'bg-surface-2 text-encre-2 border-bord',
-  success: isDark ? 'bg-green-900/30 text-green-300 border-green-800' : 'bg-green-100 text-green-800 border-green-200',
-  warning: isDark ? 'bg-orange-900/30 text-orange-300 border-orange-800' : 'bg-orange-100 text-orange-800 border-orange-200',
-  danger: isDark ? 'bg-red-900/30 text-red-300 border-red-800' : 'bg-red-100 text-red-800 border-red-200',
-  info: isDark ? 'bg-blue-900/30 text-blue-300 border-blue-800' : 'bg-blue-100 text-blue-800 border-blue-200',
-  primary: isDark ? 'bg-primary-900/30 text-primary-300 border-primary-800' : 'bg-primary-100 text-primary-800 border-primary-200',
-});
+  success: 'bg-succes-fond text-succes-texte border-succes-point/40',
+  warning: 'bg-alerte-fond text-alerte-texte border-alerte-point/40',
+  danger: 'bg-danger-fond text-danger-texte border-danger-point/40',
+  info: 'bg-info-fond text-info-texte border-info-point/40',
+  primary: 'bg-accent/10 text-accent-texte border-accent/30',
+};
 
-// WCAG AA compliant dot colors
 const dotColors = {
-  default: 'bg-gray-600',
-  secondary: 'bg-gray-500',
-  success: 'bg-green-600',
-  warning: 'bg-orange-600',
-  danger: 'bg-red-600',
-  info: 'bg-blue-600',
-  primary: 'bg-primary-600',
+  default: 'bg-neutre-point',
+  secondary: 'bg-encre-3',
+  success: 'bg-succes-point',
+  warning: 'bg-alerte-point',
+  danger: 'bg-danger-point',
+  info: 'bg-info-point',
+  primary: 'bg-accent',
 };
 
 const sizeStyles = {
@@ -36,13 +35,12 @@ export const Badge = React.forwardRef(
       size = 'sm',
       dot = false,
       pill = true,
-      isDark = false,
+      isDark: _isDark = false, // accepté, plus nécessaire : tons du thème
       children,
       ...props
     },
     ref
   ) => {
-    const variantStyles = getVariantStyles(isDark);
     return (
       <span
         ref={ref}

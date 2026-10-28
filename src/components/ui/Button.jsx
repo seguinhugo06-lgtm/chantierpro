@@ -2,19 +2,20 @@ import * as React from 'react';
 import { cn } from '../../lib/utils';
 import { Loader2 } from 'lucide-react';
 
+// Jetons du thème (src/styles/theme.css) : l'accent est celui de l'entreprise, sombre et clair sont gérés par les jetons.
 const variantStyles = {
   primary:
-    'bg-gradient-to-r from-orange-500 to-orange-600 text-white font-semibold hover:from-orange-600 hover:to-orange-700 shadow-lg shadow-orange-500/25 hover:shadow-xl hover:shadow-orange-500/30 focus-visible:ring-primary-500/50 active:scale-95 transition-all duration-200',
+    'bg-accent text-sur-accent font-semibold hover:brightness-95 shadow-e1 focus-visible:ring-accent/50 active:scale-95 transition-all duration-200',
   secondary:
-    'bg-slate-700 text-white font-medium hover:bg-slate-600 border border-slate-600 active:scale-95 transition-all duration-200',
+    'bg-surface-2 text-encre font-medium hover:bg-bord border border-bord focus-visible:ring-accent/50 active:scale-95 transition-all duration-200',
   outline:
-    'border border-gray-300 bg-transparent text-gray-700 hover:bg-gray-50 active:bg-gray-100 focus-visible:ring-gray-500/50 active:scale-95 transition-all duration-200',
+    'border border-bord-fort bg-transparent text-encre-2 hover:bg-surface-2 active:bg-surface-2 focus-visible:ring-accent/50 active:scale-95 transition-all duration-200',
   ghost:
-    'bg-transparent text-slate-400 font-medium hover:text-white hover:bg-slate-800 focus-visible:ring-gray-500/50 active:scale-95 transition-all duration-200',
+    'bg-transparent text-encre-2 font-medium hover:text-encre hover:bg-surface-2 focus-visible:ring-accent/50 active:scale-95 transition-all duration-200',
   danger:
-    'bg-red-500/20 text-red-400 font-medium hover:bg-red-500/30 border border-red-500/30 focus-visible:ring-danger-500/50 active:scale-95 transition-all duration-200',
+    'bg-danger-fond text-danger-texte font-medium hover:brightness-95 border border-danger-point/40 focus-visible:ring-danger-point/50 active:scale-95 transition-all duration-200',
   success:
-    'bg-green-500/20 text-green-400 font-medium hover:bg-green-500/30 border border-green-500/30 focus-visible:ring-green-500/50 active:scale-95 transition-all duration-200',
+    'bg-succes-fond text-succes-texte font-medium hover:brightness-95 border border-succes-point/40 focus-visible:ring-succes-point/50 active:scale-95 transition-all duration-200',
 };
 
 const sizeStyles = {

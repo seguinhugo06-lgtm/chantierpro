@@ -7,6 +7,7 @@
 
 import { scopeToOrg, withOrgScope } from '../lib/queryHelper';
 import { captureException } from '../lib/sentry';
+import { COULEUR_DOCUMENTS_DEFAUT } from '../lib/theme';
 import { isDemo } from '../supabaseClient';
 
 const DEMO_KEY = 'mallettico_entreprises';
@@ -75,7 +76,7 @@ export function fromSupabase(row) {
     id: row.id,
     nom: row.nom || '',
     logo: row.logo_url || '',
-    couleur: row.couleur || '#f97316',
+    couleur: row.couleur || COULEUR_DOCUMENTS_DEFAUT,
     formeJuridique: row.forme_juridique || '',
     capital: row.capital || '',
     adresse: row.adresse || '',
@@ -716,7 +717,7 @@ export async function migrateFromLocalStorage(supabase, { userId, orgId } = {}) 
         data: {
           nom: mainEntreprise.nom,
           logo: mainEntreprise.logo || '',
-          couleur: mainEntreprise.couleur || '#f97316',
+          couleur: mainEntreprise.couleur || COULEUR_DOCUMENTS_DEFAUT,
           formeJuridique: mainEntreprise.formeJuridique || '',
           capital: mainEntreprise.capital || '',
           adresse: mainEntreprise.adresse || '',
@@ -768,7 +769,7 @@ export async function migrateFromLocalStorage(supabase, { userId, orgId } = {}) 
       const created = await createEntreprise(supabase, {
         data: {
           nom: ent.nom,
-          couleur: ent.couleur || '#f97316',
+          couleur: ent.couleur || COULEUR_DOCUMENTS_DEFAUT,
           adresse: ent.adresse || '',
           codePostal: ent.codePostal || '',
           ville: ent.ville || '',

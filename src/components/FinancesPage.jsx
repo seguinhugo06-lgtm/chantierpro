@@ -102,6 +102,7 @@ export default function FinancesPage({ devis, depenses, clients, chantiers, entr
               modeDiscret={modeDiscret}
               ouvrirDocument={ouvrirDocument}
               peutModifier={peutModifier}
+              peutExporter={canExportData}
             />
           </Suspense>
         </ErrorBoundary>

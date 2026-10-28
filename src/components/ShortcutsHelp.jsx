@@ -1,29 +1,26 @@
-import { motion, AnimatePresence } from 'framer-motion';
-import { createPortal } from 'react-dom';
-import { X, Keyboard, Command } from 'lucide-react';
+import { Keyboard } from 'lucide-react';
 import {
-  COMMON_SHORTCUTS,
   groupShortcutsByCategory,
   CATEGORY_LABELS,
-  formatShortcut
 } from '../hooks/useKeyboardShortcuts';
+import Modal, { ModalHeader, ModalTitle, ModalDescription, ModalBody, ModalFooter } from './ui/Modal';
 
 /**
  * ShortcutsHelp - Modal displaying all keyboard shortcuts
  * Accessible via Cmd+/ or help menu
+ *
+ * Fenêtre `ui/Modal` (portail, role="dialog", Échap, feuille du bas au téléphone) ; couleurs : jetons du thème.
+ * isDark et couleur restent acceptés (plus nécessaires).
  */
 export default function ShortcutsHelp({
   isOpen,
   onClose,
-  isDark = false,
-  couleur = '#f97316'
+  isDark: _isDark = false,
+  couleur: _couleur,
 }) {
   // Theme classes
-  const cardBg = 'bg-surface';
   const textPrimary = 'text-encre';
-  const textSecondary = 'text-encre-2';
   const textMuted = 'text-encre-3';
-  const borderColor = 'border-bord';
   const kbdBg = 'bg-surface-2';
 
   const isMac = typeof navigator !== 'undefined' &&
@@ -34,95 +31,57 @@ export default function ShortcutsHelp({
 
   if (!isOpen) return null;
 
-  const modalContent = (
-    <AnimatePresence mode="wait">
-      <motion.div
-        className="fixed inset-0 z-50 flex items-center justify-center p-4"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-      >
-        {/* Backdrop */}
-        <motion.div
-          className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-          onClick={onClose}
-        />
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} size="md">
+      <ModalHeader>
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-accent/10 flex-shrink-0">
+            <Keyboard size={20} className="text-accent-texte" aria-hidden="true" />
+          </div>
+          <div className="min-w-0">
+            <ModalTitle>Raccourcis clavier</ModalTitle>
+            <ModalDescription>
+              {isMac ? 'Utilisez ⌘ pour les commandes' : 'Utilisez Ctrl pour les commandes'}
+            </ModalDescription>
+          </div>
+        </div>
+      </ModalHeader>
 
-        {/* Modal */}
-        <motion.div
-          className={`relative w-full max-w-lg ${cardBg} rounded-2xl shadow-2xl overflow-hidden`}
-          initial={{ scale: 0.95, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          exit={{ scale: 0.95, opacity: 0 }}
-          transition={{ duration: 0.2 }}
-        >
-          {/* Header */}
-          <div
-            className="px-6 pt-6 pb-4"
-            style={{ background: `linear-gradient(135deg, ${couleur}, ${couleur}dd)` }}
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
-                  <Keyboard size={20} className="text-white" />
+      <ModalBody className="space-y-6">
+        {Object.entries(groupedShortcuts).map(([category, shortcuts]) => (
+          <div key={category}>
+            <h3 className={`text-xs font-semibold mb-3 ${textMuted}`}>
+              {CATEGORY_LABELS[category] || category}
+            </h3>
+            <div className="space-y-2">
+              {shortcuts.map((shortcut, idx) => (
+                <div
+                  key={idx}
+                  className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-surface-2"
+                >
+                  <span className={`text-sm ${textPrimary}`}>
+                    {shortcut.description}
+                  </span>
+                  <ShortcutKeys
+                    shortcut={shortcut}
+                    isMac={isMac}
+                    kbdBg={kbdBg}
+                    textPrimary={textPrimary}
+                  />
                 </div>
-                <div>
-                  <h2 className="text-lg font-bold text-white">Raccourcis clavier</h2>
-                  <p className="text-white/80 text-sm">
-                    {isMac ? 'Utilisez ⌘ pour les commandes' : 'Utilisez Ctrl pour les commandes'}
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={onClose}
-                className="p-2 hover:bg-white/20 rounded-xl transition-colors"
-              >
-                <X size={20} className="text-white" />
-              </button>
+              ))}
             </div>
           </div>
+        ))}
+      </ModalBody>
 
-          {/* Content */}
-          <div className="p-6 max-h-[60vh] overflow-y-auto space-y-6">
-            {Object.entries(groupedShortcuts).map(([category, shortcuts]) => (
-              <div key={category}>
-                <h3 className={`text-xs font-semibold uppercase tracking-wide mb-3 ${textMuted}`}>
-                  {CATEGORY_LABELS[category] || category}
-                </h3>
-                <div className="space-y-2">
-                  {shortcuts.map((shortcut, idx) => (
-                    <div
-                      key={idx}
-                      className={`flex items-center justify-between py-2 px-3 rounded-lg hover:bg-surface-2`}
-                    >
-                      <span className={`text-sm ${textPrimary}`}>
-                        {shortcut.description}
-                      </span>
-                      <ShortcutKeys
-                        shortcut={shortcut}
-                        isMac={isMac}
-                        kbdBg={kbdBg}
-                        textPrimary={textPrimary}
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Footer */}
-          <div className={`px-6 py-4 border-t ${borderColor}`}>
-            <p className={`text-center text-xs ${textMuted}`}>
-              Appuyez sur <Kbd bg={kbdBg} text={textPrimary}>{isMac ? '⌘' : 'Ctrl'}</Kbd> + <Kbd bg={kbdBg} text={textPrimary}>/</Kbd> pour ouvrir ce menu
-            </p>
-          </div>
-        </motion.div>
-      </motion.div>
-    </AnimatePresence>
+      <ModalFooter className="justify-center">
+        <p className={`text-center text-xs ${textMuted}`}>
+          Appuyez sur <Kbd bg={kbdBg} text={textPrimary}>{isMac ? '⌘' : 'Ctrl'}</Kbd> + <Kbd bg={kbdBg} text={textPrimary}>/</Kbd> pour ouvrir ce menu
+        </p>
+      </ModalFooter>
+    </Modal>
   );
-
-  return createPortal(modalContent, document.body);
 }
 
 /**

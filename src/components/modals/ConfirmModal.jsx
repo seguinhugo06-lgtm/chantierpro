@@ -39,13 +39,13 @@ export default function ConfirmModal({
   const variantClasses = {
     danger: 'bg-danger-500 hover:bg-danger-600 focus:ring-danger-500',
     warning: 'bg-warning-500 hover:bg-warning-600 focus:ring-warning-500',
-    primary: 'bg-primary-500 hover:bg-primary-600 focus:ring-primary-500'
+    primary: 'bg-accent hover:brightness-95 focus:ring-accent'
   };
 
   const iconColors = {
     danger: 'bg-danger-100 text-danger-500',
     warning: 'bg-warning-100 text-warning-500',
-    primary: 'bg-primary-100 text-primary-500'
+    primary: 'bg-accent/10 text-accent-texte'
   };
 
   return (

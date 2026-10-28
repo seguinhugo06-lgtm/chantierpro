@@ -9,6 +9,8 @@
  *         events, previsions, fournisseurs, mouvements, packs
  */
 
+import { COULEUR_DOCUMENTS_DEFAUT } from './theme.js';
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // CLIENTS (10)
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -481,7 +483,7 @@ export const DEMO_ENTREPRISE = {
   tvaDefaut: 10,
   mentionsDevis: 'Devis valable 30 jours. TVA applicable selon le type de travaux.',
   conditionsPaiement: 'Paiement à 30 jours fin de mois. Acompte de 30% à la commande.',
-  couleur: '#f97316',
+  couleur: COULEUR_DOCUMENTS_DEFAUT,
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════

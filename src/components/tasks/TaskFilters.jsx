@@ -48,7 +48,7 @@ export default function TaskFilters({ filters, onFiltersChange, equipe = [], isD
         )}
       >
         <GroupeChoix titre="Catégorie" options={[{ valeur: '', libelle: 'Toutes' }, ...CATEGORIES.map((c) => ({ valeur: c.value, libelle: c.label }))]} valeur={category} onChange={(v) => update('category', v)} isDark={isDark} />
-        <GroupeChoix titre="Priorité" options={[{ valeur: '', libelle: 'Toutes' }, ...PRIORITIES.map((p) => ({ valeur: p.value, libelle: `${p.dot} ${p.label}` }))]} valeur={priority} onChange={(v) => update('priority', v)} isDark={isDark} />
+        <GroupeChoix titre="Priorité" options={[{ valeur: '', libelle: 'Toutes' }, ...PRIORITIES.map((p) => ({ valeur: p.value, libelle: p.label }))]} valeur={priority} onChange={(v) => update('priority', v)} isDark={isDark} />
         <GroupeChoix titre="Statut" options={[{ valeur: '', libelle: 'Tous' }, ...TASK_STATUSES.map((s) => ({ valeur: s.value, libelle: s.label }))]} valeur={status} onChange={(v) => update('status', v)} isDark={isDark} />
         {equipe.length > 0 && (
           <ListeChoix

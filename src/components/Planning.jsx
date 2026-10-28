@@ -913,7 +913,7 @@ export default function Planning({
                   {(showDetail.priority || showDetail.category) && (
                     <div className="flex flex-wrap gap-1.5">
                       {PRIORITIES.filter((p) => p.value === showDetail.priority).map((p) => (
-                        <span key={p.value} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${classesTon(p.ton).pastille}`}>{p.dot} {p.label}</span>
+                        <span key={p.value} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${classesTon(p.ton).pastille}`}>{p.label}</span>
                       ))}
                       {CATEGORIES.filter((c) => c.value === showDetail.category).map((c) => (
                         <span key={c.value} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${classesTon(c.ton).pastille}`}><Tag size={12} aria-hidden="true" /> {c.label}</span>

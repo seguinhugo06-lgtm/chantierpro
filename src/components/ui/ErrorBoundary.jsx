@@ -102,7 +102,7 @@ function ErrorFallback({
   onRetry,
   onReload,
   onGoHome,
-  isDark = false,
+  isDark: _isDark = false, // accepté, plus nécessaire : jetons du thème
   showDetails = false
 }) {
   const bgColor = 'bg-fond';
@@ -113,8 +113,8 @@ function ErrorFallback({
   return (
     <div className={`min-h-[400px] flex items-center justify-center p-6 ${bgColor}`}>
       <div className={`max-w-md w-full ${cardBg} rounded-2xl border p-6 text-center`}>
-        <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-100 flex items-center justify-center">
-          <AlertTriangle size={32} className="text-red-500" />
+        <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-danger-fond flex items-center justify-center">
+          <AlertTriangle size={32} className="text-danger-texte" />
         </div>
 
         <h2 className={`text-xl font-bold mb-2 ${textPrimary}`}>
@@ -128,7 +128,7 @@ function ErrorFallback({
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <button
             onClick={onRetry}
-            className="px-4 py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-xl flex items-center justify-center gap-2 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500"
+            className="px-4 py-2.5 min-h-[44px] bg-accent text-sur-accent hover:brightness-95 rounded-xl flex items-center justify-center gap-2 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           >
             <RefreshCw size={16} />
             Réessayer
@@ -136,11 +136,7 @@ function ErrorFallback({
 
           <button
             onClick={onReload}
-            className={`px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500 ${
-              isDark
-                ? 'bg-slate-700 text-slate-200 hover:bg-slate-600'
-                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-            }`}
+            className="px-4 py-2.5 min-h-[44px] rounded-xl flex items-center justify-center gap-2 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent bg-surface-2 text-encre-2 hover:bg-bord"
           >
             <RefreshCw size={16} />
             Recharger la page
@@ -148,11 +144,7 @@ function ErrorFallback({
 
           <button
             onClick={onGoHome}
-            className={`px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500 ${
-              isDark
-                ? 'bg-slate-700 text-slate-200 hover:bg-slate-600'
-                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-            }`}
+            className="px-4 py-2.5 min-h-[44px] rounded-xl flex items-center justify-center gap-2 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent bg-surface-2 text-encre-2 hover:bg-bord"
           >
             <Home size={16} />
             Accueil
@@ -161,11 +153,11 @@ function ErrorFallback({
 
         {showDetails && error && (
           <details className={`mt-6 text-left text-sm ${textMuted}`}>
-            <summary className="cursor-pointer hover:text-slate-600 mb-2">
+            <summary className="cursor-pointer hover:text-encre mb-2">
               Détails techniques
             </summary>
             <div className={`p-3 rounded-lg font-mono text-xs overflow-auto max-h-40 bg-surface-2`}>
-              <p className="font-bold text-red-500">{error.toString()}</p>
+              <p className="font-bold text-danger-texte">{error.toString()}</p>
               {errorInfo && (
                 <pre className="mt-2 whitespace-pre-wrap">
                   {errorInfo.componentStack}
@@ -182,16 +174,16 @@ function ErrorFallback({
 /**
  * Minimal error fallback for inline components
  */
-function MinimalErrorFallback({ error, onRetry, isDark = false }) {
+function MinimalErrorFallback({ error: _error, onRetry, isDark: _isDark = false }) {
   const textMuted = 'text-encre-2';
 
   return (
     <div className={`p-4 text-center ${textMuted}`}>
-      <AlertTriangle size={24} className="mx-auto mb-2 text-amber-500" />
+      <AlertTriangle size={24} className="mx-auto mb-2 text-alerte-texte" />
       <p className="text-sm mb-2">Erreur de chargement</p>
       <button
         onClick={onRetry}
-        className="text-sm text-blue-500 hover:text-blue-600 flex items-center gap-1 mx-auto rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500"
+        className="text-sm min-h-[44px] px-3 text-accent-texte underline hover:no-underline flex items-center gap-1 mx-auto rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
       >
         <RefreshCw size={14} />
         Réessayer

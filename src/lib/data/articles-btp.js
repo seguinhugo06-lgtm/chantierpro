@@ -6,7 +6,7 @@
 export const CATEGORIES_METIERS = [
   { id: 'plomberie', nom: 'Plomberie', icon: '🔧', color: '#3b82f6' },
   { id: 'electricite', nom: 'Électricité', icon: '⚡', color: '#eab308' },
-  { id: 'maconnerie', nom: 'Maçonnerie', icon: '🧱', color: '#f97316' },
+  { id: 'maconnerie', nom: 'Maçonnerie', icon: '🧱', color: '#a16207' },
   { id: 'peinture', nom: 'Peinture', icon: '🎨', color: '#ec4899' },
   { id: 'menuiserie', nom: 'Menuiserie', icon: '🪵', color: '#a855f7' },
   { id: 'carrelage', nom: 'Carrelage', icon: '🔶', color: '#14b8a6' },

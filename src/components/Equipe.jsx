@@ -17,6 +17,8 @@ import { EnTetePage } from './ui/EnTete';
 import EtatVide from './ui/EtatVide';
 import MenuActions from './ui/MenuActions';
 import ChampChoix from './ui/ChampChoix';
+import Champ from './ui/Champ';
+import Modal, { ModalHeader, ModalTitle, ModalBody, ModalFooter } from './ui/Modal';
 import { ChampRecherche } from './ui/Filtres';
 import { Bouton, BoutonIcone } from './ui/Bouton';
 import Carte from './ui/Carte';
@@ -28,10 +30,6 @@ import { tauxFacture, coutHoraire, coutDesPointages } from '../lib/tauxEquipe';
 import { decompteHeures, lundiDe, dimancheDe } from '../lib/paie';
 import { jourLocal, dateLue, estCeMois } from '../lib/dates';
 import { telInternational } from '../lib/messageRelance';
-
-// Lazy-load optional heavy dependencies to prevent crashes
-let NoteModal = null;
-try { NoteModal = React.lazy(() => import('./NoteModal')); } catch(e) { console.warn('NoteModal not available'); }
 
 // Stub for useSmartClocking to avoid crash from GeofencingService/PointageService
 const useSmartClockingStub = () => ({
@@ -48,7 +46,6 @@ const useSmartClockingStub = () => ({
 
 // Storage key for timer persistence
 const TIMER_STORAGE_KEY = 'mallettico_equipe_timer';
-
 
 // #6: Filter out test/demo chantiers from quick pointage
 const FILTERED_TEST_NAMES = ['test', 'demo', 'essai', 'test1', 'test2', 'brouillon'];
@@ -143,6 +140,7 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
   // Note modal state (replaces prompt())
   const [noteModalOpen, setNoteModalOpen] = useState(false);
   const [pendingStopChrono, setPendingStopChrono] = useState(false);
+  const [noteChrono, setNoteChrono] = useState('');
 
   // Break tracking
   const [breakStart, setBreakStart] = useState(null);
@@ -1308,25 +1306,33 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
 
   return (
     <div className="space-y-6 animate-page-enter">
-      {/* Note Modal - inline fallback */}
-      {noteModalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => { setNoteModalOpen(false); setPendingStopChrono(false); }}>
-          <div className={`bg-surface rounded-2xl p-6 w-full max-w-md`} onClick={e => e.stopPropagation()}>
-            <h3 className={`text-lg font-bold mb-3 text-encre`}>Fin du pointage</h3>
-            <textarea
-              autoFocus
-              className={`w-full px-4 py-3 border rounded-xl text-sm mb-4 bg-surface border-bord text-encre`}
-              placeholder="Note pour ce pointage..."
-              rows={3}
-              id="chrono-note"
-            />
-            <div className="flex gap-3">
-              <button onClick={() => { stopChronoWithNote(''); setNoteModalOpen(false); }} className={`flex-1 px-4 py-2.5 rounded-xl bg-surface-2 text-encre-2`}>Sans note</button>
-              <button onClick={() => { const note = document.getElementById('chrono-note')?.value || ''; stopChronoWithNote(note); setNoteModalOpen(false); }} className="flex-1 px-4 py-2.5 rounded-xl bg-accent text-sur-accent">Confirmer</button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Fin du pointage : une note facultative (fenêtre ui/Modal : role="dialog", Échap, feuille du bas au téléphone) */}
+      <Modal
+        isOpen={noteModalOpen}
+        onClose={() => { setNoteModalOpen(false); setPendingStopChrono(false); setNoteChrono(''); }}
+        size="sm"
+      >
+        <ModalHeader>
+          <ModalTitle>Fin du pointage</ModalTitle>
+        </ModalHeader>
+        <ModalBody>
+          <Champ
+            as="textarea"
+            id="chrono-note"
+            libelle="Note pour ce pointage"
+            facultatif
+            value={noteChrono}
+            onChange={(e) => setNoteChrono(e.target.value)}
+            placeholder="Ex : pause déjeuner, trajet inclus…"
+            rows={3}
+            autoFocus
+          />
+        </ModalBody>
+        <ModalFooter>
+          <Bouton variante="discret" onClick={() => { stopChronoWithNote(''); setNoteModalOpen(false); setNoteChrono(''); }}>Sans note</Bouton>
+          <Bouton variante="principal" onClick={() => { stopChronoWithNote(noteChrono); setNoteModalOpen(false); setNoteChrono(''); }}>Confirmer</Bouton>
+        </ModalFooter>
+      </Modal>
 
       {/* En-tête : un fait vivant, « Ajouter » libellé (avant : un « + » sans nom), la saisie groupée dans « ⋯ » */}
       <EnTetePage
