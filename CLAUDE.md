@@ -66,7 +66,7 @@ React 18 + Vite 5 + Tailwind 3.4 · Supabase (Postgres + RLS, Edge Functions Den
 - SPA sans routeur : `setPage('nom')` dans `src/App.jsx` (page persistée dans `localStorage.cp_current_page`) ; routes publiques (signature, paiement `/pay/:token`, portail, marketing) dans `src/main.jsx` — elles n'importent jamais `App.jsx` statiquement.
 - Multi-tenant `user_id` + `organization_id`, RLS partout ; clé anon publique → toute policy trop large est exploitable.
 - Données : `src/context/DataContext.jsx` + `src/hooks/useSupabaseSync.js` (`FIELD_MAPPINGS`) ; mode démo (`isDemo`) en `localStorage`.
-- Plans `gratuit` / `artisan` / `equipe` (9,90 / 19,90 € HT, tarif fondateur) dans `src/stores/subscriptionStore.js` ; seuls le webhook Stripe et `subscription-billing` écrivent un plan payant.
+- Plans `gratuit` / `artisan` / `equipe` (9,90 / 19,90 €, TVA non applicable, art. 293 B du CGI — D-19 ; tarif fondateur) dans `src/stores/subscriptionStore.js` ; seuls le webhook Stripe et `subscription-billing` écrivent un plan payant.
 - Devis/factures : DEUX générateurs de PDF (`src/lib/devisHtmlBuilder.js` et le générateur inline de `DevisPage.jsx`) ; blocs communs dans `src/lib/`.
 - Téléphone et natif : `src/lib/natif.js` (`remettreFichier`, `ouvrirLienExterne`), `src/lib/urlPublique.js` pour tout lien envoyé à l'extérieur.
 - Interrupteur `FONCTIONS.ia = false` (`src/lib/fonctions.js`) : IA masquée (décision D-07).

@@ -16,7 +16,7 @@ paths:
 
 - Chaîne : `createCheckoutSession` → `subscription-billing` (Stripe Checkout, retour `?upgraded=true`) → `stripe-webhook` (écrit `subscriptions`) → `fetchSubscription` (relecture, attente de l'activation). Ne jamais se fier au 200 de Stripe : constater `subscriptions.plan`.
 - Seuls le webhook et `subscription-billing` (clé de service) écrivent un plan payant. Aucune policy UPDATE utilisateur sur `subscriptions` (migration 073).
-- Plans : `gratuit` / `artisan` / `equipe` ; noms affichés via `PLANS[id].name` ; plan par défaut `gratuit`. Tarif fondateur 9,90 / 19,90 € HT garanti tant que l'abonnement reste actif : **pas de prix barré** fictif.
+- Plans : `gratuit` / `artisan` / `equipe` ; noms affichés via `PLANS[id].name` ; plan par défaut `gratuit`. Tarif fondateur 9,90 / 19,90 € (TVA non applicable, art. 293 B du CGI : jamais « HT » ni « TTC », D-19) garanti tant que l'abonnement reste actif : **pas de prix barré** fictif.
 - Offres testeurs : ligne sans `stripe_subscription_id` avec `current_period_end` → « Offert jusqu'au … », sans bouton Stripe ; fin gérée par `appliquerFinOffre` et la tâche nocturne (074).
 - Paiement des factures par le client : **jamais de frais ajoutés** (C. mon. fin. L112-12), montant exact.
 - Sorties vers Stripe : `ouvrirLienExterne(url, { memeOnglet: true })` (navigateur système dans l'app native ; pas de `window.open` après un `await`, bloqué par Safari).
