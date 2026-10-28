@@ -242,3 +242,45 @@ Option `garder` : la même mention pour tous — rien ne change ; un particulier
 Recommandation : `adapter` — la fiche client sait déjà si c'est un particulier (`estClientParticulier`), et les relances suivent déjà cette règle.
 Irréversible : non
 Bloque : la tâche `penalites-particulier`
+
+### Q-couleur-documents · Quelle couleur pour les devis et factures d'un artisan qui n'en a choisi aucune ?
+Contexte : Aujourd'hui l'orange de l'ancienne charte (#f97316), alors que l'app s'affiche en bleu nuit du logo. Depuis le 27 oct., la pastille « Bleu nuit » est proposée en premier dans Paramètres, mais l'orange reste coché par défaut. Les documents déjà émis ne changent pas.
+Option `bleu-nuit` : Bleu nuit du logo par défaut — l'app et les documents se ressemblent ; un artisan qui aimait l'orange le recoche en un clic.
+Option `demander` : Demander la couleur dans l'assistant de démarrage — chacun choisit dès le début ; une étape de plus.
+Option `orange` : Garder l'orange — rien ne change.
+Recommandation : `bleu-nuit` — cohérent avec l'app et le logo, sans étape de plus.
+Irréversible : non
+Bloque : rien (aspect des nouveaux documents)
+
+### Q-franchise-case · La franchise de TVA, une case à part plutôt que déduite du statut « Micro-entreprise » ?
+Contexte : L'app suppose qu'une micro-entreprise est en franchise en base (0 %, mention 293 B) et l'écrit, avec la sortie : choisir le statut « Entreprise individuelle (EI) » si l'on a dépassé les seuils ou opté pour la TVA (texte du juriste du 26 oct.). La franchise ne dépend pourtant pas de la forme juridique. Une case à part demande une migration, pour que les pages de signature et de paiement lisent la même TVA que le PDF (tâche `franchise-reglage`).
+Option `case` : Case « Franchise en base de TVA », cochée par défaut pour une micro-entreprise — exact pour tous les cas, sociétés comprises ; migration et deux pages publiques à adapter.
+Option `statut` : Garder la règle par le statut — rien à faire ; un micro-entrepreneur redevable de la TVA doit changer de statut dans l'app.
+Recommandation : `case` — avant d'ouvrir l'app à des artisans extérieurs : un micro du bâtiment dépasse vite le seuil des services.
+Irréversible : non
+Bloque : la tâche `franchise-reglage`
+
+### Q-signature-semaine · La signature d'une semaine d'heures dans Équipe : en base, ou une simple validation ?
+Contexte : Le salarié signe sa feuille d'heures au doigt ; la signature n'est gardée que sur le téléphone, alors que la validation des heures est en base. Aucune loi n'impose cette signature ; une signature au doigt identifie mal son auteur (C. civ. 1367). Il faut surtout enregistrer les heures et les garder un an (C. trav. D3171-8, D3171-16) : c'est déjà fait en base (avis juriste du 26 oct.).
+Option `validation` : Retirer le dessin, garder « Valider la semaine » avec date et auteur en base — simple et fiable ; plus de trace dessinée.
+Option `base` : Garder le dessin et l'enregistrer en base — une table de plus (migration), valeur de preuve faible.
+Recommandation : `validation` — c'est la validation enregistrée qui compte.
+Irréversible : non
+Bloque : rien (onglet Validation d'Équipe)
+
+### Q-donnees-locales · Que faire des données gardées seulement sur le téléphone ?
+Contexte : Congés, signatures, messages épinglés, séquence post-chantier, fournisseurs, mouvements de stock, packs, coefficients, historique des prix, rapports de chantier et tâches de la Frise ne sont enregistrés que dans le navigateur : un autre appareil ne les voit pas, et ils disparaissent avec lui. L'écran le dit depuis les Tasks 6 à 8 (« sur cet appareil »).
+Option `trier` : Mettre en base ce qui compte (congés, rapports de chantier) et retirer le reste (stock, packs, Frise, post-chantier) — une app plus courte et fiable ; migrations pour deux tables.
+Option `tout-en-base` : Tout mettre en base — rien ne se perd ; une dizaine de tables, plusieurs jours.
+Option `laisser` : Laisser comme aujourd'hui — rien à faire ; données perdues au changement de téléphone.
+Recommandation : `trier` — le cap est l'outil simple du devis à l'encaissement (pivot de juin 2026).
+Irréversible : non
+Bloque : la tâche `donnees-locales`
+
+### Q-bienvenue · La fenêtre de bienvenue d'un compte neuf : la refaire ou la retirer ?
+Contexte : Vous la trouviez concise mais peu engageante (retour Au Bon Volt du 21 oct.). Ses chiffres inventés et promesses non mesurées ont été corrigés le 25 oct. ; l'Accueil guide déjà un compte neuf vers son premier devis.
+Option `retirer` : La retirer — l'Accueil suffit ; un écran de moins.
+Option `refaire` : La refaire en trois étapes concrètes (fiche, client, premier devis) — plus engageante ; une petite tâche de conception.
+Recommandation : `retirer` — l'Accueil fait déjà ce travail, sans fenêtre qui s'interpose.
+Irréversible : non
+Bloque : rien (premier usage)
