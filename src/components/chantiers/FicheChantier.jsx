@@ -634,7 +634,7 @@ export default function FicheChantier({
       />
       <FeuilleAjustement
         type={feuilleAjustement} onFermer={() => { setFeuilleAjustement(null); setAjustement({ libelle: '', montant_ht: '' }); }}
-        onValider={validerAjustement} valeur={ajustement} setValeur={setAjustement} enCours={ajustementEnCours}
+        onValider={validerAjustement} valeur={ajustement} setValeur={setAjustement} franchiseTva={franchiseTva} enCours={ajustementEnCours}
       />
       <VisionneusePhoto photo={photoOuverte} chantier={ch} onFermer={() => setPhotoOuverte(null)} />
 

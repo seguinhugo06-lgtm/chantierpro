@@ -502,6 +502,61 @@ module.exports = [
     },
   },
   {
+    // Avis juriste du 28 oct. 2026 : en franchise en base (art. 293 B du CGI), le catalogue n'écrit plus « HT » (rien ne se
+    // déduit : un prix d'achat est TVA comprise) ; hors franchise, les libellés « HT » restent. Même geste, deux entreprises.
+    nom: 'catalogue : en franchise en base ni « HT » ni prix d’achat HT (formulaire et référentiel) ; hors franchise, « HT » reste (375 px)',
+    reel: true,
+    async executer({ ouvrir, attendre, verifier, cliquer, sessionFactice }) {
+      const { CGU_VERSION } = require('../lib/cgu.cjs');
+      const ORG = '0e0e0e0e-0e0e-4e0e-8e0e-0e0e0e0e0e0e';
+      for (const [forme, franchise] of [['Micro-entreprise', true], ['SARL', false]]) {
+        const ENTREPRISE = { id: 'e0e0e0e0-0000-4000-8000-000000000181', user_id: UID, organization_id: ORG, nom: 'Élec Exemple', forme_juridique: forme, siret: '00000000000000', telephone: '0500000000', email: 'contact@exemple.fr', is_active: true, is_default: true,
+          settings_json: { reglages: {} }, cgu_accepted_at: '2026-01-01T00:00:00Z', cgu_version: CGU_VERSION, created_at: '2026-01-01T00:00:00Z' };
+        const base = creerBase({ ...donnees(), entreprise: [ENTREPRISE] });
+        const { page } = await ouvrir({ reel: true, largeur: 375, page: 'catalogue', session: sessionFactice(UID), supabase: base.reponse, avantChargement: sansInstallation });
+        await attendre(2500);
+        // 1. Le formulaire d'un nouvel article
+        await cliquer(page, 'Ajouter', { dans: '#main-content' });
+        await attendre(800);
+        const formulaire = await page.evaluate(() => ['article-prix-achat', 'article-prix'].map((id) => document.querySelector(`label[for="${id}"]`)?.innerText.replace(/\s+/g, ' ').trim() || null));
+        const [achatForm, venteForm] = formulaire;
+        if (franchise) {
+          verifier(achatForm?.startsWith("Prix d'achat (TVA comprise)"), `franchise : le prix d'achat du formulaire est « TVA comprise » (« ${achatForm} »)`);
+          verifier(venteForm?.startsWith('Prix de vente') && !/\bHT\b/.test(venteForm), `franchise : le prix de vente du formulaire n'a pas de « HT » (« ${venteForm} »)`);
+        } else {
+          verifier(achatForm?.startsWith("Prix d'achat HT"), `contre-essai, hors franchise : « Prix d'achat HT » reste (« ${achatForm} »)`);
+          verifier(venteForm?.startsWith('Prix de vente HT'), `contre-essai, hors franchise : « Prix de vente HT » reste (« ${venteForm} »)`);
+        }
+        await cliquer(page, 'Annuler', { dans: '#main-content' });
+        await attendre(500);
+        // 2. Le sélecteur du référentiel : repère indicatif, prix de vente et prix d'achat
+        await cliquer(page, "Plus d'actions");
+        await cliquer(page, 'Ajouter depuis le référentiel BTP', { dans: '[role="dialog"]' });
+        await attendre(600);
+        verifier(await cliquerContenant(page, 'Électricité'), 'le métier « Électricité » est proposé');
+        await attendre(500);
+        await premierBoutonDeListe(page);
+        await attendre(500);
+        const article = await premierBoutonDeListe(page);
+        verifier(!!article, `un article est proposé (${article})`);
+        await attendre(600);
+        const etape = await page.evaluate(() => ({
+          achat: document.querySelector('label[for="picker-achat"]')?.innerText.replace(/\s+/g, ' ').trim() || null,
+          vente: document.querySelector('label[for="picker-prix"]')?.innerText.replace(/\s+/g, ' ').trim() || null,
+          texte: document.querySelector('[role="dialog"]')?.innerText.replace(/\s+/g, ' ') || '',
+        }));
+        verifier(/Repère indicatif du référentiel :/.test(etape.texte) && !/Prix marché/.test(etape.texte), `la fourchette est un « repère indicatif », jamais un « prix marché » (« ${etape.texte.slice(0, 200)} »)`);
+        if (franchise) {
+          verifier(etape.achat?.startsWith("Prix d'achat (TVA comprise)"), `franchise : le prix d'achat du référentiel est « TVA comprise » (« ${etape.achat} »)`);
+          verifier(etape.vente?.startsWith('Prix de vente (€') && !/\bHT\b/.test(etape.vente), `franchise : le prix de vente du référentiel n'a pas de « HT » (« ${etape.vente} »)`);
+        } else {
+          verifier(etape.achat?.startsWith("Prix d'achat HT"), `contre-essai, hors franchise : « Prix d'achat HT » reste (« ${etape.achat} »)`);
+          verifier(etape.vente?.startsWith('Prix de vente HT (€'), `contre-essai, hors franchise : « Prix de vente HT » reste (« ${etape.vente} »)`);
+        }
+      }
+    },
+  },
+  {
     // Relecture 1 : le premier usage et le scanner offraient la création à qui n'a pas le droit de créer un article.
     nom: 'catalogue vide, sans le droit de créer : un état vide sans action ni promesse de tarifs ; avec le droit, les actions sont là (375 px)',
     reel: true,

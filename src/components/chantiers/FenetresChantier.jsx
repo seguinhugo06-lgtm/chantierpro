@@ -234,7 +234,7 @@ export function DetailHeures({ ouvert, onFermer, pointages = [], equipe = [], co
 }
 
 /** Un revenu ou une dépense en plus du devis : travaux supplémentaires acceptés, remise, achat imprévu. */
-export function FeuilleAjustement({ type, onFermer, onValider, valeur, setValeur, enCours = false }) {
+export function FeuilleAjustement({ type, onFermer, onValider, valeur, setValeur, franchiseTva = false, enCours = false }) {
   const revenu = type === 'REVENU';
   return (
     <Modal isOpen={!!type} onClose={onFermer} size="sm" closeOnBackdrop={!enCours} closeOnEscape={!enCours}>
@@ -244,7 +244,7 @@ export function FeuilleAjustement({ type, onFermer, onValider, valeur, setValeur
       </ModalHeader>
       <ModalBody className="space-y-4">
         <Champ libelle="Libellé" placeholder="Ex: Travaux supplémentaires, Remise..." value={valeur.libelle} onChange={(e) => setValeur((p) => ({ ...p, libelle: e.target.value }))} />
-        <Champ libelle="Montant HT (€)" type="number" inputMode="decimal" value={valeur.montant_ht} onChange={(e) => setValeur((p) => ({ ...p, montant_ht: e.target.value }))} />
+        <Champ libelle={franchiseTva ? 'Montant (€)' : 'Montant HT (€)'} type="number" inputMode="decimal" value={valeur.montant_ht} onChange={(e) => setValeur((p) => ({ ...p, montant_ht: e.target.value }))} />
       </ModalBody>
       <ModalFooter>
         <Bouton variante="secondaire" onClick={onFermer} disabled={enCours}>Annuler</Bouton>

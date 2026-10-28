@@ -70,6 +70,8 @@ const estStockBas = (c) => { const st = stockDe(c); const se = seuilDe(c); retur
 export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, addCatalogueItem: addCatalogueItemProp, updateCatalogueItem: updateCatalogueItemProp, deleteCatalogueItem: deleteCatalogueItemProp, setPage, chantiers = [], modeDiscret, devis = [], updateDevis, clients = [], couleur, isDark }) {
   const { confirm } = useConfirm();
   const { showToast } = useToast();
+  // Franchise en base (art. 293 B du CGI) : pas de « HT » dans les libellés de prix, un prix d'achat est TVA comprise
+  const franchiseTva = estFranchiseTva(entreprise);
 
   // Droits : chaque action réservée passe par canPerform. Sans le droit de voir les prix (chef de chantier, ouvrier :
   // canViewPrices de usePermissions, une seule règle), aucun prix de vente ni d'achat, aucune marge, aucun fournisseur, pack ni
@@ -596,7 +598,7 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
         devisChoisi={devisChoisi} setDevisChoisi={setDevisChoisi} onFermer={fermerAjoutDevis} onAjouter={ajouterAuDevis}
         onCreerDevis={() => { fermerAjoutDevis(); setPage?.('devis'); }} enCours={ajoutEnCours}
       />
-      {showArticlePicker && <ArticlePicker isOpen={showArticlePicker} onClose={() => setShowArticlePicker(false)} onSelect={ajouterDepuisReferentiel} />}
+      {showArticlePicker && <ArticlePicker isOpen={showArticlePicker} onClose={() => setShowArticlePicker(false)} onSelect={ajouterDepuisReferentiel} franchiseTva={franchiseTva} />}
     </>
   );
 
@@ -615,7 +617,7 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
         <ArticleDetail
           item={item} fournisseurs={fournisseurs} liens={liens} mouvements={mouvements}
           historique={priceHistory.filter((h) => h.articleId === item.id).sort((a, b) => new Date(b.date) - new Date(a.date))}
-          nbDevis={devisUsageMap[item.id] || 0} voitPrix={canViewPrices} modeDiscret={modeDiscret}
+          nbDevis={devisUsageMap[item.id] || 0} voitPrix={canViewPrices} modeDiscret={modeDiscret} franchiseTva={franchiseTva}
           peutModifier={peutModifier} peutCreer={peutCreer} peutAjouterAuDevis={peutAjouterAuDevis}
           onRetour={() => setArticleDetail(null)} onModifier={() => { setArticleDetail(null); startEdit(item); }}
           onDupliquer={() => dupliquer(item)} onAjouterAuDevis={() => ouvrirAjoutDevis(item)} onLier={lierFournisseur}
@@ -632,7 +634,7 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
       <>
         <FormulaireArticle
           form={form} setForm={setForm} editId={editId} erreurs={formErrors} effacerErreur={(cle) => setFormErrors((p) => ({ ...p, [cle]: '' }))}
-          categories={CATEGORIES} coefficients={coefficients} similaires={similaires} modeDiscret={modeDiscret} prixAchatFlash={priceFlash} enCours={enregistrement}
+          categories={CATEGORIES} coefficients={coefficients} similaires={similaires} modeDiscret={modeDiscret} franchiseTva={franchiseTva} prixAchatFlash={priceFlash} enCours={enregistrement}
           onPrixAchat={(pa) => setForm((p) => {
             const suivant = { ...p, prixAchat: pa };
             if (p.coefAuto && pa) {
@@ -752,7 +754,7 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
       {ongletActif === 'fournisseurs' && canViewPrices && (
         <OngletFournisseurs
           fournisseurs={fournisseurs} setFournisseurs={setFournisseurs} liens={liens} setLiens={setLiens} catalogue={catalogue}
-          peutModifier={peutModifier} onImporter={() => fileInputRef.current?.click()}
+          peutModifier={peutModifier} franchiseTva={franchiseTva} onImporter={() => fileInputRef.current?.click()}
         />
       )}
 

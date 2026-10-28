@@ -33,7 +33,7 @@ const TAUX_TVA = [
  * Refonte du 26 oct. 2026 (Task 7 « ancien code »).
  */
 export default function FormulaireArticle({
-  form, setForm, editId, erreurs, effacerErreur, categories, coefficients, similaires, modeDiscret, prixAchatFlash, enCours,
+  form, setForm, editId, erreurs, effacerErreur, categories, coefficients, similaires, modeDiscret, franchiseTva = false, prixAchatFlash, enCours,
   onPrixAchat, onCategorie, onCoefAuto, onEnregistrer, onAnnuler,
 }) {
   const [stockOuvert, setStockOuvert] = useState(() => form.stock_actuel !== '' || form.stock_seuil_alerte !== '');
@@ -72,10 +72,10 @@ export default function FormulaireArticle({
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-            <Champ id="article-prix-achat" libelle="Prix d'achat HT" facultatif type="number" inputMode="decimal" min="0" step="0.01" value={form.prixAchat} onChange={(e) => onPrixAchat(e.target.value)} />
+            <Champ id="article-prix-achat" libelle={franchiseTva ? "Prix d'achat (TVA comprise)" : "Prix d'achat HT"} facultatif type="number" inputMode="decimal" min="0" step="0.01" value={form.prixAchat} onChange={(e) => onPrixAchat(e.target.value)} />
             <div>
               <Champ
-                id="article-prix" libelle={form.coefAuto ? `Prix de vente HT (× ${coef})` : 'Prix de vente HT'} aria-required="true" type="number" inputMode="decimal" min="0.01" step="0.01"
+                id="article-prix" libelle={form.coefAuto ? `Prix de vente${franchiseTva ? '' : ' HT'} (× ${coef})` : `Prix de vente${franchiseTva ? '' : ' HT'}`} aria-required="true" type="number" inputMode="decimal" min="0.01" step="0.01"
                 erreur={erreurs.prix} value={form.prix} className={prixAchatFlash ? 'rounded-xl ring-4 ring-accent/30' : ''}
                 onChange={(e) => { setForm((p) => ({ ...p, prix: e.target.value, coefAuto: false })); if (erreurs.prix) effacerErreur('prix'); }}
               />

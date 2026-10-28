@@ -121,7 +121,7 @@ export default function OngletApercu({
           />
           <TuileChiffre
             libelle={`Facturé${mention}`} valeur={masque(formatMoney(totalFacture))}
-            contexte={resteAFacturer > 0 && !modeDiscret ? `Reste ${formatMoney(resteAFacturer)} à facturer` : undefined}
+            contexte={resteAFacturer > 0 && !modeDiscret ? `Reste ${formatMoney(resteAFacturer)}${mention} à facturer` : undefined}
           />
           <TuileChiffre
             libelle="Marge brute" valeur={masque(bilan.hasDepenses ? formatPct(bilan.tauxMarge) : '—')}
@@ -167,7 +167,7 @@ export default function OngletApercu({
             </div>
             {voitPrix && !modeDiscret && facture.totalFactureHT > 0 && (
               <p className="text-sm text-encre-2 mt-1.5">
-                Facturé : {formatMoney(facture.totalFactureHT)} HT
+                Facturé : {formatMoney(facture.totalFactureHT)}{mention}
                 {facture.retenueRetenue > 0 && <> · Retenue : {formatMoney(facture.retenueRetenue)}</>}
               </p>
             )}

@@ -95,7 +95,7 @@ export function evenementsDesDocuments(documents = [], { paiements = [], mainten
     if (d.type === 'devis' && d.date_validite && ['envoye', 'vu'].includes(d.statut)) {
       liste.push({
         id: `devis_${d.id}`, title: `Devis ${d.numero || ''}`.trim(), date: d.date_validite, type: 'deadline', isDeadline: true, ton: 'neutre', clientId: d.client_id || '',
-        description: voitMontants && d.total_ttc ? `Échéance devis — ${formatMoney(d.total_ttc)}` : 'Échéance devis', devisId: d.id,
+        description: voitMontants && d.total_ttc ? `Fin de validité du devis — ${formatMoney(d.total_ttc)}` : 'Fin de validité du devis', devisId: d.id,
       });
     }
     if (estFacture(d) && estOuverte(d, paiements, maintenant)) {

@@ -22,7 +22,7 @@ import { CATEGORIES_METIERS, getSousCategories, getArticlesBySousCategorie, sear
 const CONSIGNES = { 1: 'Sélectionnez votre type d\'activité', 2: 'Sélectionnez une sous-catégorie', 3: 'Sélectionnez un article', 4: 'Ajustez les prix et la quantité' };
 const ETIQUETTES_ETAPES = ['Catégorie', 'Type', 'Article', 'Config'];
 
-export default function ArticlePicker({ isOpen, onClose, onSelect }) {
+export default function ArticlePicker({ isOpen, onClose, onSelect, franchiseTva = false }) {
   const [step, setStep] = useState(1); // 1 : catégorie, 2 : sous-catégorie, 3 : article, 4 : prix
   const [selectedCategorie, setSelectedCategorie] = useState(null);
   const [selectedSousCategorie, setSelectedSousCategorie] = useState(null);
@@ -214,7 +214,7 @@ export default function ArticlePicker({ isOpen, onClose, onSelect }) {
                   <p className="text-sm text-encre-3">{selectedCategorie?.nom} → {selectedSousCategorie?.nom}</p>
                   <p className="flex items-center gap-2 mt-2 text-sm text-encre-3">
                     <Info size={14} aria-hidden="true" className="flex-shrink-0" />
-                    Prix marché : {formatMoney(selectedArticle.prixMin)} - {formatMoney(selectedArticle.prixMax)} / {selectedArticle.unite}
+                    Repère indicatif du référentiel : {formatMoney(selectedArticle.prixMin)} - {formatMoney(selectedArticle.prixMax)} / {selectedArticle.unite}
                   </p>
                 </div>
               </div>
@@ -222,7 +222,7 @@ export default function ArticlePicker({ isOpen, onClose, onSelect }) {
 
             <div>
               <Champ
-                id="picker-prix" libelle={`Prix de vente HT (€ / ${selectedArticle.unite})`} type="number" inputMode="decimal" min="0" step="0.01"
+                id="picker-prix" libelle={`Prix de vente${franchiseTva ? '' : ' HT'} (€ / ${selectedArticle.unite})`} type="number" inputMode="decimal" min="0" step="0.01"
                 value={customPrix || ''} onChange={(e) => setCustomPrix(parseFloat(e.target.value) || 0)}
               />
               <div className="flex gap-2 mt-2">
@@ -239,7 +239,7 @@ export default function ArticlePicker({ isOpen, onClose, onSelect }) {
             </div>
 
             <Champ
-              id="picker-achat" libelle="Prix d'achat HT" facultatif type="number" inputMode="decimal" min="0" step="0.01" placeholder="Vide si inconnu"
+              id="picker-achat" libelle={franchiseTva ? "Prix d'achat (TVA comprise)" : "Prix d'achat HT"} facultatif type="number" inputMode="decimal" min="0" step="0.01" placeholder="Vide si inconnu"
               value={customPrixAchat} onChange={(e) => setCustomPrixAchat(e.target.value)}
             />
             <Champ id="picker-tva" as="select" libelle="TVA" value={tva} onChange={(e) => setTva(e.target.value)}>

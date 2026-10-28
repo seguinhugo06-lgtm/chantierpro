@@ -534,7 +534,7 @@ export default function Clients({ clients, setClients, updateClient, deleteClien
   }
 
   // ====== Liste ======
-  const TRIS = [['recent-desc', 'Plus récents'], ['name-asc', 'Nom de A à Z'], ['name-desc', 'Nom de Z à A'], ...(canViewPrices ? [['ca-desc', "Chiffre d'affaires encaissé"]] : []), ['activite-desc', 'Activité récente']];
+  const TRIS = [['recent-desc', 'Plus récents'], ['name-asc', 'Nom de A à Z'], ['name-desc', 'Nom de Z à A'], ...(canViewPrices ? [['ca-desc', 'Montant encaissé']] : []), ['activite-desc', 'Activité récente']];
   const triCourant = `${sortBy}-${sortDir}`;
   const nbFiltres = filterCategorie ? 1 : 0;
   const toutEffacer = () => { setFilterCategorie(''); setFilterStatus(''); };

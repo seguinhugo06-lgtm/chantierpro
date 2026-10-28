@@ -80,7 +80,7 @@ const TON_TYPE = { in: 'succes', out: 'info', return: 'neutre', adjustment: 'ale
 
 const FOURNISSEUR_VIDE = { nom: '', email: '', telephone: '', adresse: '', delaiLivraison: '3', conditions: '' };
 
-export function OngletFournisseurs({ fournisseurs, setFournisseurs, liens, setLiens, catalogue, peutModifier, onImporter }) {
+export function OngletFournisseurs({ fournisseurs, setFournisseurs, liens, setLiens, catalogue, peutModifier, franchiseTva = false, onImporter }) {
   const { showToast } = useToast();
   const { confirm } = useConfirm();
   const [formulaire, setFormulaire] = useState(null); // null | { id|null, ...champs }
@@ -246,7 +246,7 @@ export function OngletFournisseurs({ fournisseurs, setFournisseurs, liens, setLi
                 </div>
                 <Bouton variante="secondaire" taille="compacte" onClick={() => { setChoisi(null); setPrix(''); }}>Changer</Bouton>
               </div>
-              <Champ id="lier-prix" libelle={`Prix d'achat chez ${lier?.fournisseurNom} (€ HT)`} facultatif type="number" inputMode="decimal" min="0" step="0.01" autoFocus value={prix} onChange={(e) => setPrix(e.target.value)} />
+              <Champ id="lier-prix" libelle={`Prix d'achat chez ${lier?.fournisseurNom} (${franchiseTva ? '€, TVA comprise' : '€ HT'})`} facultatif type="number" inputMode="decimal" min="0" step="0.01" autoFocus value={prix} onChange={(e) => setPrix(e.target.value)} />
             </>
           )}
         </ModalBody>

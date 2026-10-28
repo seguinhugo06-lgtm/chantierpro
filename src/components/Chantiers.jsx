@@ -593,7 +593,7 @@ export default function Chantiers({
           <Modal isOpen onClose={() => setMergeDialog(null)} size="sm" closeOnBackdrop={!fusionEnCours} closeOnEscape={!fusionEnCours}>
             <ModalHeader>
               <ModalTitle>Fusionner les doublons</ModalTitle>
-              <ModalDescription>Les données du chantier secondaire seront ajoutées au principal, puis le secondaire sera archivé.</ModalDescription>
+              <ModalDescription>Les tâches, photos, fichiers, échanges et notes du chantier secondaire seront ajoutés au principal, puis le secondaire sera archivé. Ses devis et factures restent rattachés au chantier archivé.</ModalDescription>
             </ModalHeader>
             <ModalBody className="space-y-3">
               <div className="grid grid-cols-2 gap-3">

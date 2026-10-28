@@ -68,7 +68,7 @@ export default function OngletFinances({
             </div>
           )}
           {resteAFacturer > 0 && !modeDiscret && (
-            <p className="text-sm text-encre-2">Reste à facturer : <strong className="text-encre tabular-nums">{formatMoney(resteAFacturer)}</strong></p>
+            <p className="text-sm text-encre-2">Reste à facturer{franchiseTva ? '' : ' HT'} : <strong className="text-encre tabular-nums">{formatMoney(resteAFacturer)}</strong></p>
           )}
         </div>
 

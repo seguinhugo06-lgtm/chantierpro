@@ -6,6 +6,8 @@
  *
  * Version du 25 octobre 2026 : article 2, acceptation par la case de l'inscription (relecture juriste du 25 oct., G3) et
  * 2e paragraphe retiré ; article 10 remplacé par le texte H2 de l'avis du 24 oct. 2026, mot pour mot.
+ * Version du 28 octobre 2026 : art. 1, 2e paragraphe retiré (avis du 28 oct.) : « l'utilisation vaut acceptation »
+ * contredisait l'article 2 (acceptation par la case). Aucun droit réduit : pas de préavis de 30 jours.
  */
 import { CGU_VERSION_DATE } from '../../lib/cgu';
 import { COMPANY } from '../../lib/editeur';
@@ -34,9 +36,6 @@ export default function TexteCgu({ compact = false, versConfidentialite }) {
           Les présentes Conditions Générales d'Utilisation (CGU) ont pour objet de définir les modalités
           et conditions d'utilisation de la plateforme Mallettico, ainsi que les droits et obligations
           des utilisateurs.
-        </p>
-        <p className={p}>
-          L'utilisation de la plateforme implique l'acceptation pleine et entière des présentes CGU.
         </p>
       </section>
 

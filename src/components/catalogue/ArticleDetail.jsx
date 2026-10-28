@@ -22,7 +22,7 @@ const LIBELLE_MOUVEMENT = { in: 'Entrée', out: 'Sortie', return: 'Retour', adju
  * « Lier un fournisseur » ne passe plus par une boîte `prompt()` du navigateur : une fenêtre avec la liste des fournisseurs.
  */
 export default function ArticleDetail({
-  item, fournisseurs, liens, mouvements, historique, nbDevis, voitPrix, modeDiscret, peutModifier, peutCreer, peutAjouterAuDevis,
+  item, fournisseurs, liens, mouvements, historique, nbDevis, voitPrix, modeDiscret, franchiseTva = false, peutModifier, peutCreer, peutAjouterAuDevis,
   onRetour, onModifier, onDupliquer, onAjouterAuDevis, onLier, onVoirFournisseurs,
 }) {
   const [lierOuvert, setLierOuvert] = useState(false);
@@ -157,7 +157,7 @@ export default function ArticleDetail({
           <Champ id="lier-fournisseur" as="select" libelle="Fournisseur" value={fournisseurId} onChange={(e) => setFournisseurId(e.target.value)}>
             {fournisseursLibres.map((f) => <option key={f.id} value={f.id}>{f.nom}</option>)}
           </Champ>
-          <Champ id="lier-prix-achat" libelle="Prix d'achat chez ce fournisseur (€ HT)" type="number" inputMode="decimal" min="0" step="0.01" value={prix} onChange={(e) => setPrix(e.target.value)} />
+          <Champ id="lier-prix-achat" libelle={franchiseTva ? "Prix d'achat chez ce fournisseur (€, TVA comprise)" : "Prix d'achat chez ce fournisseur (€ HT)"} type="number" inputMode="decimal" min="0" step="0.01" value={prix} onChange={(e) => setPrix(e.target.value)} />
         </ModalBody>
         <ModalFooter>
           <Bouton variante="secondaire" onClick={() => setLierOuvert(false)}>Annuler</Bouton>
