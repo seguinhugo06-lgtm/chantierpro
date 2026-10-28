@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import {
-  FileText, Users, Building2, Calendar, CheckSquare, Euro,
-  FileCheck, Shield, ChevronRight, Clock, AlertTriangle,
+  Users, Building2, Calendar, CheckSquare, Euro,
+  Shield, ChevronRight, Clock, AlertTriangle,
   ExternalLink, HelpCircle, Zap, Book, Calculator,
   Bell, BellRing, Mail, Settings, ToggleLeft, ToggleRight, TrendingUp
 } from 'lucide-react';
@@ -47,6 +47,10 @@ const FAQ_ITEMS = [
   },
 ];
 
+// Aucune échéance n'est encore tirée des données de l'artisan : la liste reste vide plutôt que d'afficher
+// des exemples inventés (trois dates de début 2026 s'affichaient « dépassées », dont une fausse décennale en retard)
+const AUCUNE_ECHEANCE = [];
+
 export default function AdminHelp({
   chantiers = [],
   devis = [],
@@ -91,9 +95,7 @@ export default function AdminHelp({
   const cardBg = 'bg-surface';
   const borderColor = 'border-bord';
 
-  // Aucune échéance n'est encore tirée des données de l'artisan : la liste reste vide plutôt que d'afficher
-  // des exemples inventés (trois dates de début 2026 s'affichaient « dépassées », dont une fausse décennale en retard)
-  const deadlines = [];
+  const deadlines = AUCUNE_ECHEANCE;
 
   // Upcoming alerts based on settings
   const activeAlerts = useMemo(() => {
