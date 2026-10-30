@@ -92,6 +92,7 @@ module.exports = [
         reel: true, largeur: 1440, page: 'clients', session: sessionFactice(),
         supabase: (req, u) => {
           if (u.pathname === '/rest/v1/rpc/get_user_org_id') return json(ORGA);
+          if (u.pathname === '/rest/v1/organization_members') return require('../lib/fauxSupabase.cjs').reponseAdhesion(req, ORGA);
           if (u.pathname === '/rest/v1/clients' && req.method() === 'POST') {
             const corps = JSON.parse(req.postData() || '{}');
             enregistrements.push(corps);
@@ -125,6 +126,7 @@ module.exports = [
         reel: true, largeur: 1440, page: 'settings', session: sessionFactice(),
         supabase: (req, u) => {
           if (u.pathname === '/rest/v1/rpc/get_user_org_id') return json(ORGA);
+          if (u.pathname === '/rest/v1/organization_members') return require('../lib/fauxSupabase.cjs').reponseAdhesion(req, ORGA);
           if (u.pathname !== '/rest/v1/entreprise') return json([]);
           if (req.method() === 'POST') {
             const corps = JSON.parse(req.postData() || '{}');

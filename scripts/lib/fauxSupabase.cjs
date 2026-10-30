@@ -66,4 +66,13 @@ function creerBase(initial = {}, { refuser = null, role = 'owner' } = {}) {
   return { tables, journal, reponse };
 }
 
-module.exports = { creerBase, ORG, UID, json };
+/**
+ * Réponse à `organization_members` d'un faux serveur écrit à la main : la vraie base a une adhésion pour chaque
+ * compte, et l'app ne donne plus « owner » faute de l'avoir lue (rôle inconnu, puis le plus faible).
+ */
+function reponseAdhesion(req, organizationId, { role = 'owner', userId = '11111111-1111-4111-8111-111111111111' } = {}) {
+  const membre = { id: 'm-1', user_id: userId, organization_id: organizationId, role, joined_at: '2026-01-01T00:00:00Z', equipe_member_id: null };
+  return /pgrst\.object/.test(req.headers().accept || '') ? json(membre) : json([membre]);
+}
+
+module.exports = { creerBase, reponseAdhesion, ORG, UID, json };

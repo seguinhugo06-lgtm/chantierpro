@@ -567,6 +567,7 @@ module.exports = [
         supabase: (req, u) => {
           if (horsLigne) return 'panne';
           if (u.pathname === '/rest/v1/rpc/get_user_org_id') return json(ORGA);
+          if (u.pathname === '/rest/v1/organization_members') return require('../lib/fauxSupabase.cjs').reponseAdhesion(req, ORGA);
           if (u.pathname === '/rest/v1/clients' && req.method() === 'POST') {
             const corps = JSON.parse(req.postData() || '{}');
             envois.push(corps);
