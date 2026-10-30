@@ -140,6 +140,7 @@ module.exports = [
         return {
           ligne: !!ligne,
           tactile: window.matchMedia('(pointer: coarse)').matches,
+          fin: window.matchMedia('(pointer: fine)').matches,
           boutons: [...(ligne?.querySelectorAll('button[aria-label]') || [])].filter((b) => noms.includes(b.getAttribute('aria-label'))).map((b) => {
             const r = b.getBoundingClientRect();
             return { nom: b.getAttribute('aria-label'), l: Math.round(r.width), h: Math.round(r.height) };
@@ -158,7 +159,10 @@ module.exports = [
       verifier(tablette.boutons.length === 3 && tablette.boutons.every((b) => b.l >= 44 && b.h >= 44), `tablette tactile : les trois actions rapides font 44 px au moins (${JSON.stringify(tablette.boutons)})`);
       const souris = await lire(1440, false);
       verifier(souris.ligne && !souris.tactile, `bureau : la ligne est affichée, le pointeur est précis (${JSON.stringify({ ligne: souris.ligne, tactile: souris.tactile })})`);
-      verifier(souris.boutons.length === 3 && souris.boutons.every((b) => b.l === 28 && b.h === 28), `souris : les trois actions rapides restent compactes, 28 px (${JSON.stringify(souris.boutons)})`);
+      // Un navigateur sans écran (CI Linux) ne déclare aucun pointeur fin : les actions gardent alors la taille au doigt,
+      // le choix sûr ; avec une vraie souris (pointer: fine), elles restent compactes
+      const attendu = souris.fin ? ((b) => b.l === 28 && b.h === 28) : ((b) => b.l >= 44 && b.h >= 44);
+      verifier(souris.boutons.length === 3 && souris.boutons.every(attendu), `souris (${souris.fin ? 'pointeur fin : 28 px' : 'aucun pointeur fin déclaré : 44 px'}) : les trois actions rapides (${JSON.stringify(souris.boutons)})`);
     },
   },
 ];
