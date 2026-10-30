@@ -75,6 +75,7 @@ import { CGU_VERSION, CGU_VERSION_DATE } from './lib/cgu';
 import { useConfirm, useToast } from './context/AppContext';
 import { useData } from './context/DataContext';
 import { useEntreprise } from './context/EntrepriseContext';
+import { useOrg } from './context/OrgContext';
 import ErrorBoundary from './components/ui/ErrorBoundary';
 import LogoMallettico from './components/ui/LogoMallettico';
 import { ConfirmModal } from './components/ui/Modal';
@@ -261,6 +262,8 @@ export default function App() {
     addEntreprise: ctxAddEntreprise,
     loading: entrepriseLoading,
   } = useEntreprise();
+  // Adhésion illisible : rôle le plus faible (OrgContext), et on le dit
+  const { droitsNonCharges } = useOrg();
 
   // Entreprise defaults — fallback when context hasn't loaded yet.
   // nom stays EMPTY: never inject a placeholder company name (it would leak
@@ -1914,6 +1917,12 @@ export default function App() {
             <Bouton variante="secondaire" className="self-start sm:self-auto flex-shrink-0" onClick={retryLoad}>
               Réessayer
             </Bouton>
+          </div>
+        )}
+
+        {droitsNonCharges && (
+          <div role="alert" className="mx-4 lg:mx-6 mt-3 px-4 py-3 rounded-xl border bg-alerte-fond border-alerte-point/40 text-sm text-alerte-texte">
+            Vos droits dans l’entreprise n’ont pas pu être lus : les montants et certaines actions sont masqués. Rechargez la page.
           </div>
         )}
 

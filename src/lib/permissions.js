@@ -172,7 +172,8 @@ export function canPerformAction(role, entity, action) {
  * @returns {boolean}
  */
 export function canViewPrices(role) {
-  return !['chef_chantier', 'ouvrier'].includes(role);
+  // Liste blanche : un rôle inconnu, ou pas encore lu (null), ne voit aucun montant (relecture gardien-securite du 26 oct. 2026)
+  return ['owner', 'admin', 'comptable', 'readonly'].includes(role);
 }
 
 /**

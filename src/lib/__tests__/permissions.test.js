@@ -7,6 +7,12 @@ describe('les prix selon le rôle : une seule règle (canViewPrices)', () => {
     expect(canViewPrices('ouvrier')).toBe(false);
   });
 
+  it('un rôle inconnu ou pas encore lu ne voit aucun prix', () => {
+    expect(canViewPrices(null)).toBe(false);
+    expect(canViewPrices(undefined)).toBe(false);
+    expect(canViewPrices('stagiaire')).toBe(false);
+  });
+
   it('le gérant, l’administrateur, le comptable et la lecture seule les voient', () => {
     for (const role of ['owner', 'admin', 'comptable', 'readonly']) expect(canViewPrices(role)).toBe(true);
   });
