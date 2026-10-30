@@ -21,7 +21,10 @@ export default function SuppressionCompte({ isDark, showToast, onExporter }) {
   const [saisie, setSaisie] = useState('');
   const [enCours, setEnCours] = useState(false);
   const [erreur, setErreur] = useState('');
-  const { orgId, isOwner } = useOrg();
+  // Droits pas encore lus, ou illisibles : le titulaire ne serait pas reconnu et les fichiers de son entreprise
+  // resteraient (relecture gardien-securite du 30 oct. 2026) — on attend
+  const { orgId, isOwner, loading: orgLoading, droitsNonCharges } = useOrg();
+  const droitsIncertains = orgLoading || droitsNonCharges;
   const planId = useSubscriptionStore((s) => s.planId);
   const abonnement = useSubscriptionStore((s) => s.subscription);
 
@@ -144,6 +147,11 @@ export default function SuppressionCompte({ isDark, showToast, onExporter }) {
               aria-label={`Tapez ${MOT_CLE} pour confirmer`}
             />
           </label>
+          {droitsIncertains && (
+            <p role="status" className="text-sm text-alerte-texte">
+              Vos droits dans l’entreprise ne sont pas encore lus : rechargez la page avant de supprimer votre compte.
+            </p>
+          )}
           {erreur && (
             <div role="alert" className={`p-3 rounded-xl border text-sm ${'bg-danger-fond border-danger-point/40 text-danger-texte'}`}>
               {erreur}
@@ -157,7 +165,7 @@ export default function SuppressionCompte({ isDark, showToast, onExporter }) {
           <button
             type="button"
             onClick={confirmer}
-            disabled={enCours || saisie.trim().toUpperCase() !== MOT_CLE}
+            disabled={enCours || droitsIncertains || saisie.trim().toUpperCase() !== MOT_CLE}
             className="px-4 py-2.5 rounded-xl text-sm font-semibold text-white bg-red-600 hover:bg-red-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
             {enCours && <Loader2 size={16} className="animate-spin" />}

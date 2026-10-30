@@ -39,6 +39,7 @@ export function creerOrganisationParDefaut(client, uid) {
  * @property {OrgRole} role - Current user's role
  * @property {OrgMember[]} members - All org members
  * @property {boolean} loading - Whether org resolution is in progress
+ * @property {boolean} droitsNonCharges - L'adhésion n'a pas pu être lue : rôle le plus faible, dit à l'écran
  * @property {boolean} isOwner
  * @property {boolean} isAdmin - owner OR admin
  * @property {Function} refreshOrg - Re-fetch org data
@@ -49,11 +50,12 @@ export function creerOrganisationParDefaut(client, uid) {
 const OrgContext = createContext(/** @type {OrgContextValue} */ ({
   orgId: null,
   orgName: '',
-  role: 'owner',
+  role: null,
+  droitsNonCharges: false,
   members: [],
   loading: true,
-  isOwner: true,
-  isAdmin: true,
+  isOwner: false,
+  isAdmin: false,
   refreshOrg: () => {},
   organisations: [],
   changerOrganisation: () => {},
@@ -134,11 +136,8 @@ export function OrgProvider({ children }) {
     if (!uid || isDemo || !supabase) return;
 
     setLoading(true);
+    let roleLu = null;
     try {
-      // Ancien drapeau « RPC indisponible » : il faisait sauter la lecture de l'adhésion jusqu'à la fermeture de l'onglet,
-      // donc un seul échec passager laissait des droits faux ; chaque chargement relit maintenant l'adhésion
-      sessionStorage.removeItem('cp_org_rpc_unavailable');
-
       // 1. Les adhésions du compte (« Membres : voir l'équipe » laisse lire les siennes) : l'organisation
       //    choisie sur cet appareil, sinon l'équipe rejointe, sinon la plus ancienne
       const { data: adhesions, error: adhesionsError } = await supabase
@@ -233,9 +232,11 @@ export function OrgProvider({ children }) {
         setOrgName(orgRes.data.name || '');
       }
 
-      if (membershipRes.data) {
-        setRole(membershipRes.data.role || ROLE_SANS_DROITS);
-        setDroitsNonCharges(!membershipRes.data.role);
+      if (membershipRes.error) console.error('[OrgContext] Lecture du rôle impossible :', membershipRes.error.message);
+      roleLu = liste.find(a => a.organization_id === resolvedOrgId)?.role || membershipRes.data?.role || null;
+      if (roleLu) {
+        setRole(roleLu);
+        setDroitsNonCharges(false);
       } else {
         // User exists in org (via get_user_org_id) but no membership row?
         // Cela ne devrait pas arriver : le rôle le plus faible, jamais « owner »
@@ -267,9 +268,11 @@ export function OrgProvider({ children }) {
       }
     } catch (err) {
       console.error('[OrgContext] Error resolving org:', err);
-      // Échec de lecture : le rôle le plus faible, jamais « owner »
-      setRole(ROLE_SANS_DROITS);
-      setDroitsNonCharges(true);
+      // Échec de lecture : le rôle le plus faible, jamais « owner » — sauf si le rôle a déjà été lu pendant cet appel
+      if (!roleLu) {
+        setRole(ROLE_SANS_DROITS);
+        setDroitsNonCharges(true);
+      }
     } finally {
       setLoading(false);
     }

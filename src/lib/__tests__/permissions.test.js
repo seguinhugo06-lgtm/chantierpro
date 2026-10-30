@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { canViewPrices, canPerformAction } from '../permissions';
+import { canViewPrices, canPerformAction, canEditData } from '../permissions';
 
 describe('les prix selon le rôle : une seule règle (canViewPrices)', () => {
   it('chef de chantier et ouvrier ne voient aucun prix', () => {
@@ -11,6 +11,13 @@ describe('les prix selon le rôle : une seule règle (canViewPrices)', () => {
     expect(canViewPrices(null)).toBe(false);
     expect(canViewPrices(undefined)).toBe(false);
     expect(canViewPrices('stagiaire')).toBe(false);
+  });
+
+  it('un rôle pas encore lu ne modifie rien', () => {
+    expect(canEditData(null)).toBe(false);
+    expect(canEditData(undefined)).toBe(false);
+    expect(canEditData('readonly')).toBe(false);
+    expect(canEditData('owner')).toBe(true);
   });
 
   it('le gérant, l’administrateur, le comptable et la lecture seule les voient', () => {

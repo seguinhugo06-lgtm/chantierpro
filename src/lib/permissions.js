@@ -182,7 +182,7 @@ export function canViewPrices(role) {
  * @returns {boolean}
  */
 export function canEditData(role) {
-  return role !== 'readonly';
+  return !!role && role !== 'readonly';
 }
 
 /**
