@@ -254,7 +254,10 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
     setCatalogue((prev) => prev.map((c) => (c.id === id ? { ...c, ...champs } : c)));
     return true;
   };
-  const creerArticle = async (donnees) => {
+  const creerArticle = async (brut) => {
+    // En franchise en base (art. 293 B du CGI) aucune TVA n'est facturée : un article créé est à 0 %, par quelque chemin qu'il
+    // arrive (formulaire, référentiel, import) ; le taux n'est plus proposé à l'écran
+    const donnees = franchiseTva ? { ...brut, tva_rate: 0, tva: 0 } : brut;
     if (addCatalogueItemProp) return !!(await addCatalogueItemProp(donnees));
     setCatalogue((prev) => [...prev, { id: generateId(), ...donnees }]);
     return true;
@@ -292,7 +295,7 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
     else showToast(`${importes} articles importés sur ${aImporter.length} : l'import s'est arrêté`, 'error');
     if (importes === aImporter.length) setTimeout(() => setEtapeDemarrage(null), 2000);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [addCatalogueItemProp, setCatalogue, showToast]);
+  }, [addCatalogueItemProp, setCatalogue, showToast, franchiseTva]); // franchiseTva : creerArticle l'applique à chaque création
 
   // Un article choisi dans le référentiel BTP
   const ajouterDepuisReferentiel = async (item) => {
@@ -504,7 +507,7 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
     const lignes = [['Référence', 'Nom', 'Description', 'Catégorie', 'Unité', 'TVA %', 'Prix vente HT', 'Prix achat HT', 'Marge %', 'Stock', 'Seuil alerte', 'Favori']];
     catalogue.forEach((c) => {
       const marge = margeBrute(c.prix, c.prixAchat);
-      lignes.push([c.reference || '', c.nom, c.description || '', c.categorie, c.unite, c.tva_rate || c.tva || 20, c.prix, c.prixAchat ?? '', marge !== null ? marge.toFixed(1) : '', c.stock_actuel ?? '', c.stock_seuil_alerte ?? '', c.favori ? 'Oui' : '']);
+      lignes.push([c.reference || '', c.nom, c.description || '', c.categorie, c.unite, c.tva_rate ?? c.tva ?? 20, c.prix, c.prixAchat ?? '', marge !== null ? marge.toFixed(1) : '', c.stock_actuel ?? '', c.stock_seuil_alerte ?? '', c.favori ? 'Oui' : '']);
     });
     const csv = lignes.map((r) => r.map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`).join(';')).join('\n');
     remettreFichier(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' }), `catalogue_${jourLocal()}.csv`)
@@ -919,7 +922,7 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
                                 <div className="flex items-center gap-2 flex-wrap">
                                   <button type="button" onClick={(e) => { e.stopPropagation(); setArticleDetail(item.id); }} className="text-left text-base font-semibold text-encre hover:underline">{item.nom}</button>
                                   {devisUsageMap[item.id] > 0 && <Pastille ton="info">{devisUsageMap[item.id]} devis</Pastille>}
-                                  {canViewPrices && item.tva_rate && item.tva_rate !== 20 && <Pastille ton="neutre">TVA {item.tva_rate} %</Pastille>}
+                                  {canViewPrices && !franchiseTva && item.tva_rate && item.tva_rate !== 20 && <Pastille ton="neutre">TVA {item.tva_rate} %</Pastille>}
                                 </div>
                                 <p className="text-sm text-encre-3">
                                   {item.reference && <span className="font-mono mr-1.5">{item.reference} ·</span>}

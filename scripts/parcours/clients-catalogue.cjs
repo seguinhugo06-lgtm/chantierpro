@@ -504,9 +504,11 @@ module.exports = [
   {
     // Avis juriste du 28 oct. 2026 : en franchise en base (art. 293 B du CGI), le catalogue n'écrit plus « HT » (rien ne se
     // déduit : un prix d'achat est TVA comprise) ; hors franchise, les libellés « HT » restent. Même geste, deux entreprises.
-    nom: 'catalogue : en franchise en base ni « HT » ni prix d’achat HT (formulaire et référentiel) ; hors franchise, « HT » reste (375 px)',
+    // Avis du 28 oct. 2026 (point 8) : en franchise, pas de « Soit X € TTC », pas de taux de TVA à choisir (la mention « Pas de
+    // TVA : franchise en base » à la place), le référentiel n'ajoute plus à 10 %, et l'article est enregistré à 0 %.
+    nom: 'catalogue : en franchise en base ni « HT », ni prix d’achat HT, ni TVA (formulaire, référentiel, taux enregistré 0 %) ; hors franchise, « HT » et la TVA restent (375 px)',
     reel: true,
-    async executer({ ouvrir, attendre, verifier, cliquer, sessionFactice }) {
+    async executer({ ouvrir, attendre, verifier, cliquer, saisir, sessionFactice }) {
       const { CGU_VERSION } = require('../lib/cgu.cjs');
       const ORG = '0e0e0e0e-0e0e-4e0e-8e0e-0e0e0e0e0e0e';
       for (const [forme, franchise] of [['Micro-entreprise', true], ['SARL', false]]) {
@@ -527,8 +529,28 @@ module.exports = [
           verifier(achatForm?.startsWith("Prix d'achat HT"), `contre-essai, hors franchise : « Prix d'achat HT » reste (« ${achatForm} »)`);
           verifier(venteForm?.startsWith('Prix de vente HT'), `contre-essai, hors franchise : « Prix de vente HT » reste (« ${venteForm} »)`);
         }
-        await cliquer(page, 'Annuler', { dans: '#main-content' });
-        await attendre(500);
+        // 1 bis. La TVA du formulaire : en franchise la mention à la place du taux et du « Soit X € TTC » ; sinon ils restent
+        await saisir(page, '#article-nom', 'Prise 2P+T');
+        await saisir(page, '#article-prix', '10');
+        await attendre(300);
+        const tvaForm = await page.evaluate(() => ({
+          taux: !!document.querySelector('#article-tva'),
+          mention: document.querySelector('#article-franchise')?.innerText.trim() || null,
+          texte: document.querySelector('#main-content')?.innerText.replace(/\s+/g, ' ') || '',
+        }));
+        if (franchise) {
+          verifier(tvaForm.mention === 'Pas de TVA : franchise en base', `franchise : la mention « Pas de TVA : franchise en base » (« ${tvaForm.mention} »)`);
+          verifier(!tvaForm.taux, 'franchise : aucun taux de TVA à choisir dans le formulaire');
+          verifier(!/Soit|TTC/.test(tvaForm.texte), 'franchise : ni « Soit X € TTC » ni « TTC » dans le formulaire');
+        } else {
+          verifier(tvaForm.taux && tvaForm.mention === null, 'contre-essai, hors franchise : le taux de TVA est proposé, sans la mention');
+          verifier(/Soit 12,00 € TTC/.test(tvaForm.texte.replace(/[  ]/g, ' ')), 'contre-essai, hors franchise : « Soit 12,00 € TTC » est calculé');
+        }
+        await cliquer(page, 'Ajouter', { dans: '#main-content' });
+        await attendre(1500);
+        const prise = base.tables.catalogue.find((a) => a.designation === 'Prise 2P+T');
+        verifier(!!prise, 'l’article du formulaire est enregistré en base');
+        verifier(Number(prise?.tva_rate) === (franchise ? 0 : 20), `${franchise ? 'franchise : créé à 0 %' : 'contre-essai, hors franchise : le taux du formulaire (20 %) reste'} (tva_rate ${prise?.tva_rate})`);
         // 2. Le sélecteur du référentiel : repère indicatif, prix de vente et prix d'achat
         await cliquer(page, "Plus d'actions");
         await cliquer(page, 'Ajouter depuis le référentiel BTP', { dans: '[role="dialog"]' });
@@ -553,6 +575,21 @@ module.exports = [
           verifier(etape.achat?.startsWith("Prix d'achat HT"), `contre-essai, hors franchise : « Prix d'achat HT » reste (« ${etape.achat} »)`);
           verifier(etape.vente?.startsWith('Prix de vente HT (€'), `contre-essai, hors franchise : « Prix de vente HT » reste (« ${etape.vente} »)`);
         }
+        // 3. La TVA du référentiel : 0 % en franchise (pas de taux à choisir), 10 % sinon
+        const tvaPicker = await page.evaluate(() => ({
+          taux: document.querySelector('#picker-tva')?.value ?? null,
+          mention: document.querySelector('#picker-franchise')?.innerText.trim() || null,
+        }));
+        if (franchise) {
+          verifier(tvaPicker.mention === 'Pas de TVA : franchise en base' && tvaPicker.taux === null, `franchise : le référentiel n'offre aucun taux, il dit « Pas de TVA : franchise en base » (« ${tvaPicker.mention} », taux ${tvaPicker.taux})`);
+        } else {
+          verifier(tvaPicker.taux === '10' && tvaPicker.mention === null, `contre-essai, hors franchise : le référentiel propose 10 % (« ${tvaPicker.taux} »)`);
+        }
+        await cliquer(page, 'Ajouter au catalogue', { dans: '[role="dialog"]' });
+        await attendre(1500);
+        const duReferentiel = base.tables.catalogue.find((a) => !ARTICLES.some((x) => x.id === a.id) && a.designation !== 'Prise 2P+T');
+        verifier(!!duReferentiel, 'l’article du référentiel est enregistré en base');
+        verifier(Number(duReferentiel?.tva_rate) === (franchise ? 0 : 10), `${franchise ? 'franchise : l’article du référentiel est à 0 % (pas 10 %)' : 'contre-essai, hors franchise : l’article du référentiel est à 10 %'} (tva_rate ${duReferentiel?.tva_rate})`);
       }
     },
   },

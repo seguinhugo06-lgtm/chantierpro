@@ -55,7 +55,7 @@ export default function ArticleDetail({
           <h1 className="text-2xl font-bold text-encre leading-tight break-words">{item.nom}</h1>
           <p className="mt-1 text-sm text-encre-2">
             {item.reference && <span className="font-mono mr-1">{item.reference} ·</span>}
-            {item.categorie} · {item.unite}{voitPrix && ` · TVA ${item.tva_rate || item.tva || 20} %`}
+            {item.categorie} · {item.unite}{voitPrix && !franchiseTva && ` · TVA ${item.tva_rate ?? item.tva ?? 20} %`}
           </p>
           {item.description && <p className="mt-1 text-sm text-encre-3 line-clamp-3">{item.description}</p>}
           {nbDevis > 0 && <div className="mt-2"><Pastille ton="info" icone={FileText}>{nbDevis} devis</Pastille></div>}

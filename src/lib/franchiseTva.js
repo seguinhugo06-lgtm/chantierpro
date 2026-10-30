@@ -64,6 +64,12 @@ export function regimeTvaTresorerie(reglages, entreprise) {
   return reglages?.regimeTva || 'trimestriel';
 }
 
+/**
+ * Ce que le catalogue dit à la place du taux de TVA d'un article quand l'entreprise est en franchise. Texte donné mot pour
+ * mot par l'avis juriste du 26 oct. 2026 (R1) ; avis du 28 oct. 2026 : pas de « Soit X € TTC » ni de taux à choisir.
+ */
+export const MENTION_FRANCHISE_ARTICLE = 'Pas de TVA : franchise en base';
+
 /** Premier taux de TVA renseigné : 0 % est un vrai taux (`||` le remplaçait par 10 ou 20 %, recettes des 9 et
  * 16 oct. 2026). Accepte « 5,5 ». */
 export function premierTaux(...valeurs) {

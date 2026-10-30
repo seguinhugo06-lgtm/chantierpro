@@ -17,6 +17,7 @@ import Carte from './ui/Carte';
 import Champ from './ui/Champ';
 import { achatConnu, margeBrute, niveauMarge, CLASSES_TON_MARGE } from '../lib/margeArticle';
 import { formatMoney } from '../lib/formatters';
+import { MENTION_FRANCHISE_ARTICLE } from '../lib/franchiseTva';
 import { CATEGORIES_METIERS, getSousCategories, getArticlesBySousCategorie, searchAllArticles } from '../lib/data';
 
 const CONSIGNES = { 1: 'Sélectionnez votre type d\'activité', 2: 'Sélectionnez une sous-catégorie', 3: 'Sélectionnez un article', 4: 'Ajustez les prix et la quantité' };
@@ -31,7 +32,9 @@ export default function ArticlePicker({ isOpen, onClose, onSelect, franchiseTva 
   const [customPrix, setCustomPrix] = useState(null);
   // Prix d'achat : un texte, vide tant que l'artisan ne l'a pas saisi (inconnu, jamais déduit du prix de vente)
   const [customPrixAchat, setCustomPrixAchat] = useState('');
-  const [tva, setTva] = useState('10');
+  // En franchise en base (art. 293 B du CGI) aucune TVA n'est facturée : l'article entre à 0 %, sans taux à choisir
+  const tvaInitiale = franchiseTva ? '0' : '10';
+  const [tva, setTva] = useState(tvaInitiale);
   const [quantite, setQuantite] = useState(1);
 
   // Fermer remet tout à zéro
@@ -43,7 +46,7 @@ export default function ArticlePicker({ isOpen, onClose, onSelect, franchiseTva 
     setSearchQuery('');
     setCustomPrix(null);
     setCustomPrixAchat('');
-    setTva('10');
+    setTva(tvaInitiale);
     setQuantite(1);
     onClose();
   };
@@ -84,7 +87,7 @@ export default function ArticlePicker({ isOpen, onClose, onSelect, franchiseTva 
       prixUnitaire: customPrix || selectedArticle.prixDefaut,
       prix_unitaire_ht: customPrix || selectedArticle.prixDefaut,
       prixAchat: achatConnu(customPrixAchat), // null = inconnu (avant : 60 % du prix de vente, inventé)
-      tva: parseFloat(tva),
+      tva: franchiseTva ? 0 : parseFloat(tva),
       categorie: selectedCategorie?.nom || 'Autre',
       favori: false,
       actif: true,
@@ -242,12 +245,16 @@ export default function ArticlePicker({ isOpen, onClose, onSelect, franchiseTva 
               id="picker-achat" libelle={franchiseTva ? "Prix d'achat (TVA comprise)" : "Prix d'achat HT"} facultatif type="number" inputMode="decimal" min="0" step="0.01" placeholder="Vide si inconnu"
               value={customPrixAchat} onChange={(e) => setCustomPrixAchat(e.target.value)}
             />
-            <Champ id="picker-tva" as="select" libelle="TVA" value={tva} onChange={(e) => setTva(e.target.value)}>
-              <option value="20">20 %</option>
-              <option value="10">10 %</option>
-              <option value="5.5">5,5 %</option>
-              <option value="0">0 %</option>
-            </Champ>
+            {franchiseTva ? (
+              <p id="picker-franchise" className="text-base text-encre-2">{MENTION_FRANCHISE_ARTICLE}</p>
+            ) : (
+              <Champ id="picker-tva" as="select" libelle="TVA" value={tva} onChange={(e) => setTva(e.target.value)}>
+                <option value="20">20 %</option>
+                <option value="10">10 %</option>
+                <option value="5.5">5,5 %</option>
+                <option value="0">0 %</option>
+              </Champ>
+            )}
             <Champ
               id="picker-quantite" libelle="Quantité par défaut" type="number" inputMode="decimal" min="0.01" step="0.01"
               value={quantite} onChange={(e) => setQuantite(parseFloat(e.target.value) || 1)}

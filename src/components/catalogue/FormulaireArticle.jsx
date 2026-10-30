@@ -6,6 +6,7 @@ import Champ from '../ui/Champ';
 import Pastille from '../ui/Pastille';
 import { achatConnu, margeBrute, niveauMarge, CLASSES_TON_MARGE } from '../../lib/margeArticle';
 import { formatMoney } from '../../lib/formatters';
+import { MENTION_FRANCHISE_ARTICLE } from '../../lib/franchiseTva';
 
 export const UNITES = [
   { value: 'u', label: 'u (unité)' }, { value: 'm²', label: 'm² (mètre carré)' },
@@ -89,12 +90,17 @@ export default function FormulaireArticle({
             </Champ>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
-            <Champ id="article-tva" as="select" libelle="Taux de TVA" value={form.tva_rate} onChange={(e) => setForm((p) => ({ ...p, tva_rate: e.target.value }))}>
-              {TAUX_TVA.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-            </Champ>
-            <p className="text-base text-encre-2 pb-3 tabular-nums">{form.prix ? `Soit ${formatMoney(parseFloat(form.prix) * (1 + tva / 100), 2)} TTC` : ''}</p>
-          </div>
+          {/* En franchise en base (art. 293 B du CGI) aucune TVA n'est facturée : ni taux à choisir, ni « Soit X € TTC » */}
+          {franchiseTva ? (
+            <p id="article-franchise" className="text-base text-encre-2">{MENTION_FRANCHISE_ARTICLE}</p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
+              <Champ id="article-tva" as="select" libelle="Taux de TVA" value={form.tva_rate} onChange={(e) => setForm((p) => ({ ...p, tva_rate: e.target.value }))}>
+                {TAUX_TVA.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+              </Champ>
+              <p className="text-base text-encre-2 pb-3 tabular-nums">{form.prix ? `Soit ${formatMoney(parseFloat(form.prix) * (1 + tva / 100), 2)} TTC` : ''}</p>
+            </div>
+          )}
 
           <label className="flex items-start gap-3 text-sm text-encre-2 cursor-pointer min-h-[44px]">
             <input type="checkbox" checked={form.coefAuto} onChange={(e) => onCoefAuto(e.target.checked)} className="mt-0.5 w-5 h-5 rounded accent-accent" />
