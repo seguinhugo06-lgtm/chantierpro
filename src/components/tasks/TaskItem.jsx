@@ -59,7 +59,7 @@ export default function TaskItem({
         <button
           onClick={(e) => { e.stopPropagation(); onToggle?.(memo.id); }}
           disabled={!onToggle}
-          className="flex-shrink-0 min-w-[44px] min-h-[44px] sm:min-w-[28px] sm:min-h-[28px] flex items-center justify-center -m-2 sm:-m-0.5 disabled:cursor-default"
+          className="flex-shrink-0 min-w-[44px] min-h-[44px] [@media(pointer:fine)]:min-w-[28px] [@media(pointer:fine)]:min-h-[28px] flex items-center justify-center -m-2 [@media(pointer:fine)]:-m-0.5 disabled:cursor-default"
           aria-label={memo.is_done ? 'Marquer comme non fait' : 'Marquer comme fait'}
         >
           <span className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
