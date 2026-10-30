@@ -125,4 +125,40 @@ module.exports = [
       for (const t of tuiles) verifier(t.horizontal.length === 0 && t.vertical.length === 0 && t.dehors.length === 0, `tuile « ${t.texte} » : rien de coupé ni de débordant (${JSON.stringify({ h: t.horizontal, v: t.vertical, d: t.dehors })})`);
     },
   },
+  {
+    // Constat de la relecture de la Task 9 : les actions rapides d'une ligne (« Mettre à aujourd'hui », « Priorité haute »,
+    // « Supprimer ») faisaient 28 px, trop petit pour un doigt. Elles n'existent qu'à partir de 640 px (au survol ; sous 640 px
+    // elles sont masquées) : sur une tablette tactile elles font 44 px, à la souris elles restent compactes.
+    nom: 'tâches : les actions rapides d’une ligne font 44 px au doigt (tablette, 768 px) et 28 px à la souris (1440 px)',
+    reel: true,
+    async executer({ ouvrir, attendre, verifier, sessionFactice }) {
+      const MEMO = { id: 'f0f0f0f0-0000-4000-8000-000000000081', text: 'Poser les prises', status: 'a_faire', is_done: false, priority: 'haute', due_date: new Date().toLocaleDateString('sv-SE'), created_at: '2026-10-01T08:00:00Z' };
+      const NOMS = ['Mettre à aujourd\'hui', 'Priorité haute', 'Supprimer'];
+      const mesurer = (page) => page.evaluate((noms) => {
+        const lignes = [...document.querySelectorAll('main div')].filter((d) => d.innerText.includes('Poser les prises') && d.className.includes('group'));
+        const ligne = lignes[lignes.length - 1];
+        return {
+          ligne: !!ligne,
+          tactile: window.matchMedia('(pointer: coarse)').matches,
+          boutons: [...(ligne?.querySelectorAll('button[aria-label]') || [])].filter((b) => noms.includes(b.getAttribute('aria-label'))).map((b) => {
+            const r = b.getBoundingClientRect();
+            return { nom: b.getAttribute('aria-label'), l: Math.round(r.width), h: Math.round(r.height) };
+          }),
+        };
+      }, NOMS);
+      const lire = async (largeur, tactile) => {
+        const base = creerBase({ memos: [MEMO] });
+        const { page } = await ouvrir({ reel: true, largeur, page: 'tasks', session: sessionFactice(UID), supabase: base.reponse });
+        if (tactile) await page.setViewport({ width: largeur, height: 1024, isMobile: true, hasTouch: true });
+        await attendre(2500);
+        return mesurer(page);
+      };
+      const tablette = await lire(768, true);
+      verifier(tablette.ligne && tablette.tactile, `tablette : la ligne est affichée, le pointeur est grossier (${JSON.stringify({ ligne: tablette.ligne, tactile: tablette.tactile })})`);
+      verifier(tablette.boutons.length === 3 && tablette.boutons.every((b) => b.l >= 44 && b.h >= 44), `tablette tactile : les trois actions rapides font 44 px au moins (${JSON.stringify(tablette.boutons)})`);
+      const souris = await lire(1440, false);
+      verifier(souris.ligne && !souris.tactile, `bureau : la ligne est affichée, le pointeur est précis (${JSON.stringify({ ligne: souris.ligne, tactile: souris.tactile })})`);
+      verifier(souris.boutons.length === 3 && souris.boutons.every((b) => b.l === 28 && b.h === 28), `souris : les trois actions rapides restent compactes, 28 px (${JSON.stringify(souris.boutons)})`);
+    },
+  },
 ];

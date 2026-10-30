@@ -2,6 +2,9 @@ import { Calendar, Tag, Building2, Users, CheckCircle2, Circle, Clock, Repeat, C
 import { CATEGORIES, PRIORITIES, TASK_STATUSES, classesTon } from './constants';
 import { isOverdue, isToday, formatDateFR, formatTimeFR, today } from './helpers';
 
+// Action rapide d'une ligne : 44 px au doigt (règle du projet), 28 px seulement avec une souris (pointeur précis).
+const ACTION_RAPIDE = 'inline-flex items-center justify-center min-w-[44px] min-h-[44px] rounded text-encre-2 hover:bg-surface-2 [@media(pointer:fine)]:min-w-[28px] [@media(pointer:fine)]:min-h-[28px]';
+
 // ════════════════════════════════════════════════════════
 // TaskItem — Single task row with quick actions + status badge
 // ════════════════════════════════════════════════════════
@@ -164,7 +167,7 @@ export default function TaskItem({
           {onQuickDate && (
             <button
               onClick={(e) => { e.stopPropagation(); onQuickDate(memo.id); }}
-              className="p-1.5 rounded text-encre-2 hover:bg-surface-2"
+              className={ACTION_RAPIDE}
               title="Mettre à aujourd'hui"
               aria-label="Mettre à aujourd'hui"
             ><CalendarCheck size={16} aria-hidden="true" /></button>
@@ -172,7 +175,7 @@ export default function TaskItem({
           {onQuickPriority && (
             <button
               onClick={(e) => { e.stopPropagation(); onQuickPriority(memo.id); }}
-              className="p-1.5 rounded text-encre-2 hover:bg-surface-2"
+              className={ACTION_RAPIDE}
               title="Priorité haute"
               aria-label="Priorité haute"
             ><Flag size={16} aria-hidden="true" /></button>
@@ -180,7 +183,7 @@ export default function TaskItem({
           {onQuickDelete && (
             <button
               onClick={(e) => { e.stopPropagation(); onQuickDelete(memo.id); }}
-              className="p-1.5 rounded text-encre-2 hover:bg-surface-2"
+              className={ACTION_RAPIDE}
               title="Supprimer"
               aria-label="Supprimer"
             ><Trash2 size={16} aria-hidden="true" /></button>
