@@ -146,7 +146,6 @@ export default {
         'soft': '0 2px 8px -2px rgba(0, 0, 0, 0.1)',
         'medium': '0 4px 16px -4px rgba(0, 0, 0, 0.1)',
         'strong': '0 8px 24px -8px rgba(0, 0, 0, 0.15)',
-        'glow-primary': '0 0 20px rgba(249, 115, 22, 0.3)',
         'glow-success': '0 0 20px rgba(16, 185, 129, 0.3)',
         'glow-danger': '0 0 20px rgba(239, 68, 68, 0.3)',
         'card': 'var(--shadow-card)',
