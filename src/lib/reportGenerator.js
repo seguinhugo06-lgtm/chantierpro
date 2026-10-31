@@ -5,7 +5,7 @@
 
 import jsPDF from 'jspdf';
 import supabase, { isDemo } from '../supabaseClient';
-import { remettreFichier } from './natif';
+import { remettreFichier, estNatif } from './natif';
 import { jourLocal } from './dates';
 
 /**
@@ -626,13 +626,17 @@ export function downloadPDF(blob, filename) {
 }
 
 /**
- * Open PDF in new tab for preview
+ * Aperçu du PDF : nouvel onglet sur le site ; dans l'app native, la feuille de partage (un blob ouvert dans
+ * la page de l'app n'a pas de retour), comme les autres PDF (remettreFichier).
  * @param {Blob} blob - PDF blob
+ * @param {string} [filename] - nom proposé dans la feuille de partage
  */
-export function previewPDF(blob) {
+export function previewPDF(blob, filename = 'rapport.pdf') {
+  if (estNatif()) return remettreFichier(blob, filename, 'application/pdf');
   const url = URL.createObjectURL(blob);
   window.open(url, '_blank');
   // Note: URL will be revoked when tab is closed
+  return Promise.resolve('ouvert');
 }
 
 /**

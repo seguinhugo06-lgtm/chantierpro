@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Download, Printer, FileText } from 'lucide-react';
+import { remettreFichier, estNatif } from '../../lib/natif';
+import { captureException } from '../../lib/sentry';
 
 export default function RapportPreview({ blob, filename, onClose, onDownload, isDark }) {
   const [objectUrl, setObjectUrl] = useState(null);
@@ -19,6 +21,11 @@ export default function RapportPreview({ blob, filename, onClose, onDownload, is
   }, [blob]);
 
   const handlePrint = () => {
+    // App native : la feuille de partage (impression, AirDrop, fichiers…) ; un blob ouvert dans la page de l'app n'a pas de retour
+    if (estNatif()) {
+      if (blob) remettreFichier(blob, filename || 'rapport.pdf', 'application/pdf').catch((err) => captureException(err, { context: 'impression du rapport' }));
+      return;
+    }
     if (objectUrl) {
       const printWindow = window.open(objectUrl, '_blank');
       if (printWindow) {

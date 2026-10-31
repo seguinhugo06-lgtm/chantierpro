@@ -13,6 +13,8 @@ import { FONCTIONS } from '../lib/fonctions';
 import { MODES_PAIEMENT } from '../lib/modesPaiement';
 import { avecMentionTtc } from '../lib/mentionMontant';
 import { franchiseAppliquee } from '../lib/franchiseTva';
+import { ouvrirLienExterne } from '../lib/natif';
+import { captureException } from '../lib/sentry';
 
 // Check if Stripe is configured (either Connect or direct keys)
 const STRIPE_CONFIGURED = import.meta.env.VITE_STRIPE_PUBLIC_KEY && !import.meta.env.VITE_STRIPE_PUBLIC_KEY.includes('demo');
@@ -214,7 +216,8 @@ export default function PaymentModal({
       `Bonjour,\n\nVoici le lien pour régler votre ${document.type === 'facture' ? 'facture' : 'devis'} ${document.numero}.\n\nMontant : ${formatAmount(amount)}\n\nLien de paiement : ${paymentLink.paymentUrl}\n\nCordialement,\n${entreprise?.nom || ''}`
     );
 
-    window.open(`mailto:${client.email}?subject=${subject}&body=${body}`);
+    // mailto: n'est pas une page web (ouvrirLienExterne le refuse) : le système ouvre l'application de messagerie
+    window.location.href = `mailto:${client.email}?subject=${subject}&body=${body}`;
   };
 
   const sendByWhatsApp = () => {
@@ -227,7 +230,8 @@ export default function PaymentModal({
     );
 
     const url = phone ? `https://wa.me/${phone}?text=${message}` : `https://wa.me/?text=${message}`;
-    window.open(url, '_blank');
+    // Dans l'app native, le navigateur intégré (et non la page de l'app qui serait remplacée)
+    ouvrirLienExterne(url).catch((err) => captureException(err, { context: 'lien WhatsApp du paiement' }));
   };
 
   // Une seule façon d'encaisser (paiement en ligne coupé, D-21) : pas de choix à une seule option (audit UX du 20 oct. 2026)

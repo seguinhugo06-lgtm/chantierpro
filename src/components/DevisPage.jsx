@@ -948,16 +948,24 @@ export default function DevisPage({ clients, addClient, devis, setDevis, chantie
               const updatedEtapes = updateEtape(echeancier.etapes, etape.numero, { statut: ETAPE_STATUT.PAYE });
               const updatedEcheancier = { ...echeancier, etapes: updatedEtapes, updated_at: new Date().toISOString() };
               try {
+                let ecrit = true;
                 if (isDemo || !supabase) {
                   const stored = JSON.parse(localStorage.getItem('cp_echeanciers') || '{}');
                   stored[sourceDevis.id] = updatedEcheancier;
                   localStorage.setItem('cp_echeanciers', JSON.stringify(stored));
                 } else {
-                  supabase.from('acompte_echeanciers').update({ etapes: updatedEtapes, updated_at: updatedEcheancier.updated_at }).eq('id', echeancier.id).then(() => {});
+                  // supabase-js ne lève rien sur un refus : on lit { error }. Refusé, l'échéancier affiché reste celui de la base.
+                  const { error } = await supabase.from('acompte_echeanciers').update({ etapes: updatedEtapes, updated_at: updatedEcheancier.updated_at }).eq('id', echeancier.id);
+                  if (error) {
+                    ecrit = false;
+                    captureException(error, { context: 'échéancier : étape payée' });
+                    showToast('La facture est payée, mais l’échéancier n’a pas pu être mis à jour. Rouvrez le devis dans un instant pour vérifier ses étapes.', 'error');
+                  }
                 }
-                setEcheancierCache(prev => ({ ...prev, [sourceDevis.id]: updatedEcheancier }));
+                if (ecrit) setEcheancierCache(prev => ({ ...prev, [sourceDevis.id]: updatedEcheancier }));
               } catch (err) {
-                // echeancier update error handled silently
+                captureException(err, { context: 'échéancier : étape payée' });
+                showToast('La facture est payée, mais l’échéancier n’a pas pu être mis à jour. Rouvrez le devis dans un instant pour vérifier ses étapes.', 'error');
               }
             }
           }
@@ -1011,10 +1019,20 @@ export default function DevisPage({ clients, addClient, devis, setDevis, chantie
       return data;
     }
     try {
-      const { data } = await supabase.from('acompte_echeanciers').select('*').eq('devis_id', devisId).single();
+      // maybeSingle : « aucun échéancier » est une réponse sans erreur ; toute erreur est une panne et se dit
+      const { data, error } = await supabase.from('acompte_echeanciers').select('*').eq('devis_id', devisId).maybeSingle();
+      if (error) {
+        captureException(error, { context: 'échéancier : lecture' });
+        showToast('L’échéancier de ce devis n’a pas pu être lu. Rouvrez le devis dans un instant.', 'error');
+        return null;
+      }
       if (data) setEcheancierCache(prev => ({ ...prev, [devisId]: data }));
       return data;
-    } catch { return null; }
+    } catch (err) {
+      captureException(err, { context: 'échéancier : lecture' });
+      showToast('L’échéancier de ce devis n’a pas pu être lu. Rouvrez le devis dans un instant.', 'error');
+      return null;
+    }
   };
 
   // Une facturation à la fois : un double appui, ou un second bouton touché pendant que la base répond,
@@ -1112,9 +1130,15 @@ export default function DevisPage({ clients, addClient, devis, setDevis, chantie
       stored[selected.id] = updatedEcheancier;
       localStorage.setItem('cp_echeanciers', JSON.stringify(stored));
     } else {
-      await supabase.from('acompte_echeanciers')
+      const { error: erreurEcheancier } = await supabase.from('acompte_echeanciers')
         .update({ etapes: updatedEtapes, statut: updatedEcheancier.statut, updated_at: updatedEcheancier.updated_at })
         .eq('id', echeancier.id);
+      if (erreurEcheancier) {
+        // La facture, elle, est créée : on le dit, sans toucher au devis ni au cache (ils restent tels que la base les a)
+        captureException(erreurEcheancier, { context: 'échéancier : étape facturée' });
+        showToast(`La facture ${facture.numero} est créée, mais l’échéancier n’a pas pu être mis à jour : ne la recréez pas. Rouvrez le devis dans un instant pour vérifier ses étapes.`, 'error');
+        return;
+      }
     }
 
     // Update cache
@@ -1862,7 +1886,7 @@ export default function DevisPage({ clients, addClient, devis, setDevis, chantie
     // 3. Total HT must be > 0
     const totalHT = allLignes.reduce((s, l) => s + getLineTotal(l), 0);
     if (totalHT <= 0 && allLignes.length > 0) {
-      issues.push({ id: 'zero_total', label: 'Montant total HT = 0 € — vérifiez les prix unitaires', actionLabel: 'Modifier les lignes', action: 'edit' });
+      issues.push({ id: 'zero_total', label: `Montant total${franchiseAppliquee(doc, entreprise) ? '' : ' HT'} = 0 € — vérifiez les prix unitaires`, actionLabel: 'Modifier les lignes', action: 'edit' });
     }
 
     // 4. Lignes à 0 € (une ligne négative — remise, reprise, geste commercial — a bien un prix)
@@ -3362,7 +3386,7 @@ export default function DevisPage({ clients, addClient, devis, setDevis, chantie
                           <tr className={`border-b border-bord`}>
                             <th scope="col" className={`text-left py-2 font-medium ${textPrimary}`}>Description</th>
                             <th scope="col" className={`text-right py-2 w-16 font-medium ${textPrimary}`}>Qté</th>
-                            <th scope="col" className={`text-right py-2 w-20 font-medium ${textPrimary}`}>PU HT</th>
+                            <th scope="col" className={`text-right py-2 w-20 font-medium ${textPrimary}`}>{franchiseAppliquee(selected, entreprise) ? 'Prix unitaire' : 'PU HT'}</th>
                             <th scope="col" className={`text-right py-2 w-24 font-medium ${textPrimary}`}>Total</th>
                           </tr>
                         </thead>
@@ -3394,13 +3418,14 @@ export default function DevisPage({ clients, addClient, devis, setDevis, chantie
                     );
                     return (
                       <>
+                        {/* Franchise (293 B) : ni « HT » ni « TTC » (juriste, 24 oct. 2026). Sans remise, la ligne du bas dit déjà le total. */}
                         {t.remisePct ? (
                           <>
-                            {ligneTotal('Total HT avant remise', formatMoney(t.totalLignesHT), textPrimary)}
+                            {ligneTotal(microDoc ? 'Total avant remise' : 'Total HT avant remise', formatMoney(t.totalLignesHT), textPrimary)}
                             {ligneTotal(`Remise ${pourcent(t.remisePct)}`, `-${formatMoney(t.remiseMontant)}`)}
-                            {ligneTotal('Total HT après remise', formatMoney(t.totalHT), textPrimary)}
+                            {ligneTotal(microDoc ? 'Total après remise' : 'Total HT après remise', formatMoney(t.totalHT), textPrimary)}
                           </>
-                        ) : ligneTotal('Total HT', formatMoney(t.totalHT), textPrimary)}
+                        ) : (microDoc ? null : ligneTotal('Total HT', formatMoney(t.totalHT), textPrimary))}
                         {!microDoc && (t.tva.length
                           ? t.tva.map((x) => ligneTotal(`TVA ${pourcent(x.taux)}`, formatMoney(x.montant)))
                           : ligneTotal(`TVA ${pourcent(tauxTvaDocument(selected, entreprise))}`, formatMoney(selected.tva || selected.total_tva || 0)))}

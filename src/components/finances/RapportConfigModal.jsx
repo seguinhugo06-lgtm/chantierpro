@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Save, TrendingUp, Wallet, Mail, Image, BarChart3, Loader2 } from 'lucide-react';
 import supabase, { isDemo } from '../../supabaseClient';
+import { captureException } from '../../lib/sentry';
 
 const PERIODICITE_OPTIONS = {
   mensuel: 'Mensuel',
@@ -12,6 +13,10 @@ const PERIODICITE_OPTIONS = {
 // couleur reste acceptée : l'accent du thème suit la couleur de l'entreprise
 export default function RapportConfigModal({ isOpen, onClose, isDark: _isDark, couleur: _couleur, entreprise }) {
   const [saving, setSaving] = useState(false);
+  // Message d'échec (lecture ou écriture) : la saisie reste, la fenêtre aussi
+  const [erreur, setErreur] = useState('');
+  // Lecture ratée : enregistrer écraserait la vraie configuration par les valeurs par défaut
+  const [lectureEchouee, setLectureEchouee] = useState(false);
   const [form, setForm] = useState({
     activite_actif: false,
     activite_periodicite: 'mensuel',
@@ -51,7 +56,8 @@ export default function RapportConfigModal({ isOpen, onClose, isDark: _isDark, c
       return;
     }
     try {
-      const { data } = await supabase.rpc('get_or_create_rapport_config');
+      const { data, error } = await supabase.rpc('get_or_create_rapport_config');
+      if (error) throw error;
       if (data) {
         setForm({
           activite_actif: data.activite_actif || false,
@@ -67,19 +73,24 @@ export default function RapportConfigModal({ isOpen, onClose, isDark: _isDark, c
         }
       }
     } catch (e) {
-      console.error('Error loading config:', e);
+      captureException(e, { context: 'rapports : lecture de la configuration' });
+      setLectureEchouee(true);
+      setErreur('La configuration des rapports n’a pas pu être lue. Fermez cette fenêtre et rouvrez-la dans un instant : rien n’a été modifié.');
     }
   };
 
   const handleSave = async () => {
+    if (lectureEchouee) return;
     setSaving(true);
+    setErreur('');
     try {
       if (isDemo || !supabase) {
         localStorage.setItem('cp_rapport_config', JSON.stringify(form));
       } else {
-        const { data: existing } = await supabase.rpc('get_or_create_rapport_config');
+        const { data: existing, error: erreurLecture } = await supabase.rpc('get_or_create_rapport_config');
+        if (erreurLecture) throw erreurLecture;
         if (existing) {
-          await supabase.from('rapport_config').update({
+          const { error: erreurEcriture } = await supabase.from('rapport_config').update({
             activite_actif: form.activite_actif,
             activite_periodicite: form.activite_periodicite,
             financier_actif: form.financier_actif,
@@ -89,11 +100,16 @@ export default function RapportConfigModal({ isOpen, onClose, isDark: _isDark, c
             inclure_graphiques: form.inclure_graphiques,
             updated_at: new Date().toISOString(),
           }).eq('id', existing.id);
+          if (erreurEcriture) throw erreurEcriture;
+        } else {
+          // Pas de configuration à mettre à jour : ce n'est pas un enregistrement réussi
+          throw new Error('configuration des rapports introuvable');
         }
       }
       onClose();
     } catch (e) {
-      console.error('Error saving config:', e);
+      captureException(e, { context: 'rapports : enregistrement de la configuration' });
+      setErreur('Les réglages n’ont pas pu être enregistrés. Votre saisie est conservée : réessayez dans un instant.');
     } finally {
       setSaving(false);
     }
@@ -315,10 +331,13 @@ export default function RapportConfigModal({ isOpen, onClose, isDark: _isDark, c
             </div>
 
             {/* Footer */}
+            {erreur && (
+              <p role="alert" className="mx-6 mb-3 px-3 py-2 rounded-xl bg-danger-fond text-danger-texte text-sm font-medium">{erreur}</p>
+            )}
             <div className={`flex items-center justify-end gap-3 px-6 py-4 border-t ${borderColor}`}>
               <button
                 onClick={onClose}
-                className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                className={`min-h-[44px] px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
                   'bg-surface-2 text-encre-2 hover:bg-bord'
                 }`}
               >
@@ -326,8 +345,8 @@ export default function RapportConfigModal({ isOpen, onClose, isDark: _isDark, c
               </button>
               <button
                 onClick={handleSave}
-                disabled={saving}
-                className="px-4 py-2.5 rounded-xl text-sm font-medium transition-all disabled:opacity-50 flex items-center gap-2 bg-accent text-sur-accent"
+                disabled={saving || lectureEchouee}
+                className="min-h-[44px] px-4 py-2.5 rounded-xl text-sm font-medium transition-all disabled:opacity-50 flex items-center gap-2 bg-accent text-sur-accent"
               >
                 {saving ? (
                   <><Loader2 size={16} className="animate-spin" /> Enregistrement...</>

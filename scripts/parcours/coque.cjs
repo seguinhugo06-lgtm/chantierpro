@@ -377,7 +377,7 @@ module.exports = [
       await page.keyboard.press('Enter'); await attendre(600);
       // Au téléphone, le prix visible de la ligne (celui du tableau du bureau est masqué)
       const pu = await page.evaluate(() => {
-        const champ = [...document.querySelectorAll('input[aria-label="Prix unitaire HT"], input[placeholder="PU HT"]')].find((x) => x.getBoundingClientRect().width > 0);
+        const champ = [...document.querySelectorAll('input[aria-label="Prix unitaire HT"], input[placeholder="PU HT"], input[aria-label="Prix unitaire"], input[placeholder="Prix unitaire"]')].find((x) => x.getBoundingClientRect().width > 0);
         if (!champ) return false;
         champ.focus();
         champ.select();

@@ -8,6 +8,7 @@ import { estFranchiseTva } from '../../lib/franchiseTva';
 import { computeActivityReport, computeFinancialReport, computeChantierReport, getPeriodPresets, getPeriodLabel } from '../../lib/reportDataService';
 import { generateActivityPDF, generateFinancialPDF, generateChantierPDF, downloadReportPDF, previewReportPDF } from '../../lib/reportPdfBuilder';
 import supabase, { isDemo } from '../../supabaseClient';
+import { captureException } from '../../lib/sentry';
 import RapportConfigModal from './RapportConfigModal';
 import RapportPreview from './RapportPreview';
 import { jourLocal, dateLue } from '../../lib/dates';
@@ -36,6 +37,8 @@ export default function RapportsTab({ devis = [], depenses = [], clients = [], c
   const [selectedPeriod, setSelectedPeriod] = useState('last_month');
   const [selectedChantier, setSelectedChantier] = useState('');
   const [config, setConfig] = useState(null);
+  // Le PDF est prêt mais n'a pas pu être rangé dans l'historique : on le dit, sans bloquer l'aperçu
+  const [avisHistorique, setAvisHistorique] = useState('');
 
   const presets = useMemo(() => getPeriodPresets(), []);
   const currentPreset = presets.find(p => p.key === selectedPeriod);
@@ -126,10 +129,13 @@ export default function RapportsTab({ devis = [], depenses = [], clients = [], c
 
         if (!isDemo && supabase) {
           try {
-            const { data: inserted } = await supabase.from('rapports').insert(record).select().single();
+            const { data: inserted, error: erreurHistorique } = await supabase.from('rapports').insert(record).select().single();
+            if (erreurHistorique) throw erreurHistorique;
             if (inserted) setReports(prev => [inserted, ...prev]);
+            setAvisHistorique('');
           } catch (e) {
-            console.error('Error saving report:', e);
+            captureException(e, { context: 'rapports : ajout à l’historique' });
+            setAvisHistorique('Le rapport est prêt, mais il n’a pas pu être ajouté à l’historique. Vous pouvez l’enregistrer depuis l’aperçu.');
           }
         } else {
           setReports(prev => [{ id: `demo_${Date.now()}`, ...record, created_at: new Date().toISOString() }, ...prev]);
@@ -173,6 +179,9 @@ export default function RapportsTab({ devis = [], depenses = [], clients = [], c
 
   return (
     <div className="space-y-6">
+      {avisHistorique && (
+        <p role="alert" className="px-4 py-3 rounded-xl bg-danger-fond text-danger-texte text-sm font-medium">{avisHistorique}</p>
+      )}
       {/* Period selector */}
       <div className="flex flex-wrap items-center gap-3">
         <Calendar size={16} className={textMuted} />

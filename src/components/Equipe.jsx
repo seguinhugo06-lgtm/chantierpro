@@ -25,7 +25,8 @@ import Carte from './ui/Carte';
 import TuileChiffre from './ui/TuileChiffre';
 import Pastille from './ui/Pastille';
 import { Avatar } from './ui/LigneListe';
-import { remettreFichier } from '../lib/natif';
+import { remettreFichier, ouvrirLienExterne } from '../lib/natif';
+import { captureException } from '../lib/sentry';
 import { tauxFacture, coutHoraire, coutDesPointages } from '../lib/tauxEquipe';
 import { decompteHeures, lundiDe, dimancheDe } from '../lib/paie';
 import { jourLocal, dateLue, estCeMois } from '../lib/dates';
@@ -2917,11 +2918,9 @@ export default function Equipe({ equipe, setEquipe, addEmployee: addEmployeeProp
                 <button
                   onClick={() => {
                     const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
-                    if (isMobile) {
-                      window.open('whatsapp://send?text=', '_blank');
-                    } else {
-                      window.open('https://web.whatsapp.com', '_blank');
-                    }
+                    // Lien universel sur téléphone (ouvre l'application WhatsApp), WhatsApp Web ailleurs ; jamais dans la page de l'app
+                    ouvrirLienExterne(isMobile ? 'https://wa.me/' : 'https://web.whatsapp.com')
+                      .catch((err) => captureException(err, { context: 'ouverture de WhatsApp (équipe)' }));
                   }}
                   className="w-full flex items-center gap-3 p-4 rounded-xl bg-[#25D366] text-white hover:bg-[#20BD5C] transition-colors min-h-[56px]"
                 >

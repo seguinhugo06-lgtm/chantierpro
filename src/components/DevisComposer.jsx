@@ -38,6 +38,10 @@ const LIBELLE = 'block mb-1.5 text-sm font-medium text-encre-2';
 // Une seule hauteur de champ, 48 px, texte de 16 px au téléphone (pas de zoom de Safari) ; le tableau des lignes au bureau
 // garde ses cellules de 36 px
 const CHAMP = 'w-full px-3 h-12 rounded-xl border text-base sm:text-sm';
+// Grille d'une ligne sur grand écran (en-tête et lignes). En franchise (art. 293 B), « Prix unitaire » prend la place de
+// « PU HT » : la colonne du prix s'élargit, celle de la TVA (un tiret) se réduit, la largeur totale ne change pas.
+const GRILLE_LIGNE = 'grid-cols-[14px_1fr_52px_60px_74px_54px_92px_30px]';
+const GRILLE_LIGNE_FRANCHISE = 'grid-cols-[14px_1fr_52px_60px_92px_36px_92px_30px]';
 
 /** Modèles métier : squelettes de devis prêts à chiffrer (mêmes trames que le formulaire classique). */
 const METIER_TEMPLATES = [
@@ -756,8 +760,8 @@ export default function DevisComposer({
           <div className={`rounded-2xl border ${cardBg}`}>
             {/* header row (desktop) */}
             {form.lignes.length > 0 && (
-              <div className={`hidden sm:grid grid-cols-[14px_1fr_52px_60px_74px_54px_92px_30px] gap-2 px-4 py-2 rounded-t-2xl text-xs font-semibold ${textMuted} bg-fond border-b border-bord`}>
-                <span /><span>Désignation</span><span className="text-center">Qté</span><span className="text-center">Unité</span><span className="text-center">PU HT</span><span className="text-center">TVA</span><span className="text-right">Total HT</span><span />
+              <div className={`hidden sm:grid ${franchise ? GRILLE_LIGNE_FRANCHISE : GRILLE_LIGNE} gap-2 px-4 py-2 rounded-t-2xl text-xs font-semibold ${textMuted} bg-fond border-b border-bord`}>
+                <span /><span>Désignation</span><span className="text-center">Qté</span><span className="text-center">Unité</span><span className="text-center whitespace-nowrap">{franchise ? 'Prix unitaire' : 'PU HT'}</span><span className="text-center">TVA</span><span className="text-right">{franchise ? 'Total' : 'Total HT'}</span><span />
               </div>
             )}
             <div>
@@ -904,10 +908,12 @@ export default function DevisComposer({
         style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
         <div className="max-w-3xl mx-auto px-3 sm:px-5 py-3 flex items-center gap-2 sm:gap-5">
           <div className="flex-1 min-w-0 flex items-baseline gap-3 sm:gap-5 flex-wrap">
-            <div className="hidden sm:flex items-baseline gap-1.5">
-              <span className={`text-xs ${textMuted}`}>HT</span>
-              <span className={`text-sm font-semibold ${textPrimary}`}>{eur(totals.htApresRemise)}</span>
-            </div>
+            {!franchise && (
+              <div className="hidden sm:flex items-baseline gap-1.5">
+                <span className={`text-xs ${textMuted}`}>HT</span>
+                <span className={`text-sm font-semibold ${textPrimary}`}>{eur(totals.htApresRemise)}</span>
+              </div>
+            )}
             {form.remise > 0 && (
               <div className="hidden sm:flex items-baseline gap-1.5">
                 <span className="text-xs text-danger-texte">−{form.remise}%</span>
@@ -956,6 +962,7 @@ export default function DevisComposer({
         articles={quickArticles}
         onAppendBloc={appendBloc}
         onAddArticle={addLigne}
+        franchise={franchise}
         isDark={isDark} couleur={couleur}
         textPrimary={textPrimary} textMuted={textMuted} inputBg={inputBg}
       />
@@ -1235,7 +1242,7 @@ function LigneRow({ ligne, index, total, franchise = false, isDark, couleur: _co
       className={`group border-b last:border-b-0 border-bord ${rowHover} transition-colors ${isDragged ? 'opacity-40' : ''}`}
       style={isDropTarget ? { boxShadow: 'inset 0 2px 0 0 rgb(var(--accent))' } : undefined}>
       {/* Desktop grid — la poignée n'apparaît qu'au survol pour ne pas charger la ligne */}
-      <div className="hidden sm:grid grid-cols-[14px_1fr_52px_60px_74px_54px_92px_30px] gap-2 items-center px-4 py-2">
+      <div className={`hidden sm:grid ${franchise ? GRILLE_LIGNE_FRANCHISE : GRILLE_LIGNE} gap-2 items-center px-4 py-2`}>
         <button type="button" aria-label="Déplacer la ligne"
           onPointerDown={onGrab} style={{ touchAction: 'none' }}
           className={`opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity cursor-grab active:cursor-grabbing ${textMuted}`}>
@@ -1250,7 +1257,7 @@ function LigneRow({ ligne, index, total, franchise = false, isDark, couleur: _co
           {UNITES.map(u => <option key={u} value={u}>{u}</option>)}
           {ligne.unite && !UNITES.includes(ligne.unite) && <option value="__autre">{ligne.unite}</option>}
         </select>
-        <input ref={puDesktopRef} type="text" inputMode="decimal" value={ligne.prixUnitaire} onChange={e => onUpdate('prixUnitaire', e.target.value)} onKeyDown={numKeyDown} aria-label="Prix unitaire HT" className={numCls} />
+        <input ref={puDesktopRef} type="text" inputMode="decimal" value={ligne.prixUnitaire} onChange={e => onUpdate('prixUnitaire', e.target.value)} onKeyDown={numKeyDown} aria-label={franchise ? 'Prix unitaire' : 'Prix unitaire HT'} className={numCls} />
         {franchise ? (
           <span className="text-xs text-center text-encre-3" title="TVA non applicable, art. 293 B du CGI">—</span>
         ) : (
@@ -1297,10 +1304,10 @@ function LigneRow({ ligne, index, total, franchise = false, isDark, couleur: _co
             </span>
           </label>
           <label className="block min-w-0">
-            <span className="block mb-1 text-xs font-medium text-encre-3">PU HT</span>
+            <span className="block mb-1 text-xs font-medium text-encre-3">{franchise ? 'Prix unitaire' : 'PU HT'}</span>
             <span className="relative block">
               <input ref={puMobileRef} type="text" inputMode="decimal" value={ligne.prixUnitaire} onChange={e => onUpdate('prixUnitaire', e.target.value)} onKeyDown={numKeyDown}
-                placeholder="PU HT"
+                placeholder={franchise ? 'Prix unitaire' : 'PU HT'}
                 className={`w-full h-12 pl-2 pr-6 rounded-xl border text-base text-right tabular-nums ${inputBg}`} />
               <span aria-hidden="true" className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-base text-encre-3">€</span>
             </span>
@@ -1324,7 +1331,7 @@ function LigneRow({ ligne, index, total, franchise = false, isDark, couleur: _co
           )}
         </div>
         <p className="flex items-baseline justify-end gap-2 text-sm">
-          <span className="text-encre-2">Total HT</span>
+          <span className="text-encre-2">{franchise ? 'Total' : 'Total HT'}</span>
           <span className="font-bold text-encre tabular-nums">{eur(lineTotal)}</span>
         </p>
       </div>
@@ -1417,7 +1424,7 @@ function MetreModal({ isDark: _isDark, couleur: _couleur, inputBg, textPrimary, 
  * ses missions et leurs prix AVANT de l'appliquer — on ne choisit pas « 9 lignes »
  * à l'aveugle. Tout s'ajoute à la suite, rien n'est jamais écrasé.
  */
-function LibraryPanel({ open, onClose, persoTemplates = [], articles = [], onAppendBloc, onAddArticle, isDark: _isDark, couleur: _couleur, textPrimary, textMuted, inputBg }) {
+function LibraryPanel({ open, onClose, persoTemplates = [], articles = [], onAppendBloc, onAddArticle, franchise = false, isDark: _isDark, couleur: _couleur, textPrimary, textMuted, inputBg }) {
   const [q, setQ] = useState('');
   const [openTrade, setOpenTrade] = useState(null);
 
@@ -1476,7 +1483,7 @@ function LibraryPanel({ open, onClose, persoTemplates = [], articles = [], onApp
                       <div className="flex items-center gap-2 p-3">
                         <div className="flex-1 min-w-0">
                           <p className={`text-sm font-semibold truncate ${textPrimary}`}>{tpl.nom}</p>
-                          <p className={`text-xs ${textMuted}`}>{lignes.length} ligne{lignes.length > 1 ? 's' : ''}{total > 0 ? ` · ${eur(total)} HT` : ''}</p>
+                          <p className={`text-xs ${textMuted}`}>{lignes.length} ligne{lignes.length > 1 ? 's' : ''}{total > 0 ? ` · ${eur(total)}${franchise ? '' : ' HT'}` : ''}</p>
                         </div>
                         <button type="button" onClick={() => onAppendBloc(lignes, tpl.nom)}
                           className="px-3 h-8 rounded-lg text-xs font-semibold flex-shrink-0 bg-accent text-sur-accent">

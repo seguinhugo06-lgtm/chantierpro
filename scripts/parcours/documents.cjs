@@ -461,7 +461,7 @@ module.exports = [
       const champ = await page.$('input[placeholder^="Ajouter une prestation"]');
       await champ.click(); await champ.type('Pose prise 2P+T', { delay: 15 }); await attendre(400);
       await page.keyboard.press('Enter'); await attendre(600);
-      const pu = await page.$('input[aria-label="Prix unitaire HT"]');
+      const pu = await page.$('input[aria-label="Prix unitaire"]');
       await pu.click({ clickCount: 3 }); await pu.type('100', { delay: 15 }); await attendre(400);
       const barre = await page.evaluate(() => document.body.innerText);
       verifier(/TVA non applicable/.test(barre), 'l’éditeur annonce « TVA non applicable »');
@@ -564,6 +564,94 @@ module.exports = [
       await attendre(600);
       const remis = await page.evaluate(() => window.__remis);
       verifier(remis.length === 1 && /^catalogue_\d{4}-\d{2}-\d{2}\.csv$/.test(remis[0]), `fichier remis (${remis.join(', ') || 'aucun'})`);
+    },
+  },
+  {
+    // Balayage final (31 oct. 2026), décision du juriste du 24 oct. : en franchise en base (art. 293 B), ni « HT » ni « TTC » à l'écran.
+    // L'éditeur écrivait « PU HT » et « Total HT » en dur. Hors franchise, rien ne change.
+    nom: 'devis (éditeur) : en franchise « Prix unitaire » et « Total » sans « HT » ; hors franchise « PU HT » et « Total HT » (1440 et 375 px)',
+    reel: true,
+    async executer({ ouvrir, sessionFactice, attendre, verifier }) {
+      const { creerBase, UID } = require('../lib/fauxSupabase.cjs');
+      const ORG = '0e0e0e0e-0e0e-4e0e-8e0e-0e0e0e0e0e0e';
+      const CLIENT = { id: 'c0c0c0c0-0000-4000-8000-000000000601', nom: 'Exemple', prenom: 'Lou', telephone: '0600000004', email: 'lou@exemple.fr', adresse: '9 rue Imaginaire, 24000 Exempleville', created_at: '2026-10-01T08:00:00Z' };
+      const entreprise = (forme) => ({ id: 'e0e0e0e0-0000-4000-8000-000000000601', user_id: UID, organization_id: ORG, nom: 'Élec Exemple', forme_juridique: forme,
+        siret: '00000000000000', telephone: '0500000000', email: 'contact@exemple.fr', adresse: '1 rue Imaginaire', code_postal: '24000', ville: 'Exempleville',
+        is_active: true, is_default: true, settings_json: { reglages: { nomEntrepreneur: 'Jean Exemple' } }, created_at: '2026-01-01T00:00:00Z' });
+      for (const [forme, largeur] of [['Micro-entreprise', 1440], ['SARL', 1440], ['Micro-entreprise', 375], ['SARL', 375]]) {
+        const franchise = forme === 'Micro-entreprise';
+        const cas = `${forme} à ${largeur} px`;
+        const base = creerBase({ clients: [CLIENT], entreprise: [entreprise(forme)] });
+        const { page } = await ouvrir({
+          reel: true, largeur, page: 'devis', session: sessionFactice(UID), supabase: base.reponse,
+          avantChargement: () => { try { localStorage.setItem('pwa-install-dismissed', String(Date.now())); } catch { /* */ } },
+        });
+        await attendre(2500);
+        await page.keyboard.down('Control');
+        await page.keyboard.press('KeyD');
+        await page.keyboard.up('Control');
+        await attendre(1500);
+        const champ = await page.$('input[placeholder^="Ajouter une ligne"]');
+        verifier(!!champ, `${cas} : l'éditeur de devis est ouvert`);
+        await champ.click(); await champ.type('Pose prise 2P+T', { delay: 15 }); await attendre(400);
+        await page.keyboard.press('Enter'); await attendre(700);
+        const vu = await page.evaluate(() => {
+          const visible = (e) => e.getBoundingClientRect().width > 0;
+          const dialogue = document.querySelector('[role="dialog"]');
+          const champs = [...(dialogue ? dialogue.querySelectorAll('input, textarea, select') : [])].filter(visible).map((e) => (e.getAttribute('placeholder') || '') + ' ' + (e.getAttribute('aria-label') || '')).join(' | ');
+          return { texte: ((dialogue && dialogue.innerText) || '').replace(/\s+/g, ' '), champs };
+        });
+        const tout = vu.texte + ' | ' + vu.champs;
+        if (franchise) {
+          verifier(/Prix unitaire/.test(tout) && /Total/.test(vu.texte), `${cas} : « Prix unitaire » et « Total » sont là`);
+          const ht = tout.match(/.{0,30}\bHT\b.{0,30}/);
+          verifier(!ht, `${cas} : aucun « HT » dans l'éditeur (${ht ? ht[0] : ''})`);
+        } else {
+          verifier(/PU HT/.test(tout), `${cas} : « PU HT » reste hors franchise`);
+          if (largeur >= 768) verifier(/Total HT/.test(vu.texte), `${cas} : « Total HT » reste hors franchise`);
+        }
+      }
+    },
+  },
+  {
+    // Même décision, fiche à l'écran (pas les documents imprimés, que d'autres parcours couvrent).
+    nom: 'devis (fiche) : en franchise « Prix unitaire » sans « HT » ; hors franchise « PU HT » et « Total HT » (1440 px)',
+    reel: true,
+    async executer({ ouvrir, sessionFactice, attendre, verifier }) {
+      const { creerBase, UID } = require('../lib/fauxSupabase.cjs');
+      const ORG = '0e0e0e0e-0e0e-4e0e-8e0e-0e0e0e0e0e0e';
+      const CLIENT = { id: 'c0c0c0c0-0000-4000-8000-000000000602', nom: 'Exemple', prenom: 'Lou', telephone: '0600000004', email: 'lou@exemple.fr', adresse: '9 rue Imaginaire, 24000 Exempleville', created_at: '2026-10-01T08:00:00Z' };
+      const DEVIS = { id: 'd0d0d0d0-0000-4000-8000-000000000602', client_id: CLIENT.id, type: 'devis', statut: 'envoye', numero: 'DEV-2026-0602', objet: 'Prises du salon',
+        date: '2026-10-20', date_validite: '2099-11-20', total_ht: 100, total_tva: 0, total_ttc: 100, tva_rate: 0, created_at: '2026-10-20T08:00:00Z',
+        lignes: [{ id: 'l1', description: 'Pose prise 2P+T', quantite: 1, unite: 'u', prixUnitaire: 100, tva: 0 }] };
+      const entreprise = (forme) => ({ id: 'e0e0e0e0-0000-4000-8000-000000000602', user_id: UID, organization_id: ORG, nom: 'Élec Exemple', forme_juridique: forme,
+        siret: '00000000000000', telephone: '0500000000', email: 'contact@exemple.fr', adresse: '1 rue Imaginaire', code_postal: '24000', ville: 'Exempleville',
+        is_active: true, is_default: true, settings_json: { reglages: { nomEntrepreneur: 'Jean Exemple' } }, created_at: '2026-01-01T00:00:00Z' });
+      for (const forme of ['Micro-entreprise', 'SARL']) {
+        const franchise = forme === 'Micro-entreprise';
+        const base = creerBase({ clients: [CLIENT], devis: [DEVIS], entreprise: [entreprise(forme)] });
+        const { page } = await ouvrir({
+          reel: true, largeur: 1440, page: 'devis', session: sessionFactice(UID), supabase: base.reponse,
+          avantChargement: () => { try { localStorage.setItem('pwa-install-dismissed', String(Date.now())); } catch { /* */ } },
+        });
+        await attendre(2500);
+        const ouvert = await page.evaluate(() => {
+          const ligne = [...document.querySelectorAll('button, [role="button"], tr, a')].find((x) => /DEV-2026-0*602/.test(x.innerText || ''));
+          ligne?.click();
+          return !!ligne;
+        });
+        verifier(ouvert, `${forme} : le devis DEV-2026-0602 est dans la liste`);
+        await attendre(1500);
+        const fiche = await page.evaluate(() => (document.body.innerText || '').replace(/\s+/g, ' '));
+        verifier(/Pose prise 2P\+T/.test(fiche), `${forme} : la fiche du devis est ouverte (${fiche.slice(0, 120)})`);
+        if (franchise) {
+          verifier(/Prix unitaire/.test(fiche), `${forme} : « Prix unitaire » est l'en-tête du prix`);
+          const ht = fiche.match(/.{0,30}\b(PU HT|Total HT)\b.{0,30}/);
+          verifier(!ht, `${forme} : ni « PU HT » ni « Total HT » sur la fiche (${ht ? ht[0] : ''})`);
+        } else {
+          verifier(/PU HT/.test(fiche) && /Total HT/.test(fiche), `${forme} : « PU HT » et « Total HT » restent hors franchise`);
+        }
+      }
     },
   },
 ];

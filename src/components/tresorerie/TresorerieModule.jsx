@@ -44,7 +44,7 @@ import { Segmente, Onglets } from '../ui/Onglets';
 import EtatVide from '../ui/EtatVide';
 import Carte from '../ui/Carte';
 import { Bouton, BoutonIcone } from '../ui/Bouton';
-import { remettreFichier } from '../../lib/natif';
+import { remettreFichier, ouvrirLienExterne } from '../../lib/natif';
 import { statutFacture, resteAPayer, joursDeRetard, echeance, encaisseEntre, dateLocale } from '../../lib/paiementsFacture';
 import { estOuverte, resteAFacturer } from '../../lib/ventes';
 import { jourLocal, ajouterMois, dateLue } from '../../lib/dates';
@@ -978,7 +978,7 @@ export default function TresorerieModule({
     );
     // Indicatif international, chiffres seuls (wa.me refuse « +33… » et « 06.12… »)
     const tel = telInternational(item.clientTel || '');
-    window.open(`https://wa.me/${tel}?text=${msg}`, '_blank');
+    ouvrirLienExterne(`https://wa.me/${tel}?text=${msg}`).catch((err) => captureException(err, { context: 'relance WhatsApp (trésorerie)' }));
   }, []);
 
   // Add BTP charge as prevision
