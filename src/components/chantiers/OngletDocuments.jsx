@@ -30,7 +30,7 @@ const typeDuDocument = (d) => {
  * qui ne montrait que les plans et les permis), puis les fichiers déposés (plans, permis, attestations) et les rapports.
  */
 export default function OngletDocuments({
-  chantier: ch, documents = [], paiements = [], entreprise, franchiseTva, modeDiscret, formatMoney, voitPrix = true, peutModifier, peutDevis,
+  chantier: ch, documents = [], paiements = [], entreprise, franchiseTva, modeDiscret, formatMoney, voitPrix = false, peutModifier, peutDevis,
   equipe, isDark, couleur, onOuvrirDocument, onCreerDevis, onAjouterFichier, onSupprimerFichier,
 }) {
   const [nom, setNom] = useState('');

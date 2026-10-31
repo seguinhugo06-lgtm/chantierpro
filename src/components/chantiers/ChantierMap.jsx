@@ -72,7 +72,7 @@ function FitBounds({ positions }) {
 /**
  * ChantierMap - Interactive map displaying all chantiers
  */
-export default function ChantierMap({ chantiers, clients, onSelectChantier, isDark, couleur: _couleur, formatMoney, modeDiscret: _modeDiscret, voitPrix = true, budgetDe, avancementDe }) {
+export default function ChantierMap({ chantiers, clients, onSelectChantier, isDark, couleur: _couleur, formatMoney, modeDiscret: _modeDiscret, voitPrix = false, budgetDe, avancementDe }) {
   const [positions, setPositions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [userPos, setUserPos] = useState(null);

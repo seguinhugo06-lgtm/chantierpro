@@ -129,7 +129,8 @@ export default function CommandPalette({
     { id: 'new-devis', label: 'Créer un devis', keywords: 'nouveau devis créer estimer chiffrer', icon: FileText, shortcut: '⌘D', action: () => { onNewDevis?.(); onClose(); } },
     { id: 'new-facture', label: 'Créer une facture', keywords: 'nouvelle facture créer facturer encaisser', icon: Receipt, action: () => { onNewDevis?.('facture'); onClose(); } },
     { id: 'new-client', label: 'Ajouter un client', keywords: 'nouveau client ajouter contact prospect', icon: Users, action: () => { onNewClient?.(); onClose(); } },
-    { id: 'new-chantier', label: 'Créer un chantier', keywords: 'nouveau chantier créer projet travaux intervention', icon: Building2, shortcut: '⌘H', action: () => { onNewChantier?.(); onClose(); } },
+    // Sans le droit de créer un chantier, la commande n'est pas proposée (App.jsx ne passe alors pas onNewChantier)
+    ...(onNewChantier ? [{ id: 'new-chantier', label: 'Créer un chantier', keywords: 'nouveau chantier créer projet travaux intervention', icon: Building2, shortcut: '⌘H', action: () => { onNewChantier(); onClose(); } }] : []),
     { id: 'new-memo', label: 'Nouvelle tâche', keywords: 'memo note rappel tâche todo', icon: ClipboardList, shortcut: '⌘M', action: () => { setPage('tasks'); onClose(); } },
     { id: 'filter-devis-attente', label: 'Devis en attente de réponse', keywords: 'devis envoyés attente relancer relance', icon: Clock, action: ouvrirListe({ etat: 'devis_attente' }) },
     { id: 'filter-en-relance', label: 'Documents en relance auto', keywords: 'relance automatique rappel impayé suivi', icon: Bell, action: ouvrirListe({ etat: 'en_relance' }) },

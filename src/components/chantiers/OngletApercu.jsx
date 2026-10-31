@@ -16,7 +16,7 @@ const LIBELLES_MARGE = (taux) => (taux < 0 ? 'Négative' : taux < 15 ? 'Faible' 
  */
 export default function OngletApercu({
   chantier: ch, client, bilan, revenuTotal, totalFacture, resteAFacturer, avancement, tasksDone, tasksTotal, franchiseTva,
-  modeDiscret, formatMoney, formatPct, weather, alertes = [], voitPrix = true, peutPointer, onPointer, onTaches, onFinances, notifierClient,
+  modeDiscret, formatMoney, formatPct, weather, alertes = [], voitPrix = false, peutPointer, onPointer, onTaches, onFinances, notifierClient,
 }) {
   const adresseComplete = [ch.adresse, [ch.codePostal, ch.ville].filter(Boolean).join(' ')].filter(Boolean).join(', ');
   const tel = client?.telephone || client?.tel;

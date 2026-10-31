@@ -45,7 +45,7 @@ export default function QuickChantierModal({
   devis = [],
   editChantier = null,
   clientInitial = null,
-  voitPrix = true,
+  voitPrix = false,
 }) {
   const isEditMode = !!editChantier;
   const [form, setForm] = useState(FORMULAIRE_VIDE);

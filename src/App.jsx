@@ -156,7 +156,7 @@ export default function App() {
   const { showToast, toast, hideToast } = useToast();
 
   // RBAC: organization role + permissions
-  const { canAccess, canAccessBilling, canViewPrices, role: userRole, loading: orgLoading, orgId } = usePermissions();
+  const { canAccess, canAccessBilling, canViewPrices, canPerform, role: userRole, loading: orgLoading, orgId } = usePermissions();
 
   // PWA install hook
   const { canInstall, install, isInstalled } = usePWA();
@@ -219,6 +219,9 @@ export default function App() {
     } catch { return 'dashboard'; }
   });
   const isPopstateNav = useRef(false);
+  // Le droit de créer un chantier, relu à chaque rendu pour le raccourci clavier (son effet ne se rejoue pas)
+  const peutCreerChantierRef = useRef(false);
+  peutCreerChantierRef.current = canPerform('chantier', 'create');
   const setPage = useCallback((newPage) => {
     setPageRaw(prev => {
       if (prev === newPage) return prev;
@@ -1129,7 +1132,8 @@ export default function App() {
       // Cmd/Ctrl + H for new chantier
       if ((e.metaKey || e.ctrlKey) && e.key === 'h' && !isInput) {
         e.preventDefault();
-        setShowFABQuickChantier(true);
+        // Un rôle sans le droit de créer un chantier (comptable, ouvrier, lecture seule) n'ouvre pas la fenêtre
+        if (peutCreerChantierRef.current) setShowFABQuickChantier(true);
         return;
       }
 
@@ -2081,6 +2085,7 @@ export default function App() {
             }}
             clients={clients}
             devis={devis}
+            voitPrix={canViewPrices}
             isDark={isDark}
             couleur={couleur}
           />
@@ -2145,7 +2150,7 @@ export default function App() {
           }}
           ouvrirDevis={ouvrirDevis}
           onNewClient={() => setShowFABQuickClient(true)}
-          onNewChantier={() => setShowFABQuickChantier(true)}
+          onNewChantier={canPerform('chantier', 'create') ? () => setShowFABQuickChantier(true) : undefined}
           isDark={isDark}
           couleur={couleur}
           modeDiscret={modeDiscret}

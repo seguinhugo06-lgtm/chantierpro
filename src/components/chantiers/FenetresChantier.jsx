@@ -15,7 +15,7 @@ import { dateLue, jourLocal } from '../../lib/dates';
 const CATEGORIES_DEPENSE = ['Matériaux', 'Outillage', 'Location', 'Sous-traitance', 'Transport', 'Autre'];
 
 /** « Ajouter une dépense » : un achat de matériel pour ce chantier (montant HT et TVA de la facture du fournisseur). */
-export function FeuilleDepense({ ouvert, onFermer, onValider, depense, setDepense, franchiseTva, catalogue = [], fournituresManquantes = [], voitPrix = true, enCours = false }) {
+export function FeuilleDepense({ ouvert, onFermer, onValider, depense, setDepense, franchiseTva, catalogue = [], fournituresManquantes = [], voitPrix = false, enCours = false }) {
   const majQuantitePrix = (quantite, prixUnitaire) => {
     const q = Math.max(1, parseInt(quantite) || 1);
     const prix = parseFloat(String(prixUnitaire).replace(',', '.')) || 0;
@@ -175,7 +175,7 @@ export function FeuilleHeures({ ouvert, onFermer, onValider, heures, setHeures, 
 }
 
 /** Le détail de la main-d'œuvre : un pointage par ligne (date et heures modifiables), le total dessous. */
-export function DetailHeures({ ouvert, onFermer, pointages = [], equipe = [], coutHoraireDe, formatMoney, voitPrix = true, coutTotal, onModifier, onSupprimer, onAjouter }) {
+export function DetailHeures({ ouvert, onFermer, pointages = [], equipe = [], coutHoraireDe, formatMoney, voitPrix = false, coutTotal, onModifier, onSupprimer, onAjouter }) {
   return (
     <Modal isOpen={ouvert} onClose={onFermer} size="lg">
       <ModalHeader>

@@ -312,4 +312,47 @@ module.exports = [
       verifier(affiche === 'Note de B, ne pas toucher', `la fiche de B montre la note de B (« ${affiche} »)`);
     },
   },
+  {
+    // Balayage final (31 oct. 2026) : App.jsx ne passait pas voitPrix à la création rapide (Cmd+H), dont la valeur par défaut était « true » :
+    // un chef de chantier y voyait le budget, l'objectif de coûts et les boutons « total HT » des devis. Contre-essai : retirer
+    // voitPrix={canViewPrices} de <QuickChantierModal> dans App.jsx fait échouer la ligne « chef de chantier ».
+    nom: 'création rapide de chantier (Ctrl+H) : le chef de chantier ne voit aucun montant, le gérant les voit, un rôle sans droit de créer ne l’ouvre pas (1440 px)',
+    reel: true,
+    async executer({ ouvrir, attendre, verifier, sessionFactice }) {
+      const { CLIENT, CHANTIER, DEVIS } = jeuAvecPrix();
+      for (const role of ['chef_chantier', 'owner', 'comptable']) {
+        const base = creerBase({ clients: [CLIENT], chantiers: [CHANTIER], devis: [DEVIS] }, { role });
+        const { page } = await ouvrir({ reel: true, largeur: 1440, page: 'dashboard', session: sessionFactice(UID), supabase: base.reponse });
+        await attendre(2500);
+        await page.keyboard.down('Control');
+        await page.keyboard.press('KeyH');
+        await page.keyboard.up('Control');
+        await attendre(900);
+        const ouverte = await page.evaluate(() => !!document.querySelector('[role="dialog"] #chantier-nom'));
+        if (role === 'comptable') {
+          verifier(!ouverte, 'comptable : pas le droit de créer un chantier, Ctrl+H n’ouvre rien');
+          continue;
+        }
+        verifier(ouverte, `${role} : Ctrl+H ouvre la création rapide`);
+        await page.evaluate(() => document.querySelector('[role="dialog"] #chantier-client')?.click());
+        await attendre(400);
+        await page.evaluate(() => [...document.querySelectorAll('[role="dialog"] button')].find((b) => /Morel/.test(b.innerText) && b.id !== 'chantier-client')?.click());
+        await attendre(500);
+        await page.evaluate(() => [...document.querySelectorAll('[role="dialog"] button')].find((x) => /Plus de détails/.test(x.innerText))?.click());
+        await attendre(400);
+        const fenetre = await page.evaluate(() => ({
+          budget: !!document.querySelector('#chantier-budget'),
+          materiaux: !!document.querySelector('#chantier-budget-materiaux'),
+          texte: (document.querySelector('[role="dialog"]')?.innerText || '').replace(/\s+/g, ' '),
+        }));
+        if (role === 'chef_chantier') {
+          verifier(!fenetre.budget && !fenetre.materiaux, `chef de chantier : ni budget ni objectif de matériaux (${JSON.stringify({ b: fenetre.budget, m: fenetre.materiaux })})`);
+          verifier(!/€/.test(fenetre.texte), `chef de chantier : aucun « € » dans la création rapide, même avec un client qui a un devis signé (« ${fenetre.texte.slice(0, 200)} »)`);
+        } else {
+          verifier(fenetre.budget, 'gérant : le budget du chantier est proposé');
+          verifier(/8\s?500\s?€/.test(fenetre.texte), `gérant : le total du devis signé est proposé (« ${fenetre.texte.slice(0, 200)} »)`);
+        }
+      }
+    },
+  },
 ];
