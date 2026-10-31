@@ -71,7 +71,10 @@ module.exports = [
     nom: 'tâches → vue Équipe : « Non assigné » et « tâche » s’écrivent avec leurs accents (1440 px)',
     reel: true,
     async executer({ ouvrir, attendre, verifier, sessionFactice }) {
-      const MEMO = { id: 'f0f0f0f0-0000-4000-8000-000000000071', text: 'Appeler le maçon', status: 'a_faire', is_done: false, due_date: new Date().toLocaleDateString('sv-SE'), created_at: '2026-10-01T08:00:00Z' };
+      // Le lundi de la semaine en cours : la vue Équipe montre du lundi au vendredi (avec « aujourd'hui », le parcours
+      // échouait le samedi et le dimanche)
+      const lundi = new Date(); lundi.setDate(lundi.getDate() - ((lundi.getDay() + 6) % 7));
+      const MEMO = { id: 'f0f0f0f0-0000-4000-8000-000000000071', text: 'Appeler le maçon', status: 'a_faire', is_done: false, due_date: lundi.toLocaleDateString('sv-SE'), created_at: '2026-10-01T08:00:00Z' };
       const base = creerBase({ memos: [MEMO] });
       const { page } = await ouvrir({ reel: true, largeur: 1440, page: 'tasks', session: sessionFactice(UID), supabase: base.reponse });
       await attendre(2500);

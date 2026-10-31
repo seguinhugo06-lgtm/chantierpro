@@ -37,7 +37,7 @@ describe('file hors ligne', () => {
     }
     expect(vus.every((a) => a === 'create')).toBe(true);
     expect((await getPendingMutations()).length).toBe(2); // rien d'effacé après 4 passes en échec
-  }, 20000);
+  }, 60000); // 4 s d'habitude ; une machine très chargée dépassait 20 s
 
   it('un refus de la base retire l\'écriture de la file et le signale', async () => {
     await queueMutation('create', 'clients', { id: 'a' }, 'A');
