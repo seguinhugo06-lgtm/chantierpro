@@ -3,7 +3,7 @@
 Deux branches, rien sur `main`, aucune pull request, aucun accès à la production.
 
 - **`cloud/metiers-docs`** : la recherche par métier et ses corrections. **Aucun code sur cette branche** : seulement `docs/`. C'est elle qui sera livrée en premier.
-- **`cloud/metiers`** : la même recherche, plus le **code du « lot 0 »** (RGE imprimé, Qualiopi retiré, TVA des chaudières, modèles) et la migration 108. Ce code attend la décision n° 3 d'Hugo. Commits de code laissés sur `cloud/metiers` : `3b0d6f1`, `9a2eed5`, `4526173` (première session), puis `8253088`, `b8a34f1`, `5f0f4a0` (corrections du 3 nov.).
+- **`cloud/metiers`** : la même recherche, plus le **code du « lot 0 »** (RGE imprimé, Qualiopi retiré, TVA des chaudières, modèles) et la migration 108. Ce code attend la décision n° 3 d'Hugo. Commits de code laissés sur `cloud/metiers` : `3b0d6f1`, `9a2eed5`, `4526173` (première session), puis `8253088`, `b8a34f1`, `5f0f4a0`, `00f0009` (corrections du 3 nov.).
 
 ## Ce qui est fait
 
@@ -132,7 +132,30 @@ Preuves :
 - contre-essai RGE : avec l'ancienne règle, 6 tests échouent ;
 - banc `npm run banc:migrations` : « Tout est vert (654 vérifications) », dont 5 pour la 108 ; contre-essai : sans les quatre clés, « ✗ 108 : un visiteur reçoit le numéro, l'organisme, la date de fin et l'intitulé RGE (undefined / undefined / undefined / undefined) » ;
 - relecture `gardien-securite` de la 108 : **OK**, rien de bloquant ni à corriger (fonction identique à la 106 hormis les quatre clés ; liste toujours fermée ; `GRANT` redondant mais sans danger). Conseil : après application, contrôler le md5 du corps contre le fichier, comme pour la 106 ;
-- vérifications des deux branches : VERIF_RESULTATS
+- vérifications des deux branches (`npm ci` réussi ; Chrome du conteneur utilisable, donc niveau complet sur le code) :
+
+  `cloud/metiers-docs`, `npm run verifier` :
+  ```
+  Vérification « standard » de 21c5b6c
+    ✓ Tests (85.4 s) — 1204 passed (1204)
+    ✓ Lint (0 erreur) (8.0 s) — 241 problems (0 errors, 241 warnings)
+    ✓ Smoke (42.6 s)
+    ✓ Build (36.7 s)
+  ✓ Tout est vert — niveau « standard ».
+  ```
+  `cloud/metiers`, `npm run verifier -- --complet` :
+  ```
+  Vérification « complet » de 00f0009
+    ✓ Tests (50.3 s) — 1220 passed (1220)
+    ✓ Lint (0 erreur) (6.7 s) — 241 problems (0 errors, 241 warnings)
+    ✓ Smoke (31.2 s)
+    ✓ Build (32.3 s)
+    ✓ Banc de migrations (6.1 s)
+    ✓ Parcours (navigateur) (2114.7 s)
+    ✓ Audit d’interface (386.3 s)
+  ✓ Tout est vert — niveau « complet ».
+  ```
+  Un premier passage complet sur `9f417f5` avait un parcours en échec : le parcours RGE que j'avais mis à jour attendait « jusqu'au » avec une apostrophe simple, alors que le HTML l'écrit `&#39;`. Corrigé par `00f0009` (test seulement), parcours RGE vert (6 vérifications), puis le passage complet ci-dessus. Les 4 parcours signalés en échec sur `main` par la première session passent aujourd'hui. Les commits qui suivent ne changent que ce rapport.
 
 ### Textes nouveaux soumis au juriste
 
@@ -183,7 +206,7 @@ Tous recopiés de la correction exacte du juriste (points 3, 15 et 16), sans cha
 
 **Relecture de code**
 1. Hors périmètre : documents séparés sur `cloud/metiers-docs`, livrable seule ; le code reste sur `cloud/metiers`, en attente de la décision n° 3.
-2. Rapport inexact : en-têtes du rapport et de la synthèse corrigés, commits de code cités ; vérification rejouée sur les deux branches finales (ci-dessus).
+2. Rapport inexact : en-têtes du rapport et de la synthèse corrigés, commits de code cités (plus `00f0009`, correction du parcours) ; vérification rejouée sur les deux branches finales (ci-dessus).
 3. TVA partielle : les trois sources sont à 20 % avec un test chacune (`8253088`, et `9a2eed5` pour la bibliothèque et le modèle).
 4. RGE et page de signature : migration 108 (`5f0f4a0`), aide nuancée (`b8a34f1`).
 5. Date du document : déjà fait par `9a2eed5` (`jourDuDocument(doc)` dans les trois générateurs, test « la validité s’apprécie à la date du document »).
