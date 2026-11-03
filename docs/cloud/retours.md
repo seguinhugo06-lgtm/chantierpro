@@ -113,3 +113,92 @@ Commits (depuis `adbf08d`) :
 8. « Renouveler » amène sur la date de validité de l'assurance.
 Chaque point a son parcours, avec un contre-essai qui échoue sans la correction. Aucune migration.
 Six décisions attendent Hugo (mention RM, double inscription, date de signature, brouillon, relances, médiateur).
+
+## Corrections du 3 nov.
+
+Session cloud de correction, après la relecture de code et la relecture du juriste (textes officiels lus en local). Branche `cloud/retours` (copie poussée aussi sur `claude/retours-corrections-juridiques-52t00c`). Rien sur `main`, aucune migration, aucun déploiement, aucun accès à la production. `origin/main` (`a9b2e86`) fusionné dans la branche : un conflit sous `scripts/parcours/facturation.cjs`, version de `main` gardée.
+
+### Juriste — à corriger
+
+1. **Mention de franchise sur les factures Stripe** (`cc0106f`) : partout, « doit figurer sur les factures Stripe (réglage à constater, attente 7) », avec CGI art. 293 E, II. Fichiers : `docs/decisions.md` (D-19, colonnes « Décision » et « Pourquoi »), `.claude/rules/marketing.md` (cette seule phrase), `src/stores/prixAbonnement.js` (en-tête, commentaire de `MENTION_TVA_ABONNEMENT`), `PricingSection.jsx` (l. 10 et 135), `prixPlan.test.jsx` (commentaire), ce rapport (point 1 et résumé). L'attente 7 reste ouverte. Le pied de facture qu'Hugo doit trouver dans Stripe : « TVA non applicable, article 293 B du CGI », son nom suivi de « EI », et son SIREN. À revoir lors de la recodification dans le CIBS (tâche « Mentions CIBS »).
+2. **Mention RM → RNE** (`abfb9fd`) : `mentionImmatriculation` imprime « Entreprise du secteur des métiers et de l’artisanat, immatriculée au RNE sous le n° 123 456 789 » (C. conso. R111-2, 3°). Les DEUX générateurs (`devisHtmlBuilder.js`, l'aperçu inline de `DevisPage.jsx`), `pdfHtmlBuilder.js`, la mise en demeure et l'attestation de ramonage passent par ce module. Le département n'est plus ni demandé ni imprimé : une valeur déjà saisie est ignorée, sans migration. Paramètres : libellé « Métiers et artisanat (RNE) », aide et texte du choix recopiés du juriste. Sources réécrites (`immatriculation.js`, `devisHtmlBuilder.js`, `lexique.js`). Puce ajoutée dans `docs/metier-btp.md` § 2. Rien n'est ajouté à la liste « Facture 2026 ». La valeur interne `rcsType: 'RM'` reste en base (jamais imprimée). Tests `immatriculation.test.js` (15) et parcours « légal » et « documents » : ils attendent la nouvelle mention et l'absence de « RM ».
+3. **Lexique** (`abfb9fd`) : titre « le RCS et le RNE », texte et sources du juriste.
+4. **Confirmation « Signé »** (`3742bb7`) : le message et le commentaire sont ceux du juriste (« Gardez votre exemplaire signé… porte sa certification » ; C. civ. 1113 et 1359, C. conso. L221-9, BOFiP § 60 et 110). Le parcours `statuts` vérifie ce texte, et l'absence de « original » et de « attestation ».
+
+### Relecture de code
+
+| # | Fait | Commit |
+|---|---|---|
+| 1 | Résultat de `npm run verifier` recopié ci-dessous | ce rapport |
+| 2 | « doit figurer… attente 7 » partout | `cc0106f` |
+| 3 | Mention RNE selon le juriste, dans les deux générateurs | `abfb9fd` |
+| 4 | **Non fait** : l'arrêté du 20 juil. 2023 ne s'ouvre pas depuis le cloud (Légifrance injoignable, constaté le 3 nov.). Réglage et case gardés ; `docs/metier-btp.md` § 10 porte « à vérifier avant livraison ». C'est à faire en local, par juriste-btp. | `2034b35` |
+| 5 | `choisirRegistre` vide `rcsVille` ; le parcours « légal » part d'un ancien département « 33 » et vérifie : rien d'imprimé après « Commerce (RCS) » tant qu'aucune ville n'est choisie. Contre-essai : sans la correction, échec « Sera imprimé : RCS 33 A 123 456 789 ». | `abfb9fd` |
+| 6 | Nouveaux parcours, carte affichée, agent Safari iPhone, 375 px : accueil, devis, planning, chantiers. Le dernier élément du contenu n'est couvert par rien. Contre-essai : sans la marge, les 4 échouent (et les 2 de Ramonage aussi). La phrase du rapport est corrigée : l'audit d'interface n'affiche pas la carte. Il manque encore une page à hauteur fixe : le planning n'en est pas une au sens strict, à confirmer en local. | `eac0b7c`, `b58f4ba` |
+| 7 | Inscrit dans la feuille de route (`immat-fiche-entreprise`) | `2034b35` |
+| 8 | Inscrit dans la feuille de route (`greffes-liste`) | `2034b35` |
+| 9 | `modifierEnBase` rend `ECRITURE_EN_ATTENTE` (`lib/erreursEcriture.js`) pour une écriture mise en file. Hors ligne, `changerStatut` n'affiche plus « Facture émise » ; il affiche « Émission gardée sur cet appareil : la facture sera émise au retour du réseau, si la base l’accepte. » (texte reformulé par juriste-btp). Un changement de statut simple n'ajoute rien à « Pas de connexion ». Parcours `statuts` (réel simulé, étape 2). Contre-essai : sans la correction, échec `["Pas de connexion","Facture émise"]`. | `fbe1437`, `27162d3` |
+| 10 | Nom accessible de la pastille : « Statut : Envoyée. Changer le statut » (texte masqué à l'écran, plus d'`aria-label`). Le parcours le vérifie. | `fbe1437` |
+| 11 | « …ce qui en garde une trace écrite » (relu par juriste-btp : OK) | `c99ac9f` |
+| 12 | `verifier(html.length > 0, …)` avant le test d'absence des conseils | `c99ac9f` |
+| 13 | Colonne « Décision » de D-19 et commentaire de `MENTION_TVA_ABONNEMENT` réécrits | `cc0106f` |
+| 14 | Gardés, avec la raison écrite dans `exemples.js` : la question sur le document d'exemple est ouverte (décision 3 ci-dessous). Si Hugo confirme le retrait, supprimer les fonctions et leurs tests. Le commentaire périmé de `honnetete.test.js` est corrigé. | `2034b35` |
+| 15 | Contre-essais rejoués dans cette session : point 5 (registre), point 6 (marge, 4 pages) et point 9 (hors ligne) échouent sans la correction. Le point 3 n'a pas été rejoué en retirant le code, mais la version d'avant imprimait « 123 456 789 RM 33 » : les nouveaux tests, qui refusent « RM », échoueraient. Points 4 et 7 de la première session : pas rejoués. critique-produit n'a pas été lancé : aucune fonctionnalité nouvelle dans ces corrections, seulement des corrections dictées par les relectures (budget partagé). | — |
+
+### Relecture juriste-btp de cette session (agent du projet, lecture du code seulement)
+- Les deux générateurs impriment bien la même mention RNE, sans « RM » écrit en dur : OK.
+- Nom accessible et « trace écrite » : OK. Aucune affirmation invérifiable ajoutée.
+- Message hors ligne : reformulé comme le juriste l'a demandé (`27162d3`).
+- Ancien champ libre `rcs` : voir la décision 5 ci-dessous (non appliqué).
+
+### Vérifications
+- `npm ci` : OK. Chrome (puppeteer) fonctionne ici.
+- `npm run verifier -- --complet` sur `2cd7fc6` (toutes les corrections de code, sauf la reformulation du message hors ligne), mot pour mot :
+
+```
+Vérification « complet » de 2cd7fc6
+
+  ✓ Tests (55.8 s) — 1231 passed (1231)
+  ✓ Lint (0 erreur) (8.1 s) — 241 problems (0 errors, 241 warnings)
+  ✓ Smoke (35.4 s)
+  ✓ Build (33.9 s)
+  ✓ Banc de migrations (6.1 s)
+  ✓ Parcours (navigateur) (2291.6 s)
+  ✓ Audit d’interface (386.8 s)
+
+✓ Tout est vert — niveau « complet ».
+```
+- Après `2cd7fc6` : un rapport, puis le message hors ligne (`27162d3`). Le parcours `statuts (réel simulé)` est rejoué : vert, 19 vérifications. Le niveau standard sur le commit poussé est ci-dessous.
+
+### Décisions d'Hugo (ne pas appliquer)
+1. **CGV art. 11 et médiateur** : (A) laisser les consommateurs s'abonner, désigner un médiateur (L612-1) et publier ses coordonnées (L616-1) ; ou (B) réserver l'offre aux professionnels : pas de médiateur (L611-3, 1°), mais il faut l'écrire et le contrôler à la souscription. Pour B, le juriste propose ce texte pour LegalPages.jsx:243 : « Le service est réservé aux professionnels, pour les besoins de leur activité : la médiation de la consommation ne s'applique pas aux litiges entre professionnels (article L611-3 du Code de la consommation). En cas de différend, écrivez d'abord à {COMPANY.email} pour rechercher une solution amiable. » Il faudrait alors revoir l'art. 6, qui renvoie à la rétractation. **Dans les deux cas**, la clause des lignes 236-238 est réputée non écrite (C. proc. civ. 48). Le juriste propose : « À défaut de résolution amiable dans un délai de 30 jours, la partie la plus diligente peut saisir la juridiction compétente. » Pour un consommateur, la recherche amiable ne doit pas devenir un préalable obligatoire (L612-4). Aucune option n'est recommandée par le juriste : c'est un choix commercial.
+2. **Le « scroll bug » des ramoneurs** : à constater par Hugo sur son téléphone (carte « Installer » affichée). Les parcours de cette session le constatent sur cinq pages, en navigateur simulé.
+3. **Document d'exemple DEV-2026-00012** : la capture « Le devis se monte par lots » et l'exemple « Signature en ligne » le montrent encore. Quelle répétition Hugo visait-il ? Recommandé : lui poser la question avant de supprimer le code gardé (défaut 14).
+4. **Fusion** : rejouer `npm run verifier -- --complet` en local. Prévoir des conflits avec `cloud/franchise` et `cloud/metiers` (`DevisPage.jsx`, `Settings.jsx`, `devisHtmlBuilder.js`). Après la fusion, les deux générateurs doivent imprimer la même mention RNE, sans aucun « RM ».
+5. **Ancien champ libre `rcs` contenant « RM »** (juriste-btp de cette session) : il s'imprime encore tel quel (« 123 456 789 RM 69 »). Et un artisan au RNE sans numéro, mais avec un ancien texte libre, voit « RCS <texte> ». Le juriste propose de ne plus imprimer ces anciens textes : retour `''` si `rcsType` vaut 'RM' ou si le texte contient « RM ». Il faudrait aussi inviter l'artisan à saisir son SIREN. Effet : la mention disparaît des documents concernés tant que le SIREN n'est pas saisi, donc il faut prévenir. Recommandé : appliquer, avec l'invitation dans Paramètres › Légal.
+6. Les décisions 2 à 5 de la première session restent ouvertes : double inscription, date réelle de signature (le juriste la recommande : l'exemplaire doit être « daté », L221-9, et cette date fait courir L221-18 et L221-10), brouillon repassé, « Envoyé » sans envoi. La décision 1 (garder « SIREN RM département ») est tranchée par le juriste : non.
+
+### Textes nouveaux soumis au juriste
+- « Émission gardée sur cet appareil : la facture sera émise au retour du réseau, si la base l’accepte. » (texte du juriste).
+- Nom accessible « Statut : <statut>. Changer le statut » ; « …ce qui en garde une trace écrite » : relus, OK.
+- Les autres textes sont recopiés des corrections du juriste.
+
+### Ce qui reste
+- Relire l'arrêté du 20 juil. 2023 (conseils de ramonage sur l'attestation) avant de livrer, en local.
+- Constater le pied de facture Stripe (attente 7, Hugo).
+- Suites inscrites dans la feuille de route : `immat-fiche-entreprise`, `greffes-liste`.
+
+### Risques
+- `modifierEnBase` rend maintenant `'en_attente'` (une valeur vraie) au lieu de `true` pour une écriture mise en file. Aucun appelant ne teste `=== true` (vérifié par recherche), mais un futur appelant qui le ferait se tromperait.
+- Un artisan qui avait saisi un département pour le RM le voit disparaître de ses documents. La mention RNE le remplace, sans migration.
+
+### Résumé
+1. Factures Stripe : la mention de franchise « doit figurer » (CGI 293 E, II), constat d'Hugo attendu (attente 7).
+2. Plus aucune mention « RM » : les deux PDF impriment le n° d'inscription au RNE (C. conso. R111-2, 3°), sans département.
+3. Lexique et confirmation « Signé » réécrits selon le juriste (« exemplaire signé », « certification »).
+4. Hors ligne : plus de faux « Facture émise ».
+5. Pastille de statut accessible ; changer de registre vide la ville.
+6. Carte « Installer » constatée sur 4 pages de plus, avec contre-essai.
+7. Non fait : relecture de l'arrêté ramonage (réseau fermé), à faire en local.
+8. `npm run verifier -- --complet` vert sur `2cd7fc6`.
+9. Six décisions pour Hugo, dont médiateur ou offre réservée aux professionnels, et anciens champs libres « RM ».
