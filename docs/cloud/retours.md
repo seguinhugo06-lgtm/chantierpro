@@ -95,7 +95,7 @@ Commits (depuis `adbf08d`) :
 - Mention RCS « RCS Paris B 123… » : R. 123-237 dit « numéro, RCS, ville » ; la lettre B est un usage. Forme existante, non changée.
 - Vue tableau de la liste des documents (écran large) : pas de bouton « Statut » (la fiche et les cartes en ont un).
 - Parcours : pas de cas « rôle lecture seule ne voit pas « Statut » » (relecture sécurité, F1).
-- Allongement du bas de page sous la carte « Installer » : constaté sur Paramètres › Ramonage ; l'audit d'interface couvre les autres pages.
+- Allongement du bas de page sous la carte « Installer » : constaté sur Paramètres › Ramonage, puis (corrections du 3 nov.) sur l'accueil, la liste des devis, le planning et les chantiers, à 375 px avec l'agent Safari iPhone. L'audit d'interface, lui, n'affiche jamais la carte (ni agent mobile ni `beforeinstallprompt`) : il ne couvre pas ce cas.
 - `src/lib/pdfHtmlBuilder.js` insère la fiche sans échappement (seulement utilisé par des tests aujourd'hui) : à échapper avant toute réutilisation.
 
 ## Risques
