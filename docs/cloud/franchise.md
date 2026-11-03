@@ -243,3 +243,26 @@ Preuves :
 - **Contre-essai** : sans les changements du code, 5 de ces tests échouent.
 - Parcours `npm run parcours -- "aperçu imprimé"` (aperçu réel du générateur de `DevisPage`) : ✓ 12 vérifications, dont deux nouvelles : « Total (hors taxes et toutes taxes comprises) » et pas de colonne « TVA ».
 - Vérification : voir la section suivante.
+
+### Vérification après les décisions
+
+```
+Vérification « standard » de 19e9d5e
+
+  ✓ Tests (44.5 s) — 1220 passed (1220)
+  ✓ Lint (0 erreur) (6.4 s) — 241 problems (0 errors, 241 warnings)
+  ✓ Smoke (29.6 s)
+  ✓ Build (26.6 s)
+
+✓ Tout est vert — niveau « standard ».
+```
+
+Relecture `juriste-btp` des décisions appliquées : **OK sur les 7 points**, rien à corriger.
+
+### Résumé des décisions
+
+1. Les PDF en franchise finissent par « Net à payer (hors taxes et toutes taxes comprises) » ou « Total (hors taxes et toutes taxes comprises) ».
+2. Une situation seulement validée s'imprime sans TVA.
+3. Plus de colonne « TVA » sur les PDF en franchise, dans les deux générateurs.
+4. Fournitures et main-d'œuvre : en « Plus tard », avec la source.
+5. Tests 1220 sur 1220, contre-essai fait, parcours de l'aperçu réel vert, juriste OK.
