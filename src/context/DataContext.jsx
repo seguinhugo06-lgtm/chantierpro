@@ -552,7 +552,12 @@ export function DataProvider({ children, initialData = {} }) {
       return true;
     }
     try {
-      await updateItem(table, id, fusion, userId, orgId);
+      const enregistre = await updateItem(table, id, fusion, userId, orgId);
+      // Un numéro attribué par la base à l'enregistrement (émission d'une facture sans numéro, 101-102) fait foi :
+      // l'écran reprend celui de la ligne enregistrée, pas la proposition de l'app
+      if (enregistre?.numero && enregistre.numero !== fusion.numero) {
+        setter(prev => prev.map(x => (x.id === id ? { ...x, numero: enregistre.numero } : x)));
+      }
       return true;
     } catch (error) {
       return echecEcriture(error, {
