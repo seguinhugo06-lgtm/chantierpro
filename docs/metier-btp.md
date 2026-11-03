@@ -67,7 +67,7 @@ Mentions de base (CGI ann. II art. 242 nonies A ; C. com. L441-9) : numéro uniq
 
 | Taux | Quand | Source |
 |---|---|---|
-| 20 % | Construction neuve, agrandissement > 10 % de surface, travaux qui produisent un immeuble neuf, locaux non habitation | CGI art. 278 |
+| 20 % | Construction neuve, agrandissement > 10 % de surface, travaux qui produisent un immeuble neuf, locaux non habitation, nettoyage, espaces verts, travaux comprenant la fourniture ou l’installation d’une chaudière susceptible d’utiliser des combustibles fossiles (CGI 279-0 bis, 2 bis ; 278-0 bis A, III bis, depuis le 1er mars 2025) | CGI art. 278 |
 | 10 % | Amélioration, transformation, aménagement, entretien de **locaux d'habitation achevés depuis plus de 2 ans** | CGI art. 279-0 bis |
 | 5,5 % | Travaux de **rénovation énergétique** sur ces mêmes locaux | CGI art. 278-0 bis A |
 
