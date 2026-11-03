@@ -86,6 +86,41 @@ const DERNIER_CHAMP = () => {
 };
 
 module.exports = [
+  // Relecture du 3 nov. 2026 (défaut 6) : la marge posée sous la carte « Installer » vaut pour toutes les pages ; elle
+  // n'était constatée que sur Paramètres › Ramonage. Accueil, liste des devis, planning, chantiers : carte affichée
+  // (agent Safari iPhone, 375 px), page défilée jusqu'en bas, le dernier élément utilisable du contenu n'est pas couvert.
+  ...['dashboard', 'devis', 'planning', 'chantiers'].map((nomPage) => ({
+    nom: `carte « Installer » affichée : ${nomPage} défile jusqu’à son dernier élément, couvert par rien (Safari iPhone, 375 px)`,
+    async executer({ ouvrir, attendre, verifier }) {
+      const { page } = await ouvrir({ page: nomPage, largeur: 375, avantChargement: commeSafariIphone });
+      await attendre(3800); // la carte s'affiche après 3 s
+      const carte = await page.evaluate(() => {
+        const c = [...document.querySelectorAll('div.fixed')].find((d) => d.innerText.includes('Mallettico') && d.getBoundingClientRect().height > 0);
+        return c ? Math.round(c.getBoundingClientRect().height) : 0;
+      });
+      verifier(carte > 100, `${nomPage} : la carte « Installer » est affichée (${carte} px)`);
+      await page.mouse.move(250, 300);
+      for (let i = 0; i < 40; i++) { await page.mouse.wheel({ deltaY: 400 }); await attendre(40); }
+      await attendre(600);
+      const r = await page.evaluate(() => {
+        const main = document.getElementById('main-content');
+        const champs = [...(main?.querySelectorAll('a[href], button, input, select, textarea') || [])]
+          .filter((e) => e.getClientRects().length && getComputedStyle(e).visibility !== 'hidden');
+        const dernier = champs.sort((x, y) => x.getBoundingClientRect().bottom - y.getBoundingClientRect().bottom).pop();
+        if (!dernier) return { aucun: true };
+        dernier.scrollIntoView({ block: 'nearest' });
+        const b = dernier.getBoundingClientRect();
+        const dessus = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2);
+        return {
+          libelle: (dernier.innerText || dernier.getAttribute('aria-label') || dernier.id || dernier.tagName).trim().slice(0, 40),
+          enBas: Math.round(document.documentElement.scrollHeight - innerHeight - scrollY),
+          dessous: dessus === dernier || dernier.contains(dessus) ? '' : `${dessus?.tagName} « ${(dessus?.innerText || '').trim().slice(0, 40)} »`,
+        };
+      });
+      verifier(!r.aucun, `${nomPage} : un élément utilisable dans le contenu`);
+      verifier(!r.dessous, `${nomPage} : le dernier élément « ${r.libelle} » n’est couvert par rien${r.dessous ? ` (couvert par ${r.dessous})` : ''}`);
+    },
+  })),
   ...[375, 1440].map((largeur) => ({
     nom: `ramonage : Paramètres › Ramonage défile jusqu’au dernier champ, visible et utilisable, carte « Installer » affichée (${largeur} px)`,
     async executer({ ouvrir, attendre, verifier }) {
