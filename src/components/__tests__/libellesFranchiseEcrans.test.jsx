@@ -123,7 +123,9 @@ describe('documents imprimés en franchise', () => {
   it('facture (devisHtmlBuilder) : ni HT ni TTC, la mention 293 B reste', () => {
     const micro = texte(buildDevisHtml({ doc, client, entreprise: MICRO, couleur: '#12336F' }));
     expect(micro).not.toMatch(HT_OU_TTC);
-    expect(micro).toContain('TVA non applicable, article 293 B du Code Général des Impôts');
+    // CGI art. 293 E, II : la mention mot pour mot, la même en en-tête et sous les totaux (juriste-btp, 3 nov. 2026)
+    expect(micro.match(/TVA non applicable, article 293 B du CGI/g)).toHaveLength(2);
+    expect(micro).not.toMatch(/Code Général des Impôts|art\. 293 B/);
     const sarl = texte(buildDevisHtml({ doc: { ...doc, lignes: [{ ...doc.lignes[0], tva: 20 }], tva: 240, total_ttc: 1440 }, client, entreprise: SARL, couleur: '#12336F' }));
     expect(sarl).toContain('PU HT');
     expect(sarl).toContain('Total TTC');
@@ -136,10 +138,18 @@ describe('documents imprimés en franchise', () => {
     expect(micro).not.toMatch(HT_OU_TTC);
     expect(micro).not.toMatch(/TVA 10/);
     expect(micro).toContain('NET À PAYER 500,00 €');
-    expect(micro).toContain('TVA non applicable, article 293 B du Code Général des Impôts');
+    expect(micro).toContain('TVA non applicable, article 293 B du CGI');
     const sarl = texte(buildSituationFactureHtml({ situation, parentDevis: devisSource, client, chantier, entreprise: SARL }));
     expect(sarl).toContain('Montant situation TTC');
     expect(sarl).toContain('NET À PAYER 550,00 €');
+  });
+
+  it('facture de situation : retenue de garantie selon la loi n° 71-584 (art. 1er et 2)', () => {
+    const situation = { numero: 1, statut: 'brouillon', retenueGarantiePct: 5,
+      lignes: [{ description: 'Tableau', quantite: 1, unite: 'u', prixUnitaire: 1000, tva: 10, cumulActuel: 50, cumulPrecedent: 0 }] };
+    const imprime = texte(buildSituationFactureHtml({ situation, parentDevis: devisSource, client, chantier, entreprise: SARL }));
+    expect(imprime).toContain("(loi n° 71-584 du 16 juillet 1971 : 5 % au plus). Libérée un an après la réception des travaux, avec ou sans réserves, sauf opposition motivée du maître de l'ouvrage notifiée par lettre recommandée.");
+    expect(imprime).not.toMatch(/conformément|sauf réserves/);
   });
 });
 

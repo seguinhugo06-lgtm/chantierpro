@@ -533,7 +533,7 @@ export default function ClientPortal({
     <div class="row sub"><span>TVA (${doc.tva_rate || 20}%)</span><span>${(doc.tva || 0).toFixed(2)} \u20ac</span></div>`}
     <div class="row total"><span>${!isMicro ? 'Total TTC' : doc.facture_type === 'avoir' ? 'Total de l’avoir' : isFacture ? 'Net à payer' : 'Total'}</span><span>${(isMicro ? totauxDocument(doc, { isMicro }).totalTTC : (doc.total_ttc || 0)).toFixed(2)} \u20ac</span></div>
   </div>
-  ${isMicro ? '<p style="margin-top:10px;font-size:8pt;color:#475569">TVA non applicable, article 293 B du Code Général des Impôts</p>' : ''}
+  ${isMicro ? '<p style="margin-top:10px;font-size:8pt;color:#475569">TVA non applicable, article 293 B du CGI</p>' : ''}
 
   <div class="footer">
     <strong>${entreprise.nom || ''}</strong>

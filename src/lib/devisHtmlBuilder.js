@@ -260,7 +260,7 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mod
         ${e.codeApe ? ` · APE: ${e.codeApe}` : ''}
         ${rcsComplet ? `<br>${rcsComplet}` : (e.rcs ? `<br>RCS: ${e.rcs}` : '')}
         ${e.tvaIntra ? `<br>TVA Intra: ${e.tvaIntra}` : ''}
-        ${isMicro ? '<br><em>TVA non applicable, art. 293 B du CGI</em>' : ''}
+        ${isMicro ? '<br><em>TVA non applicable, article 293 B du CGI</em>' : ''}
       </div>
     </div>
     <div class="doc-type">
@@ -330,7 +330,7 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mod
     ` : ''}
   </div>
 
-  ${isMicro ? '<div class="micro-mention">TVA non applicable, article 293 B du Code Général des Impôts</div>' : ''}
+  ${isMicro ? '<div class="micro-mention">TVA non applicable, article 293 B du CGI</div>' : ''}
 
   ${mentionTvaReduiteHtml({ tvaDetails: calculatedTvaDetails, nomClient: formatClientName(client, ''), isMicro, isFacture, isAcompte: doc.facture_type === 'acompte', isAvoir: doc.facture_type === 'avoir' })}
 
@@ -534,7 +534,7 @@ export function buildSituationFactureHtml({ situation, parentDevis, client, chan
 
   // Franchise en base de TVA (art. 293 B du CGI), même règle que les autres pièces (franchiseAppliquee) : une situation
   // en brouillon s'imprime sans TVA ; au-delà (validée, facturée), une situation portant de la TVA se réimprime telle
-  // quelle (relecture juriste-btp du 3 nov. 2026 : une pièce transmise ne se modifie pas, CGI art. 289 I-1).
+  // quelle (une facture émise se conserve telle quelle et se corrige par un document rectificatif : CGI art. 289, I-4, I-5 et V ; la TVA qui y figure est due : art. 283, 3).
   // Avant (relevé du 3 nov. 2026) : « PU HT », « TVA 10 % », « Montant situation TTC » et pas de mention 293 B pour
   // une micro-entreprise.
   const tvaSaisie = lignes.reduce((s, l) => {
@@ -725,7 +725,7 @@ export function buildSituationFactureHtml({ situation, parentDevis, client, chan
     ${acompteVerse > 0 ? `<div class="totals-row deduction"><span>Acomptes déjà versés</span><span>- ${euros(acompteVerse)}</span></div>` : ''}
     <div class="totals-row grand-total"><span>NET À PAYER</span><span>${euros(netAPayer)}</span></div>
   </div>
-  ${isMicro ? '<div class="micro-mention">TVA non applicable, article 293 B du Code Général des Impôts</div>' : ''}
+  ${isMicro ? '<div class="micro-mention">TVA non applicable, article 293 B du CGI</div>' : ''}
 
   <!-- CONDITIONS -->
   <div class="conditions">
@@ -733,7 +733,7 @@ export function buildSituationFactureHtml({ situation, parentDevis, client, chan
     Paiement à ${e.delaiPaiement} jours à compter de la date de facture.<br>
     ${e.iban ? `<strong>IBAN:</strong> ${e.iban}` : ''} ${e.bic ? ` · <strong>BIC:</strong> ${e.bic}` : ''}<br>
     ${estClientPro(client) ? 'Pénalités de retard: taux BCE + 10 points. Indemnité forfaitaire de recouvrement: 40 €.' : ''}
-    ${retenueGarantiePct > 0 ? `<br><br><strong>Retenue de garantie:</strong> ${pourcent(retenueGarantiePct)} retenus conformément à la loi n°71-584 du 16 juillet 1971. Libérable 1 an après la réception des travaux sauf réserves.` : ''}
+    ${retenueGarantiePct > 0 ? `<br><br><strong>Retenue de garantie :</strong> ${pourcent(retenueGarantiePct)} (loi n° 71-584 du 16 juillet 1971 : 5 % au plus). Libérée un an après la réception des travaux, avec ou sans réserves, sauf opposition motivée du maître de l'ouvrage notifiée par lettre recommandée.` : ''}
   </div>
 
   <!-- FOOTER -->

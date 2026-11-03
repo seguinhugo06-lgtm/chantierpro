@@ -1518,7 +1518,7 @@ export default function DevisPage({ clients, addClient, devis, setDevis, chantie
         ${E?.codeApe ? ` · APE: ${E.codeApe}` : ''}
         ${getRCSComplet() ? `<br>${echap(getRCSComplet())}` : ''}
         ${E?.tvaIntra ? `<br>TVA Intra: ${E.tvaIntra}` : ''}
-        ${isMicro ? '<br><em>TVA non applicable, art. 293 B du CGI</em>' : ''}
+        ${isMicro ? '<br><em>TVA non applicable, article 293 B du CGI</em>' : ''}
       </div>
     </div>
     <div class="doc-type">
@@ -1587,7 +1587,7 @@ export default function DevisPage({ clients, addClient, devis, setDevis, chantie
     ` : ''}
   </div>
 
-  ${isMicro ? '<div class="micro-mention">TVA non applicable, article 293 B du Code Général des Impôts</div>' : ''}
+  ${isMicro ? '<div class="micro-mention">TVA non applicable, article 293 B du CGI</div>' : ''}
 
   ${mentionTvaReduiteHtml({ tvaDetails: calculatedTvaDetails, nomClient: formatClientName(client, ''), isMicro, isFacture, isAcompte: doc.facture_type === 'acompte', isAvoir: isAvoirDoc })}
 

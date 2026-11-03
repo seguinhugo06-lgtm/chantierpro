@@ -565,6 +565,12 @@ export default function SituationsTravaux({
               className={`w-20 text-center text-sm rounded-lg border px-2 py-1.5 ${inputBg}`}
             />
           </div>
+          {/* Loi n° 71-584 du 16 juillet 1971, art. 1er : « une retenue égale au plus à 5 p. 100 » (juriste-btp, 3 nov. 2026) */}
+          {retenuePctLocal > 5 && (
+            <p role="alert" className="-mt-2 mb-4 px-3 py-2 rounded-xl text-sm bg-alerte-fond text-alerte-texte">
+              La retenue de garantie est de 5 % au plus (loi n° 71-584 du 16 juillet 1971).
+            </p>
+          )}
 
           <div className="space-y-2">
             {eligibleDevis.map((d) => {

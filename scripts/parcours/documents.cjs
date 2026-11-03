@@ -698,7 +698,7 @@ module.exports = [
           const ht = imprime.match(/.{0,30}(?<![A-Za-zÀ-ÿ])(HT|TTC)(?![A-Za-zÀ-ÿ]).{0,30}/);
           verifier(!ht, `${forme} : ni « HT » ni « TTC » dans l'aperçu imprimé (${ht ? ht[0] : ''})`);
           verifier(/Prix unitaire/.test(imprime), `${forme} : colonne « Prix unitaire »`);
-          verifier(/TVA non applicable, article 293 B du Code Général des Impôts/.test(imprime), `${forme} : la mention 293 B reste`);
+          verifier(/TVA non applicable, article 293 B du CGI/.test(imprime), `${forme} : la mention 293 B reste`);
         } else {
           verifier(/PU HT/.test(imprime) && /Total TTC/.test(imprime), `${forme} : « PU HT » et « Total TTC » restent hors franchise`);
         }

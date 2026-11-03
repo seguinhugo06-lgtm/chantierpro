@@ -163,7 +163,7 @@ export function buildDocumentHTML(doc, client, chantier, entreprise, options = {
         ${entreprise?.codeApe ? ` · APE: ${entreprise.codeApe}` : ''}
         ${getRCSComplet(entreprise) ? `<br>${getRCSComplet(entreprise)}` : ''}
         ${entreprise?.tvaIntra ? `<br>TVA Intra: ${entreprise.tvaIntra}` : ''}
-        ${isMicro ? '<br><em>TVA non applicable, art. 293 B du CGI</em>' : ''}
+        ${isMicro ? '<br><em>TVA non applicable, article 293 B du CGI</em>' : ''}
       </div>
     </div>
     <div class="doc-type">
@@ -230,7 +230,7 @@ export function buildDocumentHTML(doc, client, chantier, entreprise, options = {
     ` : ''}
   </div>
 
-  ${isMicro ? '<div class="micro-mention">TVA non applicable, article 293 B du Code Général des Impôts</div>' : ''}
+  ${isMicro ? '<div class="micro-mention">TVA non applicable, article 293 B du CGI</div>' : ''}
 
   <!-- CONDITIONS -->
   ${!isAvoir ? `<div class="conditions">
