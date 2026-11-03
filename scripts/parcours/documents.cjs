@@ -654,4 +654,55 @@ module.exports = [
       }
     },
   },
+  {
+    // Relevé du 3 nov. 2026 : l'aperçu imprimé (générateur de DevisPage) écrivait « PU HT » et « Total HT » sous la
+    // mention 293 B. En franchise : ni « HT » ni « TTC », la mention reste ; hors franchise, rien ne change.
+    nom: 'devis (aperçu imprimé) : en franchise ni « HT » ni « TTC », mention 293 B ; hors franchise « PU HT » et « Total TTC » (1440 px)',
+    reel: true,
+    async executer({ ouvrir, sessionFactice, attendre, verifier }) {
+      const { creerBase, UID } = require('../lib/fauxSupabase.cjs');
+      const ORG = '0e0e0e0e-0e0e-4e0e-8e0e-0e0e0e0e0e0e';
+      const CLIENT = { id: 'c0c0c0c0-0000-4000-8000-000000000603', nom: 'Exemple', prenom: 'Lou', telephone: '0600000004', email: 'lou@exemple.fr', adresse: '9 rue Imaginaire, 24000 Exempleville', created_at: '2026-10-01T08:00:00Z' };
+      const devis = (franchise) => ({ id: 'd0d0d0d0-0000-4000-8000-000000000603', client_id: CLIENT.id, type: 'devis', statut: 'brouillon', numero: 'DEV-2026-0603', objet: 'Prises du salon',
+        date: '2026-10-20', date_validite: '2099-11-20', total_ht: 100, total_tva: franchise ? 0 : 20, total_ttc: franchise ? 100 : 120, tva_rate: franchise ? 0 : 20, created_at: '2026-10-20T08:00:00Z',
+        lignes: [{ id: 'l1', description: 'Pose prise 2P+T', quantite: 1, unite: 'u', prixUnitaire: 100, tva: franchise ? 0 : 20 }] });
+      const entreprise = (forme) => ({ id: 'e0e0e0e0-0000-4000-8000-000000000603', user_id: UID, organization_id: ORG, nom: 'Élec Exemple', forme_juridique: forme,
+        siret: '00000000000000', telephone: '0500000000', email: 'contact@exemple.fr', adresse: '1 rue Imaginaire', code_postal: '24000', ville: 'Exempleville',
+        is_active: true, is_default: true, settings_json: { reglages: { nomEntrepreneur: 'Jean Exemple' } }, created_at: '2026-01-01T00:00:00Z' });
+      for (const forme of ['Micro-entreprise', 'SARL']) {
+        const franchise = forme === 'Micro-entreprise';
+        const base = creerBase({ clients: [CLIENT], devis: [devis(franchise)], entreprise: [entreprise(forme)] });
+        const { page } = await ouvrir({
+          reel: true, largeur: 1440, page: 'devis', session: sessionFactice(UID), supabase: base.reponse,
+          avantChargement: () => { try { localStorage.setItem('pwa-install-dismissed', String(Date.now())); } catch { /* */ } },
+        });
+        await attendre(2500);
+        const ouvert = await page.evaluate(() => {
+          const ligne = [...document.querySelectorAll('button, [role="button"], tr, a')].find((x) => /DEV-2026-0*603/.test(x.innerText || ''));
+          ligne?.click();
+          return !!ligne;
+        });
+        verifier(ouvert, `${forme} : le devis DEV-2026-0603 est dans la liste`);
+        await attendre(1500);
+        const apercu = await actionFiche(page, attendre, ['Aperçu', 'Aperçu du document']);
+        verifier(apercu, `${forme} : l'aperçu s'ouvre`);
+        await attendre(1200);
+        const imprime = await page.evaluate(() => {
+          const f = [...document.querySelectorAll('iframe')].find((x) => (x.getAttribute('srcdoc') || '').length > 100);
+          const lu = new DOMParser().parseFromString(f?.getAttribute('srcdoc') || '', 'text/html');
+          lu.querySelectorAll('style, script').forEach((x) => x.remove());
+          return (lu.body?.textContent || '').replace(/\s+/g, ' ');
+        });
+        verifier(/Pose prise 2P\+T/.test(imprime), `${forme} : l'aperçu montre le devis (${imprime.slice(0, 120)})`);
+        if (franchise) {
+          const ht = imprime.match(/.{0,30}(?<![A-Za-zÀ-ÿ])(HT|TTC)(?![A-Za-zÀ-ÿ]).{0,30}/);
+          verifier(!ht, `${forme} : ni « HT » ni « TTC » dans l'aperçu imprimé (${ht ? ht[0] : ''})`);
+          verifier(/Prix unitaire/.test(imprime), `${forme} : colonne « Prix unitaire »`);
+          verifier(/TVA non applicable, article 293 B du Code Général des Impôts/.test(imprime), `${forme} : la mention 293 B reste`);
+        } else {
+          verifier(/PU HT/.test(imprime) && /Total TTC/.test(imprime), `${forme} : « PU HT » et « Total TTC » restent hors franchise`);
+        }
+      }
+    },
+  },
 ];

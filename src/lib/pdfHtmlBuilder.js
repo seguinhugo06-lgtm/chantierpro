@@ -6,7 +6,7 @@
 import { subscription } from '../stores/subscriptionStore';
 import { filterValidLignes } from './formatters';
 import { euros, pourcent, blocConditionsPaiement } from './formatDocument';
-import { lignesTotauxHtml, lignesAcompteHtml } from './totauxDocument';
+import { lignesTotauxHtml, lignesAcompteHtml, libellesColonnesPrix } from './totauxDocument';
 import { echeance } from './paiementsFacture';
 import { dateLue } from './dates';
 import { estFranchiseTva, tauxTvaDocument } from './franchiseTva';
@@ -212,9 +212,9 @@ export function buildDocumentHTML(doc, client, chantier, entreprise, options = {
         <th style="width:40%">Description</th>
         <th style="width:10%">Qté</th>
         <th style="width:10%">Unité</th>
-        <th style="width:15%">PU HT</th>
+        <th style="width:15%">${libellesColonnesPrix(isMicro).pu}</th>
         <th style="width:10%">TVA</th>
-        <th style="width:15%">Total HT</th>
+        <th style="width:15%">${libellesColonnesPrix(isMicro).total}</th>
       </tr>
     </thead>
     <tbody>

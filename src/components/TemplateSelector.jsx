@@ -13,6 +13,8 @@ export default function TemplateSelector({
   onSelectTemplate,
   customTemplates = [],
   onDeleteTemplate,
+  // Franchise en base de TVA (art. 293 B du CGI, estFranchiseTva) : le total d'un modèle s'affiche sans « HT »
+  franchise = false,
   isDark: _isDark,
   couleur: _couleur
 }) {
@@ -176,7 +178,7 @@ export default function TemplateSelector({
                             </div>
                             <div className="flex items-center gap-2 flex-shrink-0">
                               <span className="text-sm font-medium text-accent-texte">
-                                ~{formatMoney((t.lignes || []).reduce((s, l) => s + ((l.quantite || 0) * (l.prixUnitaire || 0)), 0))} HT
+                                ~{formatMoney((t.lignes || []).reduce((s, l) => s + ((l.quantite || 0) * (l.prixUnitaire || 0)), 0))}{franchise ? '' : ' HT'}
                               </span>
                               {onDeleteTemplate && (
                                 <button
@@ -250,7 +252,7 @@ export default function TemplateSelector({
                           {template.lignes.length} lignes
                         </span>
                         <span className="text-sm font-medium tabular-nums text-encre">
-                          ~{formatMoney(calculateModeleTotal(template))} HT
+                          ~{formatMoney(calculateModeleTotal(template))}{franchise ? '' : ' HT'}
                         </span>
                         <span className={`text-xs font-medium flex items-center gap-1 ${calculateModeleMarge(template) >= 30 ? 'text-succes-texte' : 'text-alerte-texte'}`}>
                           <TrendingUp size={12} />

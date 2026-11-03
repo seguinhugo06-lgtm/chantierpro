@@ -576,6 +576,7 @@ export default function Chantiers({
         isOpen={show}
         onClose={() => { setShow(false); setClientPourChantier(null); }}
         onSubmit={creer}
+        franchiseTva={franchiseTva}
         clientInitial={clientPourChantier}
         clients={clients}
         devis={devis}

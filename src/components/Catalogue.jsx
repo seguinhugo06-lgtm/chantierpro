@@ -599,7 +599,7 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
       <FenetreAjoutDevis
         article={articleDevis} brouillons={devisBrouillons} clients={clients} quantite={devisQte} setQuantite={setDevisQte}
         devisChoisi={devisChoisi} setDevisChoisi={setDevisChoisi} onFermer={fermerAjoutDevis} onAjouter={ajouterAuDevis}
-        onCreerDevis={() => { fermerAjoutDevis(); setPage?.('devis'); }} enCours={ajoutEnCours}
+        onCreerDevis={() => { fermerAjoutDevis(); setPage?.('devis'); }} enCours={ajoutEnCours} franchiseTva={franchiseTva}
       />
       {showArticlePicker && <ArticlePicker isOpen={showArticlePicker} onClose={() => setShowArticlePicker(false)} onSelect={ajouterDepuisReferentiel} franchiseTva={franchiseTva} />}
     </>

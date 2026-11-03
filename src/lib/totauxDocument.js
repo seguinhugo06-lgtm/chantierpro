@@ -96,19 +96,30 @@ export function acompteEtSolde(totalTTC, pourcentage) {
 }
 
 /**
+ * En-têtes des colonnes de prix du tableau des prestations imprimé. En franchise en base de TVA (art. 293 B du CGI),
+ * ni « HT » ni « TTC » (décision du 24 oct. 2026, docs/avis-juriste-2026-10-24-devis.md Q1) : « Prix unitaire » et
+ * « Total », comme la fiche de devis à l'écran. Partagé par les deux générateurs (devisHtmlBuilder et DevisPage).
+ */
+export function libellesColonnesPrix(isMicro = false) {
+  return isMicro ? { pu: 'Prix unitaire', total: 'Total' } : { pu: 'PU HT', total: 'Total HT' };
+}
+
+/**
  * Lignes « Total HT / Remise / TVA par taux / Total TTC » du bloc des totaux, en HTML (classes
  * `row sub` / `row total` des générateurs). Avec une remise : total des lignes, remise, puis total
  * HT après remise ; la TVA porte sur les bases après remise.
+ * En franchise (isMicro) : ni « HT » ni « TTC » — « Total avant remise / Total après remise » avec une remise, et
+ * sans remise le seul total final (« Total HT » serait le même montant), comme la fiche de devis à l'écran.
  */
 export function lignesTotauxHtml(doc, { isMicro = false, tauxDefaut = 10 } = {}) {
   const t = totauxDocument(doc, { tauxDefaut, isMicro });
   const ligne = (libelle, valeur, style = '') => `<div class="row sub"${style ? ` style="${style}"` : ''}><span>${libelle}</span><span>${valeur}</span></div>`;
   const html = [];
   if (t.remisePct) {
-    html.push(ligne('Total HT avant remise', euros(t.totalLignesHT)));
+    html.push(ligne(isMicro ? 'Total avant remise' : 'Total HT avant remise', euros(t.totalLignesHT)));
     html.push(ligne(`Remise ${pourcent(t.remisePct)}`, `-${euros(t.remiseMontant)}`, 'color:#dc2626'));
-    html.push(ligne('Total HT après remise', euros(t.totalHT)));
-  } else {
+    html.push(ligne(isMicro ? 'Total après remise' : 'Total HT après remise', euros(t.totalHT)));
+  } else if (!isMicro) {
     html.push(ligne('Total HT', euros(t.totalHT)));
   }
   if (!isMicro) {
@@ -180,14 +191,15 @@ export function calculerTotaux(lignes, { remisePct = 0, tauxDefaut = 20, toutesL
  * Message pour la première ligne chiffrée sans désignation, sinon '' (relecture juriste-btp du 17 oct. 2026 : l'éditeur
  * ne numérote pas ses lignes, « Ligne 3 » obligeait à compter).
  */
-export function messageLigneSansDesignation(lignes) {
+export function messageLigneSansDesignation(lignes, { franchise = false } = {}) {
   const n = ligneChiffreeSansDesignation(lignes);
   if (!n) return '';
   const l = (Array.isArray(lignes) ? lignes : []).filter((x) => x && !x._isSection)[n - 1];
   const nombre = (v) => { const x = typeof v === 'number' ? v : parseFloat(String(v ?? '').replace(/\s/g, '').replace(',', '.')); return Number.isFinite(x) ? x : 0; };
   const montant = l.montant !== undefined && l.montant !== null && l.montant !== '' ? nombre(l.montant) : nombre(l.quantite) * nombre(l.prixUnitaire);
   const texte = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(montant);
-  return `Une ligne à ${texte} HT n'a pas de désignation : ajoutez-la ou supprimez la ligne (sinon elle ne serait pas imprimée).`;
+  // Franchise en base de TVA (estFranchiseTva) : pas de « HT » (relecture juriste-btp du 3 nov. 2026)
+  return `Une ligne à ${texte}${franchise ? '' : ' HT'} n'a pas de désignation : ajoutez-la ou supprimez la ligne (sinon elle ne serait pas imprimée).`;
 }
 
 /**

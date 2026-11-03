@@ -18,7 +18,7 @@ import { urlPublique } from './urlPublique';
 import { FONCTIONS } from './fonctions';
 import { euros, pourcent, quantite, blocConditionsPaiement } from './formatDocument';
 import { echapperHtml as h, couleurCss } from './echapperHtml';
-import { lignesTotauxHtml, lignesAcompteHtml, totauxDocument } from './totauxDocument';
+import { lignesTotauxHtml, lignesAcompteHtml, totauxDocument, libellesColonnesPrix } from './totauxDocument';
 import { echeance } from './paiementsFacture';
 import { franchiseAppliquee, tauxTvaDocument, premierTaux } from './franchiseTva';
 import { imprimerHtml } from './imprimerHtml';
@@ -303,9 +303,9 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mod
         <th style="width:40%">Description</th>
         <th style="width:10%">Qté</th>
         <th style="width:10%">Unité</th>
-        <th style="width:15%">PU HT</th>
+        <th style="width:15%">${libellesColonnesPrix(isMicro).pu}</th>
         <th style="width:10%">TVA</th>
-        <th style="width:15%">Total HT</th>
+        <th style="width:15%">${libellesColonnesPrix(isMicro).total}</th>
       </tr>
     </thead>
     <tbody>
@@ -530,6 +530,22 @@ export function buildSituationFactureHtml({ situation, parentDevis, client, chan
 
   const lignes = filterValidLignes(situation.lignes);
   const defaultTvaRate = premierTaux(situation.tvaRate, parentDevis?.tvaRate, parentDevis?.tva_rate, 10);
+  const tauxSaisi = (l) => (l.tva !== undefined ? parseFloat(l.tva) : defaultTvaRate);
+
+  // Franchise en base de TVA (art. 293 B du CGI), même règle que les autres pièces (franchiseAppliquee) : une situation
+  // en brouillon s'imprime sans TVA ; au-delà (validée, facturée), une situation portant de la TVA se réimprime telle
+  // quelle (relecture juriste-btp du 3 nov. 2026 : une pièce transmise ne se modifie pas, CGI art. 289 I-1).
+  // Avant (relevé du 3 nov. 2026) : « PU HT », « TVA 10 % », « Montant situation TTC » et pas de mention 293 B pour
+  // une micro-entreprise.
+  const tvaSaisie = lignes.reduce((s, l) => {
+    const marche = (l.quantite || 0) * getLinePU(l);
+    return s + (marche * ((l.cumulActuel || 0) - (l.cumulPrecedent || 0)) / 100) * (tauxSaisi(l) / 100);
+  }, 0);
+  const isMicro = franchiseAppliquee(
+    { type: 'facture', statut: situation.statut === 'brouillon' ? 'brouillon' : 'envoye', tva: tvaSaisie },
+    entreprise,
+  );
+  const ht = isMicro ? '' : ' HT';
 
   // Calculate totals from lignes with multi-TVA support
   let totalMarcheHT = 0;
@@ -543,7 +559,7 @@ export function buildSituationFactureHtml({ situation, parentDevis, client, chan
     const cumuleHT = marcheHT * (l.cumulActuel || 0) / 100;
     const precedentHT = marcheHT * (l.cumulPrecedent || 0) / 100;
     const situationHT = cumuleHT - precedentHT;
-    const taux = l.tva !== undefined ? parseFloat(l.tva) : defaultTvaRate;
+    const taux = isMicro ? 0 : tauxSaisi(l);
 
     totalMarcheHT += marcheHT;
     totalCumuleHT += cumuleHT;
@@ -576,7 +592,7 @@ export function buildSituationFactureHtml({ situation, parentDevis, client, chan
 
   // Build TVA rows (one per rate)
   const tvaRates = Object.entries(tvaParTaux).filter(([, d]) => d.base > 0).sort((a, b) => parseFloat(a[0]) - parseFloat(b[0]));
-  const tvaRowsHTML = tvaRates.length > 1
+  const tvaRowsHTML = isMicro ? '' : tvaRates.length > 1
     ? tvaRates.map(([taux, data]) => `<div class="totals-row sub"><span>TVA ${pourcent(taux)} (base ${euros(data.base)})</span><span>${euros(data.montant)}</span></div>`).join('')
     : `<div class="totals-row sub"><span>TVA ${pourcent(tvaRates.length > 0 ? tvaRates[0][0] : defaultTvaRate)}</span><span>${euros(totalTVA)}</span></div>`;
 
@@ -616,6 +632,7 @@ export function buildSituationFactureHtml({ situation, parentDevis, client, chan
     .totals-row.deduction { color: #dc2626; }
     .totals-row.grand-total { background: ${color}; color: white; padding: 12px; border-radius: 6px; font-size: 13pt; font-weight: bold; margin-top: 8px; }
     .conditions { background: #f1f5f9; padding: 12px; border-radius: 6px; margin-top: 15px; font-size: 7.5pt; line-height: 1.6; }
+    .micro-mention { background: #dbeafe; padding: 8px; border-radius: 4px; font-size: 8pt; color: #1e40af; margin-top: 10px; }
     .conditions h4 { font-size: 8pt; margin-bottom: 8px; color: #475569; }
     .footer { margin-top: 20px; padding-top: 12px; border-top: 1px solid #e2e8f0; font-size: 7pt; color: #64748b; text-align: center; line-height: 1.6; }
     .assurances { font-size: 7pt; color: #64748b; margin-top: 8px; }
@@ -673,7 +690,7 @@ export function buildSituationFactureHtml({ situation, parentDevis, client, chan
       <tr>
         <th style="width:24%">Désignation</th>
         <th style="width:9%">Qté marché</th>
-        <th style="width:10%">PU HT</th>
+        <th style="width:10%">${libellesColonnesPrix(isMicro).pu}</th>
         <th style="width:12%">Mt marché</th>
         <th style="width:8%">% Avanc.</th>
         <th style="width:12%">Mt cumulé</th>
@@ -698,16 +715,17 @@ export function buildSituationFactureHtml({ situation, parentDevis, client, chan
 
   <!-- TOTAUX -->
   <div class="totals-section">
-    <div class="totals-row sub"><span>Total marché HT</span><span>${euros(totalMarcheHT)}</span></div>
-    <div class="totals-row sub"><span>Travaux cumulés HT</span><span>${euros(totalCumuleHT)}</span></div>
-    <div class="totals-row sub"><span>Travaux précédents HT</span><span style="color:#64748b">${euros(totalPrecedentHT)}</span></div>
-    <div class="totals-row sep"><span><strong>Travaux de la situation HT</strong></span><span><strong>${euros(totalSituationHT)}</strong></span></div>
+    <div class="totals-row sub"><span>Total marché${ht}</span><span>${euros(totalMarcheHT)}</span></div>
+    <div class="totals-row sub"><span>Travaux cumulés${ht}</span><span>${euros(totalCumuleHT)}</span></div>
+    <div class="totals-row sub"><span>Travaux précédents${ht}</span><span style="color:#64748b">${euros(totalPrecedentHT)}</span></div>
+    <div class="totals-row sep"><span><strong>Travaux de la situation${ht}</strong></span><span><strong>${euros(totalSituationHT)}</strong></span></div>
     ${tvaRowsHTML}
-    <div class="totals-row sub"><span><strong>Montant situation TTC</strong></span><span><strong>${euros(totalSituationTTC)}</strong></span></div>
+    ${isMicro ? '' : `<div class="totals-row sub"><span><strong>Montant situation TTC</strong></span><span><strong>${euros(totalSituationTTC)}</strong></span></div>`}
     ${retenueGarantiePct > 0 ? `<div class="totals-row deduction"><span>Retenue de garantie (${pourcent(retenueGarantiePct)})</span><span>- ${euros(retenueGarantie)}</span></div>` : ''}
     ${acompteVerse > 0 ? `<div class="totals-row deduction"><span>Acomptes déjà versés</span><span>- ${euros(acompteVerse)}</span></div>` : ''}
     <div class="totals-row grand-total"><span>NET À PAYER</span><span>${euros(netAPayer)}</span></div>
   </div>
+  ${isMicro ? '<div class="micro-mention">TVA non applicable, article 293 B du Code Général des Impôts</div>' : ''}
 
   <!-- CONDITIONS -->
   <div class="conditions">

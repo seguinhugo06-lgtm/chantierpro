@@ -63,7 +63,7 @@ import { RELANCES_PAR_ENVOI } from '../lib/relanceEngine';
 import { pourcent, blocConditionsPaiement, CONDITIONS_PAIEMENT, euros, quantite } from '../lib/formatDocument';
 import { natureDuDocument, piedDePageHtml } from '../lib/piedDePageDocument';
 import { echapperHtml as echap, couleurCss } from '../lib/echapperHtml';
-import { totauxDocument, lignesTotauxHtml, lignesAcompteHtml, calculerTotaux } from '../lib/totauxDocument';
+import { totauxDocument, lignesTotauxHtml, lignesAcompteHtml, calculerTotaux, libellesColonnesPrix } from '../lib/totauxDocument';
 import { lignesFactureAcompte, lignesFactureSolde } from '../lib/facturation';
 import { verifierNouvelleFacture, pourcentageAcompteValide, peutModifierDocument, peutSupprimerDocument, estEntierementFacture, dejaFactureTTC, montantCredite } from '../lib/gardeFacturation';
 import { DEFAULT_PENALTY_RATE, estClientPro } from '../lib/relanceUtils';
@@ -1569,9 +1569,9 @@ export default function DevisPage({ clients, addClient, devis, setDevis, chantie
         <th scope="col" style="width:40%">Description</th>
         <th scope="col" style="width:10%">Qté</th>
         <th scope="col" style="width:10%">Unité</th>
-        <th scope="col" style="width:15%">PU HT</th>
+        <th scope="col" style="width:15%">${libellesColonnesPrix(isMicro).pu}</th>
         <th scope="col" style="width:10%">TVA</th>
-        <th scope="col" style="width:15%">Total HT</th>
+        <th scope="col" style="width:15%">${libellesColonnesPrix(isMicro).total}</th>
       </tr>
     </thead>
     <tbody>
@@ -3848,6 +3848,7 @@ export default function DevisPage({ clients, addClient, devis, setDevis, chantie
           couleur={couleur}
           modeDiscret={modeDiscret}
           formatMoney={formatMoney}
+          franchise={franchiseAppliquee(selected, entreprise)}
         />
 
         {/* Snapshot Viewer */}

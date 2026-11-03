@@ -986,6 +986,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
           isDark={isDark}
           couleur={couleur}
           modeDiscret={modeDiscret}
+          franchiseTva={estFranchiseTva(entreprise)}
         />
       )}
 

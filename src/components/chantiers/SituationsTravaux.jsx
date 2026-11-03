@@ -50,6 +50,7 @@ import {
 } from '../../lib/situationUtils';
 import { printSituationFacture } from '../../lib/devisHtmlBuilder';
 import { jourLocal, dateLue } from '../../lib/dates';
+import { estFranchiseTva } from '../../lib/franchiseTva';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -113,6 +114,11 @@ export default function SituationsTravaux({
     if (modeDiscret) return '***';
     return formatMoney(amount);
   };
+
+  // Franchise en base de TVA (art. 293 B du CGI) : ni « HT » ni « TTC » à l'écran (décision du 24 oct. 2026).
+  // Une TVA réellement portée (ancienne situation) reste affichée : on ne cache pas un montant.
+  const franchise = estFranchiseTva(entreprise);
+  const ht = franchise ? '' : ' HT';
 
   // ---- Derived data -------------------------------------------------------
 
@@ -579,7 +585,7 @@ export default function SituationsTravaux({
                   <div className="flex items-center justify-between mb-1">
                     <span className={`font-semibold ${textPrimary}`}>{d.numero}</span>
                     <span className={`text-sm font-medium ${textPrimary}`}>
-                      {showMoney(totalHT)} HT
+                      {showMoney(totalHT)}{ht}
                     </span>
                   </div>
                   <p className={`text-sm ${textMuted} truncate`}>
@@ -653,7 +659,7 @@ export default function SituationsTravaux({
         {devisSourceId && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className={`p-3 rounded-xl bg-fond`}>
-              <p className={`text-xs ${textMuted} mb-0.5`}>Marché HT</p>
+              <p className={`text-xs ${textMuted} mb-0.5`}>{franchise ? 'Marché' : 'Marché HT'}</p>
               <p className={`text-sm font-bold ${textPrimary} tabular-nums`}>
                 {showMoney(totalMarcheHT)}
               </p>
@@ -756,7 +762,7 @@ export default function SituationsTravaux({
                           {formatDate(sit.date)}
                         </span>
                         <span className={`text-sm font-medium ${textPrimary} tabular-nums`}>
-                          {showMoney(totals.montantSituationHT)} HT
+                          {showMoney(totals.montantSituationHT)}{ht}
                         </span>
                       </div>
                       {sit.facture_numero && (
@@ -842,6 +848,7 @@ export default function SituationsTravaux({
               hoverBg={hoverBg}
               showMoney={showMoney}
               StatusBadge={StatusBadge}
+              franchise={franchise}
               onPrint={FONCTIONS.facturesSituation ? () => handlePrintSituation(selectedSituation) : undefined}
             />
           )}
@@ -1013,7 +1020,7 @@ export default function SituationsTravaux({
                     <div key={l.ligneId} className={`rounded-xl border ${cardBg} p-4`}>
                       <div className={`font-medium text-sm ${textPrimary} mb-1`}>{l.description}</div>
                       <p className={`text-xs ${textMuted} mb-2`}>
-                        {l.quantite} {l.unite} × {showMoney(l.prixUnitaire)} = {showMoney(marcheHT)} HT
+                        {l.quantite} {l.unite} × {showMoney(l.prixUnitaire)} = {showMoney(marcheHT)}{ht}
                       </p>
 
                       {/* Slider */}
@@ -1066,20 +1073,23 @@ export default function SituationsTravaux({
 
                   <div className="space-y-2.5 text-sm">
                     <div className="flex justify-between">
-                      <span className={textSecondary}>Montant cumulé HT</span>
+                      <span className={textSecondary}>Montant cumulé{ht}</span>
                       <span className={`${textPrimary} tabular-nums`}>{showMoney(draftTotals.montantCumuleHT)}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className={textSecondary}>Montant précédent HT</span>
+                      <span className={textSecondary}>Montant précédent{ht}</span>
                       <span className={`${textMuted} tabular-nums`}>- {showMoney(draftTotals.montantPrecedentHT)}</span>
                     </div>
 
                     <div className={`border-t border-bord`} />
 
                     <div className="flex justify-between font-semibold">
-                      <span className={textPrimary}>Montant situation HT</span>
+                      <span className={textPrimary}>{franchise ? 'Montant de la situation' : 'Montant situation HT'}</span>
                       <span className="tabular-nums text-accent-texte">{showMoney(draftTotals.montantSituationHT)}</span>
                     </div>
+                    {franchise && !(draftTotals.totalTVA > 0.005) ? (
+                      <p className={textSecondary}>TVA non applicable, art. 293 B du CGI</p>
+                    ) : (<>
                     <div className="flex justify-between">
                       <span className={textSecondary}>TVA</span>
                       <span className={`${textSecondary} tabular-nums`}>{showMoney(draftTotals.totalTVA)}</span>
@@ -1088,6 +1098,7 @@ export default function SituationsTravaux({
                       <span className={textPrimary}>Montant TTC</span>
                       <span className={`${textPrimary} tabular-nums`}>{showMoney(draftTotals.montantSituationTTC)}</span>
                     </div>
+                    </>)}
 
                     {/* Retenue de garantie */}
                     {!isDGD && (
@@ -1178,6 +1189,7 @@ function SituationDetail({
   showMoney,
   StatusBadge,
   onPrint,
+  franchise = false,
 }) {
   const totals = useMemo(() => {
     return situation.totaux || calculateSituationTotals(
@@ -1287,13 +1299,17 @@ function SituationDetail({
       <div className={`rounded-2xl border ${cardBg} p-5`}>
         <div className="space-y-2 text-sm">
           <div className="flex justify-between">
-            <span className={textSecondary}>Montant situation HT</span>
+            <span className={textSecondary}>{franchise ? 'Montant de la situation' : 'Montant situation HT'}</span>
             <span className={`font-semibold ${textPrimary} tabular-nums`}>{showMoney(totals.montantSituationHT)}</span>
           </div>
+          {franchise && !(totals.totalTVA > 0.005) ? (
+            <p className={textSecondary}>TVA non applicable, art. 293 B du CGI</p>
+          ) : (
           <div className="flex justify-between">
             <span className={textSecondary}>TVA</span>
             <span className={`${textSecondary} tabular-nums`}>{showMoney(totals.totalTVA)}</span>
           </div>
+          )}
           {totals.retenueGarantie > 0 && (
             <div className="flex justify-between">
               <span className="text-alerte-texte flex items-center gap-1"><Shield size={12} /> Retenue de garantie</span>

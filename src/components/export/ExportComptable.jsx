@@ -491,7 +491,7 @@ export default function ExportComptable({
     { label: 'Dépenses et achats', value: filteredDepenses.length },
     // Les corrections d'encaissement (montants négatifs, 098) ne sont pas des paiements reçus ; « Total encaissé » les déduit
     { label: 'Paiements reçus', value: filteredPaiements.filter((p) => (Number(p.amount ?? p.montant) || 0) > 0).length },
-    { label: 'Total HT des factures', value: fmtEUR.format(totalHTFactures) },
+    { label: franchise ? 'Total des factures' : 'Total HT des factures', value: fmtEUR.format(totalHTFactures) },
     { label: 'Total encaissé', value: fmtEUR.format(totalPaiements) },
     { label: franchise ? 'Total des dépenses' : 'Total HT des dépenses', value: fmtEUR.format(totalDepenses) },
   ];
