@@ -1,6 +1,6 @@
 # Avis juriste du 3 novembre 2026 : branche `cloud/franchise` (ni « HT » ni « TTC » en franchise)
 
-Recopié depuis les consignes de correction transmises à la session cloud le 3 nov. 2026. Le juriste a lu les textes officiels (Légifrance, BOFiP, service-public), consultés le 3 nov. 2026. La session cloud n'a pas pu ouvrir ces sites : les citations sont reprises telles qu'elles ont été transmises.
+Résumé des consignes de correction transmises à la session cloud le 3 nov. 2026, et non une copie : une partie des citations et des sources des points à décider manque (contrôle du 3 nov. 2026). Le juriste a lu les textes officiels (Légifrance, BOFiP, service-public), consultés le 3 nov. 2026. La session cloud n'a pas pu ouvrir ces sites : les citations qui figurent ici sont reprises telles qu'elles ont été transmises.
 
 Une première relecture du même jour avait conclu « OK sur les 7 points », avec trois retouches (statut de la situation, total du portail, message de l'éditeur sans « HT ») : appliquées dans `ab4faef` (voir `docs/cloud/franchise.md`, § 5). Le texte de cette première relecture n'a pas été transmis à la session cloud.
 
@@ -19,7 +19,7 @@ Une première relecture du même jour avait conclu « OK sur les 7 points », av
 
 ## À décider par Hugo
 
-Recopiés dans `docs/cloud/franchise.md`, section « Décisions d'Hugo », avec l'option recommandée :
+Repris dans `docs/cloud/franchise.md`, section « Décisions pour Hugo », avec l'option recommandée ; tranchés par Hugo le 3 nov. 2026 (D-31, `docs/decisions.md`) :
 
 1. « Total HT » disparu en franchise : arrêté n° 83-50/A du 3 oct. 1983, art. 3 (« La somme totale à payer hors taxes et toutes taxes comprises ») et arrêté du 24 janv. 2017, art. 4, I. Recommandé : la formule littérale sur les PDF seulement.
 2. Une situation « validée » traitée comme émise. Recommandé : « brouillon » tant qu'elle n'est pas facturée.
