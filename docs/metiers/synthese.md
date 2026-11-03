@@ -106,7 +106,7 @@ Effort : S (moins d'une session), M (une session), L (plusieurs). Risque juridiq
 
 | # | Lot | Métiers servis | Valeur | Effort | Risque juridique |
 |---|---|---|---|---|---|
-| 0 | **Corrections** : RGE imprimé, Qualiopi retiré, promesses MaPrimeRénov' et TVA chaudière retirées des modèles | tous | Forte : mentions fausses aujourd'hui | S | Faible (on retire du faux) |
+| 0 | **Corrections** : RGE imprimé, Qualiopi retiré, TVA chaudière gaz à 20 % dans les modèles, la bibliothèque et le référentiel — **code prêt sur la branche `cloud/metiers`, non livré, en attente de la décision n° 3** (`docs/cloud/metiers.md`). Aucune promesse MaPrimeRénov' trouvée dans les modèles de devis | tous | Forte : mentions fausses aujourd'hui | S | Faible (on retire du faux) |
 | 1 | **« Mes qualifications »** + choix du métier (inscription et Paramètres) + catalogue trié | tous | Forte | M | Faible |
 | 2 | **Attestation d'entretien chaudière / PAC / poêle + rappel** (réutilise le ramonage) | chauffagiste, plombier-chauffagiste, ramoneur, frigoriste | Très forte : revenu récurrent, modèle déjà prouvé | M-L | Moyen : annexes des arrêtés à lire au texte |
 | 3 | **Dépannage express** : grille tarifaire affichable, devis en un écran, urgence, facture immédiate | serrurier, plombier, électricien, couvreur | Forte | M | Moyen : arrêté 2017 (déjà vérifié) |
