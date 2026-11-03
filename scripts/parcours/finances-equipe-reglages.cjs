@@ -252,9 +252,12 @@ module.exports = [
   {
     // Audit P1 et décision du contrôleur : pas de seuil d'alerte tant que l'artisan ne l'a pas réglé (5 000 €, valeur
     // par défaut enregistrée, compte comme « non réglé ») ; un seul bandeau au plus.
+    // Jour fixé : avec 3 000 € de départ, la projection à 6 mois de la démo dépend de la place des prévisions dans le
+    // mois. Le 3 du mois, le règlement attendu le 26 était oublié par la projection (corrigé le 3 nov. 2026 :
+    // moisProjetePrevision) ; ce jour-là le garde.
     nom: 'trésorerie : pas de seuil d’alerte tant qu’il n’est pas réglé, un bandeau au plus (390 px)',
     async executer({ ouvrir, attendre, verifier }) {
-      const { page } = await ouvrir({ page: 'finances', largeur: 390 });
+      const { page } = await ouvrir({ page: 'finances', largeur: 390, jour: '2026-11-03' });
       const regler = async (soldeInitial, seuilAlerte) => {
         await page.evaluate((s, a) => {
           localStorage.setItem('cp_tresorerie_settings', JSON.stringify({ seuilAlerte: a, soldeInitial: s, soldeDate: '2026-01-01' }));
