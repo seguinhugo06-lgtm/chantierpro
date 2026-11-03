@@ -2361,11 +2361,12 @@ export default function DevisPage({ clients, addClient, devis, setDevis, chantie
     }
     // « Signé » à la main : un geste depuis la carte suffisait, sans retour possible, et le lien de signature du client
     // répond ensuite « déjà signé » (relecture gardien-securite du 3 nov. 2026, M1). On le fait confirmer, en disant
-    // que la preuve est le devis papier signé (relecture juriste-btp du 3 nov. : C. civ. 1113, C. conso. L221-9).
+    // que la preuve est le devis papier signé (relecture juriste-btp du 3 nov. : C. civ. 1113 et 1359 ; C. conso. L221-9 ;
+    // BOI-TVA-LIQ-30-20-90-40 § 60 et 110).
     if (choix.cle === 'accepte') {
       const ok = await confirm({
         title: 'Le client a signé le devis ?',
-        message: 'Choisissez « Signé » si votre client a signé le devis sur papier. Gardez l’original : il prouve son accord et, pour une TVA à 10 % ou 5,5 %, son attestation. Le lien de signature en ligne ne servira plus et le devis ne pourra plus revenir en arrière.',
+        message: 'Choisissez « Signé » si votre client a signé le devis sur papier. Gardez votre exemplaire signé : il prouve son accord et, pour une TVA à 10 % ou 5,5 %, porte sa certification. Le lien de signature en ligne ne servira plus et le devis ne pourra plus revenir en arrière.',
         confirmText: 'Marquer signé',
       });
       if (!ok) return;

@@ -64,6 +64,10 @@ module.exports = [
       await attendre(600);
       // « Signé » à la main se confirme (relecture gardien-securite du 3 nov. 2026) ; « Annuler » n'écrit rien
       verifier(/Le client a signé le devis \?/.test(await dialogue(page)) && /sur papier/.test(await dialogue(page)), 'la confirmation demande si le client a signé sur papier');
+      // Relecture juriste-btp du 3 nov. 2026 : « exemplaire », « certification » (BOFiP § 60), plus « original » ni « attestation »
+      const texteDialogue = await dialogue(page);
+      verifier(/Gardez votre exemplaire signé/.test(texteDialogue) && /porte sa certification/.test(texteDialogue) && !/original|attestation/.test(texteDialogue),
+        `la confirmation parle de l’exemplaire signé et de la certification (« ${texteDialogue} »)`);
       verifier(await confirmerDansDialogue(page, 'Annuler'), 'bouton « Annuler »');
       await attendre(800);
       let { devis = [] } = await enregistres(page);
