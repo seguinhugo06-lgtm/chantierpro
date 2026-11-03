@@ -4,7 +4,7 @@ Ce que Mallettico doit savoir pour produire des devis et factures **justes**. Se
 
 Règles de lecture :
 - Chaque point porte sa source. **(à vérifier)** = sources divergentes ou non vérifiées au texte : relire Légifrance / BOFiP avant de coder une règle bloquante.
-- Mise à jour : 8 oct. 2026. Le droit bouge (loi de finances chaque année, réforme de la facture électronique) : dater toute vérification.
+- Mise à jour : 3 nov. 2026. Le droit bouge (loi de finances chaque année, réforme de la facture électronique) : dater toute vérification.
 - Le texte exact d'une mention réglementaire vit dans le code (`src/lib/mentionTvaReduite.js`…) avec sa source, jamais seulement ici.
 
 ## 1. Vocabulaire
@@ -67,7 +67,7 @@ Mentions de base (CGI ann. II art. 242 nonies A ; C. com. L441-9) : numéro uniq
 
 | Taux | Quand | Source |
 |---|---|---|
-| 20 % | Construction neuve, agrandissement > 10 % de surface, travaux qui produisent un immeuble neuf, locaux non habitation | CGI art. 278 |
+| 20 % | Construction neuve ; addition de construction (extension, véranda, garage) et surélévation : toujours (BOI-TVA-LIQ-30-20-90-30 § 380 ; tolérance de 9 m² dans les cas du § 380) ; travaux qui, sur deux ans au plus, augmentent de plus de 10 % la surface de plancher des locaux existants ou concourent à produire un immeuble neuf : tous les travaux de la période (CGI 279-0 bis, 2) ; locaux non habitation | CGI art. 278 et 279-0 bis, 2 ; BOI-TVA-LIQ-30-20-90-30 du 22 oct. 2025 (vérifié par juriste-btp le 3 nov. 2026) |
 | 10 % | Amélioration, transformation, aménagement, entretien de **locaux d'habitation achevés depuis plus de 2 ans** | CGI art. 279-0 bis |
 | 5,5 % | Travaux de **rénovation énergétique** sur ces mêmes locaux | CGI art. 278-0 bis A |
 
