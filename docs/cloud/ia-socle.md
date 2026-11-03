@@ -3,10 +3,10 @@
 Branche `cloud/ia-socle` (copie : `claude/ia-socle-5getw1`), partie de `main` `adbf08d` le 3 nov. 2026.
 L'interrupteur `FONCTIONS.ia` reste **éteint**. Rien n'est appliqué en production, rien n'est déployé.
 
-Ce socle lève, côté code, les trois conditions de la décision D-07 :
-- quota côté serveur ;
-- sous-traitant déclaré (textes prêts) ;
-- saisie au clavier corrigée.
+Où en sont les trois conditions de la décision D-07 :
+- quota côté serveur : fait ;
+- saisie au clavier : corrigée ;
+- sous-traitant déclaré : les textes sont prêts, mais **l'écran d'accord avant la première dictée (Apple 5.1.2(i)) reste à construire**. Il fait partie de cette condition et **bloque l'allumage**.
 
 Restent des vérifications et des décisions d'Hugo (voir plus bas) avant d'allumer.
 
@@ -186,40 +186,61 @@ Tous ces textes ne s'affichent **que si `FONCTIONS.ia` est allumé**. Aujourd'hu
 
 ## 4. Marche exacte pour appliquer et déployer (l'ordre compte)
 À faire depuis `main`, une fois la branche relue et livrée par la session locale (D-22).
-1. **Hugo règle les secrets et les crédits (point 5).** Sans clé, la fonction répond 503 « indisponible », sans casser l'app.
-2. **Appliquer la migration 107 avant la fonction.**
-   - Sans la migration, la nouvelle fonction refuse toute dictée (« indisponible ») : c'est sûr, mais inutile.
-   - Une autre session cloud a pu créer aussi une 107 : la renuméroter à la fusion, dans le nom du fichier et dans `scripts/banc/NNN.mjs`.
-   - Contrôle après application (éditeur SQL), avec le résultat attendu :
-     ```sql
-     SELECT to_regclass('public.usage_ia_log') IS NOT NULL AS table_ok,
-            (SELECT relrowsecurity FROM pg_class WHERE oid = 'public.usage_ia_log'::regclass) AS rls,
-            has_table_privilege('authenticated', 'public.usage_ia_log', 'select') AS lisible_utilisateur,
-            has_function_privilege('authenticated', 'public.reserver_usage_ia(uuid,uuid,text,jsonb)', 'execute') AS reserver_public,
-            has_function_privilege('anon', 'public.terminer_usage_ia(bigint,text,text,integer,integer,integer,text)', 'execute') AS terminer_visiteur,
-            has_function_privilege('service_role', 'public.reserver_usage_ia(uuid,uuid,text,jsonb)', 'execute') AS serveur;
-     -- attendu : t, t, f, f, f, t
-     ```
-3. **Déployer `voice-intent`** (vérification du jeton conservée, pas de `--no-verify-jwt`) :
+
+**Situation de départ, constatée le 3 nov. par la session locale (lecture seule)** : la version de `voice-intent` en production est la **v11 de juillet**. Elle n'a aucun quota côté serveur, tourne sur Haiku 4.5 avec `max_tokens` 4096, et répond à **tout compte connecté si la clé `ANTHROPIC_API_KEY` est posée**. Poser la clé avant d'avoir déployé la nouvelle version rallumerait donc ce trou.
+
+0. **Constater si la clé est posée** (connecteur Supabase : la liste des secrets, **son nom seulement**, jamais sa valeur).
+   - Si elle est posée : Hugo la retire, **ou** l'on déploie tout de suite la nouvelle fonction (point 2). Sans la migration 107, la nouvelle version répond 503 « indisponible » avant tout appel à l'API ; sans le secret `IA_DICTEE`, aussi.
+1. **Appliquer la migration 107.**
+   - Elle garde son numéro : la `108` de `cloud/metiers` est indépendante (elle ne touche que `get_devis_for_signature`).
+   - Contrôle après application (§4.2 ci-dessous).
+2. **Déployer `voice-intent`** (vérification du jeton conservée, pas de `--no-verify-jwt`) :
    ```
    npx supabase functions deploy voice-intent --project-ref kofsbgxkrmryfetevetn
    ```
-   Fichiers déployés : `index.ts`, `regles.ts`, `consignes.ts`, `_shared/cors.ts`, `_shared/appelant.ts`, `_shared/branchements.ts`.
-4. **Constater**, avant d'allumer quoi que ce soit :
+   Fichiers déployés : `index.ts`, `regles.ts`, `consignes.ts`, `_shared/cors.ts`, `_shared/appelant.ts`, `_shared/branchements.ts`. Contrôle : `get_edge_function voice-intent` montre `regles.ts` et `consignes.ts`.
+3. **Seulement alors, Hugo pose la clé** `ANTHROPIC_API_KEY`, avec des crédits prépayés sans rechargement automatique et **une limite de dépense mensuelle dans la Console**. Il règle aussi le secret `IA_DICTEE` sur l'identifiant du **compte de test** (pas « tous »).
+4. **Constater avec ce compte de test**, avant d'allumer quoi que ce soit :
    - un appel sans jeton rend 401 ;
-   - avec le compte démo, depuis la console du navigateur sur mallettico.fr :
+   - un compte qui n'est pas dans `IA_DICTEE` rend 503 `IA_INDISPONIBLE`, sans ligne dans `usage_ia_log` ;
+   - avec le compte de test connecté sur mallettico.fr, dans la console du navigateur (la page n'expose pas de client `supabase` ; on lit le jeton de session dans le stockage local, et la clé anon publique est celle de l'app) :
      ```js
-     supabase.functions.invoke('voice-intent', { body: { transcript: 'Madame Exemple, 10 m² de peinture à 20 euros' } })
+     const cle = Object.keys(localStorage).find((k) => /^sb-.*-auth-token$/.test(k));
+     const jeton = JSON.parse(localStorage.getItem(cle)).access_token;
+     const ANON = '<clé anon publique, Supabase › Project Settings › API>';
+     const r = await fetch('https://kofsbgxkrmryfetevetn.supabase.co/functions/v1/voice-intent', {
+       method: 'POST',
+       headers: { 'Content-Type': 'application/json', apikey: ANON, Authorization: `Bearer ${jeton}` },
+       body: JSON.stringify({ transcript: 'Madame Exemple, 10 m² de peinture à 20 euros' }),
+     });
+     console.log(r.status, await r.json());
      ```
-     on attend une intention, puis une ligne `reussi` dans `usage_ia_log` avec des jetons et `duree_ms` ;
+     on attend 200 et une intention, puis une ligne `reussi` dans `usage_ia_log` avec des jetons et `duree_ms` ;
    - la médiane de `duree_ms` (requête de 1.6) ;
    - le journal de la fonction ne montre ni erreur de type, ni 400 de l'API (forme de la requête).
-5. **Allumer `FONCTIONS.ia`** : décision d'Hugo seulement, après les points 5 et 6.
+5. **Allumer** : `IA_DICTEE` à « tous » et `FONCTIONS.ia` à `true`, décision d'Hugo seulement, après les points 5 et 6 et l'écran d'accord.
+
+### 4.2 Contrôle de la migration 107 après application (éditeur SQL)
+```sql
+SELECT p.proname, has_function_privilege('anon', p.oid, 'EXECUTE') AS visiteur,
+       has_function_privilege('authenticated', p.oid, 'EXECUTE') AS connecte,
+       has_function_privilege('service_role', p.oid, 'EXECUTE') AS serveur,
+       p.prosecdef AS definer, array_to_string(p.proconfig, ',') AS reglages
+  FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+ WHERE n.nspname = 'public' AND p.proname IN ('plan_pour_usage_ia', 'reserver_usage_ia', 'terminer_usage_ia') ORDER BY 1;
+-- attendu : 3 lignes f, f, t, t, search_path=public, pg_temp
+SELECT (SELECT count(*) FROM pg_policies WHERE schemaname = 'public' AND tablename = 'usage_ia_log') AS policies,
+       has_table_privilege('anon', 'public.usage_ia_log', 'SELECT,INSERT,UPDATE,DELETE') AS visiteur,
+       has_table_privilege('authenticated', 'public.usage_ia_log', 'SELECT,INSERT,UPDATE,DELETE') AS connecte;
+-- attendu : 0, f, f
+SELECT jobname, schedule FROM cron.job WHERE jobname = 'purger-journal-ia';
+-- attendu : 1 ligne, 17 3 * * *
+```
 
 ## 5. Ce qu'Hugo doit régler
-1. **La clé API**, dans Supabase › Edge Functions › Secrets › `ANTHROPIC_API_KEY`. Elle se crée dans la Console Anthropic (platform.claude.com › API keys). Claude ne saisit aucune clé.
+1. **La clé API, en dernier** (§4, point 3), dans Supabase › Edge Functions › Secrets › `ANTHROPIC_API_KEY`, **seulement après** la migration 107 et le déploiement de la nouvelle `voice-intent` : la v11 en production n'a aucun quota. Si elle est déjà posée aujourd'hui, la retirer (§4, point 0). Elle se crée dans la Console Anthropic (platform.claude.com › API keys). Claude ne saisit aucune clé. Avec elle, le secret `IA_DICTEE` (compte de test d'abord).
 2. **Les crédits API.**
-   - L'abonnement Claude Max couvre claude.ai et Claude Code. **L'API se paie à part**, avec des crédits achetés dans la Console (Billing).
+   - L'abonnement Claude Max couvre claude.ai et Claude Code. **L'API se paie à part**, avec des crédits achetés dans la Console (Billing). *(Le juriste signale le 3 nov. que c'est inexact : l'offre Max inclut des crédits API. Correction en attente de la décision d'Hugo, voir « Corrections du 3 nov. », décision J4.)*
    - À vérifier dans la Console : est-ce que l'offre d'Hugo y donne des crédits API ? Je ne l'ai pas vérifié depuis ici.
    - **Régler une limite de dépense mensuelle** dans la Console (par exemple 10 $) : c'est le coupe-circuit du coût. Au-delà, l'API refuse et l'app dit « indisponible, saisissez à la main ».
 3. **L'accord avec Anthropic** :
@@ -241,10 +262,12 @@ Tous ces textes ne s'affichent **que si `FONCTIONS.ia` est allumé**. Aujourd'hu
 
 ## 7. Ce qui reste
 - **L'écran d'accord avant la première dictée** (Apple 5.1.2(i), à confirmer pour Google Play). Ce n'est pas fait : il demande d'enregistrer l'accord en base, avec le compte, la date et la version. Texte du juriste, prêt :
-  > **Avant votre première dictée** — Pour transformer votre dictée en devis, Mallettico envoie le texte à Anthropic, une société américaine d'intelligence artificielle (modèle Claude), avec les noms de vos clients et les libellés de votre catalogue. Mallettico ne reçoit pas le son : votre navigateur le transforme en texte (sur Chrome, par Google). Anthropic s'engage à ne pas utiliser ces données pour entraîner ses modèles. Vous relisez tout avant que quoi que ce soit soit créé. [J'accepte et je dicte] [Non, je saisis à la main] · En savoir plus
+  > **Avant votre première dictée** — Votre dictée est analysée par une intelligence artificielle : Claude, de la société Anthropic, qui stocke les données aux États-Unis (le calcul peut avoir lieu dans d'autres pays). Mallettico lui envoie le texte de la dictée, avec les noms de vos clients (60 au plus) et les libellés de votre catalogue (80 au plus). Mallettico ne reçoit pas le son : votre navigateur le transforme en texte (sur Chrome, par Google). Anthropic n'utilise pas ces données pour entraîner ses modèles et les efface sous 30 jours (jusqu'à 2 ans si ses contrôles de sécurité les signalent). L'IA peut se tromper : vous relisez tout, rien n'est créé sans votre validation. [J'accepte et je dicte] [Non, je saisis à la main] · En savoir plus (Politique de confidentialité, article 4)
+
+  Texte du juriste du 3 nov. (sources : Apple 5.1.2(i) ; règlement (UE) 2024/1689, art. 50 § 1 et § 5 ; page de conservation d'Anthropic du 1er juil. 2026). Enregistrer l'accord (compte, date, version du texte). Aucun appel avant l'accord. Accord révocable dans les Paramètres. Si `inference_geo` « us » est choisi : « qui traite les données aux États-Unis ».
 - **Dans l'app, un abonnement inactif au plan élevé** garde ce plan (`choisirAbonnement`, relecture B3). Le serveur est désormais plus strict, il vaudrait mieux aligner l'app.
 - **Écarts relevés par le juriste, hors de ma mission :**
-  - CGU art. 11, « consent au traitement de ses données » : la base légale est le contrat ;
+  - CGU art. 11, « consent au traitement de ses données » : corrigé le 3 nov. (base légale : le contrat, art. 6.1.b) ;
   - ligne Resend de la politique, sans garantie de transfert.
 - **Le premier vrai appel** : forme de la requête, latence, coût. Il est à constater au déploiement (point 4).
 - **Sources non joignables** depuis cette session, que le juriste n'a pas pu relire : privacy.claude.com (politique de conservation commerciale d'Anthropic), dataprivacyframework.gov, EUR-Lex, CNIL, Google Play. Il faut les autoriser dans les réglages réseau de la session pour les relire.
@@ -252,7 +275,8 @@ Tous ces textes ne s'affichent **que si `FONCTIONS.ia` est allumé**. Aujourd'hu
 ## 8. Risques
 - **Il n'y a eu aucun appel réel à l'API.** Le SDK 0.68.0 avec `output_config.effort`, la latence et le coût sont à constater au premier déploiement.
 - **Un plan illimité reste coûteux s'il est détourné.** C'est plafonné à 100 par jour et par compte, et par la limite de dépense de la Console, à régler.
-- **Si la 107 d'une autre session porte le même numéro**, il faut renuméroter à la fusion.
+- **Numéro 107 gardé** : la 108 de `cloud/metiers` est indépendante, aucune renumérotation.
+- **La v11 de juillet en production n'a aucun quota** : poser la clé avant de déployer la nouvelle version la rallume pour tout compte connecté (ordre du §4).
 - **Le build de test** de la dictée allume l'IA par un greffon Vite : il ne doit jamais servir à un déploiement. Il est écrit dans `audit-ui/`, ignoré par git.
 
 ## Résumé
@@ -263,6 +287,6 @@ Tous ces textes ne s'affichent **que si `FONCTIONS.ia` est allumé**. Aujourd'hu
 5. L'app affiche enfin le vrai message du serveur, et non plus « non-2xx ».
 6. Saisie au clavier : taper coupe le micro, plus d'analyse au milieu de la frappe ni de texte en double.
 7. Les textes d'Anthropic sous-traitant sont prêts (version du juriste), affichés seulement quand l'IA sera allumée.
-8. Rien n'est appliqué ni déployé. Ordre : secrets et crédits, puis 107, puis `voice-intent`, puis le constat.
+8. Rien n'est appliqué ni déployé. Ordre : constater la clé (la retirer si posée), puis 107, puis `voice-intent`, puis la clé et sa limite de dépense, puis le constat avec un compte de test.
 9. Avant d'allumer : vérifier le DPA d'Anthropic, l'écran d'accord, le plafond de 100 par jour, la date des CGU.
 10. Latence non mesurée faute de clé : elle se lit dans `usage_ia_log.duree_ms` dès le premier appel.

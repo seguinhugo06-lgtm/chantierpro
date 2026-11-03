@@ -32,7 +32,7 @@ describe('dictée : droits par rôle (comme reserver_usage_ia)', () => {
 });
 
 describe('dictée : taux de TVA par défaut (CGI art. 283, 3 ; franchise art. 293 B)', () => {
-  const source = fs.readFileSync(path.resolve(__dirname, '../../components/voice/DicteeModal.jsx'), 'utf8');
+  const source = fs.readFileSync(path.resolve(process.cwd(), 'src/components/voice/DicteeModal.jsx'), 'utf8');
   it('la fenêtre de dictée prend tauxTvaParDefaut, pas tvaDefaut ?? 10', () => {
     expect(source).toMatch(/const tvaDefaut = tauxTvaParDefaut\(entreprise\)/);
     expect(source).not.toMatch(/entreprise\?\.tvaDefaut \?\? 10/);
