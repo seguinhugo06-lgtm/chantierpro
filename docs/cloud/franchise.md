@@ -226,3 +226,20 @@ En franchise, ces écrans écrivent encore « HT » ou « TTC » :
 8. Restes listés avec fichier et ligne, dans les tâches `franchise-restes`, `mouvements-tva` et `situations-conformes`.
 9. Quatre décisions pour Hugo : la formule « hors taxes et toutes taxes comprises », la situation « validée », la colonne « TVA », fournitures et main-d'œuvre.
 10. La session locale relit, revérifie sur le commit final et livre.
+
+## Décisions d'Hugo du 3 nov. (appliquées)
+
+Hugo a répondu : « 1 oui, 2 brouillon, 3 retrait, 4 plus tard ». Consigné en **D-31** (`docs/decisions.md`).
+
+| Décision | Fait | Commit |
+|---|---|---|
+| 1. Formule littérale du total | En franchise, sur les pièces imprimées : « Net à payer (hors taxes et toutes taxes comprises) » (facture), « Total (hors taxes et toutes taxes comprises) » (devis), « NET À PAYER (hors taxes et toutes taxes comprises) » (situation). « Total de l'avoir » ne change pas. Bloc commun `lignesTotauxHtml` (`totauxDocument.js`), donc les deux générateurs. Les écrans restent sans « HT » ni « TTC ». Les deux arrêtés sont consignés dans `docs/metier-btp.md` § 3 | `5676440`, docs ci-dessous |
+| 2. Situation « validée » = brouillon | Seule une situation facturée ou payée est traitée comme émise (`devisHtmlBuilder.js`, commentaire du juriste). « Générer facture » avec `tva: 0` : ajouté à `situations-conformes` | `5676440` |
+| 3. Retrait de la colonne « TVA » | En franchise : ni en-tête ni cellule « - », lots en `colspan` 5 et 4, dans `devisHtmlBuilder.js`, `DevisPage.jsx` et `pdfHtmlBuilder.js`. Hors franchise, la colonne reste | `5676440` |
+| 4. Fournitures / main-d'œuvre : plus tard | Entrée « Plus tard » de la feuille de route avec le § 300 et la proposition ; § 300 consigné dans `docs/metier-btp.md` § 4 | docs ci-dessous |
+
+Preuves :
+- Tests mis à jour et ajoutés (`libellesFranchiseEcrans.test.jsx`, `franchiseTva.test.js`) : 24 sur 24. Ils couvrent le total de la facture, du devis et de l'avoir, la colonne « TVA » absente en franchise et présente pour une SARL, la situation validée sans TVA, facturée et payée avec TVA.
+- **Contre-essai** : sans les changements du code, 5 de ces tests échouent.
+- Parcours `npm run parcours -- "aperçu imprimé"` (aperçu réel du générateur de `DevisPage`) : ✓ 12 vérifications, dont deux nouvelles : « Total (hors taxes et toutes taxes comprises) » et pas de colonne « TVA ».
+- Vérification : voir la section suivante.
