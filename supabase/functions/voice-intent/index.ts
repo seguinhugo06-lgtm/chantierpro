@@ -38,7 +38,7 @@ const anthropic = cleApi ? new Anthropic({ apiKey: cleApi, maxRetries: 1, timeou
 serve((req) => traiterDictee(req, {
   cleServeur: CLE_SERVEUR || undefined,
   cleApi,
-  ouverte: (id) => ouverture === 'tous' || ouverture.split(',').map((s) => s.trim()).includes(id),
+  ouverte: (id) => ouverture === 'tous' || ouverture.split(',').map((s) => s.trim().toLowerCase()).includes(id.toLowerCase()),
   utilisateur: utilisateurDuJeton,
   journal: journaliser('voice-intent'),
 

@@ -164,7 +164,7 @@ Tous ces textes ne s'affichent **que si `FONCTIONS.ia` est allumé**. Aujourd'hu
   - `CGU_VERSION` passe d'elle-même à `2026-11-03` quand l'IA est allumée, ce qui redemande l'acceptation. Le juriste juge le préavis de 30 jours non requis : on ajoute une fonction, on ne retire rien.
 - **Fenêtre de dictée**, avant la demande d'accès au micro :
   - avant : « Votre voix n'est pas enregistrée : elle est transcrite puis oubliée » (invérifiable : sur Chrome, le son part chez Google) ;
-  - maintenant : « Mallettico ne reçoit pas le son : votre navigateur le transforme en texte (sur Chrome, par les serveurs de Google). Seul ce texte nous est envoyé, pour l'analyse. »
+  - maintenant : « Mallettico ne reçoit pas le son : votre navigateur le transforme en texte (sur Chrome, par les serveurs de Google). Seul ce texte nous est envoyé, puis analysé par une intelligence artificielle (Claude, d’Anthropic). » (texte du juriste, 3 nov.) ; et, sous le titre, « Analyse par une intelligence artificielle (Claude, d’Anthropic) : elle peut se tromper, vous relisez tout. »
 - **Fenêtre d'offre « dictées »** (`subscriptionStore.js`) :
   - avant : « En illimité, vous ne rentrez plus rien à la main » (faux) ;
   - maintenant : « La dictée prépare un brouillon de devis à partir de ce que vous dites ; vous le relisez. Avec le plan Artisan, dictez sans limite. »
@@ -290,3 +290,101 @@ SELECT jobname, schedule FROM cron.job WHERE jobname = 'purger-journal-ia';
 8. Rien n'est appliqué ni déployé. Ordre : constater la clé (la retirer si posée), puis 107, puis `voice-intent`, puis la clé et sa limite de dépense, puis le constat avec un compte de test.
 9. Avant d'allumer : vérifier le DPA d'Anthropic, l'écran d'accord, le plafond de 100 par jour, la date des CGU.
 10. Latence non mesurée faute de clé : elle se lit dans `usage_ia_log.duree_ms` dès le premier appel.
+
+## Corrections du 3 nov.
+
+Session cloud de correction, après deux relectures locales (code, sécurité) et la lecture des textes officiels par le juriste. `FONCTIONS.ia` reste `false` ; rien n'est appliqué ni déployé. Commits : `1fa99e2` (serveur et migration), `efb633e` (app et textes), `231bfc8` (documents), puis celui de cette section.
+
+### Ce qui est fait, et la preuve
+- `npm run banc:migrations` : **tout vert, 693 vérifications** (44 pour 107, dont 7 nouvelles). **Contre-essai** : en remettant `SET NULL`, sans contrôle de rôle, sans `coalesce(status, 'active')` et avec 100 par jour au gratuit, 5 vérifications passent au rouge (statut NULL, ouvrier, quota du salarié, 21e analyse, suppression de compte).
+- `npx vitest run src/lib/__tests__/voiceIntentServeur.test.js` : 30 tests verts (4 nouveaux : interrupteur fermé, SANS_DROIT, coupe-circuit, exception imprévue avec CORS ; motif `coupee`).
+- `npx vitest run src/lib/__tests__/droitsDictee.test.js` : 6 tests verts. **Contre-essai** : avec l'ancien `DicteeModal.jsx`, 2 tests sur 6 échouent (TVA par défaut, montants sans droit).
+- `npm run verifier` (standard) : résultat ci-dessous (« Vérification »).
+
+### Point par point
+
+**Propres à la branche (consignes de la session)**
+- Ordre de mise en production réécrit (§4, §5.1, ligne `voice-intent` d'`etat-production.md`) : v11 sans quota en production ; 0) clé constatée, retirée si posée ; 1) 107 ; 2) `voice-intent` ; 3) clé et limite de dépense ; 4) constat avec un compte de test. — `231bfc8`.
+- Conservation chez Anthropic : textes exacts du juriste (politique art. 4, ligne du tableau, ligne de conservation). — `efb633e`.
+- Textes « sans limite » : **non changés**, en attente d'Hugo (décisions ci-dessous).
+- Numéro 107 gardé ; migration passée au banc ; appliquée nulle part.
+- `origin/main` fusionné (`19af887`, sans conflit), refusionné avant le dernier push.
+
+**Relecture de code**
+1. « Sans limite » (subscriptionStore.js, regles.ts) — non appliqué : décision d'Hugo.
+2. Conservation chez Anthropic (LegalPages.jsx) — fait, texte du juriste, sources en commentaire. `efb633e`.
+3. Droits de la dictée — fait : `src/lib/droitsDictee.js` ; « Dicter » et la fenêtre seulement avec la page `ia-devis` ET `canPerform('devis', 'create')` ; le repli « Saisir mon devis à la main » seulement avec `devis.create` ; montants de la relecture (récap, sous-titre, prix unitaire, total de ligne, totaux) derrière `voitPrix = canViewPrices` (absent : caché). Test `droitsDictee.test.js`. `efb633e`.
+4. etat-production.md — ligne vide retirée, action 8 « En attente côté Hugo » (clé, limite de dépense, `IA_DICTEE`, DPA, pages DPF et sous-traitants), date mise au 3 nov. `231bfc8`.
+5. Commande de constat — remplacée par un `fetch` vers `/functions/v1/voice-intent` avec le jeton de session et la clé anon (§4, point 4). `231bfc8`.
+6. Phrase « lève les trois conditions de D-07 » — corrigée : quota et clavier faits, textes prêts, écran d'accord à construire, bloquant. `231bfc8`.
+7. `scripts/lib/cgu.cjs` — lit maintenant `ia:` dans `src/lib/fonctions.js` pour choisir la version. `efb633e`.
+8. Commentaire du cache (consignes.ts) — corrigé : aucun cache demandé. `1fa99e2`.
+9. `max_tokens` → motif `coupee`, non décompté ; filet `try/catch` global → 503 `IA_INDISPONIBLE` avec `corsHeaders`. Tests. `1fa99e2`.
+10. Purge planifiée (pg_cron, `purger-journal-ia`, 3 h 17 chaque nuit, bloc ignoré sans pg_cron) ; jetons inconnus gardés NULL (vérifié au banc). `1fa99e2`.
+11. Textes faux à l'allumage — FAQ réécrite (texte du juriste), ligne « IA Devis : analyse photo de chantier » supprimée du Changelog, libellé « Compléter (IA) » remplacé par « Tâches types ». `efb633e`.
+
+**Relecture de sécurité (gardien)**
+1. Ordre de mise en production — fait (voir plus haut). `231bfc8`.
+2. Membre sans droit — `SANS_DROIT` dans `reserver_usage_ia` (owner, admin, comptable), `{ sansDroit: true }` dans index.ts, 403 « Votre rôle ne permet pas de créer un devis. », bouton gardé par `ia-devis` + `devis.create`. Banc : un ouvrier est refusé sans rien compter ; le salarié du socle passe comptable. `1fa99e2`, `efb633e`.
+3. Délais non décomptés — plafond du jour à 20 au plan gratuit, 100 aux payants ; banc : la 21e du jour est refusée au gratuit. `1fa99e2`.
+4. Coupe-circuit global — 3 000 analyses par jour et par fonction, index `idx_usage_ia_jour`, motif `global` → 503 `IA_INDISPONIBLE` (plus « quota »). Banc et test. Valeur à fixer par Hugo. `1fa99e2`.
+5. Interrupteur serveur — `ouverte(userId)` lu dans le secret `IA_DICTEE` (liste d'identifiants ou « tous ») ; sans lui, 503 et rien de réservé (test). `1fa99e2`.
+6. Conservation — `ON DELETE CASCADE` sur `user_id` (la phrase de la politique devient vraie ; banc : lignes effacées avec le compte, même chez le patron) et purge quotidienne pg_cron. `1fa99e2`.
+7. Tri du plan — `coalesce(status, 'active')` dans le second CASE ; banc : une ligne gratuite au statut NULL ne masque pas l'abonnement Équipe du patron. `1fa99e2`.
+8. Contrôle après application — les deux requêtes du gardien, plus celle de la tâche cron (en-tête de 107 et §4.2). `1fa99e2`, `231bfc8`.
+
+**Juriste (points de cette branche)**
+- 1 (ligne Anthropic, art. 4) — fait, texte exact. `efb633e`.
+- 2 (CGU art. 11) — fait, textes exacts des l. 196-197, 205, 208. **Attention** : la phrase des l. 196-197 (base légale du contrat au lieu du consentement) est **visible aujourd'hui** (hors interrupteur), sans hausse de `CGU_VERSION` ; voir décisions.
+- 3 (écran d'accord) — texte posé dans §7 ; l'écran n'est pas codé (bloquant avant l'allumage).
+- 4 (conservation 30 jours) — fait (l. 352 et l. 404). La ligne directrice (`docs/ia/ligne-directrice.md`) n'existe pas sur cette branche (branche `cloud/ia-direction`) : non touchée.
+- 5 (mention IA, art. 50) — fait : phrase sous le titre de la fenêtre, et phrase du micro remplacée. `efb633e`.
+- 6, 7, 10, 12, 13 — fichiers de `cloud/ia-direction` : hors branche, non touchés.
+- 8 (promesses fausses) — fait (Changelog, OngletTaches, FAQ). `efb633e`.
+- 9 (TVA en franchise) — fait : `tauxTvaParDefaut(entreprise)` (0 en franchise). Test : le taux par défaut et son usage dans la fenêtre. **Pas fait** : le constat que les deux PDF impriment la mention 293 B pour un brouillon dicté à 0 % (pas d'outil de rendu de composant dans le dépôt) ; à faire par le parcours `documents` ou `/sonde` à la livraison.
+- 11 (`assistant: false` dans fonctions.js) — non fait ici : il concerne `App.jsx` de `cloud/ia-direction` ; l'ajouter dans cette branche créerait un conflit sans effet.
+- Introuvable 1 (DPF, sous-traitants d'Anthropic) — rien écrit sur le DPF ; Hugo ouvre les deux pages (action 8 d'`etat-production.md`).
+- Introuvable 2 (voix sur Chrome) — formulation prudente gardée.
+
+### Décisions d'Hugo (ne pas appliquer sans lui)
+Option recommandée en premier.
+1. **Plafond anti-abus de 100 par jour sur les plans « sans limite »** (et 20 par jour au gratuit, déjà codé). Textes en attente, non changés : « Avec le plan Artisan, dictez sans limite » (`src/stores/subscriptionStore.js`, fenêtre d'offre) et « passez au plan Artisan : dictées sans limite » (`supabase/functions/voice-intent/regles.ts`, `MESSAGES.quota`), et la FAQ (« sans limite mensuelle », à compléter). Recommandé : garder 100 et l'annoncer (« sans limite mensuelle (100 dictées par jour au plus) », texte du juriste) ; sinon retirer le plafond du jour des plans payants et garder 5 par minute.
+2. **Valeur du coupe-circuit global** (3 000 par jour codés). Un abus peut l'atteindre et couper la dictée pour tous.
+3. **Lieu du calcul** : mondial (texte actuel), ou `inference_geo` « us » (prix ×1,1 ; textes : « États-Unis »).
+4. **Clause de sous-traitance (CGU art. 11)** : recommandé, la publier maintenant (retirer l'enveloppe `FONCTIONS.ia`, nouvelles `CGU_VERSION` et date sans condition) ; ou attendre l'allumage. Lié : la phrase « base légale : le contrat », déjà visible, devrait partir avec une nouvelle version des CGU.
+5. **Durée du journal** : 12 mois (codés et annoncés) ou autre.
+6. **Écran d'accord** : valider le texte du juriste (§7), puis le construire (accord en base).
+7. **Date des CGU le jour de l'allumage** (`src/lib/cgu.js`, « 2026-11-03 », « 3 novembre 2026 ») ; un test le rappelle.
+8. **Les trois défauts de « saisie clavier »** (analyse pendant la frappe, texte en double, focus perdu) correspondent-ils à D-07 ?
+9. **Décompter ou non** une dictée refusée par le modèle (aujourd'hui décomptée). Une réponse coupée par notre plafond n'est plus décomptée (correction 9).
+10. **Qui peut dicter** : owner, admin, comptable (codé, comme `ia-devis`), ou aussi le chef de chantier.
+11. **Journal à la suppression d'un compte** : CASCADE codé (phrase de la politique vraie) ; ou garder les lignes et corriger la phrase avec le juriste.
+12. **Minimisation** : 60 noms de clients à chaque dictée, ou seulement ceux qui ressemblent au texte dicté.
+13. **Ouverture côté serveur** : `IA_DICTEE` sur le compte de test pendant le constat, « tous » le jour de l'allumage.
+14. **Avant la clé** : crédits prépayés sans rechargement automatique, limite de dépense mensuelle, DPA et DPF vérifiés, entraînement jamais autorisé.
+15. **J1 (juriste) — conservation du texte des demandes** : recommandé, option A, aucun texte conservé (déjà codé) ; la ligne directrice de `cloud/ia-direction` est à aligner.
+16. **J4 (juriste) — crédits API de l'offre Max** : selon le juriste du 3 nov. (page « API credits for Max, Ultra, and Team plans »), l'offre Max inclut 100 $ de crédits API par mois (une seule organisation liée, sans report) ; la relecture de cette session n'a pas pu le confirmer : **Hugo le constate dans claude.ai › Réglages › Facturation et dans la Console › Billing** avant de choisir. Choisir : crédits Max, ou compte payant au nom de l'EI. Le §5.2 de ce rapport, qui dit le contraire, est à corriger selon ce choix (texte du juriste prêt).
+17. **J5 (juriste) — la TVA quitte le CGI au 1er janvier 2027** (ordonnance n° 2025-1247) : tâche hors IA à ouvrir par la session principale (mentions 293 B, 279-0 bis, 278-0 bis A, 257 des deux générateurs).
+
+### Textes nouveaux soumis au juriste
+Tous viennent de ses corrections exactes du 3 nov. : ligne Anthropic et conservation (politique), CGU art. 11 (trois paragraphes), mention IA et phrase du micro (fenêtre de dictée), FAQ de la dictée, texte de l'écran d'accord (§7). Un seul texte est de moi : le message serveur 403 « Votre rôle ne permet pas de créer un devis. » (texte du gardien). Relecture `juriste-btp` de la reprise : ci-dessous.
+
+### Relectures de ces corrections
+- **`juriste-btp`** : textes conformes à ses corrections. Il juge que changer la phrase de l'art. 11 (base légale) sans relever `CGU_VERSION` est permis (art. 10 des CGU : correction de forme, aucun droit retiré) ; la correction est notée dans le commentaire de `src/lib/cgu.js`. Deux alignements de documents faits (phrase du micro dans §2, commentaire de LegalPages).
+- **`gardien-securite`** : les 8 corrections sont justes et complètes, banc relancé vert (693), aucune régression. Restent, **non corrigés** (choix d'Hugo, aucun ne bloque l'application de 107) :
+  1. *moyen* — le coupe-circuit de 3 000 est partagé : environ 150 comptes gratuits (150 × 20) couperaient la dictée aux payants pendant 24 h. Proposition : un budget gratuit à part (par exemple 1 500 par jour, motif `global`). **À régler avant de passer `IA_DICTEE` à « tous ».**
+  2. *faible* — une réponse `coupee` ne décompte pas, alors que sa longueur vient de la dictée (jusqu'à 20 appels par jour au coût de sortie maximal au gratuit). Proposition : décompter `coupee`. Lié à la décision 9.
+  3. *faible* — le comptage global n'a pas de verrou global : quelques unités de dépassement possibles. Accepté.
+  4. *faible* — `IA_DICTEE` sensible à la casse : corrigé (comparaison en minuscules).
+
+### Ce qui reste
+- Les points 1 et 2 du gardien ci-dessus (décision d'Hugo).
+- L'écran d'accord avant la première dictée (bloquant).
+- Le constat des deux PDF pour un brouillon dicté en franchise (parcours `documents`).
+- Les décisions ci-dessus, puis la marche du §4.
+
+### Risques
+- La v11 en production est ouverte à tout compte connecté si la clé est posée : l'étape 0 du §4 passe avant tout.
+- Le coupe-circuit global protège le coût mais peut couper la dictée pour tous en cas d'abus.
+- `ON DELETE CASCADE` : un compte supprimé libère ses dictées dans le décompte de l'entreprise du patron (faible : le compte n'existe plus).
+- La phrase de l'art. 11 modifiée est visible sans nouvelle version des CGU (décision 4).

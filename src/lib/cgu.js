@@ -16,6 +16,8 @@ import { FONCTIONS } from './fonctions';
 // clause de sous-traitance (textes de juriste-btp, docs/cloud/ia-socle.md) : la version change d'elle-même, et
 // l'acceptation est redemandée. LE JOUR DE L'ALLUMAGE, remplacer « 2026-11-03 » et « 3 novembre 2026 » par la date
 // réelle (avis du juriste : on n'accepte pas en janvier une « version du 3 novembre ») ; un test le rappelle.
+// 3 nov. 2026 (commit efb633e) : correction de forme de l'article 11, sans changer la version (art. 10 des CGU, avis de
+// juriste-btp) : « consent au traitement de ses données » devient la base légale du contrat (RGPD, art. 6.1.b).
 export const CGU_VERSION = FONCTIONS.ia ? '2026-11-03' : '2026-10-28';
 
 /** La date de cette version, telle que l'affichent la case de l'inscription et la fenêtre (« version du … »). */
