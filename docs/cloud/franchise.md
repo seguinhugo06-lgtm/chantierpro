@@ -266,3 +266,19 @@ Relecture `juriste-btp` des décisions appliquées : **OK sur les 7 points**, ri
 3. Plus de colonne « TVA » sur les PDF en franchise, dans les deux générateurs.
 4. Fournitures et main-d'œuvre : en « Plus tard », avec la source.
 5. Tests 1220 sur 1220, contre-essai fait, parcours de l'aperçu réel vert, juriste OK.
+
+### Vérification complète après les décisions
+
+```
+Vérification « complet » de 9e4862a
+  ✓ Tests (44.3 s) — 1220 passed (1220)
+  ✓ Lint (0 erreur) (6.1 s) — 241 problems (0 errors, 241 warnings)
+  ✓ Smoke (25.9 s)
+  ✓ Build (24.5 s)
+  ✓ Banc de migrations (5.9 s)
+  ✓ Parcours (navigateur) (2033.5 s)
+  ✓ Audit d’interface (380.6 s)
+✓ Tout est vert — niveau « complet ».
+```
+
+Le commit qui suit ne touche que ce rapport.
