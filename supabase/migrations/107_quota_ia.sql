@@ -166,8 +166,11 @@ BEGIN
   PERFORM pg_advisory_xact_lock(hashtextextended('usage_ia:' || v_org::text || ':' || p_fonction || ':' || v_mois::text, 0));
 
   -- Durée de conservation : 12 mois (politique de confidentialité, article 3).
-  DELETE FROM public.usage_ia_log
-   WHERE mois < (date_trunc('month', now() AT TIME ZONE 'Europe/Paris') - interval '12 months')::date;
+  -- SKIP LOCKED : deux réservations simultanées ne se bloquent pas sur les mêmes vieilles lignes (2e relecture, B2).
+  DELETE FROM public.usage_ia_log WHERE id IN (
+    SELECT id FROM public.usage_ia_log
+     WHERE mois < (date_trunc('month', now() AT TIME ZONE 'Europe/Paris') - interval '12 months')::date
+     LIMIT 1000 FOR UPDATE SKIP LOCKED);
 
   -- Plafond anti-abus, quel que soit le plan : chaque appel compte, même en échec (il a coûté un appel à l'API).
   IF (SELECT count(*) FROM public.usage_ia_log
@@ -178,11 +181,11 @@ BEGIN
   END IF;
 
   -- Décomptent : réservés, réussis, et échecs provoqués par la dictée. Au plan gratuit : aussi ceux du même compte
-  -- dans d'autres organisations.
+  -- dans ses autres organisations gratuites (pas ce qu'un salarié a dicté dans l'entreprise payante de son patron).
   SELECT count(*) INTO v_utilise FROM public.usage_ia_log
    WHERE fonction = p_fonction AND mois = v_mois
      AND (statut IN ('reserve', 'reussi') OR (statut = 'echec' AND motif IN ('refus', 'illisible')))
-     AND (organization_id = v_org OR (v_plan = 'gratuit' AND user_id = p_user_id));
+     AND (organization_id = v_org OR (v_plan = 'gratuit' AND user_id = p_user_id AND plan = 'gratuit'));
 
   IF v_limite IS NOT NULL AND v_utilise >= v_limite THEN
     RETURN jsonb_build_object('autorise', false, 'motif', 'quota', 'plan', v_plan, 'limite', v_limite, 'utilise', v_utilise);

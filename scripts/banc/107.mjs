@@ -107,10 +107,20 @@ export async function verifier({ db, q, en, commeAnonyme, compte, verifier }) {
   verifier(pleinSolo.autorise === false && neuve.autorise === false && neuve.utilise >= 10,
     `107 : au plan gratuit, créer une autre organisation ne rouvre pas de dictées (${JSON.stringify(neuve)})`);
 
+  // Ce qu'un salarié dicte dans l'entreprise payante de son patron n'entame pas son quota gratuit personnel
+  const ORG_PERSO_SAL = '10700000-0000-4000-8000-0000000000a5';
+  await q(`INSERT INTO organizations (id, name, slug, owner_id) VALUES ($1, 'Perso salarié 107', 'perso-sal-107', $2)`, [ORG_PERSO_SAL, SALARIE]);
+  await q(`INSERT INTO organization_members (organization_id, user_id, role) VALUES ($1, $2, 'owner')`, [ORG_PERSO_SAL, SALARIE]);
+  await q(`DELETE FROM subscriptions WHERE user_id = $1`, [SALARIE]);
+  await reserver(SALARIE, ORG_PATRON);
+  const perso = await reserver(SALARIE, ORG_PERSO_SAL);
+  verifier(perso.plan === 'gratuit' && perso.utilise === 1,
+    `107 : les dictées d'un salarié dans l'entreprise payante n'entament pas son quota gratuit personnel (${JSON.stringify(perso)})`);
+
   // ── Plafond anti-abus : 5 par minute et par compte, même au plan illimité ──
   const rafale = [];
   for (let i = 0; i < 6; i++) rafale.push(await reserverBrut(PAYEUR, ORG_PAYEUR));
-  verifier(rafale.slice(0, 4).every((r) => r.autorise === true) && rafale[5].autorise === false && rafale[5].motif === 'plafond',
+  verifier(rafale.slice(0, 5).every((r) => r.autorise === true) && rafale[5].autorise === false && rafale[5].motif === 'plafond',
     `107 : la 6e analyse dans la minute est refusée (plafond), même au plan Artisan (${rafale.map((r) => r.autorise).join(',')})`);
   await q(`UPDATE usage_ia_log SET created_at = now() - interval '2 hours' WHERE user_id = $1`, [PAYEUR]);
   verifier((await reserverBrut(PAYEUR, ORG_PAYEUR)).autorise === true, '107 : une minute plus tard, le compte peut de nouveau dicter');
@@ -142,9 +152,10 @@ export async function verifier({ db, q, en, commeAnonyme, compte, verifier }) {
   await q(`INSERT INTO organization_members (organization_id, user_id, role) VALUES ($1, $2, 'ouvrier')`, [ORG_PATRON, SALARIE]);
 
   // ── Refus pour une autre organisation ──
+  const chezPatron = await lignes(ORG_PATRON);
   const horsOrg = await erreurDe(() => reserver(SOLO, ORG_PATRON));
   verifier(/HORS_ORGANISATION/.test(horsOrg || ''), `107 : réserver sur l'organisation d'un autre est refusé (${horsOrg})`);
-  verifier(await lignes(ORG_PATRON) === 1, '107 : … et rien n\'est compté chez lui');
+  verifier(await lignes(ORG_PATRON) === chezPatron, '107 : … et rien n\'est compté chez lui');
   const inconnu = await erreurDe(() => reserver('10700000-0000-4000-8000-0000000000ff', null));
   verifier(/HORS_ORGANISATION/.test(inconnu || ''), '107 : un compte sans organisation est refusé');
   verifier(!!(await erreurDe(() => reserver(null, ORG_SOLO))) && !!(await erreurDe(() => reserver(SOLO, ORG_SOLO, 'Pas Valide')))
