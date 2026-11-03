@@ -130,6 +130,35 @@ module.exports = [
     },
   },
   {
+    // Recherche « métiers » du 3 nov. 2026 : le RGE saisi dans Paramètres n'était imprimé nulle part. Aperçu réel (générateur
+    // de DevisPage) : imprimé s'il est valide à la date du devis, absent s'il est expiré (src/lib/qualifications.js).
+    nom: 'aperçu du devis : le RGE saisi s’imprime s’il est valide, pas s’il est expiré',
+    async executer({ ouvrir, attendre, verifier }) {
+      for (const [fin, imprime] of [['2099-12-31', true], ['2000-01-01', false]]) {
+        const id = `ent-rge-${fin.slice(0, 4)}`;
+        const reglages = { rge: 'E-99999', rgeOrganisme: 'Qualibat', rgeValidite: fin, rgeDomaine: 'Pompe à chaleur' };
+        const ligne = { ...FICHE_CAPITAL, id, forme_juridique: 'SARL', settings_json: { reglages } };
+        const app = { ...FICHE_CAPITAL_APP, id, formeJuridique: 'SARL', ...reglages };
+        const { page, browser } = await ouvrir({ page: 'devis', largeur: 1440, avantChargement: poserEntreprise(`parcours-rge-${fin.slice(0, 4)}`, ligne, app) });
+        await attendre(800);
+        const ouvert = await page.evaluate(() => {
+          const b = [...document.querySelectorAll('[data-ui="LigneListe"] > button')].find((x) => /DEV-\d{4}-\d{5}/.test(x.innerText || ''));
+          if (b) b.click();
+          return !!b;
+        });
+        verifier(ouvert, `un devis ouvert (fin ${fin})`);
+        await attendre(900);
+        await actionFiche(page, attendre, ['Aperçu', 'Aperçu du document']);
+        await attendre(1200);
+        const html = await page.evaluate(() => [...document.querySelectorAll('iframe')].map((f) => f.getAttribute('srcdoc') || '').find((x) => x.length > 100) || '');
+        verifier(html.length > 100, `aperçu affiché (fin ${fin})`);
+        const trouve = /Entreprise RGE \(Reconnu garant de l(?:'|&#39;)environnement\) — N° E-99999 \(Qualibat\) — Domaine : Pompe à chaleur/.test(html);
+        verifier(trouve === imprime, `fin ${fin} : RGE ${imprime ? 'imprimé' : 'absent'} (${(html.match(/.{0,10}Entreprise RGE.{0,60}/) || ['aucun'])[0]})`);
+        await browser.close();
+      }
+    },
+  },
+  {
     // Q-identite-demo (11 oct. 2026) : rien de ce qui est filmé ne passe pour une vraie entreprise
     nom: 'compte de démonstration : bandeau à l’écran, filigrane « EXEMPLE » sur l’aperçu du document',
     async executer({ ouvrir, attendre, verifier }) {
