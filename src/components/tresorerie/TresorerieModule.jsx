@@ -31,7 +31,7 @@ import { useTVA } from '../../hooks/useTVA';
 import { useExportComptable } from '../../hooks/useExportComptable';
 import useKeepInViewport from '../../hooks/useKeepInViewport';
 import { formatClientName } from '../../lib/formatters';
-import { statutPrevision, estPrevisionMiroir, seuilAlerteRegle } from '../../lib/previsions';
+import { statutPrevision, estPrevisionMiroir, seuilAlerteRegle, moisProjetePrevision } from '../../lib/previsions';
 import { SEUIL_PAR_DEFAUT } from '../../lib/tresorerieReglages';
 import TuileChiffre from '../ui/TuileChiffre';
 import Modal from '../ui/Modal';
@@ -1317,7 +1317,8 @@ export default function TresorerieModule({
       const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
       // Use scheduled previsions for this month, or fallback to averages
       const mk = { month: d.getMonth(), year: d.getFullYear() };
-      const moisDe = (p) => { const x = dateLocale(p.date); return x ? monthKey(x) : null; };
+      // Non réglée du mois en cours ou en retard : au premier mois projeté (sinon comptée nulle part)
+      const moisDe = (p) => moisProjetePrevision(p, now);
       const monthPrevEntrees = dedupPrevisions.filter(p => p.type === 'entree' && p.statut === 'prevu' && moisDe(p) && sameMonth(moisDe(p), mk));
       const scheduledEntrees = monthPrevEntrees.reduce((s, p) => s + (p.montant || 0), 0);
       const monthPrevSorties = dedupPrevisions.filter(p => p.type === 'sortie' && p.statut === 'prevu' && moisDe(p) && sameMonth(moisDe(p), mk));
@@ -1423,9 +1424,10 @@ export default function TresorerieModule({
       const mk = { month: d.getMonth(), year: d.getFullYear() };
       const mois = MONTH_NAMES[d.getMonth()];
 
-      // Scheduled previsions for this month
-      const scheduledE = previsionsComptees.filter(p => p.type === 'entree' && p.statut === 'prevu' && sameMonth(monthKey(new Date(p.date)), mk)).reduce((s, p) => s + (p.montant || 0), 0);
-      const scheduledS = previsionsComptees.filter(p => p.type === 'sortie' && p.statut === 'prevu' && sameMonth(monthKey(new Date(p.date)), mk)).reduce((s, p) => s + (p.montant || 0), 0);
+      // Prévisions non réglées de ce mois (celles du mois en cours ou en retard : au premier mois, comme la projection à 6 mois)
+      const duMois = (p) => { const m = moisProjetePrevision(p, now); return m && sameMonth(m, mk); };
+      const scheduledE = previsionsComptees.filter(p => p.type === 'entree' && p.statut === 'prevu' && duMois(p)).reduce((s, p) => s + (p.montant || 0), 0);
+      const scheduledS = previsionsComptees.filter(p => p.type === 'sortie' && p.statut === 'prevu' && duMois(p)).reduce((s, p) => s + (p.montant || 0), 0);
 
       const baseE = scheduledE || baseAvgEntrees;
       const baseS = scheduledS || baseAvgSorties;
