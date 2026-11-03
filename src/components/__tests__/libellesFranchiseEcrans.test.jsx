@@ -245,6 +245,15 @@ describe('écrans qui citent la mention de la facture', () => {
   });
 });
 
+describe('« PDF » d’une facture de situation (DevisPage)', () => {
+  it('passe par situationDeFacture, qui garde le statut de la facture (contrôle du 3 nov. 2026)', () => {
+    // Sans cet appel, l'ancien objet `situation: { ...(sit || {}) }` revenait sans statut : une facture de situation
+    // émise avec TVA par une micro-entreprise se réimprimait sans sa TVA (le test plus haut couvre situationDeFacture).
+    const page = fs.readFileSync(path.join(RACINE, 'src/components/DevisPage.jsx'), 'utf8');
+    expect(page).toMatch(/printSitFacture\(\{\s*situation:\s*situationDeFacture\(doc, chantier,/);
+  });
+});
+
 describe('éditeur : message d’une ligne sans désignation', () => {
   it('sans « HT » en franchise, avec « HT » sinon (relecture juriste-btp du 3 nov. 2026)', async () => {
     const { messageLigneSansDesignation } = await import('../../lib/totauxDocument');
