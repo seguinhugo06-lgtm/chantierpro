@@ -54,7 +54,7 @@ module.exports = [
       verifier(/^https:\/\/(www\.)?(impots\.gouv\.fr|legifrance\.gouv\.fr|net-entreprises\.fr|entreprendre\.service-public\.gouv\.fr)\//.test(lien || ''), `chaque échéance cite sa source officielle (${lien})`);
 
       // « Changer mes réponses » ramène aux questions (avant, 3 nov. 2026 : réponses effacées, rien ne les redemandait)
-      await cliquer(page, 'Changer mes réponses');
+      await cliquer(page, 'Changer mes réponses (rythme Urssaf, TVA, impôt, salariés)');
       await attendre(500);
       verifier(await page.evaluate(() => !!document.querySelector('[data-questions-profil]')), '« Changer mes réponses » ramène aux questions');
       verifier(jour() <= '2027-12-31', 'le calendrier de l’application couvre la date du jour (jusqu’au 31 déc. 2027)');
