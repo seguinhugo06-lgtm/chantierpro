@@ -11,10 +11,12 @@ const { texteContenu, ongletFiche, nomsOnglets } = require('../lib/parcoursChant
 const REFUS = (table) => json({ code: '42501', message: `new row violates row-level security policy for table "${table}"` }, 403);
 const sansInstallation = () => { try { localStorage.setItem('pwa-install-dismissed', String(Date.now())); } catch { /* */ } };
 
+// Chantier en cours dans les temps et devis encore valable, quel que soit le jour du parcours (datés en dur, ils passaient)
+const jourDans = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return d.toLocaleDateString('sv-SE'); };
 const CLIENT = { id: 'c0c0c0c0-0000-4000-8000-000000000071', nom: 'Morel', prenom: 'Claire', telephone: '0600000071', email: 'claire@exemple.fr', adresse: '4 rue Neuve, 44000 Nantes', created_at: '2026-01-10T08:00:00Z' };
 const AUTRE = { id: 'c0c0c0c0-0000-4000-8000-000000000072', nom: 'Girard', prenom: 'Lou', telephone: '0600000072', created_at: new Date().toISOString() }; // créé aujourd'hui, sans document : prospect
-const CHANTIER = { id: 'c1c1c1c1-0000-4000-8000-000000000071', nom: 'Rénovation Morel', client_id: CLIENT.id, statut: 'en_cours', avancement: 40, budget_prevu: 8500, date_debut: '2026-09-01', date_fin: '2026-12-30', created_at: '2026-09-01T08:00:00Z' };
-const DEVIS = { id: 'd0d0d0d0-0000-4000-8000-000000000071', client_id: CLIENT.id, chantier_id: CHANTIER.id, type: 'devis', statut: 'accepte', numero: 'DEV-2026-0071', date: '2026-09-02', date_validite: '2026-12-02', total_ht: 8500, total_tva: 850, total_ttc: 9350, lignes: [], created_at: '2026-09-02T08:00:00Z' };
+const CHANTIER = { id: 'c1c1c1c1-0000-4000-8000-000000000071', nom: 'Rénovation Morel', client_id: CLIENT.id, statut: 'en_cours', avancement: 40, budget_prevu: 8500, date_debut: '2026-09-01', date_fin: jourDans(60), created_at: '2026-09-01T08:00:00Z' };
+const DEVIS = { id: 'd0d0d0d0-0000-4000-8000-000000000071', client_id: CLIENT.id, chantier_id: CHANTIER.id, type: 'devis', statut: 'accepte', numero: 'DEV-2026-0071', date: '2026-09-02', date_validite: jourDans(30), total_ht: 8500, total_tva: 850, total_ttc: 9350, lignes: [], created_at: '2026-09-02T08:00:00Z' };
 const FACTURE = { id: 'd0d0d0d0-0000-4000-8000-000000000072', client_id: CLIENT.id, chantier_id: CHANTIER.id, type: 'facture', statut: 'envoye', numero: 'FAC-2026-0072', devis_source_id: DEVIS.id, facture_type: 'acompte', date: '2026-09-10', date_echeance: '2026-10-10', total_ht: 2000, total_tva: 200, total_ttc: 2200, lignes: [], created_at: '2026-09-10T08:00:00Z' };
 const ECHANGE = { id: 'e1e1e1e1-0000-4000-8000-000000000071', client_id: CLIENT.id, type: 'email', contenu: 'Devis envoyé à Claire', date: '2026-09-03T09:00:00Z', created_at: '2026-09-03T09:00:00Z' };
 const ARTICLES = [

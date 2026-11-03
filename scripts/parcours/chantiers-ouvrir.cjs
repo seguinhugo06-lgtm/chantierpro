@@ -5,6 +5,8 @@ const { creerBase, UID } = require('../lib/fauxSupabase.cjs');
 const { ouvrirFiche, nomsOnglets, ecouterMessages, cliquerBouton, ongletFiche } = require('../lib/parcoursChantier.cjs');
 
 const aujourdhui = () => new Date().toLocaleDateString('sv-SE'); // AAAA-MM-JJ, heure locale
+// Fin prévue dans deux mois, quel que soit le jour du parcours : un chantier « en cours » reste dans les temps
+const finPrevue = () => { const d = new Date(); d.setDate(d.getDate() + 60); return d.toLocaleDateString('sv-SE'); };
 
 module.exports = [
   {
@@ -139,8 +141,8 @@ module.exports = [
     reel: true,
     async executer({ ouvrir, attendre, verifier, sessionFactice }) {
       const CLIENT = { id: 'c0c0c0c0-0000-4000-8000-000000000013', nom: 'Roux', prenom: 'Eva', created_at: '2026-10-01T08:00:00Z' };
-      const A = { id: 'c1c1c1c1-0000-4000-8000-000000000015', nom: 'Cloison Roux Parcours', client_id: CLIENT.id, statut: 'en_cours', avancement: 50, date_fin: '2026-12-31', created_at: '2026-10-01T08:00:00Z' };
-      const B = { id: 'c1c1c1c1-0000-4000-8000-000000000016', nom: 'Terrasse Roux Parcours', client_id: CLIENT.id, statut: 'en_cours', avancement: 50, date_fin: '2026-12-31', created_at: '2026-10-01T08:00:00Z' };
+      const A = { id: 'c1c1c1c1-0000-4000-8000-000000000015', nom: 'Cloison Roux Parcours', client_id: CLIENT.id, statut: 'en_cours', avancement: 50, date_fin: finPrevue(), created_at: '2026-10-01T08:00:00Z' };
+      const B = { id: 'c1c1c1c1-0000-4000-8000-000000000016', nom: 'Terrasse Roux Parcours', client_id: CLIENT.id, statut: 'en_cours', avancement: 50, date_fin: finPrevue(), created_at: '2026-10-01T08:00:00Z' };
       const base = creerBase({ clients: [CLIENT], chantiers: [A, B] });
       const { page } = await ouvrir({ reel: true, largeur: 1440, page: 'chantiers', session: sessionFactice(UID), supabase: base.reponse });
       await attendre(2000);

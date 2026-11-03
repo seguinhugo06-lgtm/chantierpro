@@ -20,11 +20,15 @@ const path = require('path');
 // écrite en dur qui deviendra passée (un devis expiré, une fin de chantier dépassée, une année de numérotation). L'horloge
 // de ce processus (données des faux serveurs calculées avec `new Date()`) et celle de chaque page (sauf un parcours qui
 // fixe lui-même son `jour`) partent de ce jour à 10 h et avancent normalement : les deux restent d'accord.
+// Une seule avance pour le lanceur et toutes ses pages : ancrée sur 10 h dans chaque page, une page ouverte 20 min après
+// le départ serait 20 min « en retard » sur les données (un compte « créé » dans son futur).
 const JOUR_SIMULE = process.env.PARCOURS_JOUR || '';
+let decalageSimule = 0;
 if (JOUR_SIMULE) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(JOUR_SIMULE)) throw new Error(`PARCOURS_JOUR « ${JOUR_SIMULE} » : format attendu AAAA-MM-JJ`);
   const Vraie = Date;
   const decalage = new Vraie(`${JOUR_SIMULE}T10:00:00`).getTime() - Vraie.now();
+  decalageSimule = decalage;
   class DateDecalee extends Vraie {
     constructor(...a) { if (a.length === 0) super(Vraie.now() + decalage); else super(...a); }
     static now() { return Vraie.now() + decalage; }
@@ -55,7 +59,7 @@ const parcours = fichiers.flatMap((f) => require(path.join(__dirname, f)).map((p
     const ctx = {
       ...outils,
       ouvrir: async (o = {}) => {
-        const n = await outils.ouvrir({ ...o, jour: o.jour || JOUR_SIMULE || undefined, distReel: o.reel ? distReel : undefined });
+        const n = await outils.ouvrir({ ...o, decalageHorloge: o.jour ? undefined : decalageSimule || undefined, distReel: o.reel ? distReel : undefined });
         navigateurs.push(n);
         return n;
       },

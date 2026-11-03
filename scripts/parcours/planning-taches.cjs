@@ -94,7 +94,7 @@ module.exports = [
     async executer({ ouvrir, attendre, verifier, sessionFactice }) {
       const CLIENT = { id: 'c0c0c0c0-0000-4000-8000-000000000051', nom: 'Colin', prenom: 'Ana', created_at: '2026-10-01T08:00:00Z' };
       const CHANTIER = {
-        id: 'c1c1c1c1-0000-4000-8000-000000000051', nom: 'Frise Colin Parcours', client_id: CLIENT.id, statut: 'en_cours', avancement: 10, date_debut: '2026-10-01', date_fin: '2026-12-31',
+        id: 'c1c1c1c1-0000-4000-8000-000000000051', nom: 'Frise Colin Parcours', client_id: CLIENT.id, statut: 'en_cours', avancement: 10, date_debut: jourDans(-30), date_fin: jourDans(60),
         taches: [{ id: 't1', text: 'A', done: true }, { id: 't2', text: 'B', done: true }, { id: 't3', text: 'C', done: true }, { id: 't4', text: 'D', done: false }], created_at: '2026-10-01T08:00:00Z',
       };
       const base = creerBase({ clients: [CLIENT], chantiers: [CHANTIER] });

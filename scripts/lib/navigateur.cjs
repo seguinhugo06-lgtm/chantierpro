@@ -42,6 +42,8 @@ function construireDistReel() {
  * @param {string} [o.jour] - « AAAA-MM-JJ » : l'horloge de la page part de ce jour (10 h, heure locale) et avance
  *   normalement. Les données démo se décalent sur l'horloge de la page : un parcours qui dépend de leur place dans le
  *   mois (projections, mois en cours) devient le même quel que soit le jour où il tourne.
+ * @param {number} [o.decalageHorloge] - avance (ms) de l'horloge de la page sur l'horloge réelle, prioritaire sur `jour` :
+ *   PARCOURS_JOUR donne ainsi à chaque page exactement l'heure simulée du lanceur (fixée au départ du lancement)
  * @param {string} [o.chemin] - adresse ouverte (défaut : « / », ou « /?demo=true » en démo), ex. « /fonctionnalites »
  * @param {Function} [o.fichiers] - (url) => 'bloquer' | délai en ms | undefined, pour un fichier du build : simule un
  *   fichier introuvable (déploiement remplacé, réseau coupé) ou lent (ex. un module chargé à la demande)
@@ -92,16 +94,16 @@ async function ouvrir(o = {}) {
       if (p.session) localStorage.setItem('sb-fauxprojet-auth-token', JSON.stringify(p.session));
     } catch { /* stockage indisponible : la page démarre sans préréglages */ }
   }, { page: o.page || 'dashboard', plan: o.plan || 'equipe', session: o.session || null });
-  if (o.jour) {
-    await page.evaluateOnNewDocument((jour) => {
+  if (o.jour || o.decalageHorloge) {
+    await page.evaluateOnNewDocument((jour, decalageImpose) => {
       const Vraie = Date;
-      const decalage = new Vraie(`${jour}T10:00:00`).getTime() - Vraie.now();
+      const decalage = decalageImpose || new Vraie(`${jour}T10:00:00`).getTime() - Vraie.now();
       class DateFigee extends Vraie {
         constructor(...a) { if (a.length === 0) super(Vraie.now() + decalage); else super(...a); }
         static now() { return Vraie.now() + decalage; }
       }
       window.Date = DateFigee;
-    }, o.jour);
+    }, o.jour || '', o.decalageHorloge || 0);
   }
   if (o.avantChargement) await page.evaluateOnNewDocument(o.avantChargement);
   await page.goto(ORIGIN + (o.chemin || (o.reel ? '/' : '/?demo=true')), { waitUntil: 'networkidle0', timeout: 60000 }).catch(() => {});
