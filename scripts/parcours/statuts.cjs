@@ -194,13 +194,13 @@ module.exports = [
       verifier(/FAC-2026-00042/.test(apres) && !/FAC-2026-00009/.test(apres), 'la liste montre le numéro attribué par la base (FAC-2026-00042)');
 
       // 2. Émission sans réseau (relecture du 3 nov. 2026) : l'écriture attend sur l'appareil, la base n'a pas attribué
-      // le numéro → pas de « Facture émise », mais « Émission enregistrée sur cet appareil »
+      // le numéro → pas de « Facture émise », mais « Émission gardée sur cet appareil »
       await attendre(5000); // le message de l’étape 1 se ferme
       await page.evaluate(() => {
         window.__messagesStatut = [];
         new MutationObserver(() => {
           const t = document.body.innerText;
-          for (const m of ['Facture émise', 'Émission enregistrée sur cet appareil', 'Pas de connexion']) {
+          for (const m of ['Facture émise', 'Émission gardée sur cet appareil', 'Pas de connexion']) {
             if (t.includes(m) && !window.__messagesStatut.includes(m)) window.__messagesStatut.push(m);
           }
         }).observe(document.body, { childList: true, subtree: true, characterData: true });
@@ -213,8 +213,8 @@ module.exports = [
       verifier(await confirmerDansDialogue(page, 'Émettre la facture'), 'bouton « Émettre la facture » (sans réseau)');
       await attendre(2000);
       const messages = await page.evaluate(() => window.__messagesStatut || []);
-      verifier(messages.includes('Émission enregistrée sur cet appareil') && !messages.includes('Facture émise'),
-        `sans réseau : « Émission enregistrée sur cet appareil », jamais « Facture émise » (${JSON.stringify(messages)})`);
+      verifier(messages.includes('Émission gardée sur cet appareil') && !messages.includes('Facture émise'),
+        `sans réseau : « Émission gardée sur cet appareil », jamais « Facture émise » (${JSON.stringify(messages)})`);
       horsLigne = false;
 
       // 3. « Payée » : encaissement refusé par la base → aucune réussite, la facture reste à encaisser
