@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { X, ChevronRight, FileText, ArrowLeft, Check, TrendingUp, Star, Trash2, Search } from 'lucide-react';
-import { MODELES_DEVIS, getMetiersWithModeles, prepareModeleLignes, calculateModeleTotal, calculateModeleMarge, searchModeles } from '../lib/data/modeles-devis';
+import { MODELES_DEVIS, getMetiersWithModeles, prepareModeleLignes, calculateModeleTotal, calculateModeleMarge, searchModeles, descriptionModele } from '../lib/data/modeles-devis';
 
 /**
  * Composant de sélection de templates de devis par métier (unifié)
@@ -13,6 +13,8 @@ export default function TemplateSelector({
   onSelectTemplate,
   customTemplates = [],
   onDeleteTemplate,
+  // Franchise en base de TVA (art. 293 B du CGI, estFranchiseTva) : le total d'un modèle s'affiche sans « HT »
+  franchise = false,
   isDark: _isDark,
   couleur: _couleur
 }) {
@@ -137,7 +139,7 @@ export default function TemplateSelector({
                             </span>
                           </div>
                           <p className={`font-medium ${textPrimary}`}>{result.nom}</p>
-                          <p className={`text-xs ${textMuted}`}>{result.description}</p>
+                          <p className={`text-xs ${textMuted}`}>{descriptionModele(result, franchise)}</p>
                         </div>
                       ))}
                     </div>
@@ -176,7 +178,7 @@ export default function TemplateSelector({
                             </div>
                             <div className="flex items-center gap-2 flex-shrink-0">
                               <span className="text-sm font-medium text-accent-texte">
-                                ~{formatMoney((t.lignes || []).reduce((s, l) => s + ((l.quantite || 0) * (l.prixUnitaire || 0)), 0))} HT
+                                ~{formatMoney((t.lignes || []).reduce((s, l) => s + ((l.quantite || 0) * (l.prixUnitaire || 0)), 0))}{franchise ? '' : ' HT'}
                               </span>
                               {onDeleteTemplate && (
                                 <button
@@ -244,13 +246,13 @@ export default function TemplateSelector({
                   >
                     <div className="flex-1">
                       <p className={`font-medium ${textPrimary}`}>{template.nom}</p>
-                      <p className={`text-sm ${textMuted}`}>{template.description}</p>
+                      <p className={`text-sm ${textMuted}`}>{descriptionModele(template, franchise)}</p>
                       <div className="flex items-center gap-3 mt-2">
                         <span className={`text-xs px-2 py-0.5 rounded bg-surface-2 text-encre-2`}>
                           {template.lignes.length} lignes
                         </span>
                         <span className="text-sm font-medium tabular-nums text-encre">
-                          ~{formatMoney(calculateModeleTotal(template))} HT
+                          ~{formatMoney(calculateModeleTotal(template))}{franchise ? '' : ' HT'}
                         </span>
                         <span className={`text-xs font-medium flex items-center gap-1 ${calculateModeleMarge(template) >= 30 ? 'text-succes-texte' : 'text-alerte-texte'}`}>
                           <TrendingUp size={12} />

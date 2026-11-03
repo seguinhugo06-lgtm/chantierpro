@@ -631,7 +631,7 @@ export default function DevisComposer({
     if (priced.length === 0) { setError('Ajoutez au moins une ligne.'); return; }
     // Une ligne chiffrée sans désignation compte dans les totaux mais n'est pas enregistrée ni imprimée : le total
     // ne correspondrait plus aux lignes du document (CGI ann. II art. 242 nonies A) — relecture juriste-btp du 16 oct. 2026
-    const sansDesignation = messageLigneSansDesignation(form.lignes);
+    const sansDesignation = messageLigneSansDesignation(form.lignes, { franchise });
     if (sansDesignation) { setError(sansDesignation); return; }
     setError('');
     const devisData = buildDevisData();
@@ -1006,6 +1006,7 @@ export default function DevisComposer({
           <MargeModal
             isDark={isDark} couleur={couleur} inputBg={inputBg} textPrimary={textPrimary} textMuted={textMuted}
             ligne={l}
+            franchise={franchise}
             onClose={() => setMargeLineId(null)}
             onApply={(pa) => { updateLigne(margeLineId, 'prixAchat', pa); setMargeLineId(null); }}
           />
@@ -1617,7 +1618,9 @@ function PdfPreviewModal({ isDark: _isDark, couleur: _couleur, textPrimary, text
 }
 
 /* ── Prix d'achat / marge d'une ligne ── */
-function MargeModal({ isDark: _isDark, couleur: _couleur, inputBg, textPrimary, textMuted, ligne, onClose, onApply }) {
+// En franchise en base de TVA, l'artisan ne récupère pas la TVA de ses achats : son coût est « TVA comprise » (même libellé
+// que le catalogue, avis juriste du 28 oct. 2026), jamais « HT ».
+function MargeModal({ isDark: _isDark, couleur: _couleur, inputBg, textPrimary, textMuted, ligne, onClose, onApply, franchise = false }) {
   const [pa, setPa] = useState(ligne.prixAchat ? String(ligne.prixAchat) : '');
   const ref = useRef(null);
   useEffect(() => {
@@ -1642,7 +1645,7 @@ function MargeModal({ isDark: _isDark, couleur: _couleur, inputBg, textPrimary, 
         <div className="p-5 space-y-4">
           <p className={`text-sm truncate ${textMuted}`}>{ligne.description || 'Ligne sans désignation'} — vendu {eur(pu)}/{ligne.unite || 'u'}</p>
           <div>
-            <label className={LIBELLE}>Votre coût d'achat (HT, par {ligne.unite || 'u'})</label>
+            <label className={LIBELLE}>Votre coût d'achat ({franchise ? 'TVA comprise' : 'HT'}, par {ligne.unite || 'u'})</label>
             <input ref={ref} type="text" inputMode="decimal" value={pa} onChange={e => setPa(e.target.value)} placeholder="0"
               className={`${CHAMP} ${inputBg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent`} />
           </div>

@@ -2,6 +2,7 @@ import { useRef, useState, useEffect } from 'react';
 import SignatureCanvas from 'react-signature-canvas';
 import { X, Check, RotateCcw, Pen, Calendar, FileCheck, Info } from 'lucide-react';
 import { DEMANDE_URGENCE, DEMANDE_EXPRESSE, DEMANDE_EXPRESSE_AIDE, estConcerneParRetractation } from '../lib/retractation';
+import { franchiseAppliquee } from '../lib/franchiseTva';
 
 /**
  * Composant de signature electronique
@@ -146,7 +147,8 @@ export default function SignaturePad({
                 </div>
                 <div className={`pt-3 border-t border-bord`}>
                   <div className="flex justify-between items-center">
-                    <span className={textSecondary}>Montant TTC</span>
+                    {/* Franchise en base de TVA : « Montant », jamais « TTC » (décision du 24 oct. 2026) */}
+                    <span className={textSecondary}>{franchiseAppliquee(document, entreprise) ? 'Montant' : 'Montant TTC'}</span>
                     <span className="text-xl font-bold text-accent-texte">
                       {formatMoney(document.total_ttc)}
                     </span>
