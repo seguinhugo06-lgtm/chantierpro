@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { X, ChevronRight, FileText, ArrowLeft, Check, TrendingUp, Star, Trash2, Search } from 'lucide-react';
-import { MODELES_DEVIS, getMetiersWithModeles, prepareModeleLignes, calculateModeleTotal, calculateModeleMarge, searchModeles } from '../lib/data/modeles-devis';
+import { MODELES_DEVIS, getMetiersWithModeles, prepareModeleLignes, calculateModeleTotal, calculateModeleMarge, searchModeles, descriptionModele } from '../lib/data/modeles-devis';
 
 /**
  * Composant de sélection de templates de devis par métier (unifié)
@@ -139,7 +139,7 @@ export default function TemplateSelector({
                             </span>
                           </div>
                           <p className={`font-medium ${textPrimary}`}>{result.nom}</p>
-                          <p className={`text-xs ${textMuted}`}>{result.description}</p>
+                          <p className={`text-xs ${textMuted}`}>{descriptionModele(result, franchise)}</p>
                         </div>
                       ))}
                     </div>
@@ -246,7 +246,7 @@ export default function TemplateSelector({
                   >
                     <div className="flex-1">
                       <p className={`font-medium ${textPrimary}`}>{template.nom}</p>
-                      <p className={`text-sm ${textMuted}`}>{template.description}</p>
+                      <p className={`text-sm ${textMuted}`}>{descriptionModele(template, franchise)}</p>
                       <div className="flex items-center gap-3 mt-2">
                         <span className={`text-xs px-2 py-0.5 rounded bg-surface-2 text-encre-2`}>
                           {template.lignes.length} lignes

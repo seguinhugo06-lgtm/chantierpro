@@ -6,7 +6,7 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { sansTva } from '../lib/franchiseTva';
 import { X, ChevronLeft, ChevronRight, Search, Check, FileText, TrendingUp, Minus, Plus, Trash2, FolderOpen, UserPlus, Clock, RotateCcw } from 'lucide-react';
-import { getMetiersWithModeles, getModelesByMetier, prepareModeleLignes, calculateModeleTotal, calculateModeleMarge, searchModeles } from '../lib/data/modeles-devis';
+import { getMetiersWithModeles, getModelesByMetier, prepareModeleLignes, calculateModeleTotal, calculateModeleMarge, searchModeles, descriptionModele } from '../lib/data/modeles-devis';
 import { formatClientName } from '../lib/formatters';
 import Modal, { ModalTitle } from './ui/Modal';
 import { Bouton } from './ui/Bouton';
@@ -567,7 +567,7 @@ export default function DevisExpressModal({
                       <div className="flex items-start gap-3" onClick={() => { if (qty === 0) handleSelectModele(modele); }}>
                         <div className="flex-1 cursor-pointer">
                           <p className={`font-semibold ${textPrimary}`}>{modele.nom}</p>
-                          <p className={`text-sm ${textMuted} mt-1`}>{modele.description}</p>
+                          <p className={`text-sm ${textMuted} mt-1`}>{descriptionModele(modele, franchise)}</p>
                           <div className="flex items-center gap-4 mt-2">
                             <span className={`text-xs px-2 py-1 rounded-full bg-surface-2 ${textMuted}`}>
                               {modele.lignes.length} lignes
