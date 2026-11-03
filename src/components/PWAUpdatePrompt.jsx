@@ -127,8 +127,39 @@ export default function PWAUpdatePrompt({ syncHandlers = {}, className, isDark: 
   const stepBg = 'bg-surface-2';
   const closeBtnHover = 'hover:bg-surface-2';
 
+  // Retour de ramoneurs (« scroll bug paramètre ramonage sur navigateur et pas sur app », nov. 2026) : dans un
+  // navigateur (jamais dans l'app installée), la carte « Installer » est posée en `fixed` au-dessus du bas de page ; en
+  // défilant jusqu'au bout, les derniers champs restaient dessous (Paramètres › Ramonage : « Chaudière », « Autre »).
+  // Tant qu'une carte est affichée, le bas de page gagne sa hauteur : tout le contenu peut passer au-dessus d'elle.
+  const pileRef = React.useRef(null);
+  React.useEffect(() => {
+    const pile = pileRef.current;
+    if (!pile || typeof ResizeObserver === 'undefined') return undefined;
+    const body = document.body;
+    const appliquer = () => {
+      const h = pile.getBoundingClientRect().height;
+      if (h > 0) {
+        // Marge du bas de la carte (4,5 rem au téléphone, au-dessus de la barre d'onglets déjà réservée ; 1 rem au
+        // bureau) + un peu d'air : 2 rem couvrent les deux cas
+        body.style.paddingBottom = `calc(${Math.ceil(h)}px + 2rem)`;
+        body.classList.add('bg-fond');
+      } else {
+        body.style.paddingBottom = '';
+        body.classList.remove('bg-fond');
+      }
+    };
+    const obs = new ResizeObserver(appliquer);
+    obs.observe(pile);
+    appliquer();
+    return () => {
+      obs.disconnect();
+      body.style.paddingBottom = '';
+      body.classList.remove('bg-fond');
+    };
+  }, []);
+
   return (
-    <div className={cn('fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom))] md:bottom-4 left-4 right-4 z-50 flex flex-col gap-3 sm:left-auto sm:right-4 sm:w-96', className)}>
+    <div ref={pileRef} data-invite-pwa="" className={cn('fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom))] md:bottom-4 left-4 right-4 z-50 flex flex-col gap-3 sm:left-auto sm:right-4 sm:w-96', className)}>
       <AnimatePresence mode="popLayout">
         {/* Offline indicator */}
         {isOffline && (
