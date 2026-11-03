@@ -164,7 +164,21 @@ Vérification « standard » de d59f352
 ✓ Tout est vert — niveau « standard ».
 ```
 
-- `npm run verifier -- --complet` sur `d59f352` : tests 1219 sur 1219 ✓, lint 0 erreur ✓, smoke ✓, build ✓, banc de migrations ✓ ; les parcours tournaient encore au moment du push (résultat ajouté plus bas s'il arrive à temps).
+- `npm run verifier -- --complet` sur `d59f352` (arbre propre), enregistré vert dans `audit-ui/derniere-verification.json` (3 nov. 2026, 17 h 15 UTC) :
+
+```
+Vérification « complet » de d59f352
+
+  ✓ Tests (46.7 s) — 1219 passed (1219)
+  ✓ Lint (0 erreur) (5.8 s) — 241 problems (0 errors, 241 warnings)
+  ✓ Smoke (29.2 s)
+  ✓ Build (27.7 s)
+  ✓ Banc de migrations (5.1 s)
+  ✓ Parcours (navigateur) (2055.8 s)
+  ✓ Audit d’interface (382.2 s)
+```
+
+  Les 4 parcours rouges du premier rapport passent : la session locale les a réparés sur `main`, fusionné ici. Les commits suivants ne touchent que ce rapport.
 - Relecture `juriste-btp` (courte, sur les textes appliqués) : **OK sur les 6 points**. Le seul texte nouveau, l'alerte au-dessus de 5 %, est jugé fidèle à l'art. 1er de la loi n° 71-584. Le juriste n'a pas rouvert les textes officiels : il s'est fié aux citations de son avis du 3 nov.
 
 ### Ce qui reste (tâche `franchise-restes`, sauf mention)
@@ -207,8 +221,8 @@ En franchise, ces écrans écrivent encore « HT » ou « TTC » :
 3. Le texte de la retenue de garantie suit la loi ; un taux au-dessus de 5 % est signalé.
 4. Les citations du CGI sont justes (art. 289, I-4, I-5 et V ; art. 283, 3).
 5. Deux appels oubliés corrigés (Ctrl+H, bibliothèque) ; un avertissement ESLint en moins.
-6. Tests : 1219 sur 1219, contre-essai fait. Vérification standard verte.
+6. Tests : 1219 sur 1219, contre-essai fait. Vérification complète verte (parcours et audit d'interface compris).
 7. Juriste : OK sur les 6 points.
 8. Restes listés avec fichier et ligne, dans les tâches `franchise-restes`, `mouvements-tva` et `situations-conformes`.
 9. Quatre décisions pour Hugo : la formule « hors taxes et toutes taxes comprises », la situation « validée », la colonne « TVA », fournitures et main-d'œuvre.
-10. La session locale relance la vérification complète et livre.
+10. La session locale relit, revérifie sur le commit final et livre.
