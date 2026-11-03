@@ -145,7 +145,7 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mod
       <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${quantite(l.quantite)}</td>
       <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${h(l.unite || 'unité')}</td>
       <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:right">${euros(pu)}</td>
-      <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${isMicro ? '-' : pourcent(l.tva !== undefined ? l.tva : tauxTvaDocument(doc, entreprise))}</td>
+      ${isMicro ? '' : `<td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${pourcent(l.tva !== undefined ? l.tva : tauxTvaDocument(doc, entreprise))}</td>`}
       <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:right;font-weight:600;${total < 0 ? 'color:#dc2626;' : ''}">${euros(total)}</td>
     </tr>`;
   };
@@ -161,11 +161,11 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mod
     ? lotSections.map(s => {
         const sub = s.lignes.reduce((sum, l) => sum + getLineTotal(l), 0);
         const header = s.titre
-          ? `<tr><td colspan="6" style="padding:14px 8px 6px;font-weight:700;font-size:10.5pt;color:${color};border-bottom:2px solid ${color}">${h(s.titre)}</td></tr>`
+          ? `<tr><td colspan="${isMicro ? 5 : 6}" style="padding:14px 8px 6px;font-weight:700;font-size:10.5pt;color:${color};border-bottom:2px solid ${color}">${h(s.titre)}</td></tr>`
           : '';
         const rows = s.lignes.map(renderRow).join('');
         const subtotal = s.titre
-          ? `<tr><td colspan="5" style="padding:6px 8px;text-align:right;font-size:8.5pt;color:#64748b;font-style:italic">Sous-total ${h(s.titre)}</td><td style="padding:6px 8px;text-align:right;font-weight:700;font-size:9pt">${euros(sub)}</td></tr>`
+          ? `<tr><td colspan="${isMicro ? 4 : 5}" style="padding:6px 8px;text-align:right;font-size:8.5pt;color:#64748b;font-style:italic">Sous-total ${h(s.titre)}</td><td style="padding:6px 8px;text-align:right;font-weight:700;font-size:9pt">${euros(sub)}</td></tr>`
           : '';
         return header + rows + subtotal;
       }).join('')
@@ -300,11 +300,11 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mod
   <table>
     <thead>
       <tr>
-        <th style="width:40%">Description</th>
+        <th style="width:${isMicro ? 50 : 40}%">Description</th>
         <th style="width:10%">Qté</th>
         <th style="width:10%">Unité</th>
         <th style="width:15%">${libellesColonnesPrix(isMicro).pu}</th>
-        <th style="width:10%">TVA</th>
+        ${isMicro ? '' : '<th style="width:10%">TVA</th>'}
         <th style="width:15%">${libellesColonnesPrix(isMicro).total}</th>
       </tr>
     </thead>

@@ -46,6 +46,8 @@ Correction dans un bloc commun de `src/lib/totauxDocument.js` :
 
 Ce bloc est utilisé par `devisHtmlBuilder.js` et par le générateur intégré de `DevisPage.jsx`. La mention « TVA non applicable, article 293 B du Code Général des Impôts » reste.
 
+**Colonne « TVA » retirée en franchise** (accord d'Hugo du 3 nov. 2026, sur la recommandation du juriste). Elle est retirée des trois générateurs : l'en-tête, le tiret de chaque ligne, et une colonne de moins pour les titres et sous-totaux de lot. « Description » passe de 40 à 50 % de la largeur. Hors franchise, la colonne reste.
+
 **Facture de situation** (`buildSituationFactureHtml`, fonction éteinte par `FONCTIONS.facturesSituation`). Elle ne tenait aucun compte de la franchise : « PU HT », « TVA 10 % », « Montant situation TTC », et pas de mention 293 B. En franchise maintenant :
 - TVA à 0 pour une situation en brouillon ;
 - libellés sans « HT » ;
@@ -64,6 +66,7 @@ Une situation validée ou facturée qui porte de la TVA se réimprime telle quel
 | `npm run verifier` (standard, avant commit) | Lint 0 erreur (242 avertissements), smoke ✓, build ✓. Tests : 1207 sur 1208, le seul échec était mon test (espace insécable), corrigé et relancé : 9 sur 9 |
 | `npm run verifier -- --complet` sur le commit `ab4faef` | Tests 1208 sur 1208 ✓, lint 0 erreur ✓, smoke ✓, build ✓, banc de migrations ✓. Le délai de 30 minutes de la session a coupé la chaîne pendant les parcours : ils ont été relancés à part |
 | `npm run parcours` (tous, relancés à part) | Tous réussis sauf **4 en échec, qui échouent à l'identique sur `main` (`adbf08d`) sans ce travail** : rejoués dans une copie de `main`. Ce sont « signature sur place » ×2 (bouton « Faire signer » introuvable), « trésorerie : pas de seuil d'alerte » et « équipe : une seule rangée d'onglets ». Ils sont étrangers à cette mission et à signaler à la session locale |
+| Colonne « TVA » (après l'accord d'Hugo) | 10 tests sur 10 ✓ (en-tête absent, Description à 50 %, lots sur 5 et 4 colonnes ; SARL : colonne présente). Contre-essai : sans le changement, 2 en échec. Parcours `npm run parcours -- "aperçu"` : 4 sur 4 ✓, dont l'aperçu réel du générateur de `DevisPage` (colonne absente en micro-entreprise, présente en SARL) |
 | `node scripts/audit-ui.cjs` | **0 défaut**, 80 combinaisons |
 
 ## 3. Ce qui reste (recherche complète de `HT` / `TTC` dans `src/components`)
@@ -91,7 +94,7 @@ Une situation validée ou facturée qui porte de la TVA se réimprime telle quel
 
 ## 4. Décisions pour Hugo
 
-1. **Colonne « TVA » des documents imprimés en franchise**. Elle reste, avec « - » sur chaque ligne. Le juriste recommande de la retirer : ce n'est pas une obligation, mais elle peut faire croire au client qu'une TVA est due. Il faut le faire dans les deux générateurs. Oui ou non ?
+1. ~~**Colonne « TVA » des documents imprimés en franchise**~~. **Tranché le 3 nov. 2026 : la retirer.** C'est fait (voir § 1).
 2. **Une situation « validée » a-t-elle pu être envoyée au client ?** Par prudence, elle est traitée comme une pièce émise : avec de la TVA, elle se réimprime telle quelle.
 
 ## 5. Textes soumis au juriste (`juriste-btp`, 3 nov. 2026)
@@ -120,6 +123,6 @@ Textes nouveaux : « Prix unitaire », « Total », « Total avant remise », «
 5. Preuve : 9 tests sur 5 écrans et les documents, micro-entreprise et SARL. Un contre-essai sans la correction : 8 échecs.
 6. Un parcours navigateur ouvre l'aperçu réel : 10 vérifications réussies.
 7. Le juriste valide. Ses trois retouches sont appliquées.
-8. Décision pour Hugo : retirer la colonne « TVA » des PDF en franchise (recommandé).
+8. La colonne « TVA » des PDF est retirée en franchise (accord d'Hugo), et c'est testé avec un contre-essai.
 9. Vérification : tests, lint, build, banc et audit d'interface (0 défaut) au vert. 4 parcours sont rouges, mais déjà rouges sur `main`.
 10. Restent hors périmètre : trésorerie (calcul), ramonage, ouvrages, exports CSV, historique.

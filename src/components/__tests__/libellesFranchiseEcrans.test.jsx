@@ -124,9 +124,25 @@ describe('documents imprimés en franchise', () => {
     const micro = texte(buildDevisHtml({ doc, client, entreprise: MICRO, couleur: '#12336F' }));
     expect(micro).not.toMatch(HT_OU_TTC);
     expect(micro).toContain('TVA non applicable, article 293 B du Code Général des Impôts');
+    // Pas de colonne « TVA » en franchise (accord d'Hugo, 3 nov. 2026), ni d'en-tête ni de tiret par ligne
+    const htmlMicro = buildDevisHtml({ doc, client, entreprise: MICRO, couleur: '#12336F' });
+    expect(htmlMicro).not.toMatch(/<th[^>]*>TVA<\/th>/);
+    expect(htmlMicro).toMatch(/<th[^>]*width:50%[^>]*>Description<\/th>/);
     const sarl = texte(buildDevisHtml({ doc: { ...doc, lignes: [{ ...doc.lignes[0], tva: 20 }], tva: 240, total_ttc: 1440 }, client, entreprise: SARL, couleur: '#12336F' }));
     expect(sarl).toContain('PU HT');
     expect(sarl).toContain('Total TTC');
+    expect(buildDevisHtml({ doc: { ...doc, lignes: [{ ...doc.lignes[0], tva: 20 }], tva: 240, total_ttc: 1440 }, client, entreprise: SARL, couleur: '#12336F' }))
+      .toMatch(/<th[^>]*>TVA<\/th>/);
+  });
+
+  it('facture à lots (devisHtmlBuilder) : en franchise, titres et sous-totaux de lot couvrent une colonne de moins', () => {
+    const aLots = { ...doc, sections: [{ id: 's1', titre: 'Cuisine', lignes: doc.lignes }] };
+    const micro = buildDevisHtml({ doc: aLots, client, entreprise: MICRO, couleur: '#12336F' });
+    expect(micro).toContain('Cuisine');
+    expect(micro).toContain('colspan="5"'); // titre du lot
+    expect(micro).toContain('colspan="4"'); // libellé du sous-total
+    expect(micro).not.toContain('colspan="6"');
+    expect(texte(micro)).not.toMatch(HT_OU_TTC);
   });
 
   it('facture de situation : ni HT, ni TTC, ni TVA facturée en franchise ; mention 293 B', () => {

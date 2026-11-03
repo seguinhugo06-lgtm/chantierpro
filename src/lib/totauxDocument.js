@@ -99,6 +99,8 @@ export function acompteEtSolde(totalTTC, pourcentage) {
  * En-têtes des colonnes de prix du tableau des prestations imprimé. En franchise en base de TVA (art. 293 B du CGI),
  * ni « HT » ni « TTC » (décision du 24 oct. 2026, docs/avis-juriste-2026-10-24-devis.md Q1) : « Prix unitaire » et
  * « Total », comme la fiche de devis à l'écran. Partagé par les deux générateurs (devisHtmlBuilder et DevisPage).
+ * En franchise, les générateurs n'impriment pas non plus la colonne « TVA » : un tiret par ligne laissait croire au
+ * client qu'une TVA pouvait être due (relecture juriste-btp et accord d'Hugo, 3 nov. 2026). La mention 293 B suffit.
  */
 export function libellesColonnesPrix(isMicro = false) {
   return isMicro ? { pu: 'Prix unitaire', total: 'Total' } : { pu: 'PU HT', total: 'Total HT' };

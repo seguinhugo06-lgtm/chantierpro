@@ -687,12 +687,17 @@ module.exports = [
         const apercu = await actionFiche(page, attendre, ['Aperçu', 'Aperçu du document']);
         verifier(apercu, `${forme} : l'aperçu s'ouvre`);
         await attendre(1200);
-        const imprime = await page.evaluate(() => {
+        let imprime = await page.evaluate(() => {
           const f = [...document.querySelectorAll('iframe')].find((x) => (x.getAttribute('srcdoc') || '').length > 100);
           const lu = new DOMParser().parseFromString(f?.getAttribute('srcdoc') || '', 'text/html');
           lu.querySelectorAll('style, script').forEach((x) => x.remove());
-          return (lu.body?.textContent || '').replace(/\s+/g, ' ');
+          const entetes = [...lu.querySelectorAll('th')].map((th) => th.textContent.trim());
+          return { texte: (lu.body?.textContent || '').replace(/\s+/g, ' '), entetes };
         });
+        const { entetes } = imprime;
+        // Colonne « TVA » : seulement hors franchise (accord d'Hugo, 3 nov. 2026)
+        verifier(franchise ? !entetes.includes('TVA') : entetes.includes('TVA'), `${forme} : colonne « TVA » ${franchise ? 'absente' : 'présente'} (${entetes.join(' | ')})`);
+        imprime = imprime.texte;
         verifier(/Pose prise 2P\+T/.test(imprime), `${forme} : l'aperçu montre le devis (${imprime.slice(0, 120)})`);
         if (franchise) {
           const ht = imprime.match(/.{0,30}(?<![A-Za-zÀ-ÿ])(HT|TTC)(?![A-Za-zÀ-ÿ]).{0,30}/);
