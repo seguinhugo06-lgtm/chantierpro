@@ -140,3 +140,106 @@ Tous les autres parcours réussissent, dont les deux de l'Administratif.
 - Parcours navigateur réussi ; le contre-essai échoue bien sans la correction.
 - Limite : les sites officiels étaient bloqués, les dates viennent d'extraits de recherche et sont à relire en local.
 - Décision pour Hugo : garder les réponses dans la fiche entreprise (migration) ou sur l'appareil.
+
+## Corrections du 3 nov.
+
+Appliquées sur `cloud/administratif`, après la fusion de `origin/main` (`a9b2e86`). Aucune migration, rien sur `main`.
+
+### Commits
+
+- `686bc53` : le modèle de devis « Chaudière gaz à condensation » passe de 5,5 % à 20 % de TVA (7 lignes, plus la prestation « Remplacement de chaudière gaz à condensation murale ») ; `docs/metier-btp.md` §4 est corrigé.
+- `e6c504a` : les textes et les sources du juriste, et les défauts de la relecture de code.
+- `c406c36` (parcours) et `a8b3d02` (ce rapport, sections Risques et Décisions).
+
+### Points du juriste (à corriger)
+
+1. **Sources** : `microDeclaration` est remplacé par `microDates` (Légifrance) et `microWeekend` (service-public). La DSN pointe vers net-entreprises.fr. Ajouts : `cfeMensualisation`, `tvaAcompteDecembre` et `reportJourOuvrable`. `CONSULTE` reste au `2026-11-03`. L'en-tête du module est récrit — `e6c504a`.
+2. **NOTE_CA3** : texte recopié mot pour mot — `e6c504a`.
+3. **Acompte CA12 de décembre** : texte recopié mot pour mot, avec `SOURCES.tvaAcompteDecembre` — `e6c504a`.
+4. **CFE** : le texte du paiement 2026 est recopié mot pour mot. Pour la CFE 2027, « à confirmer » est retiré et la source devient la fiche CET-IFER — `e6c504a`.
+5. **Rythme Urssaf** : la ligne du 31 janv. 2027 reste. « À confirmer » est retiré, le texte cite R613-7 — `e6c504a`.
+6. **Note de week-end (micro)** : texte recopié mot pour mot. Les dates citent `microDates`, la note cite `microWeekend` (2e lien sous l'échéance) — `e6c504a`.
+7. **Facture électronique** : la ligne « émission » et la FAQ sont corrigées. Dans la ligne, la dernière phrase garde « pas encore » (décision 2 d'Hugo). La FAQ dit « Mallettico n'en est pas une » — `e6c504a`.
+8. **Solde d'IS** : la ligne reste datée du 15 mai. Le texte annonce le report au mardi 18 mai, avec 199-0 en 2e source — `e6c504a`.
+9. **DSN** : nouvelle question pour une société (dirigeant assimilé salarié). EI et micro gardent « Avez-vous des salariés ? ». Le texte de la DSN est recopié mot pour mot — `e6c504a`.
+10. **FAQ TVA en rénovation** : texte recopié mot pour mot — `e6c504a`.
+11. **`dateFin: '2027-06-30'`** sur la déclaration de revenus. `prochainesEcheances` filtre sur `(dateFin || dateTri) >= jour`, ce qui sert aussi aux 90 jours du calendrier. Test aux 20 mai, 4 juin et 1er juillet 2027 — `e6c504a`.
+12. **Question « Votre société est soumise à… »** : texte recopié mot pour mot — `e6c504a`.
+13. **Modèle chaudière gaz** à 20 % et `metier-btp.md` §4 — `686bc53`. **Hugo : tout devis déjà émis à partir de ce modèle est à revoir** (5,5 % facturé, 20 % dû).
+
+### Défauts de la relecture de code
+
+1. Date de fin de la déclaration de revenus : voir le point 11 du juriste.
+2. « Changer mes réponses » ramène à la vue d'ensemble, sur les questions. Le parcours vérifie ce clic.
+3. Régime de TVA : `useRegimeTvaTresorerie` lit le réglage de la Trésorerie (`tresorerie_settings.regime_tva`, `error` testé ; en démo, le réglage gardé sur l'appareil). `franchise` → aucune échéance de TVA, `mensuel` → CA3 chaque mois : la question n'est plus posée. `trimestriel` (valeur par défaut) ou aucun réglage → la question reste. Tant que la lecture n'est pas finie, la question n'apparaît pas. Si la lecture échoue, la question est posée. La décision n° 1 du rapport est corrigée.
+4. Formes juridiques : le module utilise maintenant `estEntrepreneurIndividuel`, `estEirl` et `estSociete`. Une SCI ou une SCM affiche « Forme juridique non prise en charge ».
+5. Le message renvoie à « Paramètres › Mon entreprise › Identité ».
+6. Ajout de « (réponses gardées sur cet appareil) ».
+7. Solde d'IS : la date reste le 15 mai et le texte le dit clairement (le juriste l'emporte).
+8. Note de week-end : remplacée par le texte du juriste, qui l'emporte.
+9. Les liens vers les sources sont des boutons qui appellent `ouvrirLienExterne(...).catch(captureException)`.
+10. Impôt de la société : voir le point 12 du juriste.
+11. DSN : voir le point 9 du juriste.
+12. La réception de la facture électronique affiche « En vigueur » au lieu de « Dépassée » (`enVigueur`).
+13. `consulte` vaut désormais une vraie date de lecture (point 1 du juriste).
+
+### Preuves
+
+- `npx vitest run src/lib/__tests__/echeancesAdmin.test.js` : 23 tests réussis, dont 6 nouveaux.
+  - Réglage de la Trésorerie : franchise, mensuel, trimestriel par défaut.
+  - Formes juridiques : « Entreprise individuelle », SCI, SASU.
+  - Libellé de la question des salariés.
+  - Déclaration de revenus les 20 mai, 4 juin et 1er juillet 2027.
+  - Solde d'IS et CFE 2027.
+- **Contre-essai `dateFin`** : avec l'ancien filtre, le test de la déclaration de revenus échoue (1 échec sur 23).
+- **Parcours `administratif`** : 15 vérifications réussies. Il clique « Changer mes réponses » et vérifie que les questions reviennent. Il vérifie aussi que la source pointe vers un site officiel.
+- **Contre-essai** : avec l'ancien bouton (`enregistrerReponses({})` seul), le parcours échoue : « Vérification échouée : « Changer mes réponses » ramène aux questions ».
+- `npm run verifier -- --complet` sur `a8b3d02`, sortie recopiée :
+
+```
+Vérification « complet » de a8b3d02
+
+  ✓ Tests (50.2 s) — 1227 passed (1227)
+  ✓ Lint (0 erreur) (7.0 s) — 241 problems (0 errors, 241 warnings)
+  ✓ Smoke (31.5 s)
+  ✓ Build (30.4 s)
+  ✓ Banc de migrations (5.3 s)
+  ✓ Parcours (navigateur) (2124.2 s)
+  ✓ Audit d’interface (386.7 s)
+
+✓ Tout est vert — niveau « complet ».
+```
+
+Les 4 parcours en échec du premier rapport réussissent désormais : la fusion de `main` a apporté la correction des dates de démo. Un premier lancement a été arrêté au bout de 30 minutes par la limite de la session : le parcours Administratif cherchait le bouton par un libellé incomplet. Le parcours a été corrigé (`c406c36`), puis le contrôle complet relancé : c'est la sortie ci-dessus.
+
+### Décisions d'Hugo (non appliquées)
+
+1. **Franchise de TVA, toutes formes** (lien avec `franchise-reglage` et `Q-donnees-locales`). Le juriste propose d'ajouter « Je ne facture pas de TVA (franchise en base) » à la question TVA, et de la poser à toutes les formes, micro-entreprise comprise. **Recommandé.** En attendant, la branche lit le réglage explicite de la Trésorerie. Le texte du juriste pour les Risques : « Une micro-entreprise n’est pas toujours en franchise de TVA : au-delà de 37 500 € de services (41 250 € dans l’année) ou de 85 000 € de ventes (93 500 € dans l’année), ou sur option, elle facture la TVA et dépose des CA3. Dans l’app, elle ne voit pas ces échéances. »
+2. **« Mallettico ne transmet pas encore vos factures… »** : le juriste recommande de retirer « encore », sauf engagement daté sur une intégration. **Recommandé : retirer.** Aujourd'hui, la ligne « émission » garde « encore ».
+3. **Déclaration 1330-CVAE** (chiffre d'affaires au-dessus de 152 500 € HT) : le juriste a écrit la ligne à ajouter pour les entreprises au réel et les sociétés (`cvae-1330-2027`, 4 mai 2027, « Selon votre situation »). **Recommandé : l'ajouter.**
+4. Toujours ouvertes : où garder les réponses (appareil ou base) ; vrais rappels par e-mail.
+
+### Textes nouveaux soumis au juriste
+
+Ces trois phrases ne sont pas réglementaires, mais elles sont nouvelles :
+- « Forme juridique non prise en charge (SCI) : seules les dates communes à toutes les entreprises s’affichent. »
+- « (réponses gardées sur cet appareil) »
+- « En vigueur »
+
+Je n'ai pas lancé d'agent juriste dessus : tous les autres textes sont recopiés de sa relecture. À relire en local.
+
+### Risques
+
+- Le régime de TVA n'est lu qu'au réglage **explicite** de la Trésorerie. Une entreprise qui garde « trimestriel » par défaut se voit encore poser la question, et les deux réponses peuvent différer.
+- Une SAS dont le président n'est pas rémunéré répond « Non » : c'est juste tant qu'aucune DSN n'a été déposée. Après une première DSN, elle reste due chaque mois (le texte de la DSN le dit).
+
+### Résumé
+
+- Les 13 corrections du juriste sont appliquées mot pour mot, sources comprises.
+- Les 13 défauts de relecture sont corrigés ; pour 7 et 8, c'est la version du juriste qui s'applique.
+- Bug réel hors branche : le modèle de devis chaudière gaz appliquait 5,5 % au lieu de 20 %. Il est corrigé. **Hugo doit revoir les devis déjà émis avec ce modèle.**
+- La déclaration de revenus reste affichée jusqu'au 30 juin 2027.
+- « Changer mes réponses » ramène aux questions (parcours, avec contre-essai).
+- Un choix explicite de la Trésorerie (franchise, mensuel) n'est plus redemandé.
+- `npm run verifier -- --complet` : tout vert sur `a8b3d02`.
+- Trois décisions attendent Hugo : franchise pour toutes les formes, « pas encore », CVAE.
