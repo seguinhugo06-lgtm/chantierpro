@@ -20,26 +20,44 @@ const doc = {
 const base = { nom: 'Chauffage Exemple', siret: '12345678900011', adresse: '1 rue A\n33000 Bordeaux', formeJuridique: 'SARL' };
 
 describe('qualifications imprimées', () => {
-  it('le RGE saisi dans Paramètres donne une ligne, avec organisme et validité', () => {
-    expect(lignesQualifications({ rge: 'E-12345', rgeOrganisme: 'Qualibat', rgeValidite: '2027-06-30' }, AUJ))
-      .toEqual(['Entreprise RGE (Reconnu garant de l\'environnement) — N° E-12345 (Qualibat) — Valide jusqu\'au 30/06/2027']);
-    expect(lignesQualifications({ rge: 'E-1', rgeOrganisme: 'Qualibat', rgeDomaine: 'Pompe à chaleur', rgeValidite: '2027-06-30' }, AUJ)[0])
-      .toContain('(Qualibat) — Domaine : Pompe à chaleur — Valide');
+  // Mentions exigées par l'Anah (guide de juillet 2025, p. 31) : intitulé, organisme, numéro (avis juriste du 3 nov. 2026)
+  it('le RGE saisi dans Paramètres donne une ligne : intitulé, organisme, numéro et validité', () => {
+    expect(lignesQualifications({ rge: 'E-12345', rgeOrganisme: 'Qualibat', rgeDomaine: 'QualiPAC chauffage et eau chaude sanitaire', rgeValidite: '2027-06-30' }, AUJ))
+      .toEqual(['Entreprise RGE (Reconnu garant de l\'environnement) — Qualification : QualiPAC chauffage et eau chaude sanitaire — Qualibat — N° E-12345 — Valide jusqu\'au 30/06/2027']);
+  });
+
+  it('sans intitulé ou sans organisme, le RGE n’est pas imprimé et l’écran dit pourquoi', () => {
+    const e = { rge: 'E-1', rgeOrganisme: 'Qualibat', rgeDomaine: 'QualiPAC', rgeValidite: '2027-06-30' };
+    expect(lignesQualifications({ ...e, rgeDomaine: '' }, AUJ)).toEqual([]);
+    expect(raisonRgeNonImprime({ ...e, rgeDomaine: ' ' }, AUJ)).toMatch(/intitulé/);
+    expect(lignesQualifications({ ...e, rgeOrganisme: '' }, AUJ)).toEqual([]);
+    expect(raisonRgeNonImprime({ ...e, rgeOrganisme: '' }, AUJ)).toMatch(/organisme/);
+  });
+
+  it('une date de fin illisible (import) n’est ni imprimée ni prise pour valide', () => {
+    const e = { rge: 'E-1', rgeOrganisme: 'Qualibat', rgeDomaine: 'QualiPAC' };
+    for (const v of ['30/06/2027', '2027-02-30', 'bientôt']) {
+      expect(lignesQualifications({ ...e, rgeValidite: v }, AUJ)).toEqual([]);
+      expect(raisonRgeNonImprime({ ...e, rgeValidite: v }, AUJ)).toMatch(/pas lisible/);
+    }
+    expect(lignesQualifications({ labels: [{ actif: true, nom: 'QualiPAC', numero: 'QP-9', dateExpiration: '31/12/2099' }] }, AUJ)).toEqual([]);
   });
 
   it('sans date de fin, le RGE n’est pas imprimé et l’écran demande la date (avis juriste du 3 nov. 2026)', () => {
-    expect(lignesQualifications({ rge: 'E-12345', rgeOrganisme: 'Qualibat' }, AUJ)).toEqual([]);
-    expect(raisonRgeNonImprime({ rge: 'E-12345', rgeOrganisme: 'Qualibat' }, AUJ)).toMatch(/date de fin/);
+    expect(lignesQualifications({ rge: 'E-12345', rgeOrganisme: 'Qualibat', rgeDomaine: 'QualiPAC' }, AUJ)).toEqual([]);
+    expect(raisonRgeNonImprime({ rge: 'E-12345', rgeOrganisme: 'Qualibat', rgeDomaine: 'QualiPAC' }, AUJ)).toMatch(/date de fin/);
   });
 
-  it('sans numéro, rien ; « Autre » n’est pas imprimé comme organisme', () => {
+  it('sans numéro, rien ; « Autre » est retiré de la liste et n’imprime rien (organisme exigé par l’Anah)', () => {
     expect(lignesQualifications({ rgeOrganisme: 'Qualibat' }, AUJ)).toEqual([]);
-    expect(lignesQualifications({ rge: 'X1', rgeOrganisme: 'Autre', rgeValidite: '2027-01-01' }, AUJ))
-      .toEqual(['Entreprise RGE (Reconnu garant de l\'environnement) — N° X1 — Valide jusqu\'au 01/01/2027']);
+    expect(ORGANISMES_RGE).not.toContain('Autre');
+    const e = { rge: 'X1', rgeOrganisme: 'Autre', rgeDomaine: 'QualiPAC', rgeValidite: '2027-01-01' };
+    expect(lignesQualifications(e, AUJ)).toEqual([]);
+    expect(raisonRgeNonImprime(e, AUJ)).toMatch(/organisme/);
   });
 
   it('une qualification expirée n’est pas imprimée, et l’écran le dit', () => {
-    const e = { rge: 'E-12345', rgeOrganisme: 'Qualibat', rgeValidite: '2026-11-02' };
+    const e = { rge: 'E-12345', rgeOrganisme: 'Qualibat', rgeDomaine: 'QualiPAC', rgeValidite: '2026-11-02' };
     expect(lignesQualifications(e, AUJ)).toEqual([]);
     expect(raisonRgeNonImprime(e, AUJ)).toMatch(/plus imprimé/);
     // valide jusqu'au jour même
@@ -54,26 +72,26 @@ describe('qualifications imprimées', () => {
   });
 
   it('mentionRGE à false coupe tout ; l’ancien format `labels` exige un numéro', () => {
-    expect(lignesQualifications({ rge: 'E-1', rgeValidite: '2027-01-01', mentionRGE: false }, AUJ)).toEqual([]);
+    expect(lignesQualifications({ rge: 'E-1', rgeOrganisme: 'Qualibat', rgeDomaine: 'QualiPAC', rgeValidite: '2027-01-01', mentionRGE: false }, AUJ)).toEqual([]);
     expect(lignesQualifications({ labels: [{ actif: true, nom: 'QualiPAC' }, { actif: true, nom: 'QualiPAC', numero: 'QP-9' }] }, AUJ))
       .toEqual(['QualiPAC N°QP-9']);
   });
 
   it('devisHtmlBuilder imprime le RGE, échappé', () => {
-    const html = buildDevisHtml({ doc, client, entreprise: { ...base, rge: 'E-<b>1</b>', rgeOrganisme: 'Qualifelec', rgeValidite: '2027-06-30' }, couleur: '#12336F' });
-    expect(html).toContain('N° E-&lt;b&gt;1&lt;/b&gt; (Qualifelec)');
+    const html = buildDevisHtml({ doc, client, entreprise: { ...base, rge: 'E-<b>1</b>', rgeOrganisme: 'Qualifelec', rgeDomaine: 'IRVE', rgeValidite: '2027-06-30' }, couleur: '#12336F' });
+    expect(html).toContain('Qualification : IRVE — Qualifelec — N° E-&lt;b&gt;1&lt;/b&gt;');
     expect(buildDevisHtml({ doc, client, entreprise: base, couleur: '#12336F' })).not.toContain('Entreprise RGE');
   });
 
   it('la validité s’apprécie à la date du document, pas du jour de la réimpression', () => {
-    const e = { ...base, rge: 'E-1', rgeOrganisme: 'Qualibat', rgeValidite: '2026-12-31' };
+    const e = { ...base, rge: 'E-1', rgeOrganisme: 'Qualibat', rgeDomaine: 'QualiPAC', rgeValidite: '2026-12-31' };
     expect(buildDevisHtml({ doc: { ...doc, date: '2026-11-03' }, client, entreprise: e, couleur: '#12336F' })).toContain('Entreprise RGE');
     expect(buildDevisHtml({ doc: { ...doc, date: '2027-01-05' }, client, entreprise: e, couleur: '#12336F' })).not.toContain('Entreprise RGE');
   });
 
   it('pdfHtmlBuilder (documents rapides) imprime le RGE', () => {
-    expect(buildDocumentHTML(doc, client, null, { ...base, rge: 'E-12345', rgeOrganisme: 'Qualit\'EnR', rgeValidite: '2027-06-30' }))
-      .toContain('N° E-12345 (Qualit&#39;EnR)');
+    expect(buildDocumentHTML(doc, client, null, { ...base, rge: 'E-12345', rgeOrganisme: 'Qualit\'EnR', rgeDomaine: 'QualiPAC', rgeValidite: '2027-06-30' }))
+      .toContain('Qualification : QualiPAC — Qualit&#39;EnR — N° E-12345');
   });
 });
 

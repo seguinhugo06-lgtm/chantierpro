@@ -136,7 +136,7 @@ module.exports = [
     async executer({ ouvrir, attendre, verifier }) {
       for (const [fin, imprime] of [['2099-12-31', true], ['2000-01-01', false]]) {
         const id = `ent-rge-${fin.slice(0, 4)}`;
-        const reglages = { rge: 'E-99999', rgeOrganisme: 'Qualibat', rgeValidite: fin, rgeDomaine: 'Pompe à chaleur' };
+        const reglages = { rge: 'E-99999', rgeOrganisme: 'Qualibat', rgeValidite: fin, rgeDomaine: 'QualiPAC chauffage et eau chaude sanitaire' };
         const ligne = { ...FICHE_CAPITAL, id, forme_juridique: 'SARL', settings_json: { reglages } };
         const app = { ...FICHE_CAPITAL_APP, id, formeJuridique: 'SARL', ...reglages };
         const { page, browser } = await ouvrir({ page: 'devis', largeur: 1440, avantChargement: poserEntreprise(`parcours-rge-${fin.slice(0, 4)}`, ligne, app) });
@@ -152,7 +152,7 @@ module.exports = [
         await attendre(1200);
         const html = await page.evaluate(() => [...document.querySelectorAll('iframe')].map((f) => f.getAttribute('srcdoc') || '').find((x) => x.length > 100) || '');
         verifier(html.length > 100, `aperçu affiché (fin ${fin})`);
-        const trouve = /Entreprise RGE \(Reconnu garant de l(?:'|&#39;)environnement\) — N° E-99999 \(Qualibat\) — Domaine : Pompe à chaleur/.test(html);
+        const trouve = /Entreprise RGE \(Reconnu garant de l(?:'|&#39;)environnement\) — Qualification : QualiPAC chauffage et eau chaude sanitaire — Qualibat — N° E-99999 — Valide jusqu'au/.test(html);
         verifier(trouve === imprime, `fin ${fin} : RGE ${imprime ? 'imprimé' : 'absent'} (${(html.match(/.{0,10}Entreprise RGE.{0,60}/) || ['aucun'])[0]})`);
         await browser.close();
       }

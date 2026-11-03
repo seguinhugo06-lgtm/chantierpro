@@ -765,7 +765,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
 
           <Bloc titre="Qualifications professionnelles">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <ChampParam id="settings-field-rge" cle="rge" libelle="Numéro RGE" facultatif aide="Reconnu garant de l’environnement. Imprimé sur vos devis et factures.">
+              <ChampParam id="settings-field-rge" cle="rge" libelle="Numéro RGE" facultatif aide="Reconnu garant de l’environnement. Imprimé sur vos devis et factures en PDF ; il n’apparaît pas sur la page de signature en ligne ni sur l’exemplaire signé.">
                 <DebouncedInput id="settings-field-rge" placeholder="E-12345" value={entreprise.rge || ''} onChange={maj('rge')} />
               </ChampParam>
               <ChoixParam id="settings-field-rgeOrganisme" cle="rgeOrganisme" libelle="Organisme RGE" facultatif options={OPTIONS_ORGANISMES_RGE}
@@ -773,11 +773,12 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               <ChampParam id="settings-field-rgeValidite" cle="rgeValidite" libelle="Fin de validité" facultatif aide="Date indiquée sur votre certificat. Après cette date, le RGE n’est plus imprimé sur vos documents. En cas de suspension, videz le numéro.">
                 <input id="settings-field-rgeValidite" type="date" className={CLASSE_CHAMP} value={entreprise.rgeValidite || ''} onChange={e => updateEntreprise(p => ({ ...p, rgeValidite: e.target.value }), 'rgeValidite')} />
               </ChampParam>
-              <ChampParam id="settings-field-rgeDomaine" cle="rgeDomaine" libelle="Domaine(s) RGE" facultatif aide="Tel qu’indiqué sur votre certificat (ex. : chauffage et eau chaude au gaz).">
-                <DebouncedInput id="settings-field-rgeDomaine" placeholder="Pompe à chaleur" value={entreprise.rgeDomaine || ''} onChange={maj('rgeDomaine')} />
+              <ChampParam id="settings-field-rgeDomaine" cle="rgeDomaine" libelle="Intitulé de la qualification RGE" facultatif aide="Tel qu’il figure sur votre certificat (ex. : QualiPAC chauffage et eau chaude sanitaire). Exigé par l’Anah sur les devis et factures des travaux aidés.">
+                <DebouncedInput id="settings-field-rgeDomaine" placeholder="QualiPAC" value={entreprise.rgeDomaine || ''} onChange={maj('rgeDomaine')} />
               </ChampParam>
             </div>
-            {/* Le RGE saisi s'imprime en pied des devis et factures (les trois générateurs), sauf dans ces cas */}
+            {/* Le RGE saisi s'imprime en pied des devis et factures (les trois générateurs), sauf dans ces cas. Page de signature :
+                pas avant la migration 108 (get_devis_for_signature) ; l'aide du numéro le dit, à rétablir ensuite. */}
             {raisonRgeNonImprime(entreprise) && (
               <p className="mt-2 text-sm text-alerte-texte flex items-start gap-1"><AlertTriangle size={14} className="mt-0.5 shrink-0" aria-hidden="true" /> {raisonRgeNonImprime(entreprise)}</p>
             )}
