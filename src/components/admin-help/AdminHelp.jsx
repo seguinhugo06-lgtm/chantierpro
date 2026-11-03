@@ -1,9 +1,9 @@
 import { useState, useMemo } from 'react';
 import {
   Users, Building2, Calendar, CheckSquare, Euro,
-  Shield, ChevronRight, Clock, AlertTriangle,
+  Shield, ChevronRight, Clock,
   ExternalLink, HelpCircle, Zap, Book, Calculator,
-  Bell, BellRing, Mail, Settings, ToggleLeft, ToggleRight, TrendingUp
+  Bell, TrendingUp
 } from 'lucide-react';
 import TVAManager from './TVAManager';
 import AdminCalendar from './AdminCalendar';
@@ -13,6 +13,8 @@ import { calculateTVASummary } from '../../lib/integrations/accounting';
 import { estFranchiseTva } from '../../lib/franchiseTva';
 import { estOuverte } from '../../lib/ventes';
 import { jourLocal } from '../../lib/dates';
+import { profilAdmin, questionsManquantes, echeancesPour, prochainesEcheances, couvertureBientotFinie } from '../../lib/echeancesAdmin';
+import { LigneEcheance, QuestionsProfil } from './EcheancesUi';
 
 /**
  * Module Aide Administrative - Version simplifiée
@@ -35,7 +37,7 @@ const FAQ_ITEMS = [
   },
   {
     q: 'DSN : quelle date limite ?',
-    a: 'Le 5 du mois suivant (entreprises >50 salariés) ou le 15 (autres entreprises).'
+    a: 'Le 15 du mois suivant ; le 5 pour une entreprise de 50 salariés ou plus qui verse les salaires dans le mois.'
   },
   {
     q: 'Quand le devis est-il obligatoire ?',
@@ -43,13 +45,15 @@ const FAQ_ITEMS = [
   },
   {
     q: 'E-facturation : quand ?',
-    a: 'Obligatoire pour recevoir : sept 2026. Pour émettre : sept 2026 (grandes), sept 2027 (PME).'
+    a: 'Recevoir : obligatoire pour toutes les entreprises depuis le 1er septembre 2026. Émettre : 1er septembre 2026 pour les grandes entreprises et les ETI, 1er septembre 2027 pour les PME et les micro-entreprises. Il faut passer par une plateforme agréée ; Mallettico n’en est pas une.'
   },
 ];
 
-// Aucune échéance n'est encore tirée des données de l'artisan : la liste reste vide plutôt que d'afficher
-// des exemples inventés (trois dates de début 2026 s'affichaient « dépassées », dont une fausse décennale en retard)
-const AUCUNE_ECHEANCE = [];
+// Réponses aux questions de l'Administratif (rythme Urssaf, TVA, impôt, salariés) : gardées sur cet appareil.
+const CLE_REPONSES = 'cp_admin_profil';
+function lireReponses() {
+  try { return JSON.parse(localStorage.getItem(CLE_REPONSES) || '{}') || {}; } catch { return {}; }
+}
 
 export default function AdminHelp({
   chantiers = [],
@@ -61,18 +65,19 @@ export default function AdminHelp({
 }) {
   const [activeSection, setActiveSection] = useState('overview');
   const [expandedFaq, setExpandedFaq] = useState(null);
-  const [alertSettings, setAlertSettings] = useState(() => {
-    try {
-      const saved = localStorage.getItem('cp_admin_alert_settings');
-      return saved ? JSON.parse(saved) : { emailEnabled: false, email: '', daysBeforeAlert: 7, alertTypes: { fiscal: true, social: true, assurance: true } };
-    } catch { return { emailEnabled: false, email: '', daysBeforeAlert: 7, alertTypes: { fiscal: true, social: true, assurance: true } }; }
-  });
-  const [showAlertSettings, setShowAlertSettings] = useState(false);
-
-  const saveAlertSettings = (newSettings) => {
-    setAlertSettings(newSettings);
-    try { localStorage.setItem('cp_admin_alert_settings', JSON.stringify(newSettings)); } catch { /* préférence non enregistrée : quota plein ou navigation privée */ }
+  const [reponses, setReponses] = useState(lireReponses);
+  const enregistrerReponses = (nouvelles) => {
+    setReponses(nouvelles);
+    try { localStorage.setItem(CLE_REPONSES, JSON.stringify(nouvelles)); } catch { /* réponses non gardées : quota plein ou navigation privée ; redemandées au prochain passage */ }
   };
+  const repondre = (cle, valeur) => enregistrerReponses({ ...reponses, [cle]: valeur });
+
+  // Échéances tirées de la fiche entreprise et des réponses (src/lib/echeancesAdmin.js). Avant (31 oct. 2026) :
+  // liste vide à l'accueil, et des « alertes email » réglables que rien n'envoyait.
+  const profil = useMemo(() => profilAdmin(entreprise, reponses), [entreprise, reponses]);
+  const questions = questionsManquantes(profil);
+  const echeances = useMemo(() => echeancesPour(profil, entreprise), [profil, entreprise]);
+  const prochaines = prochainesEcheances(echeances, new Date(), 3);
 
   // TVA du trimestre en cours, sur les règles communes (src/lib/integrations/accounting.js). Avant (relecture
   // juriste-btp du 17 oct. 2026) : la TVA collectée lisait des champs inexistants (montant_ttc, montant_ht : toujours
@@ -94,32 +99,6 @@ export default function AdminHelp({
   const textMuted = 'text-encre-2';
   const cardBg = 'bg-surface';
   const borderColor = 'border-bord';
-
-  const deadlines = AUCUNE_ECHEANCE;
-
-  // Upcoming alerts based on settings
-  const activeAlerts = useMemo(() => {
-    if (!alertSettings.emailEnabled) return [];
-    return deadlines.filter(d => {
-      if (d.daysLeft < 0) return true;
-      if (!alertSettings.alertTypes[d.type]) return false;
-      return d.daysLeft <= alertSettings.daysBeforeAlert;
-    });
-  }, [alertSettings, deadlines]);
-
-  // Helper pour le format des jours (évite "J--9")
-  const getDaysLabel = (days) => {
-    if (days < 0) return `J+${Math.abs(days)}`; // Dépassé
-    return `J-${days}`; // À venir
-  };
-
-  // Helper pour les couleurs d'urgence
-  const getUrgencyStyle = (days) => {
-    if (days < 0) return { text: 'text-danger-texte', bg: 'bg-danger-fond', badge: 'bg-danger-fond text-danger-texte' };
-    if (days <= 14) return { text: 'text-alerte-texte', bg: 'bg-alerte-fond', badge: 'bg-alerte-fond text-alerte-texte' };
-    if (days <= 30) return { text: 'text-encre-2', bg: 'bg-surface-2', badge: 'bg-surface-2 text-encre-2' };
-    return { text: 'text-succes-texte', bg: 'bg-fond', badge: 'bg-succes-fond text-succes-texte' };
-  };
 
   // Quick actions
   const quickActions = [
@@ -179,33 +158,6 @@ export default function AdminHelp({
                 <p className={`text-sm font-medium ${textMuted}`}>Factures impayées</p>
               </div>
             </div>
-
-            {/* Email Alert Banner */}
-            {activeAlerts.length > 0 && (
-              <div className="p-4 rounded-xl border bg-alerte-fond border-alerte-point/40">
-                <div className="flex items-center gap-2 mb-2">
-                  <BellRing size={18} className="text-alerte-texte" aria-hidden="true" />
-                  <h2 className="font-semibold text-alerte-texte">{activeAlerts.length} alerte{activeAlerts.length > 1 ? 's' : ''} active{activeAlerts.length > 1 ? 's' : ''}</h2>
-                </div>
-                <div className="space-y-1.5">
-                  {activeAlerts.map(a => {
-                    const urgency = getUrgencyStyle(a.daysLeft);
-                    return (
-                      <div key={a.id} className={`flex items-center justify-between p-2 rounded-lg ${urgency.bg}`}>
-                        <span className={`text-sm font-medium ${textPrimary}`}>{a.title}</span>
-                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${urgency.badge}`}>{getDaysLabel(a.daysLeft)}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-                {alertSettings.email && (
-                  <p className={`text-xs mt-2 ${textMuted}`}>
-                    <Mail size={12} className="inline mr-1" />
-                    Rappels envoyés à {alertSettings.email}
-                  </p>
-                )}
-              </div>
-            )}
 
             {/* Résumé TVA du trimestre (pas en franchise : ni TVA facturée ni TVA déductible) */}
             {!estFranchiseTva(entreprise) && <div className={`p-4 rounded-xl ${cardBg} border ${borderColor}`}>
@@ -271,117 +223,23 @@ export default function AdminHelp({
                   Voir tout
                 </button>
               </div>
-              {deadlines.length === 0 && (
-                <p className={`text-sm ${textMuted}`}>Aucune échéance enregistrée pour votre entreprise. Le calendrier rappelle les grandes dates fiscales et sociales.</p>
+              {!profil.formeConnue && (
+                <p className="text-sm text-encre-2 mb-3">Indiquez votre statut juridique dans Paramètres › Entreprise : les déclarations à faire en dépendent. En attendant, seules les dates communes à toutes les entreprises s’affichent.</p>
               )}
-              <div className="space-y-2">
-                {deadlines.slice(0, 3).map(d => {
-                  const urgency = getUrgencyStyle(d.daysLeft);
-                  return (
-                    <div
-                      key={d.id}
-                      className={`p-3 rounded-lg flex items-center justify-between ${urgency.bg}`}
-                    >
-                      <div className="flex items-center gap-2">
-                        {d.daysLeft <= 7 && <AlertTriangle size={14} className={urgency.text} />}
-                        <span className={`text-sm font-medium ${textPrimary}`}>{d.title}</span>
-                      </div>
-                      <span className={`px-2.5 py-1 rounded-lg text-xs font-bold ${urgency.badge}`}>
-                        {getDaysLabel(d.daysLeft)}
-                      </span>
-                    </div>
-                  );
-                })}
+              <QuestionsProfil questions={questions} onRepondre={repondre} />
+              <div className={`space-y-2 ${questions.length ? 'mt-3' : ''}`}>
+                {prochaines.length === 0 && (
+                  <p className={`text-sm ${textMuted}`}>Aucune échéance à venir dans le calendrier de l’application (il couvre jusqu’à décembre 2027).</p>
+                )}
+                {prochaines.map((x) => <LigneEcheance key={x.id} echeance={x} />)}
               </div>
-            </div>
-
-            {/* Alert Settings */}
-            <div className={`p-4 rounded-xl ${cardBg} border ${borderColor}`}>
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <Bell size={18} className="text-accent-texte" />
-                  <h2 className={`font-semibold ${textPrimary}`}>Alertes email</h2>
-                </div>
-                <button
-                  onClick={() => setShowAlertSettings(!showAlertSettings)}
-                  className={`p-2 rounded-lg transition-colors hover:bg-surface-2 text-encre-3`}
-                >
-                  <Settings size={16} />
-                </button>
-              </div>
-
-              <div className="flex items-center justify-between mb-3">
-                <div>
-                  <p className={`text-sm ${textPrimary}`}>Recevoir les rappels d'échéances</p>
-                  <p className={`text-xs ${textMuted}`}>
-                    {alertSettings.emailEnabled ? `Actif — ${alertSettings.daysBeforeAlert}j avant` : 'Désactivé'}
-                  </p>
-                </div>
-                <button
-                  onClick={() => saveAlertSettings({ ...alertSettings, emailEnabled: !alertSettings.emailEnabled })}
-                  className="flex items-center"
-                >
-                  {alertSettings.emailEnabled
-                    ? <ToggleRight size={32} className="text-accent-texte" />
-                    : <ToggleLeft size={32} className="text-encre-3" />
-                  }
-                </button>
-              </div>
-
-              {showAlertSettings && (
-                <div className={`mt-3 pt-3 border-t space-y-3 border-bord`}>
-                  <div>
-                    <label className={`block text-xs font-medium mb-1 ${textMuted}`}>Adresse email</label>
-                    <input
-                      type="email"
-                      value={alertSettings.email}
-                      onChange={e => saveAlertSettings({ ...alertSettings, email: e.target.value })}
-                      placeholder="votre@email.com"
-                      className={`w-full px-3 py-2 rounded-lg border text-sm bg-surface border-bord-fort`}
-                    />
-                  </div>
-                  <div>
-                    <label className={`block text-xs font-medium mb-1 ${textMuted}`}>Rappel (jours avant)</label>
-                    <div className="flex gap-2">
-                      {[3, 7, 14, 30].map(d => (
-                        <button
-                          key={d}
-                          onClick={() => saveAlertSettings({ ...alertSettings, daysBeforeAlert: d })}
-                          className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${
-                            alertSettings.daysBeforeAlert === d
-                              ? 'bg-accent text-sur-accent'
-                              : 'bg-surface-2 text-encre-2'
-                          }`}
-                          aria-pressed={alertSettings.daysBeforeAlert === d}
-                        >
-                          J-{d}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <label className={`block text-xs font-medium mb-2 ${textMuted}`}>Types d'alertes</label>
-                    {[
-                      { key: 'fiscal', label: 'Fiscal (TVA, IS...)', color: '#3b82f6' },
-                      { key: 'social', label: 'Social (DSN, URSSAF...)', color: '#8b5cf6' },
-                      { key: 'assurance', label: 'Assurance (décennale...)', color: '#f59e0b' },
-                    ].map(t => (
-                      <div key={t.key} className="flex items-center justify-between py-1.5">
-                        <span className={`text-sm ${textPrimary}`}>{t.label}</span>
-                        <button onClick={() => saveAlertSettings({
-                          ...alertSettings,
-                          alertTypes: { ...alertSettings.alertTypes, [t.key]: !alertSettings.alertTypes[t.key] }
-                        })}>
-                          {alertSettings.alertTypes[t.key]
-                            ? <ToggleRight size={24} style={{ color: t.color }} />
-                            : <ToggleLeft size={24} className="text-encre-3" />
-                          }
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+              {couvertureBientotFinie() && (
+                <p className="text-xs text-alerte-texte mt-3">Le calendrier de l’application s’arrête en décembre 2027 : les dates suivantes ne sont pas encore saisies.</p>
               )}
+              <p className="text-xs text-encre-2 mt-3 flex items-start gap-1.5">
+                <Bell size={14} className="flex-shrink-0 mt-0.5" aria-hidden="true" />
+                <span>Rappels dans l’application seulement : aucun e-mail n’est envoyé. Vérifiez chaque date sur le site officiel indiqué dans le calendrier.</span>
+              </p>
             </div>
 
             {/* FAQ rapide */}
@@ -441,7 +299,7 @@ export default function AdminHelp({
         return <TVAManager devis={devis} depenses={depenses} entreprise={entreprise} />;
 
       case 'calendar':
-        return <AdminCalendar />;
+        return <AdminCalendar echeances={echeances} profil={profil} onChangerReponses={() => enregistrerReponses({})} />;
 
       case 'checklist':
         return <DocumentChecklist chantiers={chantiers} />;

@@ -1,55 +1,19 @@
 import { useState, useMemo } from 'react';
 import {
-  Calendar, Clock, ChevronLeft, ChevronRight, Banknote, Users, Scale, CalendarDays,
+  Calendar, Clock, ChevronLeft, ChevronRight, Banknote, Users, Scale, ShieldCheck,
 } from 'lucide-react';
-import { jourLocal, dateLue } from '../../lib/dates';
+import { jourLocal } from '../../lib/dates';
+import { prochainesEcheances, joursAvant, COUVERTURE_FIN } from '../../lib/echeancesAdmin';
+import { LigneEcheance } from './EcheancesUi';
 import Modal, { ModalHeader, ModalTitle, ModalBody, ModalFooter } from '../ui/Modal';
 import { Bouton } from '../ui/Bouton';
 
 /**
- * AdminCalendar - Rappels intelligents et calendrier personnalisé
- * Échéances fiscales et sociales
+ * Calendrier de l'Administratif : les échéances du profil de l'artisan (src/lib/echeancesAdmin.js), les mêmes que
+ * « Prochaines échéances » de l'accueil. Avant (31 oct. 2026) : un tableau en dur qui s'arrêtait en septembre 2026.
  */
 
-const ECHEANCES_2026 = [
-  // Janvier
-  { id: 'tva-t4', date: '2026-01-20', title: 'Déclaration TVA T4 2025', type: 'fiscal', priority: 'high' },
-  { id: 'cotis-t4', date: '2026-01-31', title: 'Cotisations URSSAF T4', type: 'social', priority: 'high' },
-
-  // Février
-  { id: 'dsn-jan', date: '2026-02-05', title: 'DSN Janvier', type: 'social', priority: 'high' },
-  { id: 'cfe', date: '2026-02-28', title: 'Solde CFE 2025', type: 'fiscal', priority: 'medium' },
-
-  // Mars
-  { id: 'dsn-fev', date: '2026-03-05', title: 'DSN Février', type: 'social', priority: 'high' },
-
-  // Avril
-  { id: 'tva-t1', date: '2026-04-20', title: 'Déclaration TVA T1 2026', type: 'fiscal', priority: 'high' },
-  { id: 'cotis-t1', date: '2026-04-30', title: 'Cotisations URSSAF T1', type: 'social', priority: 'high' },
-
-  // Mai
-  { id: 'doeth', date: '2026-05-01', title: 'DOETH 2025', type: 'social', priority: 'high' },
-  { id: 'dsn-avr', date: '2026-05-05', title: 'DSN Avril', type: 'social', priority: 'high' },
-  { id: 'ir', date: '2026-05-31', title: 'Déclaration Impôt Revenu', type: 'fiscal', priority: 'high' },
-
-  // Septembre
-  { id: 'efacture', date: '2026-09-01', title: 'E-Facture obligatoire', type: 'legal', priority: 'critical' },
-];
-
-// Les types d'échéance : une icône et deux libellés (court pour les boutons)
-const TYPES_ECHEANCE = {
-  custom: { icone: CalendarDays, court: 'Perso' },
-  fiscal: { icone: Banknote, court: 'Fiscal' },
-  social: { icone: Users, court: 'Social' },
-  legal: { icone: Scale, court: 'Légal' },
-};
-const typeDe = (type) => TYPES_ECHEANCE[type] || TYPES_ECHEANCE.custom;
-function IconeType({ type, size = 22, className = '' }) {
-  const Icone = typeDe(type).icone;
-  return <Icone size={size} className={`flex-shrink-0 text-encre-2 ${className}`} aria-hidden="true" />;
-}
-
-export default function AdminCalendar({ isDark: _isDark = false, couleur: _couleur }) {
+export default function AdminCalendar({ echeances = [], profil = null, onChangerReponses, isDark: _isDark = false, couleur: _couleur }) {
   const [currentMonth, setCurrentMonth] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth())); // le mois en cours
   const [selectedDate, setSelectedDate] = useState(null);
   const [filter, setFilter] = useState('all');
@@ -95,38 +59,23 @@ export default function AdminCalendar({ isDark: _isDark = false, couleur: _coule
   // Get events for a date
   const getEventsForDate = (date) => {
     const dateStr = jourLocal(date);
-    return ECHEANCES_2026.filter(e => e.date === dateStr);
+    return filteredEcheances.filter(e => e.date === dateStr);
   };
 
   // Filter events
-  const filteredEcheances = useMemo(() => {
-    let events = ECHEANCES_2026;
-    if (filter !== 'all') {
-      events = events.filter(e => e.type === filter);
-    }
-    return events.sort((a, b) => new Date(a.date) - new Date(b.date));
-  }, [filter]);
+  const filteredEcheances = useMemo(
+    () => (filter === 'all' ? echeances : echeances.filter(e => e.type === filter)),
+    [echeances, filter],
+  );
 
-  // Upcoming events (next 30 days)
-  const upcomingEvents = useMemo(() => {
-    const now = new Date();
-    const in30Days = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
-    return filteredEcheances.filter(e => {
-      const d = new Date(e.date);
-      return d >= now && d <= in30Days;
-    });
-  }, [filteredEcheances]);
+  // Les 90 prochains jours (et les assurances déjà expirées), plus les échéances sans date précise de la période
+  const upcomingEvents = useMemo(
+    () => prochainesEcheances(filteredEcheances, new Date(), 50)
+      .filter(e => e.joursRestants === null ? joursAvant(e.dateTri) <= 90 : e.joursRestants <= 90),
+    [filteredEcheances],
+  );
 
-  const getPriorityStyle = (priority) => {
-    switch (priority) {
-      case 'critical':
-        return { bg: 'bg-danger-point', text: 'text-danger-texte', light: 'bg-danger-fond' };
-      case 'high':
-        return { bg: 'bg-alerte-point', text: 'text-alerte-texte', light: 'bg-alerte-fond' };
-      default:
-        return { bg: 'bg-info-point', text: 'text-info-texte', light: 'bg-info-fond' };
-    }
-  };
+  const pointType = (type) => (type === 'assurance' ? 'bg-alerte-point' : type === 'legal' ? 'bg-danger-point' : 'bg-info-point');
 
   return (
     <div className="space-y-6">
@@ -135,7 +84,7 @@ export default function AdminCalendar({ isDark: _isDark = false, couleur: _coule
         <div>
           <h2 className={`text-xl font-bold ${textPrimary}`}>Calendrier Administratif</h2>
           <p className={`text-sm ${textMuted} mt-1`}>
-            Ne rate plus aucune échéance
+            Vos déclarations et paiements jusqu’au {new Date(`${COUVERTURE_FIN}T12:00:00`).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}, selon votre fiche entreprise. Rappels dans l’application seulement.
           </p>
         </div>
       </div>
@@ -147,6 +96,7 @@ export default function AdminCalendar({ isDark: _isDark = false, couleur: _coule
           { id: 'fiscal', label: 'Fiscal', icon: Banknote },
           { id: 'social', label: 'Social', icon: Users },
           { id: 'legal', label: 'Légal', icon: Scale },
+          { id: 'assurance', label: 'Assurance', icon: ShieldCheck },
         ].map(f => (
           <button
             key={f.id}
@@ -225,7 +175,7 @@ export default function AdminCalendar({ isDark: _isDark = false, couleur: _coule
                     {events.slice(0, 3).map((e, j) => (
                       <div
                         key={j}
-                        className={`w-1.5 h-1.5 rounded-full ${getPriorityStyle(e.priority).bg}`}
+                        className={`w-1.5 h-1.5 rounded-full ${pointType(e.type)}`}
                       />
                     ))}
                   </div>
@@ -246,46 +196,17 @@ export default function AdminCalendar({ isDark: _isDark = false, couleur: _coule
         <div className="space-y-2">
           {upcomingEvents.length === 0 ? (
             <p className={`text-center py-6 ${textMuted}`}>
-              Aucune échéance dans les 30 prochains jours
+              Aucune échéance dans les 90 prochains jours
             </p>
           ) : (
-            upcomingEvents.map(event => {
-              const style = getPriorityStyle(event.priority);
-              const daysLeft = Math.ceil((new Date(event.date) - today) / (1000 * 60 * 60 * 24));
-
-              return (
-                <div
-                  key={event.id}
-                  className={`p-4 rounded-xl ${style.light} border border-bord`}
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-start gap-3">
-                      <IconeType type={event.type} className="mt-0.5" />
-                      <div>
-                        <p className={`font-medium ${textPrimary}`}>{event.title}</p>
-                        <p className={`text-sm ${textMuted} mt-1`}>
-                          {dateLue(event.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <span className={`text-sm font-bold ${daysLeft <= 7 ? 'text-danger-texte' : daysLeft <= 14 ? 'text-alerte-texte' : textMuted}`}>
-                        J-{daysLeft}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              );
-            })
+            upcomingEvents.map(event => <LigneEcheance key={event.id} echeance={event} detaillee />)
           )}
         </div>
-      </div>
-
-      {/* Fun messages */}
-      <div className={`p-4 rounded-xl bg-succes-fond border border-succes-point/40`}>
-        <p className={`text-sm text-succes-texte`}>
-          <em>"Oups, l'URSSAF attend ta DSN – ne les fais pas attendre !"</em>
-        </p>
+        {profil?.formeConnue && onChangerReponses && (
+          <button type="button" onClick={onChangerReponses} className="mt-3 min-h-[44px] text-sm font-medium text-accent-texte underline">
+            Changer mes réponses (rythme Urssaf, TVA, impôt, salariés)
+          </button>
+        )}
       </div>
 
       {/* Event detail modal */}
@@ -297,12 +218,7 @@ export default function AdminCalendar({ isDark: _isDark = false, couleur: _coule
         </ModalHeader>
         <ModalBody className="space-y-3">
           {selectedDate && getEventsForDate(selectedDate).map(event => (
-            <div key={event.id} className={`p-4 rounded-xl ${getPriorityStyle(event.priority).light}`}>
-              <div className="flex items-center gap-2">
-                <IconeType type={event.type} size={18} />
-                <p className={`font-medium ${textPrimary}`}>{event.title}</p>
-              </div>
-            </div>
+            <LigneEcheance key={event.id} echeance={{ ...event, joursRestants: joursAvant(event.date) }} detaillee />
           ))}
         </ModalBody>
         <ModalFooter>
