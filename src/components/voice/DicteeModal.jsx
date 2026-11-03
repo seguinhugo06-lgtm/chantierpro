@@ -642,8 +642,10 @@ export default function DicteeModal({
                     par réflexe — et le refus est ensuite pénible à annuler. */}
                 {dictation.supported && !dictation.listening && dictation.permission === 'inconnue' && (
                   <p className={`mt-2 text-xs text-center max-w-xs ${textMuted}`}>
-                    Votre navigateur va demander l’accès au micro. Votre voix n’est
-                    pas enregistrée : elle est transcrite puis oubliée.
+                    {/* Relecture juriste-btp du 3 nov. 2026 : « transcrite puis oubliée » était invérifiable (sur
+                        Chrome, le son part aux serveurs de Google) ; seul est sûr que Mallettico ne reçoit pas le son. */}
+                    Votre navigateur va demander l’accès au micro. Mallettico ne reçoit pas le son : votre navigateur
+                    le transforme en texte (sur Chrome, par les serveurs de Google). Seul ce texte nous est envoyé, pour l’analyse.
                   </p>
                 )}
 

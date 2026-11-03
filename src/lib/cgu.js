@@ -12,8 +12,10 @@
  */
 import { FONCTIONS } from './fonctions';
 
-// 3 nov. 2026 : quand FONCTIONS.ia est allumé, l'article 7 porte une puce sur la dictée vocale (texte relu par
-// juriste-btp, docs/cloud/ia-socle.md) : la version change d'elle-même, et l'acceptation est redemandée.
+// 3 nov. 2026 : quand FONCTIONS.ia est allumé, l'article 7 porte une puce sur la dictée vocale et l'article 11 la
+// clause de sous-traitance (textes de juriste-btp, docs/cloud/ia-socle.md) : la version change d'elle-même, et
+// l'acceptation est redemandée. LE JOUR DE L'ALLUMAGE, remplacer « 2026-11-03 » et « 3 novembre 2026 » par la date
+// réelle (avis du juriste : on n'accepte pas en janvier une « version du 3 novembre ») ; un test le rappelle.
 export const CGU_VERSION = FONCTIONS.ia ? '2026-11-03' : '2026-10-28';
 
 /** La date de cette version, telle que l'affichent la case de l'inscription et la fenêtre (« version du … »). */

@@ -4,8 +4,9 @@
  * brancher ces règles sur Supabase et sur l'API d'Anthropic.
  *
  * Ordre d'un appel : jeton vérifié → dictée valide → clé API présente → usage RÉSERVÉ (atomique, côté base, migration
- * 107) → appel du modèle → usage TERMINÉ (jetons, durée, réussite ou échec). Seule une dictée analysée décompte : une
- * panne de l'API, un refus du modèle ou une réponse illisible sont clos en « échec » (leurs jetons restent journalisés).
+ * 107) → appel du modèle → usage TERMINÉ (jetons, durée, réussite ou échec). Une panne de notre côté (API, crédits, clé,
+ * délai, réseau) est close en « échec » et ne décompte pas ; un refus du modèle ou une réponse illisible, provoqués par
+ * la dictée, sont clos en « échec » mais décomptent (motifs `refus`, `illisible`, comptés par la base).
  */
 
 import { corsHeaders } from '../_shared/cors.ts';
@@ -27,7 +28,8 @@ export const MESSAGES = {
   tropLongue: 'Dictée trop longue (5000 caractères maximum). Coupez-la en deux.',
   horsOrganisation: 'Cette entreprise n’est pas la vôtre. Saisissez votre devis à la main.',
   quota: (limite: number) =>
-    `Vos ${limite} dictées du mois sont utilisées. Saisissez votre devis à la main, ou passez à une offre sans limite.`,
+    `Vos ${limite} dictées du mois sont utilisées. Saisissez votre devis à la main, ou passez au plan Artisan : dictées sans limite.`,
+  plafond: 'Trop de dictées en peu de temps. Réessayez un peu plus tard, ou saisissez votre devis à la main.',
   indisponible: 'Dictée indisponible pour le moment. Saisissez votre devis à la main.',
   nonTraitee: 'Cette dictée n’a pas pu être analysée. Saisissez votre devis à la main.',
   illisible: 'L’analyse a échoué. Réessayez, ou saisissez votre devis à la main.',
@@ -35,7 +37,7 @@ export const MESSAGES = {
 
 export type Reservation =
   | { autorise: true; id: number; limite: number | null; utilise: number; plan: string }
-  | { autorise: false; limite: number | null; utilise: number; plan: string }
+  | { autorise: false; limite: number | null; utilise: number | null; plan: string; motif?: 'quota' | 'plafond' }
   | { indisponible: true }
   | { horsOrganisation: true };
 
@@ -132,6 +134,7 @@ export async function traiterDictee(req: Request, dep: Dependances): Promise<Res
     return erreur('IA_INDISPONIBLE', MESSAGES.indisponible, 503);
   }
   if ('horsOrganisation' in reservation) return erreur('HORS_ORGANISATION', MESSAGES.horsOrganisation, 403);
+  if (!reservation.autorise && reservation.motif === 'plafond') return erreur('PLAFOND', MESSAGES.plafond, 429);
   if (!reservation.autorise) {
     return erreur('QUOTA_ATTEINT', MESSAGES.quota(reservation.limite ?? 0), 429,
       { quota: { limite: reservation.limite, utilise: reservation.utilise, plan: reservation.plan } });

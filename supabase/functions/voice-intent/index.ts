@@ -10,7 +10,7 @@
  *
  * MODÈLE — Claude Haiku 5.5, effort `low`, sortie structurée (JSON garanti par le schéma) : `consignes.ts`.
  * RÈGLES — authentification, quota mensuel de l'organisation, erreurs propres : `regles.ts` (testé sous vitest).
- * QUOTA ET COÛTS — table `usage_ia` et fonctions `reserver_usage_ia` / `terminer_usage_ia` (migration 107), appelées
+ * QUOTA ET COÛTS — table `usage_ia_log` et fonctions `reserver_usage_ia` / `terminer_usage_ia` (migration 107), appelées
  * avec la clé de service APRÈS vérification du jeton de l'utilisateur.
  *
  * Secrets : ANTHROPIC_API_KEY (réglé par Hugo). Sans clé, sans crédits ou API en panne : 503 « Dictée indisponible
@@ -47,11 +47,14 @@ serve((req) => traiterDictee(req, {
       if (/HORS_ORGANISATION/.test(error.message || '')) return { horsOrganisation: true };
       throw new Error(error.message);
     }
-    const r = (data || {}) as { autorise?: boolean; id?: number; limite?: number | null; utilise?: number; plan?: string };
+    const r = (data || {}) as { autorise?: boolean; id?: number; limite?: number | null; utilise?: number | null; plan?: string; motif?: string };
     if (r.autorise === true && r.id != null) {
       return { autorise: true, id: Number(r.id), limite: r.limite ?? null, utilise: Number(r.utilise ?? 0), plan: r.plan || 'gratuit' };
     }
-    if (r.autorise === false) return { autorise: false, limite: r.limite ?? null, utilise: Number(r.utilise ?? 0), plan: r.plan || 'gratuit' };
+    if (r.autorise === false) {
+      return { autorise: false, limite: r.limite ?? null, utilise: r.utilise == null ? null : Number(r.utilise), plan: r.plan || 'gratuit',
+        motif: r.motif === 'plafond' ? 'plafond' : 'quota' };
+    }
     throw new Error('réponse inattendue de reserver_usage_ia');
   },
 

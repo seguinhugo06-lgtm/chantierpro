@@ -230,7 +230,8 @@ export const UPGRADE_CONTEXTS = {
   },
   dictees_limit: {
     title: 'Vos 10 dictées du mois sont utilisées',
-    subtitle: 'La dictée transforme un appel de chantier en devis chiffré. En illimité, vous ne rentrez plus rien à la main.',
+    // Relecture juriste-btp du 3 nov. 2026 : « vous ne rentrez plus rien à la main » était faux (l'artisan relit et corrige).
+    subtitle: 'La dictée prépare un brouillon de devis à partir de ce que vous dites ; vous le relisez. Avec le plan Artisan, dictez sans limite.',
     highlight: 'dictees',
     recommendedPlan: 'artisan'
   },

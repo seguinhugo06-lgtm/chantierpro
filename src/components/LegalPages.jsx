@@ -3,6 +3,7 @@ import { CGV_ARTICLE_4_PLANS, CGV_ARTICLE_4_TVA, libelleVersionCgv } from '../li
 import { COMPANY, ADRESSE } from '../lib/editeur';
 import TexteCgu from './legal/TexteCgu';
 import { FONCTIONS } from '../lib/fonctions';
+import { CGU_VERSION_DATE } from '../lib/cgu';
 
 // Identité de l'éditeur (COMPANY, ADRESSE) : src/lib/editeur.js, partagée avec le texte des CGU (TexteCgu.jsx)
 
@@ -252,7 +253,8 @@ export default function LegalPages({ page, couleur: _couleur, setPage }) {
 
   const renderConfidentialite = () => (
     <>
-      <p className={`mb-8 text-sm font-medium ${textSecondary}`}>Version du 24 octobre 2026</p>
+      {/* La version change avec la dictée (articles 2, 3 et 4) : à relever au jour réel de l'allumage (juriste-btp, 3 nov.) */}
+      <p className={`mb-8 text-sm font-medium ${textSecondary}`}>Version du {FONCTIONS.ia ? CGU_VERSION_DATE : '24 octobre 2026'}</p>
       <Section title="Article 1 - Responsable du traitement">
         <P>
           Le responsable du traitement des données à caractère personnel collectées sur Mallettico est :
@@ -334,7 +336,7 @@ export default function LegalPages({ page, couleur: _couleur, setPage }) {
             soumis à juriste-btp (docs/cloud/ia-socle.md). */}
         {FONCTIONS.ia && (
           <P>
-            <strong className={textPrimary}>Dictée vocale (analyse par intelligence artificielle).</strong> Si vous utilisez la dictée, votre voix est transcrite en texte par votre navigateur ou votre téléphone, selon les règles de leur éditeur (par exemple Google pour Chrome, Apple pour Safari) : Mallettico ne reçoit jamais le son. Quand vous lancez l'analyse, ce texte est envoyé à Anthropic (article 4), avec les noms de vos clients déjà enregistrés et les libellés de votre catalogue, pour rattacher la dictée à l'existant. Anthropic renvoie un client, des chantiers et un devis, que vous relisez : rien n'est créé sans votre validation. Mallettico ne conserve pas le texte dicté ; seuls sont enregistrés, pour chaque analyse, la date, l'offre, le modèle utilisé, le nombre de jetons consommés et la durée, afin d'appliquer le quota de votre offre et de suivre le coût du service. Base légale : exécution du contrat (art. 6.1.b). Pour les données de vos clients contenues dans une dictée, vous êtes responsable du traitement ; Mallettico agit pour votre compte comme sous-traitant (RGPD, art. 28), et Anthropic comme sous-traitant ultérieur.
+            <strong className={textPrimary}>Dictée vocale (analyse par intelligence artificielle).</strong> La dictée est facultative : vous pouvez toujours saisir votre devis au clavier. Votre voix est transformée en texte par votre navigateur ou votre téléphone, selon les règles de leur éditeur (sur Chrome, par les serveurs de Google ; sur Safari, par Apple) : Mallettico ne reçoit jamais le son. Dès que vous arrêtez de parler, ou quand vous lancez l'analyse d'un texte tapé, ce texte est envoyé à notre serveur (Supabase, Paris), qui le transmet à Anthropic (article 4) avec les noms de vos clients déjà enregistrés (60 au plus) et les libellés de votre catalogue (80 au plus), pour rattacher la dictée à l'existant. Anthropic renvoie une proposition (client, chantiers, devis) que vous relisez et corrigez : rien n'est créé sans votre validation. Mallettico ne conserve pas le texte dicté ; seul est enregistré ce que vous validez. Pour chaque analyse, nous enregistrons votre entreprise, votre compte, la date, l'offre, le modèle utilisé, le nombre de jetons consommés, la durée et l'issue (réussie ou non) : pour appliquer le quota de votre offre (exécution du contrat, art. 6.1.b) et pour suivre le coût du service (intérêt légitime, art. 6.1.f). Les données de vos clients contenues dans une dictée (nom, coordonnées, adresse du chantier) relèvent de votre responsabilité : Mallettico agit pour votre compte comme sous-traitant (RGPD, art. 28), et Anthropic comme sous-traitant ultérieur, autorisé par les CGU (article 11). Ne dictez pas d'informations sur la santé de vos clients si elles ne sont pas nécessaires au devis.
           </P>
         )}
       </Section>
@@ -347,7 +349,7 @@ export default function LegalPages({ page, couleur: _couleur, setPage }) {
           <li><strong className={textPrimary}>Données de connexion :</strong> 12 mois conformément à la législation en vigueur</li>
           <li><strong className={textPrimary}>Données de géolocalisation :</strong> 3 mois</li>
           {FONCTIONS.ia && (
-            <li><strong className={textPrimary}>Dictée vocale :</strong> le texte dicté n'est pas conservé par Mallettico ; le journal des analyses (date, offre, modèle, jetons, durée) est conservé tant que votre compte existe</li>
+            <li><strong className={textPrimary}>Dictée vocale :</strong> Mallettico ne reçoit pas le son et ne conserve pas le texte dicté (seul reste ce que vous validez). Le journal des analyses (entreprise, compte, date, offre, modèle, jetons, durée, issue) est conservé 12 mois, puis supprimé ; il est effacé plus tôt si vous supprimez votre compte. Conservation chez Anthropic : voir l'article 4</li>
           )}
         </UL>
         <P>
@@ -397,9 +399,9 @@ export default function LegalPages({ page, couleur: _couleur, setPage }) {
               {FONCTIONS.ia && (
                 <tr>
                   <td className={`px-4 py-3 font-medium ${textPrimary}`}>Anthropic</td>
-                  <td className="px-4 py-3">Analyse des dictées vocales (intelligence artificielle)</td>
-                  <td className="px-4 py-3">US</td>
-                  <td className="px-4 py-3">Accord de traitement des données (DPA) et SCC ; les données envoyées ne servent pas à entraîner ses modèles sans autorisation expresse, selon Anthropic</td>
+                  <td className="px-4 py-3">Analyse des dictées vocales (intelligence artificielle), seulement quand vous utilisez la dictée</td>
+                  <td className="px-4 py-3">États-Unis (stockage) ; calcul possible dans d'autres pays</td>
+                  <td className="px-4 py-3">Accord de traitement des données d'Anthropic, comprenant les clauses contractuelles types de la Commission européenne (RGPD, art. 46) ; copie sur demande à l'adresse de l'article 1. Selon Anthropic, les données ne servent jamais à entraîner ses modèles sans autorisation expresse, que Mallettico ne donne pas ; elles peuvent être conservées jusqu'à 2 ans si ses systèmes de sécurité les signalent, ou plus longtemps si la loi l'exige</td>
                 </tr>
               )}
             </tbody>

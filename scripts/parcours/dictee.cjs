@@ -6,6 +6,7 @@ const fs = require('fs');
 const { execSync } = require('child_process');
 const { creerBase, ORG, json } = require('../lib/fauxSupabase.cjs');
 const { RACINE } = require('../lib/navigateur.cjs');
+const { CGU_VERSION_DATE, CGU_VERSION_DATE_IA } = require('../lib/cgu.cjs');
 
 let distIa = null;
 function construireDistIa() {
@@ -79,7 +80,40 @@ const dialogue = (page) => page.evaluate(() => {
   };
 });
 
+const texteDe = (page) => page.evaluate(() => document.body.innerText);
+
 module.exports = [
+  {
+    // D-07, 2e condition : Anthropic déclaré sous-traitant (textes de juriste-btp du 3 nov. 2026), affiché avec la dictée
+    nom: 'dictée : avec l’IA allumée, la politique et les CGU déclarent Anthropic ; la version des CGU change',
+    reel: true,
+    async executer({ ouvrir, verifier }) {
+      const conf = await ouvrir({ reel: true, distReel: construireDistIa(), chemin: '/confidentialite', largeur: 375 });
+      const t = await texteDe(conf.page);
+      verifier(t.includes('Dictée vocale (analyse par intelligence artificielle).') && t.includes('Mallettico ne reçoit jamais le son'),
+        'article 2 : la dictée est décrite');
+      verifier(t.includes('Anthropic') && t.includes('clauses contractuelles types'), 'article 4 : Anthropic est listé, avec ses garanties');
+      verifier(t.includes('conservé 12 mois, puis supprimé'), 'article 3 : durée du journal des analyses');
+      verifier(t.includes(`Version du ${CGU_VERSION_DATE_IA}`), 'la politique change de version');
+      const cgu = await ouvrir({ reel: true, distReel: construireDistIa(), chemin: '/cgu', largeur: 375 });
+      const c = await texteDe(cgu.page);
+      verifier(c.includes(`Version du ${CGU_VERSION_DATE_IA}`), 'les CGU changent de version (acceptation redemandée)');
+      verifier(c.includes('sous-traitants ultérieurs') && c.includes('intelligence artificielle, qui peut se tromper'),
+        'CGU : sous-traitance (art. 11) et relecture de la dictée (art. 7)');
+    },
+  },
+  {
+    nom: 'dictée : avec l’IA éteinte (build livré), rien n’annonce Anthropic ni la dictée',
+    async executer({ ouvrir, verifier }) {
+      const conf = await ouvrir({ chemin: '/confidentialite', largeur: 375 });
+      const t = await texteDe(conf.page);
+      verifier(t.includes('Article 4') && !t.includes('Anthropic') && !t.includes('Dictée vocale'), 'politique sans la dictée');
+      verifier(t.includes('Version du 24 octobre 2026'), 'politique : version inchangée');
+      const cgu = await ouvrir({ chemin: '/cgu', largeur: 375 });
+      const c = await texteDe(cgu.page);
+      verifier(c.includes(`Version du ${CGU_VERSION_DATE}`) && !c.includes('sous-traitants ultérieurs'), 'CGU : version et texte inchangés');
+    },
+  },
   {
     // D-07, 3e condition : taper au clavier pendant que le micro écoute. Avant : l'analyse partait au milieu de la
     // frappe (le silence se comptait depuis le dernier mot parlé), et un résultat tardif du micro recopiait le texte

@@ -196,6 +196,19 @@ export default function TexteCgu({ compact = false, versConfidentialite }) {
           En utilisant Mallettico, l'utilisateur reconnaît avoir pris connaissance de cette politique
           et consent au traitement de ses données conformément au RGPD (Règlement UE 2016/679).
         </p>
+        {/* Sous-traitance (RGPD art. 28) et sous-traitants ultérieurs : texte de juriste-btp du 3 nov. 2026, affiché au
+            plus tard avec la dictée (Anthropic). Hugo peut décider de le publier plus tôt, sans condition (le défaut existe
+            déjà : docs/cloud/ia-socle.md) ; il faudra alors relever CGU_VERSION. */}
+        {FONCTIONS.ia && (
+          <>
+            <p className={p}>
+              Pour les données des clients que l'utilisateur enregistre dans Mallettico (noms, coordonnées, adresses de chantier, documents), l'utilisateur est responsable du traitement et Mallettico agit pour son compte, comme sous-traitant (RGPD, art. 28). Mallettico : traite ces données uniquement pour fournir le service, sur les instructions de l'utilisateur que constituent ses actions dans l'application, y compris les transferts décrits à l'article 4 de la Politique de confidentialité ; impose la confidentialité aux personnes qui y ont accès ; les protège par des mesures de sécurité adaptées ; aide l'utilisateur à répondre aux demandes de ses clients (accès, rectification, effacement) et à remplir ses obligations de sécurité ; l'informe sans délai d'une violation de ces données ; les efface à la suppression du compte, après que l'utilisateur a pu les exporter ; met à sa disposition les informations nécessaires pour démontrer ces engagements et permet des audits raisonnables.
+            </p>
+            <p className={p}>
+              L'utilisateur autorise Mallettico à recourir aux sous-traitants ultérieurs listés à l'article 4 de la Politique de confidentialité, tenus par contrat aux mêmes obligations. Mallettico informe l'utilisateur par e-mail de tout ajout ou remplacement au moins 30 jours avant ; l'utilisateur peut s'y opposer en écrivant à {COMPANY.email}. Un sous-traitant qui ne sert qu'à une fonction facultative (comme la dictée vocale) n'intervient que si l'utilisateur utilise cette fonction. L'utilisateur informe ses clients du traitement de leurs données.
+            </p>
+          </>
+        )}
       </section>
 
       <section className={section}>

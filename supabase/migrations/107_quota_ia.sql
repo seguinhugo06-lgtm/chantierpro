@@ -6,9 +6,10 @@
 -- en vidant le stockage, et un appel direct à la fonction l'ignore. Décision D-07 : l'IA reste masquée tant qu'il
 -- n'y a pas de quota côté serveur. Hugo ne voyait pas non plus ce que l'IA coûte.
 -- Effet : chaque appel est RÉSERVÉ avant l'appel à l'API (refusé au-delà du quota du plan pour le mois en cours,
--- heure de Paris), puis CLOS avec le modèle, les jetons consommés, la durée et l'issue. Seuls les appels « réservés »
--- ou « réussis » décomptent ; un appel en échec (API en panne, crédits épuisés, réponse illisible) ne coûte pas de
--- dictée à l'artisan. Rien ne change à l'écran tant que FONCTIONS.ia est éteint.
+-- heure de Paris), puis CLOS avec le modèle, les jetons consommés, la durée et l'issue. Décomptent : les appels
+-- réservés, réussis, et les échecs provoqués par la dictée (refus du modèle, réponse illisible) ; une panne de notre
+-- côté (API en panne, crédits épuisés, clé refusée, délai, réseau) ne coûte pas de dictée à l'artisan. Rien ne change à
+-- l'écran tant que FONCTIONS.ia est éteint.
 --
 -- Conception :
 -- - Générique : une ligne par appel, avec la fonction (`dictee`, plus tard `assistant`…). Le quota se compte par
@@ -17,29 +18,38 @@
 --   (`p_limites`, ex. {"gratuit":10,"artisan":-1,"equipe":-1}, -1 = illimité), recopié dans
 --   supabase/functions/voice-intent/regles.ts et comparé à PLANS par un test. Un plan absent de p_limites vaut 0.
 -- - Le plan est lu en base, comme l'app le choisit (fetchSubscription → choisirAbonnement + appliquerFinOffre) :
---   parmi la ligne de l'utilisateur, celle de l'organisation et celle de son propriétaire, une ligne active passe
---   avant une ligne inactive, puis le plan le plus haut ; une offre testeur échue (sans Stripe) vaut « gratuit ».
+--   parmi la ligne de l'utilisateur, celle de l'organisation et celle de son propriétaire, le plan le plus haut des
+--   lignes actives ; une ligne inactive (résiliée, impayée) ou une offre testeur échue (sans Stripe) vaut « gratuit »
+--   (plus strict que l'app, qui garde le plan d'une ligne inactive faute de mieux : relecture B3).
 -- - Fermé à l'API publique (comme 077) : RLS sans policy, droits retirés à anon et authenticated. Les deux fonctions
 --   sont SECURITY DEFINER et n'appellent pas auth.uid() : elles ne sont exécutables que par service_role (la fonction
 --   Edge, après avoir vérifié le jeton de l'utilisateur). Un utilisateur qui pourrait réserver épuiserait le quota
 --   d'une autre entreprise ; qui pourrait clore « en échec » remettrait son compteur à zéro.
 -- - L'utilisateur doit être membre de l'organisation demandée (sinon HORS_ORGANISATION) ; sans organisation
 --   demandée, sa première organisation.
--- - Verrou transactionnel par organisation, mois et fonction : deux appels simultanés ne dépassent pas le quota.
+-- - Au plan gratuit, le quota se compte aussi PAR COMPTE (relecture gardien-securite du 3 nov., H1) : un compte peut
+--   créer des organisations à lui ; sans cela, chaque nouvelle organisation rouvrait 10 dictées.
+-- - Plafond anti-abus quel que soit le plan (H2) : 5 analyses par minute et 100 par jour et par compte. Au-delà, refus
+--   avec motif « plafond ». Le plafond du jour est un choix à confirmer par Hugo (docs/cloud/ia-socle.md).
+-- - Verrous transactionnels par compte puis par organisation (toujours dans cet ordre) : deux appels simultanés ne
+--   dépassent pas le quota.
+-- - Nom en « _log » : la table est un journal ; les migrations 072 (suppression de compte) et 105 (départ d'un membre)
+--   n'en réattribuent pas les lignes au patron (B1). Lignes de plus de 12 mois supprimées à chaque réservation (B2,
+--   durée annoncée dans la politique de confidentialité).
 --
 -- ─── Vérification après application (éditeur SQL) ───────────────────────────
---   SELECT to_regclass('public.usage_ia') IS NOT NULL AS table_ok,
---          (SELECT relrowsecurity FROM pg_class WHERE oid = 'public.usage_ia'::regclass) AS rls,
---          has_table_privilege('authenticated', 'public.usage_ia', 'select') AS lisible_utilisateur,
+--   SELECT to_regclass('public.usage_ia_log') IS NOT NULL AS table_ok,
+--          (SELECT relrowsecurity FROM pg_class WHERE oid = 'public.usage_ia_log'::regclass) AS rls,
+--          has_table_privilege('authenticated', 'public.usage_ia_log', 'select') AS lisible_utilisateur,
 --          has_function_privilege('authenticated', 'public.reserver_usage_ia(uuid,uuid,text,jsonb)', 'execute') AS reserver_public,
 --          has_function_privilege('anon', 'public.terminer_usage_ia(bigint,text,text,integer,integer,integer,text)', 'execute') AS terminer_visiteur,
 --          has_function_privilege('service_role', 'public.reserver_usage_ia(uuid,uuid,text,jsonb)', 'execute') AS serveur;
 --     → table_ok t, rls t, lisible_utilisateur f, reserver_public f, terminer_visiteur f, serveur t
 --   Après le déploiement de voice-intent et une dictée :
---   SELECT fonction, statut, modele, jetons_entree, jetons_sortie, duree_ms FROM public.usage_ia ORDER BY id DESC LIMIT 5;
+--   SELECT fonction, statut, modele, jetons_entree, jetons_sortie, duree_ms FROM public.usage_ia_log ORDER BY id DESC LIMIT 5;
 -- ============================================================
 
-CREATE TABLE IF NOT EXISTS public.usage_ia (
+CREATE TABLE IF NOT EXISTS public.usage_ia_log (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
   user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
@@ -55,15 +65,16 @@ CREATE TABLE IF NOT EXISTS public.usage_ia (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   termine_le TIMESTAMPTZ
 );
-COMMENT ON TABLE public.usage_ia IS
+COMMENT ON TABLE public.usage_ia_log IS
   'Appels à l''IA (migration 107) : quota mensuel par organisation et fonction, jetons et durée. Aucun texte dicté stocké. Accès : service_role seulement.';
-CREATE INDEX IF NOT EXISTS idx_usage_ia_quota ON public.usage_ia (organization_id, fonction, mois);
-CREATE INDEX IF NOT EXISTS idx_usage_ia_user ON public.usage_ia (user_id);
+CREATE INDEX IF NOT EXISTS idx_usage_ia_quota ON public.usage_ia_log (organization_id, fonction, mois);
+CREATE INDEX IF NOT EXISTS idx_usage_ia_user ON public.usage_ia_log (user_id, fonction, created_at);
+CREATE INDEX IF NOT EXISTS idx_usage_ia_mois ON public.usage_ia_log (mois);
 
-ALTER TABLE public.usage_ia ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.usage_ia_log ENABLE ROW LEVEL SECURITY;
 -- Aucune policy : anon et authenticated n'y voient rien, même si un droit leur était rendu.
-REVOKE ALL ON TABLE public.usage_ia FROM PUBLIC, anon, authenticated;
-GRANT SELECT ON TABLE public.usage_ia TO service_role;
+REVOKE ALL ON TABLE public.usage_ia_log FROM PUBLIC, anon, authenticated;
+GRANT SELECT ON TABLE public.usage_ia_log TO service_role;
 
 -- Plan en vigueur pour un utilisateur dans une organisation, selon la règle de l'app. Interne.
 CREATE OR REPLACE FUNCTION public.plan_pour_usage_ia(p_user_id UUID, p_org UUID)
@@ -88,6 +99,7 @@ AS $$
         OR s.user_id = (SELECT o.owner_id FROM public.organizations o WHERE o.id = p_org)
   ), effectives AS (
     SELECT CASE
+             WHEN coalesce(status, 'active') NOT IN ('active', 'trialing', 'past_due') THEN 'gratuit'
              WHEN stripe_subscription_id IS NULL AND plan_brut <> 'gratuit' AND fin IS NOT NULL AND fin < now() THEN 'gratuit'
              ELSE plan_brut
            END AS plan,
@@ -149,16 +161,34 @@ BEGIN
   v_limite := CASE WHEN jsonb_typeof(p_limites -> v_plan) = 'number' THEN (p_limites ->> v_plan)::numeric::integer ELSE 0 END;
   IF v_limite < 0 THEN v_limite := NULL; END IF;
 
-  -- Un seul calcul à la fois par organisation, mois et fonction (relâché à la fin de la transaction).
+  -- Un seul calcul à la fois par compte, puis par organisation (toujours dans cet ordre ; relâchés en fin de transaction).
+  PERFORM pg_advisory_xact_lock(hashtextextended('usage_ia:u:' || p_user_id::text || ':' || p_fonction, 0));
   PERFORM pg_advisory_xact_lock(hashtextextended('usage_ia:' || v_org::text || ':' || p_fonction || ':' || v_mois::text, 0));
-  SELECT count(*) INTO v_utilise FROM public.usage_ia
-   WHERE organization_id = v_org AND fonction = p_fonction AND mois = v_mois AND statut IN ('reserve', 'reussi');
 
-  IF v_limite IS NOT NULL AND v_utilise >= v_limite THEN
-    RETURN jsonb_build_object('autorise', false, 'plan', v_plan, 'limite', v_limite, 'utilise', v_utilise);
+  -- Durée de conservation : 12 mois (politique de confidentialité, article 3).
+  DELETE FROM public.usage_ia_log
+   WHERE mois < (date_trunc('month', now() AT TIME ZONE 'Europe/Paris') - interval '12 months')::date;
+
+  -- Plafond anti-abus, quel que soit le plan : chaque appel compte, même en échec (il a coûté un appel à l'API).
+  IF (SELECT count(*) FROM public.usage_ia_log
+       WHERE user_id = p_user_id AND fonction = p_fonction AND created_at > now() - interval '1 minute') >= 5
+     OR (SELECT count(*) FROM public.usage_ia_log
+       WHERE user_id = p_user_id AND fonction = p_fonction AND created_at > now() - interval '1 day') >= 100 THEN
+    RETURN jsonb_build_object('autorise', false, 'motif', 'plafond', 'plan', v_plan, 'limite', v_limite, 'utilise', NULL);
   END IF;
 
-  INSERT INTO public.usage_ia (organization_id, user_id, fonction, mois, plan)
+  -- Décomptent : réservés, réussis, et échecs provoqués par la dictée. Au plan gratuit : aussi ceux du même compte
+  -- dans d'autres organisations.
+  SELECT count(*) INTO v_utilise FROM public.usage_ia_log
+   WHERE fonction = p_fonction AND mois = v_mois
+     AND (statut IN ('reserve', 'reussi') OR (statut = 'echec' AND motif IN ('refus', 'illisible')))
+     AND (organization_id = v_org OR (v_plan = 'gratuit' AND user_id = p_user_id));
+
+  IF v_limite IS NOT NULL AND v_utilise >= v_limite THEN
+    RETURN jsonb_build_object('autorise', false, 'motif', 'quota', 'plan', v_plan, 'limite', v_limite, 'utilise', v_utilise);
+  END IF;
+
+  INSERT INTO public.usage_ia_log (organization_id, user_id, fonction, mois, plan)
   VALUES (v_org, p_user_id, p_fonction, v_mois, v_plan)
   RETURNING id INTO v_id;
   RETURN jsonb_build_object('autorise', true, 'id', v_id, 'plan', v_plan, 'limite', v_limite, 'utilise', v_utilise + 1);
@@ -182,7 +212,7 @@ BEGIN
   IF p_statut IS NULL OR p_statut NOT IN ('reussi', 'echec') THEN
     RAISE EXCEPTION 'terminer_usage_ia : statut invalide (%)', p_statut;
   END IF;
-  UPDATE public.usage_ia
+  UPDATE public.usage_ia_log
      SET statut = p_statut,
          modele = left(p_modele, 60),
          jetons_entree = greatest(p_jetons_entree, 0),
