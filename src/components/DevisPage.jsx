@@ -45,6 +45,7 @@ import { mapError } from '../lib/errorMapper';
 import { formatMoney as fmtMoney, filterValidLignes, formatClientName } from '../lib/formatters';
 import { normalizeNumero } from '../lib/devis-utils';
 import { mentionImmatriculation } from '../lib/immatriculation';
+import { ECRITURE_EN_ATTENTE } from '../lib/erreursEcriture';
 import { apresPaiement, statutFacture, resteAPayer, dejaPaye, echeance, dateEcheance, joursDeRetard, paiementsDe, montantPaiement, estCorrection, correctionPossible, motifCorrection, resteSigne } from '../lib/paiementsFacture';
 import CorrectionEncaissementModal from './devis/CorrectionEncaissementModal';
 import EnTeteDocument from './devis/EnTeteDocument';
@@ -2382,8 +2383,15 @@ export default function DevisPage({ clients, addClient, devis, setDevis, chantie
     const maj = { statut: choix.cle, ...(choix.cle === 'envoye' && !doc.date_envoi ? { date_envoi: jourLocal() } : {}) };
     // Le numéro d'une facture émise est celui que la base a attribué (101, 102) : DataContext le reprend de la ligne
     // enregistrée, la fiche suit la liste
-    if (!await onUpdate(doc.id, maj, { silencieux: true })) return;
+    const resultat = await onUpdate(doc.id, maj, { silencieux: true });
+    if (!resultat) return;
     setSelected((s) => (s?.id === doc.id ? { ...s, ...maj } : s));
+    // Hors ligne, l'écriture attend sur l'appareil : la base n'a ni accepté l'émission ni attribué le numéro, et
+    // « Pas de connexion » est déjà affiché (relecture du 3 nov. 2026 : deux messages contraires)
+    if (resultat === ECRITURE_EN_ATTENTE) {
+      if (choix.geste === 'emettre') showToast('Émission enregistrée sur cet appareil : elle partira au retour du réseau', 'info');
+      return;
+    }
     showToast(choix.geste === 'emettre' ? 'Facture émise' : `Statut enregistré : ${choix.libelle}`, 'success');
   };
   const fenetreStatut = (
@@ -3043,10 +3051,13 @@ export default function DevisPage({ clients, addClient, devis, setDevis, chantie
               mention={canViewPrices && !modeDiscret && !franchiseAppliquee(selected, entreprise) ? 'TTC' : undefined}
               libelleMontant={resteEnGrand && canViewPrices ? 'Reste à payer' : undefined}
               pastille={statutsPossibles.length > 0 ? (
-                // Le statut se change là où il se lit (retours d'Hugo du 3 nov. 2026 : il était caché dans « ⋯ »)
-                <button type="button" onClick={() => setStatutDe(selected)} aria-label="Changer le statut" className="inline-flex items-center gap-1 min-h-[44px] -my-1 pr-1 rounded-full text-encre-2 hover:text-encre">
+                // Le statut se change là où il se lit (retours d'Hugo du 3 nov. 2026 : il était caché dans « ⋯ »). Nom
+                // accessible : « Statut : Envoyée. Changer le statut » — le statut affiché reste lu (WCAG 2.5.3, relecture du 3 nov.)
+                <button type="button" data-changer-statut="" onClick={() => setStatutDe(selected)} className="inline-flex items-center gap-1 min-h-[44px] -my-1 pr-1 rounded-full text-encre-2 hover:text-encre">
+                  <span className="sr-only">Statut : </span>
                   <PastilleStatut genre={selected.type === 'facture' && !isAvoir ? 'facture' : 'devis'} statut={selected.type === 'facture' && !isAvoir ? factureVue : selected.statut} taille="grande" />
                   <ChevronDown size={18} aria-hidden="true" />
+                  <span className="sr-only">. Changer le statut</span>
                 </button>
               ) : <PastilleStatut genre={selected.type === 'facture' && !isAvoir ? 'facture' : 'devis'} statut={selected.type === 'facture' && !isAvoir ? factureVue : selected.statut} taille="grande" />}
               contexte={contexte}

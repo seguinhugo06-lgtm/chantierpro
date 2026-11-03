@@ -12,6 +12,13 @@
  * n'est jamais une coupure réseau, même si l'appareil se croit hors ligne à cet instant.
  */
 
+/**
+ * Résultat d'une modification gardée sur l'appareil (réseau absent, serveur indisponible) : vraie pour les appelants
+ * (rien d'annulé), mais la base n'a encore rien accepté. Un geste qui dépend de sa réponse (émettre une facture : la
+ * base attribue le numéro) ne dit pas « fait » (relecture du 3 nov. 2026).
+ */
+export const ECRITURE_EN_ATTENTE = 'en_attente';
+
 const STATUTS_PASSAGERS = [0, 401, 408, 425, 429];
 // Codes SQL qui ne changeront pas en réessayant, même renvoyés avec un statut 5xx
 const CODE_DEFINITIF = /^(42|23|22|P0004|XX)/;

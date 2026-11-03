@@ -13,7 +13,7 @@ import { toast } from '../stores/toastStore';
 import { useSubscriptionStore, PLANS } from '../stores/subscriptionStore';
 import { celebrateMilestone } from '../lib/celebrate';
 import { captureException } from '../lib/sentry';
-import { estEcritureDifferable, estSessionExpiree, messageEcritureRefusee } from '../lib/erreursEcriture';
+import { ECRITURE_EN_ATTENTE, estEcritureDifferable, estSessionExpiree, messageEcritureRefusee } from '../lib/erreursEcriture';
 import { numeroRamonageDemo } from '../lib/ramonage';
 
 /**
@@ -560,10 +560,12 @@ export function DataProvider({ children, initialData = {} }) {
       }
       return true;
     } catch (error) {
-      return echecEcriture(error, {
+      // Mise en file : `ECRITURE_EN_ATTENTE` (vrai), pas `true` — la base n'a rien accepté (lib/erreursEcriture)
+      const differe = await echecEcriture(error, {
         action: 'update', table, data: { id, ...data },
         annuler: () => setter(prev => prev.map(x => x.id === id ? avant : x)),
       });
+      return differe ? ECRITURE_EN_ATTENTE : false;
     }
   }, [userId, orgId, echecEcriture]);
 

@@ -126,7 +126,10 @@ module.exports = [
       verifier(await ouvrirDocument(page, 'FAC-2026-00302'), 'la facture brouillon est dans la liste');
       await attendre(800);
       // Sur la fiche : la pastille de statut est le bouton
-      const pastille = await page.evaluate(() => { const b = document.querySelector('button[aria-label="Changer le statut"]'); b?.click(); return !!b; });
+      const nomPastille = await page.evaluate(() => (document.querySelector('button[data-changer-statut]')?.innerText || '').replace(/\s+/g, ' ').trim());
+      // Nom accessible (relecture du 3 nov., WCAG 2.5.3) : le statut affiché reste lu, suivi de l'action
+      verifier(/^Statut : .+\. Changer le statut$/.test(nomPastille), `la pastille garde le statut dans son nom (« ${nomPastille} »)`);
+      const pastille = await page.evaluate(() => { const b = document.querySelector('button[data-changer-statut]'); b?.click(); return !!b; });
       verifier(pastille, 'la pastille de la fiche ouvre « Changer le statut »');
       await attendre(500);
       verifier(await choisir(page, 'Envoyée'), 'choix « Envoyée » proposé');
@@ -151,12 +154,14 @@ module.exports = [
       const commun = { client_id: CLIENT.id, type: 'facture', facture_type: 'totale', date: '2026-10-20', date_echeance: '2099-12-31', total_ht: 100, total_tva: 0, total_ttc: 100, tva_rate: 0, created_at: '2026-10-20T08:00:00Z', lignes };
       const BROUILLON = { ...commun, id: 'f0f0f0f0-0000-4000-8000-000000000701', statut: 'brouillon', numero: 'FAC-2026-00009' };
       const ENVOYEE = { ...commun, id: 'f0f0f0f0-0000-4000-8000-000000000702', statut: 'envoye', numero: 'FAC-2026-00005', date_envoi: '2026-10-20' };
+      const BROUILLON_HORS_LIGNE = { ...commun, id: 'f0f0f0f0-0000-4000-8000-000000000703', statut: 'brouillon', numero: 'FAC-2026-00011' };
+      let horsLigne = false; // étape 3 : l'émission ne joint pas la base
       const entreprise = { id: 'e0e0e0e0-0000-4000-8000-000000000701', user_id: UID, organization_id: ORG, nom: 'Élec Exemple', forme_juridique: 'Micro-entreprise',
         siret: '00000000000000', telephone: '0500000000', email: 'contact@exemple.fr', adresse: '1 rue Imaginaire', code_postal: '24000', ville: 'Exempleville',
         decennale_assureur: 'AXA', decennale_numero: 'DEC-1', is_active: true, is_default: true, settings_json: { reglages: { nomEntrepreneur: 'Jean Exemple' } }, created_at: '2026-01-01T00:00:00Z' };
       const refusRls = json({ code: '42501', message: 'new row violates row-level security policy for table "paiements"' }, 403);
       let base = null;
-      base = creerBase({ clients: [CLIENT], devis: [BROUILLON, ENVOYEE], entreprise: [entreprise] }, {
+      base = creerBase({ clients: [CLIENT], devis: [BROUILLON, ENVOYEE, BROUILLON_HORS_LIGNE], entreprise: [entreprise] }, {
         refuser: (m, table, { q, corps }) => {
           if (m === 'POST' && table === 'paiements') return refusRls;
           // La base attribue le numéro à l'émission (101-102) : elle ignore la proposition de l'app
@@ -169,7 +174,7 @@ module.exports = [
         },
       });
       const { page } = await ouvrir({
-        reel: true, largeur: 375, page: 'devis', session: sessionFactice(UID), supabase: base.reponse,
+        reel: true, largeur: 375, page: 'devis', session: sessionFactice(UID), supabase: (req, u) => (horsLigne && req.method() === 'PATCH' ? 'panne' : base.reponse(req, u)),
         avantChargement: () => { try { localStorage.setItem('pwa-install-dismissed', String(Date.now())); } catch { /* */ } },
       });
       await attendre(2500);
@@ -188,7 +193,31 @@ module.exports = [
       const apres = await texte(page);
       verifier(/FAC-2026-00042/.test(apres) && !/FAC-2026-00009/.test(apres), 'la liste montre le numéro attribué par la base (FAC-2026-00042)');
 
-      // 2. « Payée » : encaissement refusé par la base → aucune réussite, la facture reste à encaisser
+      // 2. Émission sans réseau (relecture du 3 nov. 2026) : l'écriture attend sur l'appareil, la base n'a pas attribué
+      // le numéro → pas de « Facture émise », mais « Émission enregistrée sur cet appareil »
+      await attendre(5000); // le message de l’étape 1 se ferme
+      await page.evaluate(() => {
+        window.__messagesStatut = [];
+        new MutationObserver(() => {
+          const t = document.body.innerText;
+          for (const m of ['Facture émise', 'Émission enregistrée sur cet appareil', 'Pas de connexion']) {
+            if (t.includes(m) && !window.__messagesStatut.includes(m)) window.__messagesStatut.push(m);
+          }
+        }).observe(document.body, { childList: true, subtree: true, characterData: true });
+      });
+      horsLigne = true;
+      verifier(await statutDeLaCarte(page, 'FAC-2026-00011'), 'bouton « Statut » sur la carte du second brouillon');
+      await attendre(500);
+      verifier(await choisir(page, 'Envoyée'), 'choix « Envoyée » (sans réseau)');
+      await attendre(600);
+      verifier(await confirmerDansDialogue(page, 'Émettre la facture'), 'bouton « Émettre la facture » (sans réseau)');
+      await attendre(2000);
+      const messages = await page.evaluate(() => window.__messagesStatut || []);
+      verifier(messages.includes('Émission enregistrée sur cet appareil') && !messages.includes('Facture émise'),
+        `sans réseau : « Émission enregistrée sur cet appareil », jamais « Facture émise » (${JSON.stringify(messages)})`);
+      horsLigne = false;
+
+      // 3. « Payée » : encaissement refusé par la base → aucune réussite, la facture reste à encaisser
       verifier(await statutDeLaCarte(page, 'FAC-2026-00005'), 'bouton « Statut » sur la carte de la facture envoyée');
       await attendre(500);
       verifier(await choisir(page, 'Payée'), 'choix « Payée »');
@@ -207,6 +236,7 @@ module.exports = [
       verifier(!base.journal.some((j) => j.m === 'PATCH' && j.table === 'devis' && j.corps?.statut === 'payee'), 'le statut « payée » n’est pas demandé à la base');
       verifier(base.tables.devis.find((x) => x.id === ENVOYEE.id).statut === 'envoye', 'en base : facture toujours envoyée');
       verifier(!/Payée le|Soldée/.test(t), 'l’écran ne dit pas la facture payée');
+
     },
   },
 ];
