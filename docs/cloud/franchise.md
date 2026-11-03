@@ -75,7 +75,7 @@ Une situation validée ou facturée qui porte de la TVA se réimprime telle quel
 - `landing/*` : pages marketing, exemples fictifs hors application.
 - `admin-help/*` : aide et outils d'administration.
 - `FicheChantier.jsx:343` : message sur une TVA réellement saisie.
-- `tresorerie/TresorerieModule.jsx` 2128-2464, `Settings.jsx` 1207 (détail TVA) : tableaux de TVA, dont le régime « franchise » est déjà pris en compte par `regimeTvaTresorerie` (à confirmer en navigateur). Sauf le tableau des mouvements (l. 2128-2130 et 2155-2158) : à corriger en franchise, selon l'avis du juriste du 3 nov. (tâche `mouvements-tva`). Les numéros de ligne de ce § 3 sont ceux du code final (contrôle du 3 nov.) ; la fusion de `main` les avait décalés.
+- `tresorerie/TresorerieModule.jsx` 2128-2465, `Settings.jsx` 1207 (détail TVA) : tableaux de TVA, dont le régime « franchise » est déjà pris en compte par `regimeTvaTresorerie` (à confirmer en navigateur). Sauf le tableau des mouvements (l. 2128-2130 et 2155-2158) : à corriger en franchise, selon l'avis du juriste du 3 nov. (tâche `mouvements-tva`). Les numéros de ligne de ce § 3 sont ceux du code final (contrôle du 3 nov.) ; la fusion de `main` les avait décalés.
 
 **À corriger plus tard (hors périmètre, faible exposition)**
 - `tresorerie/TresorerieModule.jsx:507-516` : saisie d'un mouvement « Montant TTC », détail HT / TVA / TTC. En franchise, la TVA d'un achat n'est pas récupérable. Ce n'est pas qu'un libellé : le calcul est à revoir.
@@ -270,6 +270,22 @@ Relecture `juriste-btp` des décisions appliquées : **OK sur les 7 points**, ri
 4. Fournitures et main-d'œuvre : en « Plus tard », avec la source.
 5. Tests 1220 sur 1220, contre-essai fait, parcours de l'aperçu réel vert, juriste OK.
 
+### Vérification complète après les décisions
+
+```
+Vérification « complet » de 9e4862a
+  ✓ Tests (44.3 s) — 1220 passed (1220)
+  ✓ Lint (0 erreur) (6.1 s) — 241 problems (0 errors, 241 warnings)
+  ✓ Smoke (25.9 s)
+  ✓ Build (24.5 s)
+  ✓ Banc de migrations (5.9 s)
+  ✓ Parcours (navigateur) (2033.5 s)
+  ✓ Audit d’interface (380.6 s)
+✓ Tout est vert — niveau « complet ».
+```
+
+Cette sortie vient de la session cloud (environnement cloud) : elle est rapportée telle quelle. La session locale rejoue le niveau complet sur le commit de livraison.
+
 ## Correction du contrôle du 3 nov.
 
 Contrôle de la branche (`31a2bab` à `9e4862a`) par la session locale : rapport jugé véridique, livrable après corrections. Six défauts mineurs et des écarts de ce rapport, corrigés sur la branche locale `corr-franchise`, partie de `origin/cloud/franchise` (`9e4862a`).
@@ -315,7 +331,8 @@ Vérification « standard » de b67b217
 ### Ce que le dépôt ne prouve pas
 
 - Les contre-essais des sessions cloud, leurs relectures `juriste-btp` (« 7 points », « 6 points », « 7 points ») et la réponse d'Hugo (« 1 oui, 2 brouillon, 3 retrait, 4 plus tard », consignée en D-31) : rapportés tels quels, invérifiables ici.
-- **La vérification complète du code final** (`npm run verifier -- --complet` : banc, tous les parcours, audit d'interface) n'a pas tourné depuis `d59f352`. Elle sera rejouée par la session locale avant livraison.
+- **La vérification complète** a tourné dans la session cloud sur `9e4862a` (bloc « Vérification complète après les décisions » ci-dessus), avant cette correction. Elle n'a pas tourné sur le code final : la session locale la rejoue sur le commit de livraison.
+- Les contre-essais de cette correction (neuf retraits, neuf échecs) et ses parcours « aperçu imprimé » et « assistant : une micro-entreprise » : faits dans la session de correction, sans trace dans le dépôt ; chaque retrait est décrit ci-dessus et rejouable, les parcours le sont par `npm run parcours`.
 - La relecture `juriste-btp` de cette correction (phrases d'écran, `metier-btp.md`) n'est pas faite : cette session n'avait pas de sous-agent.
 
 ### Ce qui reste
