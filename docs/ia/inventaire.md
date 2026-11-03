@@ -12,6 +12,7 @@ Tout ce qui touche à l'IA dans le code, avec son état. Relevé fait sur `main`
 | Fenêtre de dictée | `src/components/voice/DicteeModal.jsx` | Complète, masquée | Trois étapes (parler → analyse → relecture). Saisie clavier possible. Crée client + chantier + devis en brouillon, annulable 20 s. |
 | Reconnaissance vocale | `src/hooks/useDictation.js` | Fonctionne | Web Speech API du navigateur : gratuite, en `fr-FR`. Chrome et Android complets ; Safari et iOS partiels. Sur certains navigateurs (Chrome), l'audio part chez le fournisseur du navigateur. |
 | Analyse de la dictée côté app | `src/lib/voiceIntent.js` | Fonctionne | En démo, une analyse **locale par motifs** (`analyseLocale`), sans IA. En réel, l'appel à `voice-intent`, sans repli local en cas d'échec. Rapprochement client, chantier et catalogue. |
+| Métré express (sans IA) | `MetreModal` dans `src/components/DevisComposer.jsx`, calcul dans `src/lib/metre.js` | Fonctionne, visible | Longueur × largeur (× hauteur) × nombre × chutes → quantité en m² ou m³ (testé). Point de départ de la piste « photo ou plan → métré » (ligne directrice § 4, ligne 15) : le modèle lirait les dimensions, l'app garderait ce calcul. |
 | Quota de dictées | `src/lib/dicteeQuota.js`, `src/stores/subscriptionStore.js` | Fonctionne, contournable | Compteur dans le navigateur (`localStorage`). Gratuit : 10 par mois ; Artisan et Équipe : illimité. |
 
 ## 2. Les failles à corriger avant de rallumer quoi que ce soit
@@ -59,7 +60,7 @@ Garde-fous déjà en place : `src/components/landing/__tests__/honnetete.test.js
 | `ai_suggestions` | `000`, `006`, policy fermée par `092` | Seulement par le code mort |
 | `avis_google.ai_suggested_response`, `ai_response_status` | `020_notifications_campaigns.sql` | Non |
 
-RLS de `ai_analyses` et `ai_memory` : `user_id = auth.uid()`. C'est le bon principe, mais à revoir pour le travail en équipe (`organization_id`). `ai_analyses` stocke l'**entrée brute** : si on la réutilise comme journal, il faut une durée de conservation, sinon on garde des dictées qui contiennent des données de clients.
+RLS de `ai_analyses` et `ai_memory` : `user_id = auth.uid()`. C'est le bon principe, mais à revoir pour le travail en équipe (`organization_id`). `ai_analyses` stocke l'**entrée brute** : elle n'est pas réutilisée : le journal est `usage_ia_log` (migration 107 du socle), sans aucun texte de demande.
 
 ## 6. Ce que le prototype ajoute (branche `cloud/ia-direction`)
 
@@ -68,7 +69,7 @@ RLS de `ai_analyses` et `ai_memory` : `user_id = auth.uid()`. C'est le bon princ
 | `src/lib/ia/contrat.js` | Contrat app ↔ fonction Edge : requête, réponse, erreurs, validation des paramètres contre les fiches envoyées |
 | `src/lib/ia/simulateur.js` | Réponses simulées en démo (quatre demandes) |
 | `src/lib/ia/preparer.js` | Transforme l'intention en proposition, à partir des données (mêmes calculs que les écrans) |
-| `src/lib/ia/assistant.js` | Point d'entrée : démo → simulateur ; sinon → fonction Edge (`assistant`, nom provisoire) |
+| `src/lib/ia/assistant.js` | Point d'entrée : démo → simulateur ; sinon → fonction Edge (nom provisoire, à arbitrer avec le socle ; codes d'erreur du socle) |
 | `src/components/ia/AssistantIa.jsx`, `ResultatAssistant.jsx` | La fenêtre « Que voulez-vous faire ? » et les cartes de résultat |
-| `src/App.jsx` | Bouton « Demander » dans l'en-tête et Ctrl+J, si `FONCTIONS.ia` ou en démo |
+| `src/App.jsx`, `src/lib/fonctions.js` | Bouton « Demander » dans l'en-tête et Ctrl+J, seulement si `FONCTIONS.assistant` (éteint) ou en démo avec `?apercu=ia` |
 | `src/lib/ia/__tests__/assistant.test.js`, `scripts/parcours/assistant.cjs` | 20 tests unitaires, 2 parcours |
