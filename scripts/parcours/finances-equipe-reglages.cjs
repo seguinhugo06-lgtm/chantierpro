@@ -648,8 +648,9 @@ module.exports = [
   },
   {
     // Retour d'Hugo (3 nov. 2026) : « Registre métier ou commerce — Type à revoir car pas commerçant ». Le bloc ne
-    // proposait que le RCS (« A : commerçant »…). Choix guidé : répertoire des métiers pour un artisan, RCS sinon.
-    nom: 'légal : un artisan voit le répertoire des métiers, une société le RCS ; la mention imprimée suit (réel, 375 px)',
+    // proposait que le RCS (« A : commerçant »…). Choix guidé : RNE (métiers et artisanat) pour un artisan, RCS sinon.
+    // Relecture juriste-btp du 3 nov. 2026 : aucune mention « RM » depuis le 1er janv. 2023, plus de département.
+    nom: 'légal : un artisan voit le RNE (métiers et artisanat), une société le RCS ; la mention imprimée suit (réel, 375 px)',
     reel: true,
     async executer({ ouvrir, sessionFactice, cliquer, attendre, verifier, saisir }) {
       const lire = (page) => page.evaluate(() => {
@@ -660,32 +661,37 @@ module.exports = [
           choisi: segments.find((b) => b.getAttribute('aria-pressed') === 'true')?.innerText.trim() || '',
           hauteurs: segments.map((b) => Math.round(b.getBoundingClientRect().height)),
           lieu: document.querySelector('label[for="settings-field-rcs"], #settings-field-rcs-libelle')?.innerText.trim() || '',
+          champLieu: !!document.getElementById('settings-field-rcs'),
           type: !!document.getElementById('settings-field-rcsType'),
           imprime: [...document.querySelectorAll('p')].find((p) => /^Sera imprimé/.test(p.innerText.trim()))?.innerText.trim() || '',
           debordement: document.documentElement.scrollWidth - innerWidth,
         };
       });
 
-      const base = creerBase({ entreprise: [{ ...MICRO }] });
+      // Un département saisi avant la relecture (« 33 », rcs_ville) : ignoré à l'impression, vidé au changement de registre
+      const base = creerBase({ entreprise: [{ ...MICRO, rcs_ville: '33', settings_json: { reglages: { ...MICRO.settings_json.reglages, rcsType: 'RM' } } }] });
       const { page, browser } = await ouvrir({ reel: true, largeur: 375, page: 'settings', session: sessionFactice(UID), supabase: (req, u) => base.reponse(req, u) });
       await attendre(1500);
       await rubrique(page, { cliquer }, 'Légal');
       const a = await lire(page);
-      verifier(a.registre === 'RM' && a.choisi === 'Métiers (RM)', `micro-entreprise : le répertoire des métiers d’abord (${JSON.stringify(a)})`);
-      verifier(/Département d’immatriculation/.test(a.lieu) && !a.type, `département demandé, pas de « Type » de RCS (« ${a.lieu} »)`);
+      verifier(a.registre === 'RM' && a.choisi === 'Métiers et artisanat (RNE)', `micro-entreprise : le RNE (métiers et artisanat) d’abord (${JSON.stringify(a)})`);
+      verifier(!a.lieu && !a.champLieu && !a.type, `ni département ni « Type » de RCS demandés (« ${a.lieu} »)`);
       verifier(a.hauteurs.length === 2 && a.hauteurs.every((h) => h >= 36) && a.debordement <= 0, `choix lisible à 375 px, rien ne déborde (${JSON.stringify(a.hauteurs)}, ${a.debordement} px)`);
-      await saisir(page, '#settings-field-rcs', '33');
       await saisir(page, '#settings-field-rcsNumero', '123 456 789');
       await attendre(2500);
       const b = await lire(page);
-      verifier(/123 456 789 RM 33/.test(b.imprime), `« Sera imprimé : 123 456 789 RM 33 » (« ${b.imprime} »)`);
+      verifier(/Entreprise du secteur des métiers et de l’artisanat, immatriculée au RNE sous le n° 123 456 789/.test(b.imprime) && !/\bRM\b/.test(b.imprime),
+        `« Sera imprimé : Entreprise du secteur des métiers et de l’artisanat, immatriculée au RNE sous le n° 123 456 789 » (« ${b.imprime} »)`);
       const ecrites = ecrituresEntreprise(base);
-      verifier(ecrites.some((c) => c.rcs_ville === '33') && ecrites.some((c) => c.settings_json?.reglages?.rcsNumero === '123 456 789'),
-        'département et numéro écrits dans les mêmes champs qu’avant (rcs_ville, reglages.rcsNumero)');
+      verifier(ecrites.some((c) => c.settings_json?.reglages?.rcsNumero === '123 456 789' && c.settings_json?.reglages?.rcsType === 'RM'),
+        'numéro et registre écrits dans les mêmes champs qu’avant (reglages.rcsNumero, reglages.rcsType)');
       await cliquer(page, 'Commerce (RCS)');
       await attendre(1500);
       const c = await lire(page);
       verifier(c.registre === 'RCS' && /Ville du greffe/.test(c.lieu) && c.type, `« Commerce (RCS) » : ville du greffe et type (${JSON.stringify(c)})`);
+      // Relecture du 3 nov. : changer de registre vide la ville ; sans ville choisie, rien ne s'imprime (ni « RCS 33 A … »)
+      verifier(c.imprime === '', `« Commerce (RCS) » sans ville choisie : aucune mention imprimée (« ${c.imprime} »)`);
+      verifier(ecrituresEntreprise(base).some((e) => 'rcs_ville' in e && !e.rcs_ville), 'l’ancien département est vidé au changement de registre');
       verifier(ecrituresEntreprise(base).some((e) => e.settings_json?.reglages?.rcsType === 'A'), 'le choix est enregistré (type A pour un entrepreneur individuel)');
       await browser.close();
 

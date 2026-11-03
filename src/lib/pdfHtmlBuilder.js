@@ -29,7 +29,7 @@ export function getEntrepriseFromStorage() {
 }
 
 /**
- * Immatriculation imprimée (RCS ou RM), lib/immatriculation
+ * Immatriculation imprimée (RCS ou RNE), lib/immatriculation
  * @param {Object} entreprise
  * @returns {string}
  */

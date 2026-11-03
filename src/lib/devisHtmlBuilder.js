@@ -33,8 +33,11 @@ import { mentionImmatriculation } from './immatriculation';
 import { blocRetractationHtml, estConcerneParRetractation, lienRetractationEnLigne, mentionsSignatureClientHtml } from './retractation';
 
 /**
- * Immatriculation imprimée : « RCS Paris B 123 456 789 », « 123 456 789 RM 33 » ou l'ancien champ libre
- * (lib/immatriculation, commun aux deux générateurs ; C. com. R123-237, décret n° 98-247 art. 9)
+ * Immatriculation imprimée : « RCS Paris B 123 456 789 », « Entreprise du secteur des métiers et de l’artisanat,
+ * immatriculée au RNE sous le n° 123 456 789 » ou l'ancien champ libre (lib/immatriculation, commun aux deux
+ * générateurs). RCS : C. com. R123-237. RNE : aucune mention « RM » en vigueur ; répertoire des métiers remplacé par
+ * le RNE le 1er janv. 2023 (ordonnance n° 2021-1189, art. 47 ; INPI) ; information due au consommateur : C. conso.
+ * R111-2, 3° ; mention au registre : C. com. L123-46 ; vérifié sur Légifrance le 3 nov. 2026 (juriste-btp).
  */
 function getRCSComplet(entreprise) {
   return h(mentionImmatriculation(entreprise));

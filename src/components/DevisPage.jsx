@@ -206,7 +206,7 @@ export default function DevisPage({ clients, addClient, devis, setDevis, chantie
   const textSecondary = "text-encre-2";
   const textMuted = "text-encre-2";
 
-  // Immatriculation imprimée (RCS ou RM) : même bloc que devisHtmlBuilder (lib/immatriculation)
+  // Immatriculation imprimée (RCS ou RNE) : même bloc que devisHtmlBuilder (lib/immatriculation)
   const getRCSComplet = () => mentionImmatriculation(entreprise);
 
   const [mode, setMode] = useState(selectedDevis ? 'preview' : 'list');

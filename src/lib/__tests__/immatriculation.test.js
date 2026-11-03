@@ -6,7 +6,7 @@ import { buildDevisHtml } from '../devisHtmlBuilder';
 import { buildDocumentHTML } from '../pdfHtmlBuilder';
 
 // Retour d'Hugo (3 nov. 2026) : « Registre métier ou commerce — Type à revoir car pas commerçant ». Le bloc
-// propose le répertoire des métiers à un artisan et le RCS à une société, sans changer les données d'avant.
+// propose le RNE (métiers et artisanat) à un artisan et le RCS à une société, sans changer les données d'avant.
 describe('registreDe : quel registre proposer', () => {
   it('sans rien de saisi : EI, micro-entreprise, EIRL → RM ; société ou forme inconnue → RCS', () => {
     expect(registreDe({ formeJuridique: 'EI' })).toBe('RM');
@@ -38,13 +38,20 @@ describe('mentionImmatriculation : ce qui s’imprime', () => {
     expect(mentionImmatriculation({ rcs_ville: 'Paris', rcs_numero: '987654321' })).toBe('RCS Paris B 987654321');
   });
 
-  it('RM : « numéro RM département »', () => {
-    expect(mentionImmatriculation({ rcsType: 'RM', rcsVille: '33', rcsNumero: '123 456 789' })).toBe('123 456 789 RM 33');
+  // Relecture juriste-btp du 3 nov. 2026 : aucune mention « RM » depuis le 1er janv. 2023 ; C. conso. R111-2, 3°
+  it('RNE (artisan) : le numéro d’inscription au RNE en tant qu’entreprise du secteur des métiers et de l’artisanat', () => {
+    expect(mentionImmatriculation({ rcsType: 'RM', rcsNumero: '123 456 789' })).toBe('Entreprise du secteur des métiers et de l’artisanat, immatriculée au RNE sous le n° 123 456 789');
   });
 
-  it('incomplet : rien (ni « RCS Paris B » sans numéro, ni « RM » sans département)', () => {
+  it('RNE : un département saisi avant la relecture est ignoré, jamais « RM » imprimé', () => {
+    const m = mentionImmatriculation({ rcsType: 'RM', rcsVille: '33', rcsNumero: '123 456 789' });
+    expect(m).toBe('Entreprise du secteur des métiers et de l’artisanat, immatriculée au RNE sous le n° 123 456 789');
+    expect(m).not.toMatch(/\bRM\b|33/);
+  });
+
+  it('incomplet : rien (ni « RCS Paris B » sans numéro, ni RNE sans numéro)', () => {
     expect(mentionImmatriculation({ rcsVille: 'Paris' })).toBe('');
-    expect(mentionImmatriculation({ rcsType: 'RM', rcsNumero: '123456789' })).toBe('');
+    expect(mentionImmatriculation({ rcsType: 'RM', rcsVille: '33' })).toBe('');
   });
 
   it('ancien champ libre `rcs` : préfixé « RCS » s’il ne l’est pas, jamais en double', () => {
@@ -54,7 +61,8 @@ describe('mentionImmatriculation : ce qui s’imprime', () => {
   });
 
   it('libellés du formulaire selon le registre', () => {
-    expect(libellesImmatriculation('RM').lieu).toBe('Département d’immatriculation (numéro)');
+    expect(libellesImmatriculation('RM').lieu).toBeNull();
+    expect(libellesImmatriculation('RM').aide).toMatch(/attestation d’immatriculation au RNE, gratuite sur data\.inpi\.fr/);
     expect(libellesImmatriculation('RCS').lieu).toBe('Ville du greffe');
   });
 });
@@ -83,10 +91,10 @@ describe('les générateurs impriment la même mention', () => {
   const artisan = { nom: 'Élec Exemple', nomEntrepreneur: 'Jean Exemple', formeJuridique: 'EI', siret: '12345678900011', adresse: '1 rue A\n33000 Bordeaux', rcsType: 'RM', rcsVille: '33', rcsNumero: '123 456 789' };
   const sarl = { ...artisan, formeJuridique: 'SARL', rcsType: 'B', rcsVille: 'Bordeaux' };
 
-  it('devisHtmlBuilder : RM pour l’artisan, RCS pour la société, jamais « RCS » devant le RM', () => {
+  it('devisHtmlBuilder : RNE pour l’artisan, RCS pour la société, jamais « RCS » ni « RM »', () => {
     const rm = buildDevisHtml({ doc, client, entreprise: artisan, couleur: '#12336F' });
-    expect(rm).toContain('123 456 789 RM 33');
-    expect(rm).not.toMatch(/RCS/);
+    expect(rm).toContain('Entreprise du secteur des métiers et de l’artisanat, immatriculée au RNE sous le n° 123 456 789');
+    expect(rm).not.toMatch(/RCS|\bRM\b/);
     expect(buildDevisHtml({ doc, client, entreprise: sarl, couleur: '#12336F' })).toContain('RCS Bordeaux B 123 456 789');
   });
 
@@ -97,7 +105,8 @@ describe('les générateurs impriment la même mention', () => {
   });
 
   it('pdfHtmlBuilder : même mention', () => {
-    expect(buildDocumentHTML(doc, client, null, artisan)).toContain('123 456 789 RM 33');
+    expect(buildDocumentHTML(doc, client, null, artisan)).toContain('Entreprise du secteur des métiers et de l’artisanat, immatriculée au RNE sous le n° 123 456 789');
+    expect(buildDocumentHTML(doc, client, null, artisan)).not.toMatch(/\bRM\b/);
     expect(buildDocumentHTML(doc, client, null, sarl)).toContain('RCS Bordeaux B 123 456 789');
   });
 

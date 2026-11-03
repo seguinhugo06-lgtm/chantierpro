@@ -726,7 +726,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             </div>
           </Bloc>
 
-          {/* Immatriculation : répertoire des métiers (artisan) ou RCS (commerçant, société), choix guidé par la forme
+          {/* Immatriculation : RNE en tant qu'entreprise du secteur des métiers et de l'artisanat (artisan) ou RCS (commerçant, société), choix guidé par la forme
               juridique (retour d'Hugo du 3 nov. 2026 : « Type à revoir car pas commerçant »). Mêmes champs qu'avant
               (rcsType, rcsVille, rcsNumero) ; libellés, mention et sources dans lib/immatriculation. */}
           {(() => {
@@ -735,9 +735,11 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             const mention = mentionImmatriculation(entreprise);
             const choisirRegistre = (r) => {
               if (r === registre) return;
-              updateEntreprise((p) => ({ ...p, rcsType: r === 'RM' ? 'RM' : (estSociete(p) ? 'B' : 'A') }), 'rcsType');
+              // La ville du greffe ne vaut que pour le RCS : on la vide à chaque changement (relecture du 3 nov. 2026 :
+              // sinon « RCS 33 A … »). Le SIREN reste.
+              updateEntreprise((p) => ({ ...p, rcsType: r === 'RM' ? 'RM' : (estSociete(p) ? 'B' : 'A'), rcsVille: '' }), 'rcsType');
             };
-            // Le répertoire des métiers proposé d'office à un entrepreneur individuel s'enregistre avec la première saisie :
+            // Le RNE (métiers et artisanat) proposé d'office à un entrepreneur individuel s'enregistre avec la première saisie :
             // sans lui, ville et numéro se liraient « RCS » (données d'avant, lib/immatriculation)
             const majImmat = (cle) => (val) => updateEntreprise((p) => ({ ...p, [cle]: val, ...(registre === 'RM' ? { rcsType: 'RM' } : {}) }), cle);
             return (
@@ -745,10 +747,10 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                 <div data-registre={registre}>
                   <p id="settings-registre-libelle" className="block text-sm font-medium text-encre-2 mb-1.5">Votre registre</p>
                   <Segmente pleineLargeur ariaLabel="Votre registre" valeur={registre} onChange={choisirRegistre}
-                    options={[{ valeur: 'RM', libelle: 'Métiers (RM)' }, { valeur: 'RCS', libelle: 'Commerce (RCS)' }]} />
+                    options={[{ valeur: 'RM', libelle: 'Métiers et artisanat (RNE)' }, { valeur: 'RCS', libelle: 'Commerce (RCS)' }]} />
                   <p className="mt-1.5 text-sm text-encre-3">
                     {registre === 'RM'
-                      ? 'Artisan en entreprise individuelle ou micro-entreprise. Inscrit aussi au RCS ? Choisissez Commerce (RCS).'
+                      ? 'Artisan en entreprise individuelle ou micro-entreprise, immatriculé au RNE en tant qu’entreprise du secteur des métiers et de l’artisanat. Inscrit aussi au RCS ? Choisissez Commerce (RCS).'
                       : 'Commerçant ou société (SARL, SAS…), y compris artisanale : la mention RCS est obligatoire.'}
                   </p>
                 </div>
@@ -756,11 +758,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                   {registre === 'RCS' ? (
                     <ChoixParam id="settings-field-rcs" cle="rcsVille" libelle={textes.lieu} options={VILLES_RCS.map((v) => ({ valeur: v, libelle: v }))}
                       valeur={entreprise.rcsVille || ''} onChange={majImmat('rcsVille')} vide={textes.lieuExemple} />
-                  ) : (
-                    <ChampParam id="settings-field-rcs" cle="rcsVille" libelle={textes.lieu}>
-                      <DebouncedInput id="settings-field-rcs" placeholder={textes.lieuExemple} maxLength={40} value={entreprise.rcsVille || ''} onChange={majImmat('rcsVille')} />
-                    </ChampParam>
-                  )}
+                  ) : null}
                   {registre === 'RCS' ? (
                     <ChoixParam id="settings-field-rcsType" cle="rcsType" libelle="Type" titre="Type d’immatriculation" options={TYPES_RCS}
                       valeur={TYPES_RCS.some((t) => t.valeur === entreprise.rcsType) ? entreprise.rcsType : 'B'} onChange={maj('rcsType')} />

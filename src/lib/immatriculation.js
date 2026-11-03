@@ -1,6 +1,6 @@
 /**
- * Immatriculation imprimée sur les devis, factures et lettres : RCS (commerçants, sociétés) ou répertoire des
- * métiers (artisans). Un seul module, lu par Paramètres › Légal, les deux générateurs de devis et factures
+ * Immatriculation imprimée sur les devis, factures et lettres : RCS (commerçants, sociétés) ou RNE (artisans,
+ * entreprises du secteur des métiers et de l'artisanat). Un seul module, lu par Paramètres › Légal, les deux générateurs de devis et factures
  * (`devisHtmlBuilder.js`, l'aperçu inline de `DevisPage.jsx`), `pdfHtmlBuilder.js`, la mise en demeure et
  * l'attestation de ramonage.
  *
@@ -11,16 +11,17 @@
  * - RCS : C. com. R123-237, 1° — « le numéro unique d'identification de l'entreprise […] suivi de la mention
  *   RCS suivie du nom de la ville où se trouve le greffe où elle est immatriculée » (Légifrance). Les inscrits
  *   au RCS sont les commerçants et les sociétés commerciales.
- * - RM : décret n° 98-247 du 2 avril 1998, art. 9 (Code de l'artisanat, partie réglementaire depuis sa
- *   recodification) : l'artisan immatriculé indique son numéro d'identification suivi de la mention « RM » et
- *   du département de la chambre de métiers. Depuis le 1er janvier 2023, le répertoire des métiers est tenu
- *   au sein du registre national des entreprises (RNE, INPI ; ordonnance n° 2021-1189). Formulation exacte
- *   et ordre des termes À VÉRIFIER au texte en vigueur sur Légifrance (pas d'accès réseau lors de l'écriture).
+ * - RNE : aucune mention « RM » en vigueur ; répertoire des métiers remplacé par le RNE le 1er janv. 2023
+ *   (ordonnance n° 2021-1189, art. 47 ; INPI) ; information due au consommateur : C. conso. R111-2, 3° ; mention au
+ *   registre : C. com. L123-46 ; vérifié sur Légifrance le 3 nov. 2026 (juriste-btp). C. conso. R111-2, 3° : « Le cas
+ *   échéant, le numéro d'inscription au registre du commerce et des sociétés ou au Registre national des entreprises
+ *   en tant qu'entreprise du secteur des métiers et de l'artisanat ».
  * - Mentions de facture : CGI ann. II art. 242 nonies A (identité et numéro d'identification de l'émetteur).
  *
- * Données (aucune colonne nouvelle) : `rcsType` (settings_json.reglages) porte le registre — 'RM' pour le
- * répertoire des métiers, 'A' à 'D' (ou vide) pour le RCS, comme avant ; `rcsVille` (colonne rcs_ville) porte
- * la ville du greffe (RCS) ou le département de la chambre de métiers (RM) ; `rcsNumero` le numéro (SIREN) ;
+ * Données (aucune colonne nouvelle) : `rcsType` (settings_json.reglages) porte le registre — 'RM' (valeur
+ * interne gardée) pour une entreprise du secteur des métiers et de l'artisanat immatriculée au RNE, 'A' à 'D' (ou
+ * vide) pour le RCS, comme avant ; `rcsVille` (colonne rcs_ville) porte la ville du greffe (RCS) — un département
+ * saisi avant le 3 nov. 2026 pour le RNE est ignoré, sans migration ; `rcsNumero` le numéro (SIREN) ;
  * `rcs`, l'ancien champ libre (fiche entreprise), reste lu tel quel.
  */
 
@@ -48,7 +49,7 @@ export function registreDe(entreprise) {
   return estEntrepreneurIndividuel(e) || estEirl(e) ? 'RM' : 'RCS';
 }
 
-/** Choix explicite du répertoire des métiers (le défaut proposé à un EI ne compte pas comme un choix). */
+/** Choix explicite du RNE en tant qu'entreprise du secteur des métiers et de l'artisanat (valeur 'RM' ; le défaut proposé à un EI ne compte pas comme un choix). */
 export function estInscritRm(entreprise) {
   return lire(entreprise, 'rcsType', 'rcs_type').toUpperCase() === 'RM';
 }
@@ -56,15 +57,16 @@ export function estInscritRm(entreprise) {
 /**
  * La mention imprimée, sans échappement HTML (chaque générateur échappe) ; '' si incomplète.
  * - RCS : « RCS Paris B 123 456 789 » (forme déjà imprimée avant ce module) ;
- * - RM : « 123 456 789 RM 33 » (numéro, « RM », département : décret 98-247 art. 9, à vérifier) ;
+ * - RNE (artisan) : « Entreprise du secteur des métiers et de l’artisanat, immatriculée au RNE sous le n° 123 456 789 »
+ *   (C. conso. R111-2, 3° ; aucune mention « RM » depuis le 1er janv. 2023) ;
  * - sinon l'ancien champ libre `rcs`, préfixé « RCS » s'il ne l'est pas déjà (comme la mise en demeure).
  */
 export function mentionImmatriculation(entreprise) {
   const e = entreprise || {};
   const lieu = lire(e, 'rcsVille', 'rcs_ville');
   const numero = lire(e, 'rcsNumero', 'rcs_numero');
-  if (lieu && numero) {
-    if (estInscritRm(e)) return `${numero} RM ${lieu}`;
+  if (estInscritRm(e) && numero) return `Entreprise du secteur des métiers et de l’artisanat, immatriculée au RNE sous le n° ${numero}`;
+  if (lieu && numero && !estInscritRm(e)) {
     const type = lire(e, 'rcsType', 'rcs_type').toUpperCase();
     return `RCS ${lieu} ${TYPES_RCS.includes(type) ? type : 'B'} ${numero}`;
   }
@@ -77,11 +79,10 @@ export function mentionImmatriculation(entreprise) {
 export function libellesImmatriculation(registre) {
   if (registre === 'RM') {
     return {
-      // Textes relus par juriste-btp le 3 nov. 2026 (chambres de métiers régionales depuis 2021 ; l'extrait RNE
-      // n'affiche pas « RM 33 » : on demande le département de l'établissement principal, en chiffres)
-      lieu: 'Département d’immatriculation (numéro)',
-      lieuExemple: 'ex. 33',
-      aide: 'Votre numéro SIREN (9 chiffres) et le numéro du département de votre établissement principal, comme sur votre extrait RNE (data.inpi.fr).',
+      // Plus de département : aucune mention « RM » depuis le 1er janv. 2023 (relecture juriste-btp du 3 nov. 2026)
+      lieu: null,
+      lieuExemple: null,
+      aide: 'Votre numéro SIREN (les 9 premiers chiffres du SIRET), celui de votre attestation d’immatriculation au RNE, gratuite sur data.inpi.fr.',
     };
   }
   return {

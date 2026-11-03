@@ -109,7 +109,8 @@ module.exports = [
     async executer({ ouvrir, attendre, verifier }) {
       for (const [forme, imprime] of [['EI', false], ['SARL', true]]) {
         const id = `ent-capital-${forme.toLowerCase()}`;
-        // Immatriculation (retour d'Hugo du 3 nov. 2026, lib/immatriculation) : l'EI au répertoire des métiers, la SARL au RCS
+        // Immatriculation (retour d'Hugo du 3 nov. 2026, lib/immatriculation) : l'EI au RNE (métiers et artisanat), la SARL au
+        // RCS. Un département saisi avant la relecture du 3 nov. (« 75 ») est ignoré : aucune mention « RM » (juriste-btp)
         const immat = forme === 'EI' ? { rcsType: 'RM', rcsNumero: '123 456 789' } : { rcsType: 'B', rcsNumero: '123 456 789' };
         const lieu = forme === 'EI' ? '75' : 'Paris';
         const ligne = { ...FICHE_CAPITAL, id, forme_juridique: forme, rcs_ville: lieu, settings_json: { reglages: { ...immat, ...(forme === 'EI' ? { nomEntrepreneur: 'Julien Exemple' } : {}) } } };
@@ -128,8 +129,8 @@ module.exports = [
         const html = await page.evaluate(() => [...document.querySelectorAll('iframe')].map((f) => f.getAttribute('srcdoc') || '').find((x) => x.length > 100) || '');
         verifier(html.length > 100, `aperçu affiché (${forme})`);
         verifier(/Capital: 10000 €/.test(html) === imprime, `${forme} : capital ${imprime ? 'imprimé' : 'absent'} (${(html.match(/.{0,40}Capital.{0,20}/) || ['aucun'])[0]})`);
-        const attendu = forme === 'EI' ? '123 456 789 RM 75' : 'RCS Paris B 123 456 789';
-        verifier(html.includes(attendu) && (forme !== 'EI' || !/RCS/.test(html)), `${forme} : « ${attendu} » imprimé par l’aperçu (${(html.match(/.{0,30}(RCS|RM).{0,30}/) || ['aucun'])[0]})`);
+        const attendu = forme === 'EI' ? 'Entreprise du secteur des métiers et de l’artisanat, immatriculée au RNE sous le n° 123 456 789' : 'RCS Paris B 123 456 789';
+        verifier(html.includes(attendu) && (forme !== 'EI' || (!/RCS/.test(html) && !/\bRM\b/.test(html))), `${forme} : « ${attendu} » imprimé par l’aperçu (${(html.match(/.{0,30}(RCS|RNE|\bRM\b).{0,30}/) || ['aucun'])[0]})`);
         await browser.close();
       }
     },
