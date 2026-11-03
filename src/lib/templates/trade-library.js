@@ -873,16 +873,18 @@ chauffage: {
     {
       id: 'chaudiere-condensation',
       nom: 'Chaudière gaz à condensation',
+      // Chaudière à énergie fossile : plus au 5,5 % depuis le 1er janv. 2025, à 20 % depuis le 1er mars 2025, fourniture,
+      // pose et travaux de la même opération (loi de finances pour 2025 ; avis juriste-btp du 3 nov. 2026 ; à relire au BOFiP).
       resume: 'Remplacement de chaudière murale 24 kW',
       base: { quantite: 1, unite: 'ens.' },
       lignes: [
-        { designation: 'Dépose et évacuation de l\'ancienne chaudière', unite: 'u', quantite: 1, prixUnitaire: 380, tva: 5.5 },
-        { designation: 'Fourniture et pose de chaudière gaz à condensation murale 24 kW', unite: 'u', quantite: 1, prixUnitaire: 3400, tva: 5.5 },
-        { designation: 'Adaptation du conduit de fumée en ventouse ou tubage', unite: 'ml', quantite: 6, prixUnitaire: 95, tva: 5.5 },
-        { designation: 'Raccordements hydrauliques et gaz avec vannes d\'isolement', unite: 'forfait', quantite: 1, prixUnitaire: 480, tva: 5.5 },
-        { designation: 'Évacuation des condensats vers réseau EU avec neutralisation', unite: 'ml', quantite: 4, prixUnitaire: 46, tva: 5.5 },
-        { designation: 'Pose de thermostat programmable connecté', unite: 'u', quantite: 1, prixUnitaire: 290, tva: 5.5 },
-        { designation: 'Mise en service, analyse de combustion et certificat de conformité', unite: 'forfait', quantite: 1, prixUnitaire: 320, tva: 5.5 },
+        { designation: 'Dépose et évacuation de l\'ancienne chaudière', unite: 'u', quantite: 1, prixUnitaire: 380, tva: 20 },
+        { designation: 'Fourniture et pose de chaudière gaz à condensation murale 24 kW', unite: 'u', quantite: 1, prixUnitaire: 3400, tva: 20 },
+        { designation: 'Adaptation du conduit de fumée en ventouse ou tubage', unite: 'ml', quantite: 6, prixUnitaire: 95, tva: 20 },
+        { designation: 'Raccordements hydrauliques et gaz avec vannes d\'isolement', unite: 'forfait', quantite: 1, prixUnitaire: 480, tva: 20 },
+        { designation: 'Évacuation des condensats vers réseau EU avec neutralisation', unite: 'ml', quantite: 4, prixUnitaire: 46, tva: 20 },
+        { designation: 'Pose de thermostat programmable connecté', unite: 'u', quantite: 1, prixUnitaire: 290, tva: 20 },
+        { designation: 'Mise en service, analyse de combustion et certificat de conformité', unite: 'forfait', quantite: 1, prixUnitaire: 320, tva: 20 },
       ],
     },
     {
@@ -931,7 +933,7 @@ chauffage: {
   ],
   prestations: [
     { designation: 'Fourniture et pose de radiateur acier avec robinet thermostatique', unite: 'u', quantite: 1, prixUnitaire: 480, tva: 10 },
-    { designation: 'Remplacement de chaudière gaz à condensation murale', unite: 'u', quantite: 1, prixUnitaire: 3400, tva: 5.5 },
+    { designation: 'Remplacement de chaudière gaz à condensation murale', unite: 'u', quantite: 1, prixUnitaire: 3400, tva: 20 },
     { designation: 'Fourniture et pose de pompe à chaleur air/eau', unite: 'u', quantite: 1, prixUnitaire: 9800, tva: 5.5 },
     { designation: 'Plancher chauffant hydraulique posé sur isolant, hors chape', unite: 'm²', quantite: 50, prixUnitaire: 60, tva: 5.5 },
     { designation: 'Désembouage du réseau de chauffage avec produit et rinçage', unite: 'forfait', quantite: 1, prixUnitaire: 620, tva: 5.5 },

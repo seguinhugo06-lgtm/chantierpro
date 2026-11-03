@@ -9,7 +9,11 @@
  *
  * Règles (honnêteté commerciale, C. conso. L121-2) :
  * - jamais une qualification sans numéro ;
- * - jamais une qualification dont la date de fin, saisie, est passée ;
+ * - le RGE seulement avec sa date de fin (4 ans, contrôles, suspension possible : sans date, rien n'empêcherait la
+ *   mention de survivre à l'expiration) et jamais après elle ;
+ * - la validité s'apprécie à la date du document, pas du jour de la réimpression ;
+ * - « Entreprise RGE » et non « Qualification RGE » : Certibat et Cerqual Qualitel délivrent des certifications ; le
+ *   domaine, s'il est saisi, est imprimé (sans lui, la mention n'affirme rien sur les travaux du devis) ;
  * - jamais « Qualiopi » comme organisme RGE : un numéro saisi avec cet organisme n'est pas imprimé (ce peut être un
  *   numéro Qualiopi), l'écran Paramètres demande de choisir l'organisme.
  */
@@ -33,8 +37,9 @@ export function organismeRgeRefuse(entreprise) {
 /** Pourquoi le RGE saisi n'est pas imprimé, ou null s'il l'est (ou s'il n'y a rien à imprimer). */
 export function raisonRgeNonImprime(entreprise, aujourdhui = jourLocal()) {
   if (!texte(entreprise?.rge)) return null;
-  if (organismeRgeRefuse(entreprise)) return 'Qualiopi n’est pas un organisme RGE : choisissez l’organisme qui vous a délivré votre qualification RGE.';
-  if (expiree(entreprise?.rgeValidite, aujourdhui)) return 'La date de fin de validité est passée : la qualification n’est plus imprimée sur vos documents.';
+  if (organismeRgeRefuse(entreprise)) return 'Qualiopi certifie les organismes de formation, pas les entreprises RGE. Choisissez l’organisme qui a délivré votre RGE (Qualibat, Qualifelec, Qualit’EnR…).';
+  if (!texte(entreprise?.rgeValidite)) return 'Ajoutez la date de fin de validité indiquée sur votre certificat RGE : sans elle, le RGE n’est pas imprimé.';
+  if (expiree(entreprise?.rgeValidite, aujourdhui)) return 'La date de fin de validité est passée : le RGE n’est plus imprimé sur vos documents.';
   return null;
 }
 
@@ -53,8 +58,8 @@ export function lignesQualifications(entreprise, aujourdhui = jourLocal()) {
   if (numero && raisonRgeNonImprime(e, aujourdhui) === null) {
     const organisme = texte(e.rgeOrganisme);
     const deOrganisme = organisme && organisme !== 'Autre' ? ` (${organisme})` : '';
-    const validite = texte(e.rgeValidite) ? ` — Valide jusqu'au ${dateFr(e.rgeValidite)}` : '';
-    lignes.push(`Qualification RGE N°${numero}${deOrganisme}${validite}`);
+    const domaine = texte(e.rgeDomaine) ? ` — Domaine : ${texte(e.rgeDomaine)}` : '';
+    lignes.push(`Entreprise RGE (Reconnu garant de l'environnement) — N° ${numero}${deOrganisme}${domaine} — Valide jusqu'au ${dateFr(e.rgeValidite)}`);
   }
 
   // Ancien format (`labels`), gardé pour une fiche qui en aurait : mêmes règles
@@ -66,6 +71,12 @@ export function lignesQualifications(entreprise, aujourdhui = jourLocal()) {
     }
   }
   return lignes;
+}
+
+/** Le jour d'un document (« AAAA-MM-JJ »), sinon aujourd'hui : la validité s'apprécie à la date d'émission. */
+export function jourDuDocument(doc) {
+  const d = texte(doc?.date);
+  return /^\d{4}-\d{2}-\d{2}/.test(d) ? d.slice(0, 10) : jourLocal();
 }
 
 /** Le bloc HTML (précédé d'un saut de ligne) pour le pied de page, ou ''. */

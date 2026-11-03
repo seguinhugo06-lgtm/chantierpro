@@ -113,7 +113,7 @@ import { estOuverte, estEnRetard, aTraiter as docATraiter, devisARelancer, jours
 import { urlPublique } from '../lib/urlPublique';
 import { FONCTIONS } from '../lib/fonctions';
 import { jourLocal, dateLue } from '../lib/dates';
-import { qualificationsHtml } from '../lib/qualifications';
+import { qualificationsHtml, jourDuDocument } from '../lib/qualifications';
 import { signatureDuClient } from '../lib/signatureDocument';
 import RetractationDevis from './devis/RetractationDevis';
 import ExemplaireSigne from './devis/ExemplaireSigne';
@@ -1690,7 +1690,7 @@ export default function DevisPage({ clients, addClient, devis, setDevis, chantie
       ${E?.decennaleAssureur && E?.decennaleNumero ? `Assurance décennale: ${E.decennaleAssureur}${E.decennaleAssureurAdresse ? ` (${E.decennaleAssureurAdresse})` : ''} N°${E.decennaleNumero}${E.decennaleValidite ? ` (Valide jusqu'au ${dateLue(E.decennaleValidite).toLocaleDateString('fr-FR')})` : ''}${E.decennaleZone ? ` — Zone : ${E.decennaleZone}` : ''}${E.decennaleActivites ? ` — Activités : ${E.decennaleActivites}` : ''}` : ''}
       ${E?.decennaleAssureur && E?.decennaleNumero && E?.rcProAssureur ? '<br>' : ''}
       ${E?.rcProAssureur ? `RC Pro: ${E.rcProAssureur}${E.rcProNumero ? ` N°${E.rcProNumero}` : ''}${E.rcProValidite ? ` (Valide jusqu'au ${dateLue(E.rcProValidite).toLocaleDateString('fr-FR')})` : ''}${E.rcProMontantGarantie ? ` — Garantie: ${E.rcProMontantGarantie} €` : ''}${E.rcProZone ? ` — Zone: ${E.rcProZone}` : ''}` : ''}
-      ${qualificationsHtml(entreprise, echap)}
+      ${qualificationsHtml(entreprise, echap, jourDuDocument(doc))}
     </div>
     ${piedDePageHtml({ nature: natureDuDocument(doc), client })}
   </div>

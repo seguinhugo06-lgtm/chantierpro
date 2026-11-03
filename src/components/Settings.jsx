@@ -118,7 +118,7 @@ const CHAMPS_IMPORTABLES = [
   'nom', 'nomEntrepreneur', 'formeJuridique', 'capital', 'adresse', 'ville', 'codePostal', 'pays', 'tel', 'email', 'siteWeb',
   'slogan', 'siret', 'codeApe', 'tvaIntra', 'rcs', 'rcsVille', 'rcsNumero', 'rcsType', 'iban', 'bic', 'banque', 'titulaireBanque',
   'decennaleAssureur', 'decennaleNumero', 'decennaleValidite', 'decennaleActivites', 'decennaleAssureurAdresse', 'decennaleZone',
-  'rcProAssureur', 'rcProNumero', 'rcProValidite', 'rcProMontantGarantie', 'rcProZone', 'rge', 'rgeOrganisme', 'rgeValidite',
+  'rcProAssureur', 'rcProNumero', 'rcProValidite', 'rcProMontantGarantie', 'rcProZone', 'rge', 'rgeOrganisme', 'rgeValidite', 'rgeDomaine',
   'mediateur', 'mediateurContact', 'cgv', 'mentionDevis', 'mentionFacture', 'tvaDefaut', 'acompteDefaut', 'validiteDevis',
   'delaiPaiement', 'tauxPenalites', 'modePaiementDefaut', 'conditionsPaiementDefaut', 'tauxFraisStructure', 'couleur',
 ];
@@ -770,8 +770,11 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               </ChampParam>
               <ChoixParam id="settings-field-rgeOrganisme" cle="rgeOrganisme" libelle="Organisme RGE" facultatif options={OPTIONS_ORGANISMES_RGE}
                 valeur={entreprise.rgeOrganisme || ''} onChange={maj('rgeOrganisme')} vide="Choisir l’organisme" />
-              <ChampParam id="settings-field-rgeValidite" cle="rgeValidite" libelle="Fin de validité" facultatif aide="Après cette date, la qualification n’est plus imprimée sur vos documents.">
+              <ChampParam id="settings-field-rgeValidite" cle="rgeValidite" libelle="Fin de validité" facultatif aide="Date indiquée sur votre certificat. Après cette date, le RGE n’est plus imprimé sur vos documents. En cas de suspension, videz le numéro.">
                 <input id="settings-field-rgeValidite" type="date" className={CLASSE_CHAMP} value={entreprise.rgeValidite || ''} onChange={e => updateEntreprise(p => ({ ...p, rgeValidite: e.target.value }), 'rgeValidite')} />
+              </ChampParam>
+              <ChampParam id="settings-field-rgeDomaine" cle="rgeDomaine" libelle="Domaine(s) RGE" facultatif aide="Tel qu’indiqué sur votre certificat (ex. : chauffage et eau chaude au gaz).">
+                <DebouncedInput id="settings-field-rgeDomaine" placeholder="Pompe à chaleur" value={entreprise.rgeDomaine || ''} onChange={maj('rgeDomaine')} />
               </ChampParam>
             </div>
             {/* Le RGE saisi s'imprime en pied des devis et factures (les trois générateurs), sauf dans ces cas */}

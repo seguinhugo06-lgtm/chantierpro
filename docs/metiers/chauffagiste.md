@@ -22,7 +22,7 @@ Propre au métier : l'attestation d'entretien (chaudière, PAC, poêle) est souv
 | RGE QualiBois (poêle, insert, chaudière bois) | Qualit'EnR | Idem | Idem | [17] |
 | RGE QualiSol (solaire combiné) | Qualit'EnR | Idem | Idem | `plombier.md` |
 | Appellation « Professionnel du Gaz » (PG) | Qualigaz | Non | Certificat de conformité gaz sans visite systématique | `plombier.md` |
-| RGE chaudière gaz | Qualibat, Qualigaz (à vérifier) | Non | Plus aucune aide sur une chaudière gaz neuve (§ 7) **(à vérifier)** | — |
+| RGE chaudière gaz | Qualibat (Qualigaz ne délivre pas le RGE selon juriste-btp, 3 nov. 2026 ; à vérifier) | Non | Plus aucune aide sur une chaudière gaz neuve (§ 7) **(à vérifier)** | — |
 
 Fluides : deux régimes coexistent dans les sources. L'un, l'arrêté du 30 juin 2008, avec les catégories I à V de l'attestation de capacité (voir `frigoriste.md`). L'autre, un arrêté du 21 nov. 2025 (JO du 6 déc. 2025, selon une source ; un projet de 2025 selon une autre) qui remplacerait ces catégories par de nouvelles (A1, A1 FF, A1 HC, A2, A2 HC, D, E, V) en référence au règlement (UE) 2024/2215, avec une attestation de remise à niveau avant le 12 mars 2029 [16] **(à vérifier : statut au JO et date d'effet, extraits fragmentaires)**. Mallettico ne code aucune catégorie : il se contente d'afficher celle que l'artisan saisit.
 
