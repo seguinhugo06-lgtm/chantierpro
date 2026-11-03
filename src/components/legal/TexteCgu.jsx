@@ -11,6 +11,7 @@
  */
 import { CGU_VERSION_DATE } from '../../lib/cgu';
 import { COMPANY } from '../../lib/editeur';
+import { FONCTIONS } from '../../lib/fonctions';
 
 /**
  * @param {boolean} [compact]  dans la fenêtre d'acceptation : titres plus petits, sections resserrées
@@ -123,6 +124,10 @@ export default function TexteCgu({ compact = false, versConfidentialite }) {
         <ul className={ul}>
           <li>Mallettico ne garantit pas que le service répondra à toutes les exigences spécifiques de l'utilisateur</li>
           <li>Les documents générés (devis, factures) doivent être vérifiés par l'utilisateur avant envoi</li>
+          {/* Dictée vocale (IA) : affiché seulement quand FONCTIONS.ia est allumé, ce qui relève aussi CGU_VERSION. */}
+          {FONCTIONS.ia && (
+            <li>La dictée vocale est analysée par une intelligence artificielle, qui peut se tromper (nom, adresse, quantité, prix) : ce qu'elle propose est à relire et à corriger par l'utilisateur avant de créer une fiche ou un document</li>
+          )}
           <li>Mallettico ne se substitue pas à un expert-comptable ou à un conseiller juridique</li>
           <li>L'utilisateur est seul responsable de la conformité fiscale et réglementaire de ses documents</li>
         </ul>

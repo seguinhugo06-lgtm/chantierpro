@@ -2,7 +2,7 @@
  * dicteeQuota — Compteur mensuel de dictées vocales.
  *
  * Pourquoi un quota : chaque dictée appelle Claude et coûte réellement de
- * l'argent (~0,004 €). L'offre gratuite doit laisser découvrir la fonction —
+ * l'argent (estimé à moins d'un millième d'euro avec Haiku 5.5 ; le vrai coût se lit dans usage_ia). L'offre gratuite doit laisser découvrir la fonction —
  * c'est elle qui fait la différence avec les autres logiciels — sans devenir
  * un poste de dépense à fonds perdu.
  *

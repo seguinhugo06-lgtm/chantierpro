@@ -2,6 +2,7 @@ import { ArrowLeft, Shield, FileText, Scale, Lock, Trash2 } from 'lucide-react';
 import { CGV_ARTICLE_4_PLANS, CGV_ARTICLE_4_TVA, libelleVersionCgv } from '../lib/cgv';
 import { COMPANY, ADRESSE } from '../lib/editeur';
 import TexteCgu from './legal/TexteCgu';
+import { FONCTIONS } from '../lib/fonctions';
 
 // Identité de l'éditeur (COMPANY, ADRESSE) : src/lib/editeur.js, partagée avec le texte des CGU (TexteCgu.jsx)
 
@@ -329,6 +330,13 @@ export default function LegalPages({ page, couleur: _couleur, setPage }) {
         <P>
           <strong className={textPrimary}>Rappels de ramonage.</strong> Si un utilisateur active l'envoi automatique des rappels (Paramètres → Ramonage), Mallettico envoie en son nom, une seule fois par échéance, un e-mail à ses clients dont le prochain ramonage approche. Données utilisées : nom, prénom et adresse e-mail du client, date du dernier ramonage, type d'appareil et pièce, date conseillée du prochain ramonage. L'utilisateur est responsable de ce traitement ; Mallettico agit pour son compte, comme sous-traitant (RGPD, art. 28), et n'utilise ces données à aucune autre fin. Chaque e-mail contient un lien qui enregistre, sans compte, le refus du client ; la date du refus est conservée tant que le compte de l'utilisateur existe. Les e-mails sont envoyés par Resend (article 4).
         </P>
+        {/* Dictée vocale (IA) : affiché seulement quand FONCTIONS.ia est allumé (D-07). Projet de texte du 3 nov. 2026,
+            soumis à juriste-btp (docs/cloud/ia-socle.md). */}
+        {FONCTIONS.ia && (
+          <P>
+            <strong className={textPrimary}>Dictée vocale (analyse par intelligence artificielle).</strong> Si vous utilisez la dictée, votre voix est transcrite en texte par votre navigateur ou votre téléphone, selon les règles de leur éditeur (par exemple Google pour Chrome, Apple pour Safari) : Mallettico ne reçoit jamais le son. Quand vous lancez l'analyse, ce texte est envoyé à Anthropic (article 4), avec les noms de vos clients déjà enregistrés et les libellés de votre catalogue, pour rattacher la dictée à l'existant. Anthropic renvoie un client, des chantiers et un devis, que vous relisez : rien n'est créé sans votre validation. Mallettico ne conserve pas le texte dicté ; seuls sont enregistrés, pour chaque analyse, la date, l'offre, le modèle utilisé, le nombre de jetons consommés et la durée, afin d'appliquer le quota de votre offre et de suivre le coût du service. Base légale : exécution du contrat (art. 6.1.b). Pour les données de vos clients contenues dans une dictée, vous êtes responsable du traitement ; Mallettico agit pour votre compte comme sous-traitant (RGPD, art. 28), et Anthropic comme sous-traitant ultérieur.
+          </P>
+        )}
       </Section>
 
       <Section title="Article 3 - Durée de conservation">
@@ -338,6 +346,9 @@ export default function LegalPages({ page, couleur: _couleur, setPage }) {
           <li><strong className={textPrimary}>Factures de votre abonnement Mallettico :</strong> 10 ans à compter de la clôture de l'exercice (Code de commerce, Art. L123-22), chez notre prestataire de paiement Stripe. Les devis et factures que vous établissez pour vos clients sont les vôtres : vous devez les conserver 10 ans ; ils sont effacés avec votre compte, téléchargez-les avant</li>
           <li><strong className={textPrimary}>Données de connexion :</strong> 12 mois conformément à la législation en vigueur</li>
           <li><strong className={textPrimary}>Données de géolocalisation :</strong> 3 mois</li>
+          {FONCTIONS.ia && (
+            <li><strong className={textPrimary}>Dictée vocale :</strong> le texte dicté n'est pas conservé par Mallettico ; le journal des analyses (date, offre, modèle, jetons, durée) est conservé tant que votre compte existe</li>
+          )}
         </UL>
         <P>
           À l'expiration de ces délais, les données sont supprimées ou anonymisées de manière irréversible.
@@ -377,12 +388,20 @@ export default function LegalPages({ page, couleur: _couleur, setPage }) {
                 <td className="px-4 py-3">US</td>
                 <td className="px-4 py-3">Accord de traitement des données ; chiffrement TLS à l'envoi</td>
               </tr>
-              <tr>
+              <tr className={FONCTIONS.ia ? `border-b ${tableBorder}` : undefined}>
                 <td className={`px-4 py-3 font-medium ${textPrimary}`}>Vercel</td>
                 <td className="px-4 py-3">Hébergement de l'application web</td>
                 <td className="px-4 py-3">Global (CDN) / US</td>
                 <td className="px-4 py-3">SOC 2, SCC, chiffrement en transit</td>
               </tr>
+              {FONCTIONS.ia && (
+                <tr>
+                  <td className={`px-4 py-3 font-medium ${textPrimary}`}>Anthropic</td>
+                  <td className="px-4 py-3">Analyse des dictées vocales (intelligence artificielle)</td>
+                  <td className="px-4 py-3">US</td>
+                  <td className="px-4 py-3">Accord de traitement des données (DPA) et SCC ; les données envoyées ne servent pas à entraîner ses modèles sans autorisation expresse, selon Anthropic</td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
