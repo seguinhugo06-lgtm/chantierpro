@@ -79,11 +79,11 @@ export const MESSAGES_ERREUR = Object.freeze({
   [ERREURS.QUOTA]: 'Vous avez utilisé toutes vos demandes du mois. Tout le reste de l’app fonctionne normalement.',
   [ERREURS.PLAFOND]: 'Trop de demandes en peu de temps. Réessayez un peu plus tard. Tout le reste de l’app fonctionne normalement.',
   [ERREURS.COUPURE]: 'L’assistant est momentanément indisponible. Tout le reste de l’app fonctionne normalement.',
-  [ERREURS.HORS_ORGANISATION]: 'Cette entreprise n’est pas la vôtre. Changez d’entreprise, puis réessayez.',
+  [ERREURS.HORS_ORGANISATION]: 'Vous n’avez pas accès à cette entreprise. Changez d’entreprise, puis réessayez.',
   [ERREURS.VIDE]: 'Dites ou tapez votre demande en quelques mots.',
   [ERREURS.TROP_LONG]: 'Demande trop longue. Dites-la en quelques mots.',
   [ERREURS.REFUS]: 'Je n’ai pas pu traiter ce texte. Reformulez en quelques mots.',
-  [ERREURS.ILLISIBLE]: 'Je n’ai pas compris la réponse. Réessayez, ou faites-le depuis l’écran concerné.',
+  [ERREURS.ILLISIBLE]: 'La réponse de l’assistant est illisible. Réessayez, ou faites-le depuis l’écran concerné.',
   [ERREURS.PANNE]: 'Un souci technique m’empêche de répondre. Réessayez dans un instant.',
 });
 
