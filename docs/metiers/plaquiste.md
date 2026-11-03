@@ -120,6 +120,6 @@ Rien à rappeler périodiquement. Le rappel utile est ponctuel : fin de la garan
 
 Relue par juriste-btp le 03/11/2026, sans texte officiel ouvert (avis : `avis-juriste-2026-11-03.md`). Corrections appliquées. Restent à vérifier au texte :
 - seuils R du 5,5 % (murs 3,7 ; rampants 6 ; combles perdus 7) dans l'arrêté ;
-- arrêté du 16 juil. 2019 (permis avant le 1er juillet 1997) ; repérage amiante d'un particulier dans son propre logement ;
+- champ du repérage amiante avant travaux : relu au texte le 3 nov. 2026 (tout immeuble bâti : C. trav. R4412-97 ; arrêté du 16 juil. 2019, art. 3 ; voir l. 54) ; reste le repérage amiante d'un particulier dans son propre logement ;
 - taux de la plaque de plâtre d'un doublage isolant ;
 - mentions CEE exigées sur devis et facture.

@@ -132,8 +132,8 @@ Réception au 1er sept. 2026, émission au 1er sept. 2027 pour les TPE, par une 
 ## Relecture juriste-btp
 Relue par juriste-btp le 03/11/2026, sans texte officiel ouvert (avis : `avis-juriste-2026-11-03.md`). Corrections appliquées. Restent à vérifier au texte :
 - exception pénale de L243-3 (personne physique qui construit pour elle-même ou sa famille) ;
-- plafonds de l'éco-PTZ (15 000 à 50 000 €) ;
-- n° d'agrément PAC sur la facture (charte Coup de pouce) : pas de mention bloquante avant lecture ;
+- plafonds de l'éco-PTZ : relus le 3 nov. 2026 (service-public F19905 ; CGI 244 quater U ; voir l. 74) ;
+- n° d'agrément PAC : relu au texte le 3 nov. 2026 (arrêté du 29 mai 2026, art. 2 : la preuve de réalisation de l'opération le mentionne ; voir l. 70) ; reste à confirmer à l'arrêté du 4 sept. 2014 que cette preuve est la facture ; pas de mention bloquante ;
 - liste exacte des mentions de l'attestation décennale (arrêté du 5 janv. 2016) ;
 - liste des gros équipements (BOI-TVA-LIQ-30-20-90-20) ; date de l'arrêté du 5,5 % (4 déc. 2024 ou JO du 24 déc.) ;
 - sous-traitant en franchise : 293 B sans autoliquidation (jugé juste, non lu au BOFiP).

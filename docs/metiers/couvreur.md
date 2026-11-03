@@ -133,7 +133,7 @@ Propositions :
 
 Relue par juriste-btp le 03/11/2026, sans texte officiel ouvert (avis : `avis-juriste-2026-11-03.md`). Corrections appliquées. Restent à vérifier au texte :
 - décret n° 2026-822 : liste du parcours par geste au 1er sept. 2026 ;
-- décret n° 2016-711 (isolation embarquée, réfection > 50 %) ;
+- isolation embarquée : relue le 3 nov. 2026, par extrait (CCH R173-5 et R173-6, issus du décret n° 2016-711 : au moins 50 % de la couverture, hors ouvertures ; voir l. 47) ;
 - Certibiocide : obligation selon le type de produit (arrêté) ;
 - frontière entretien / ouvrage pour la décennale (Cass. 3e civ., 30 mai 2024) ;
 - conditions du 5,5 % pour l'isolation (BOFiP du 9 sept. 2026) ; R421-17 a.
