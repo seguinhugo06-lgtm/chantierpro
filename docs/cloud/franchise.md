@@ -123,3 +123,92 @@ Textes nouveaux : « Prix unitaire », « Total », « Total avant remise », «
 8. Décision pour Hugo : retirer la colonne « TVA » des PDF en franchise (recommandé).
 9. Vérification : tests, lint, build, banc et audit d'interface (0 défaut) au vert. 4 parcours sont rouges, mais déjà rouges sur `main`.
 10. Restent hors périmètre : trésorerie (calcul), ramonage, ouvrages, exports CSV, historique.
+
+## Corrections du 3 nov.
+
+Consignes : relecture de code et avis du juriste du 3 nov. 2026, versé dans `docs/avis-juriste-2026-11-03-franchise.md`. Branche à jour de `origin/main` (fusion `d59f352`, sans conflit).
+
+### Ce qui est fait
+
+| Point | Fait | Commit |
+|---|---|---|
+| Juriste, à corriger 1 : citation de l'art. 289 I-1 | Remplacée par « CGI art. 289, I-4, I-5 et V ; art. 283, 3 » (`devisHtmlBuilder.js` l. 537 ; `franchiseTva.js` l. 34) | `3add86c` |
+| Juriste, à corriger 2 : la mention imprimée | « TVA non applicable, article 293 B du CGI », même texte en en-tête et sous les totaux, dans les deux générateurs (`devisHtmlBuilder.js` l. 263, 333, 728 ; `DevisPage.jsx` l. 1521, 1590). Aussi dans le portail (`ClientPortal.jsx` l. 536) et le générateur des tests (`pdfHtmlBuilder.js`). Les écrans gardent « art. 293 B du CGI ». `docs/metier-btp.md` § 3 corrigé pour concorder avec le § 4 (1er janv. 2027, 30 juin 2028) | `3add86c`, `ee6abab` |
+| Juriste, à corriger 3 : retenue de garantie | Texte du juriste mot pour mot (`devisHtmlBuilder.js` l. 736). À la saisie, au-dessus de 5 % : « La retenue de garantie est de 5 % au plus (loi n° 71-584 du 16 juillet 1971). » (`SituationsTravaux.jsx`). Signalé, pas bloqué | `3add86c` |
+| Juriste, à corriger 4 : tableau des mouvements de la trésorerie | Pas codé : le juriste le range dans la même tâche que la saisie. Ajouté à la tâche `mouvements-tva` de la feuille de route, avec la correction exacte | `ee6abab` |
+| Juriste, à corriger 5, et relecture 1 : descriptions des 308 modèles | `descriptionModele(m, franchise)` dans `src/lib/data/modeles-devis.js`, appelée aux trois endroits (`DevisExpressModal.jsx` l. 570 ; `TemplateSelector.jsx` l. 142 et 249). En franchise : « ~7 lignes \| ~1 500 – 3 000 € \| ~55% marge », « €/m² » pour les 10 modèles au mètre carré | `2131020` |
+| Relecture 2 : appels oubliés | Création rapide de chantier (Ctrl+H, `App.jsx`) reçoit `franchiseTva`. Catalogue → Bibliothèque → `FenetreAjoutDevis` : « Sous-total » sans « HT » | `7840555` |
+| Relecture 3 : avertissement ESLint de l'assistant | Le calcul utilise `franchise`. Avertissements : 241 (242 avant) | `7840555` |
+| Relecture 4 : lettre de mise en demeure | Hors de cette branche (consigne) : dans la nouvelle tâche `franchise-restes` | `ee6abab` |
+| Relecture 5 : repli 10 % des situations | Ajouté à la tâche `situations-conformes` | `ee6abab` |
+| Relecture 6 : tâche de suivi | Tâche 28 `franchise-restes` créée, avec fichier et ligne de chaque reste (voir plus bas) | `ee6abab` |
+| Relecture 7 : preuves | Avis du juriste versé dans `docs/`. Tests ajoutés : devis express (étape 2), avoir, liste d'un métier. La vérification complète : voir « Preuves » | `2131020`, `ee6abab` |
+| Introuvable 1 : branche `claude/vat-franchise-labels-u9bstz` | Rien fait : à supprimer par la session principale après la livraison | — |
+| Introuvable 2 : ce que la relecture a rejoué | Rien à faire | — |
+
+### Preuves
+
+- Nouveau test `src/components/__tests__/libellesFranchiseListes.test.jsx` : 5 tests réussis. Micro-entreprise et SARL : liste des modèles d'un métier (électricité), étape « Sélectionnez un modèle de devis » du devis express, étape 2 d'un avoir total ; les 308 descriptions sans « HT » en franchise.
+- **Contre-essai** : sans la correction des deux écrans (`git stash`), 2 tests sur 5 échouent (liste d'un métier, devis express). La correction remise : 5 sur 5.
+- `libellesFranchiseEcrans.test.jsx` : 10 tests réussis. Ajouts : la mention apparaît 2 fois mot pour mot sur la facture, plus jamais « Code Général des Impôts » ni « art. 293 B » ; le texte de la retenue de garantie.
+- `npm run verifier` (standard), recopié mot pour mot :
+
+```
+Vérification « standard » de d59f352
+
+  ✓ Tests (46.0 s) — 1219 passed (1219)
+  ✓ Lint (0 erreur) (5.9 s) — 241 problems (0 errors, 241 warnings)
+  ✓ Smoke (29.6 s)
+  ✓ Build (28.1 s)
+
+✓ Tout est vert — niveau « standard ».
+```
+
+- `npm run verifier -- --complet` sur `d59f352` : tests 1219 sur 1219 ✓, lint 0 erreur ✓, smoke ✓, build ✓, banc de migrations ✓ ; les parcours tournaient encore au moment du push (résultat ajouté plus bas s'il arrive à temps).
+- Relecture `juriste-btp` (courte, sur les textes appliqués) : **OK sur les 6 points**. Le seul texte nouveau, l'alerte au-dessus de 5 %, est jugé fidèle à l'art. 1er de la loi n° 71-584. Le juriste n'a pas rouvert les textes officiels : il s'est fié aux citations de son avis du 3 nov.
+
+### Ce qui reste (tâche `franchise-restes`, sauf mention)
+
+En franchise, ces écrans écrivent encore « HT » ou « TTC » :
+- ramonage : `ramonage/SaisieRamonage.jsx:344`, `ramonage/OngletRamonage.jsx:142`, `settings/RamonageTab.jsx:125` ;
+- bibliothèque d'ouvrages : `bibliotheque/OuvragesList.jsx:55` ;
+- historique : `audit/DiffViewer.jsx:161` et `167`, `audit/SnapshotViewer.jsx:126` ;
+- variables des relances : `settings/RelanceConfigTab.jsx:58` et `60` ;
+- « CA HT » des réglages : `Settings.jsx:1106` ;
+- exports CSV : `DevisPage.jsx:1786`, `Catalogue.jsx:507`, `catalogue/FenetresCatalogue.jsx:21-22` ;
+- lettre de mise en demeure, envoyée au client : `lib/miseEnDemeureBuilder.js:310`, `319`, `353` ;
+- rapports PDF internes : `lib/reportPdfBuilder.js:439`, `472`, `483`, `621`, `786` ;
+- paiement en ligne, éteint : `payment/PublicPaymentPage.jsx` ;
+- trésorerie, saisie (l. 507-516) et tableau (l. 2126-2128, 2153-2156) : tâche `mouvements-tva`.
+
+### Décisions d'Hugo (non appliquées)
+
+1. **« Total HT » disparu en franchise.** Deux arrêtés demandent en toutes lettres un total « hors taxes et toutes taxes comprises » sur une pièce remise à un particulier : l'arrêté n° 83-50/A du 3 oct. 1983, art. 3, et l'arrêté du 24 janv. 2017, art. 4, I. En franchise, les deux montants sont égaux. Le risque est formel et faible. **Recommandé** : la formule littérale, sur les PDF seulement. Dernière ligne « Net à payer (hors taxes et toutes taxes comprises) » sur une facture, « Total (hors taxes et toutes taxes comprises) » sur un devis (`totauxDocument.js` l. 133-136) ; « NET À PAYER (hors taxes et toutes taxes comprises) » sur une situation (`devisHtmlBuilder.js` l. 726). La mention 293 B reste juste en dessous. Dans les deux cas, consigner ces arrêtés dans `docs/metier-btp.md` § 3.
+2. **Une situation « validée » est-elle une pièce émise ?** Aujourd'hui, oui : avec de la TVA, elle se réimprime telle quelle. « Valider » ne numérote et n'envoie rien. **Recommandé** : « brouillon » tant qu'elle n'est pas facturée ou payée (`devisHtmlBuilder.js` l. 545 : `statut: (situation.statut === 'facturee' || situation.statut === 'payee') ? 'envoye' : 'brouillon'`, commentaire réécrit comme le propose le juriste). Puis, dans `situations-conformes`, « Générer facture » enregistre `tva: 0` en franchise. `FONCTIONS.facturesSituation` reste à false.
+3. **Colonne « TVA » avec « - » en franchise.** Les deux choix sont licites : un tiret ne fait pas apparaître la taxe. **Recommandé** : le retrait, dans les deux générateurs (en-tête et cellule ; colspan des lots de 6 à 5 et de 5 à 4).
+4. **Fournitures et main-d'œuvre sur les factures de travaux en franchise** (BOI-TVA-DECLA-40-10-20-20260701 § 300 : la part des livraisons de biens et celle des services doivent apparaître). L'obligation n'est pas à décider ; sa forme et sa date, si. **Proposé** : « Dont livraisons de biens (fournitures) : X € · dont services (main-d'œuvre) : Y € » sous les totaux, à partir d'une nature choisie pour chaque ligne, dans les deux générateurs. À cadrer avec `critique-produit`, puis créer la tâche et consigner le § 300 dans `docs/metier-btp.md` § 4.
+5. Du juriste, en passant : faut-il **refuser** un taux de retenue au-dessus de 5 %, au lieu de seulement le signaler ? Et « ~55% marge » des modèles est peut-être surestimée pour une micro-entreprise (la TVA des achats ne se déduit pas) : à vérifier.
+
+### Textes nouveaux soumis au juriste
+
+- « La retenue de garantie est de 5 % au plus (loi n° 71-584 du 16 juillet 1971). » : OK.
+- Les autres textes sont ceux du juriste, recopiés mot pour mot : OK.
+
+### Risques
+
+- Le PDF que voit le client change un peu : la mention sous les totaux devient « article 293 B du CGI », et l'en-tête aussi.
+- Les tests des écrans qu'on atteint par un clic imposent l'état de départ (remplacement de `useState` dans ce seul fichier de test), faute de navigateur de test unitaire. Si l'ordre des `useState` de ces écrans change, le test casse, mais il ne passera pas à tort.
+- La facture de situation reste éteinte : ses corrections ne se voient pas en production.
+
+### Résumé
+
+1. En franchise, les descriptions des 308 modèles n'ont plus « HT » : une seule fonction, trois écrans.
+2. La mention imprimée est mot pour mot celle de la loi, en en-tête comme sous les totaux, dans les deux générateurs.
+3. Le texte de la retenue de garantie suit la loi ; un taux au-dessus de 5 % est signalé.
+4. Les citations du CGI sont justes (art. 289, I-4, I-5 et V ; art. 283, 3).
+5. Deux appels oubliés corrigés (Ctrl+H, bibliothèque) ; un avertissement ESLint en moins.
+6. Tests : 1219 sur 1219, contre-essai fait. Vérification standard verte.
+7. Juriste : OK sur les 6 points.
+8. Restes listés avec fichier et ligne, dans les tâches `franchise-restes`, `mouvements-tva` et `situations-conformes`.
+9. Quatre décisions pour Hugo : la formule « hors taxes et toutes taxes comprises », la situation « validée », la colonne « TVA », fournitures et main-d'œuvre.
+10. La session locale relance la vérification complète et livre.
