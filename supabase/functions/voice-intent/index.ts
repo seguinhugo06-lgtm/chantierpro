@@ -10,6 +10,7 @@
  *
  * MODÈLE — Claude Haiku 5.5, effort `low`, sortie structurée (JSON garanti par le schéma) : `consignes.ts`.
  * RÈGLES — authentification, quota mensuel de l'organisation, erreurs propres : `regles.ts` (testé sous vitest).
+ * Chaque réponse, erreurs comprises, porte corsHeaders (posés par regles.ts).
  * QUOTA ET COÛTS — table `usage_ia_log` et fonctions `reserver_usage_ia` / `terminer_usage_ia` (migration 107), appelées
  * avec la clé de service APRÈS vérification du jeton de l'utilisateur.
  *
