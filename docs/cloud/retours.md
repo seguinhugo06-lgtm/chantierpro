@@ -168,7 +168,19 @@ Vérification « complet » de 2cd7fc6
 
 ✓ Tout est vert — niveau « complet ».
 ```
-- Après `2cd7fc6` : un rapport, puis le message hors ligne (`27162d3`). Le parcours `statuts (réel simulé)` est rejoué : vert, 19 vérifications. Le niveau standard sur le commit poussé est ci-dessous.
+- Après `2cd7fc6` : un rapport, puis le message hors ligne (`27162d3`). Le parcours `statuts (réel simulé)` est rejoué : vert, 19 vérifications. `npm run verifier` (standard) sur `1a8278f`, le dernier commit de code et de rapport, mot pour mot :
+
+```
+Vérification « standard » de 1a8278f
+
+  ✓ Tests (53.3 s) — 1231 passed (1231)
+  ✓ Lint (0 erreur) (7.3 s) — 241 problems (0 errors, 241 warnings)
+  ✓ Smoke (33.4 s)
+  ✓ Build (32.7 s)
+
+✓ Tout est vert — niveau « standard ».
+```
+Le commit suivant n'ajoute que ce résultat au rapport.
 
 ### Décisions d'Hugo (ne pas appliquer)
 1. **CGV art. 11 et médiateur** : (A) laisser les consommateurs s'abonner, désigner un médiateur (L612-1) et publier ses coordonnées (L616-1) ; ou (B) réserver l'offre aux professionnels : pas de médiateur (L611-3, 1°), mais il faut l'écrire et le contrôler à la souscription. Pour B, le juriste propose ce texte pour LegalPages.jsx:243 : « Le service est réservé aux professionnels, pour les besoins de leur activité : la médiation de la consommation ne s'applique pas aux litiges entre professionnels (article L611-3 du Code de la consommation). En cas de différend, écrivez d'abord à {COMPANY.email} pour rechercher une solution amiable. » Il faudrait alors revoir l'art. 6, qui renvoie à la rétractation. **Dans les deux cas**, la clause des lignes 236-238 est réputée non écrite (C. proc. civ. 48). Le juriste propose : « À défaut de résolution amiable dans un délai de 30 jours, la partie la plus diligente peut saisir la juridiction compétente. » Pour un consommateur, la recherche amiable ne doit pas devenir un préalable obligatoire (L612-4). Aucune option n'est recommandée par le juriste : c'est un choix commercial.
