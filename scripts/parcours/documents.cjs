@@ -152,7 +152,7 @@ module.exports = [
         await attendre(1200);
         const html = await page.evaluate(() => [...document.querySelectorAll('iframe')].map((f) => f.getAttribute('srcdoc') || '').find((x) => x.length > 100) || '');
         verifier(html.length > 100, `aperçu affiché (fin ${fin})`);
-        const trouve = /Entreprise RGE \(Reconnu garant de l(?:'|&#39;)environnement\) — Qualification : QualiPAC chauffage et eau chaude sanitaire — Qualibat — N° E-99999 — Valide jusqu'au/.test(html);
+        const trouve = /Entreprise RGE \(Reconnu garant de l(?:'|&#39;)environnement\) — Qualification : QualiPAC chauffage et eau chaude sanitaire — Qualibat — N° E-99999 — Valide jusqu(?:'|&#39;)au/.test(html);
         verifier(trouve === imprime, `fin ${fin} : RGE ${imprime ? 'imprimé' : 'absent'} (${(html.match(/.{0,10}Entreprise RGE.{0,60}/) || ['aucun'])[0]})`);
         await browser.close();
       }
