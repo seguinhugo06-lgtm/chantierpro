@@ -16,6 +16,7 @@ Commits (depuis `adbf08d`) :
 | `b22f731` fix(site): placeholder of the features section… | 2 (suite) |
 | `868ca77` fix: confirm a hand-marked signed quote; texts after legal review | 3, 5, 7 (relectures) |
 | `40d815c` test: on-site signature journeys date their quote today | parcours `facturation` (panne hors sujet) |
+| (suivant) test: the signing check ignores lazily loaded site images | parcours `site` |
 
 ## Point par point
 
@@ -65,7 +66,10 @@ Commits (depuis `adbf08d`) :
 
 ## Vérifications lancées
 - `npm ci` : OK.
-- `npm run verifier -- --complet` : voir le résultat en fin de rapport.
+- `npm run verifier -- --complet` sur `40d815c` : Tests (1225), Lint (0 erreur), Smoke, Build, Banc de migrations et **Audit d'interface : verts**. Parcours : 3 en échec :
+  - `site : fonctionnalités en action`, « signer n'envoie rien » : la page avait chargé une capture d'écran du site (`/site/tel-facture.webp`, chargement différé au défilement), pas un envoi. Le contrôle ignore désormais ces images et compte tout autre fichier (commit suivant) ; rejoué : vert ;
+  - `équipe : une seule rangée d'onglets…` (« 0 h validées ce mois ») et `trésorerie : pas de seuil d'alerte…` (bandeau « negatif ») : **échouent aussi sur `main` (`adbf08d`)**, constaté le 3 nov. en construisant `main` à part. Ils dépendent de la date (nouveau mois) et ne touchent rien de cette branche. Hors mission : à corriger par la session locale.
+  - Donc le niveau « complet » n'est pas vert à cause de ces deux parcours ; le niveau standard l'est.
 - Parcours ciblés (tous verts) : `site` (10 parcours), `abonnements`, `statuts.cjs` (4), `ramonage` (11), `légal`, `assurances`, `documents`, `facturation.cjs`.
 - Chrome (puppeteer) fonctionne dans cet environnement.
 - Panne hors sujet trouvée et corrigée : deux parcours « signature sur place » de `facturation.cjs` échouaient depuis le 31 octobre (leur devis daté du 1er octobre avait expiré). Ils datent maintenant leur devis du jour.
@@ -86,6 +90,7 @@ Commits (depuis `adbf08d`) :
 6. **CGV art. 11** (vu par le juriste, hors sujet) : rien n'empêche un consommateur de s'abonner. Il faut soit désigner un médiateur (C. conso. L612-1), soit réserver l'offre aux professionnels.
 
 ## Ce qui reste
+- Deux parcours en échec déjà sur `main`, liés à la date : `équipe : une seule rangée d'onglets…` et `trésorerie : pas de seuil d'alerte…`.
 - Vérification au texte de la mention RM (session locale, Légifrance accessible).
 - Mention RCS « RCS Paris B 123… » : R. 123-237 dit « numéro, RCS, ville » ; la lettre B est un usage. Forme existante, non changée.
 - Vue tableau de la liste des documents (écran large) : pas de bouton « Statut » (la fiche et les cartes en ont un).

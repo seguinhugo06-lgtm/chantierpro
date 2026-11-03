@@ -926,7 +926,10 @@ module.exports = [
         verifier(SIGNE_LE.test(tampon) && tampon.includes(aujourdhui), `tampon « Signé le ${aujourdhui} à HH:MM » ${a} (« ${tampon} »)`);
         const legendeSignature = await page.evaluate((s) => document.querySelector(`${s} [data-legende]`)?.textContent.replace(/\s+/g, ' ').trim(), PANNEAU);
         verifier(legendeSignature === LEGENDES['Signature en ligne'], `légende « ${LEGENDES['Signature en ligne']} » ${a}`);
-        verifier(fichiersDemandes.length === avant.fichiers && appelsBase.length === avant.base, `signer n'envoie rien ${a} (${fichiersDemandes.length - avant.fichiers} fichier(s) ${fichiersDemandes.slice(avant.fichiers).join(" ")}, ${appelsBase.length - avant.base} appel(s) à la base)`);
+        // Une capture du site (`/site/*.webp`, chargement différé de la section suivante) peut arriver quand le cadre de
+        // signature défile au centre : c'est une image lue, rien n'est envoyé. Tout autre fichier compte.
+        const demandesDuTrace = fichiersDemandes.slice(avant.fichiers).filter((f) => !/^\/site\/[^/]+\.(webp|png|jpg|svg)$/.test(f));
+        verifier(demandesDuTrace.length === 0 && appelsBase.length === avant.base, `signer n'envoie rien ${a} (${demandesDuTrace.length} fichier(s) ${demandesDuTrace.join(' ')}, ${appelsBase.length - avant.base} appel(s) à la base)`);
         await capturerSection(page, RACINE, '#fonctionnalites', `fonctionnalites-${largeur}-2-signature-signee`);
         // Au clavier : « Recommencer », puis « Signer avec mon nom » et « Valider la signature » avec Entrée
         await cliquer(page, 'Recommencer', { dans: '#fonctionnalites' });
