@@ -61,8 +61,20 @@ module.exports = [
       await attendre(500);
       verifier(/Statut actuel Envoyé/.test(await dialogue(page)), 'le volet dit le statut actuel');
       verifier(await choisir(page, 'Signé'), 'choix « Signé » proposé');
+      await attendre(600);
+      // « Signé » à la main se confirme (relecture gardien-securite du 3 nov. 2026) ; « Annuler » n'écrit rien
+      verifier(/Le client a signé le devis \?/.test(await dialogue(page)) && /sur papier/.test(await dialogue(page)), 'la confirmation demande si le client a signé sur papier');
+      verifier(await confirmerDansDialogue(page, 'Annuler'), 'bouton « Annuler »');
+      await attendre(800);
+      let { devis = [] } = await enregistres(page);
+      verifier(devis.find((x) => x.id === 'd-statut-envoye')?.statut === 'envoye', 'annulé : le devis reste envoyé');
+      verifier(await statutDeLaCarte(page, 'DEV-2026-00301'), 'bouton « Statut » toujours là après l’annulation');
+      await attendre(500);
+      verifier(await choisir(page, 'Signé'), 'choix « Signé » proposé à nouveau');
+      await attendre(600);
+      verifier(await confirmerDansDialogue(page, 'Marquer signé'), 'bouton « Marquer signé »');
       await attendre(1200);
-      const { devis = [] } = await enregistres(page);
+      ({ devis = [] } = await enregistres(page));
       const d = devis.find((x) => x.id === 'd-statut-envoye');
       verifier(d?.statut === 'accepte', `statut enregistré : ${d?.statut}`);
       verifier(/Statut enregistré : Signé/.test(await texte(page)), 'message « Statut enregistré : Signé »');

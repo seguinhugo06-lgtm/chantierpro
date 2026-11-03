@@ -19,7 +19,9 @@ export default function ChoixStatut({ doc, statutAffiche, choix = [], voirMontan
   const genre = doc?.type === 'facture' ? 'facture' : 'devis';
   const detail = (c) => {
     if (c.geste === 'encaisser') return voirMontants ? `Enregistre le paiement reçu du reste dû : ${formatMoney(c.reste, 2)}` : 'Enregistre le paiement reçu du reste dû';
-    if (c.geste === 'emettre') return 'Émet la facture : son numéro devient définitif';
+    // Émettre n'envoie rien au client (relecture juriste-btp du 3 nov. 2026)
+    if (c.geste === 'emettre') return 'Émet la facture : son numéro devient définitif. Pensez à l’envoyer à votre client.';
+    if (c.cle === 'accepte') return 'Votre client a signé le devis sur papier';
     return '';
   };
   return (

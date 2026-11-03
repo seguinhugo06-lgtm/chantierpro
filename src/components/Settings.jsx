@@ -748,9 +748,8 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                     options={[{ valeur: 'RM', libelle: 'Métiers (RM)' }, { valeur: 'RCS', libelle: 'Commerce (RCS)' }]} />
                   <p className="mt-1.5 text-sm text-encre-3">
                     {registre === 'RM'
-                      ? 'Artisan (entreprise individuelle, micro-entreprise ou société artisanale) : répertoire des métiers.'
-                      : 'Commerçant ou société commerciale (SARL, SAS…) : registre du commerce et des sociétés.'}
-                    {' '}Inscrit aux deux ? Choisissez celui qui figure sur votre extrait d’immatriculation.
+                      ? 'Artisan en entreprise individuelle ou micro-entreprise. Inscrit aussi au RCS ? Choisissez Commerce (RCS).'
+                      : 'Commerçant ou société (SARL, SAS…), y compris artisanale : la mention RCS est obligatoire.'}
                   </p>
                 </div>
                 <div className={`mt-4 grid grid-cols-1 gap-4 ${registre === 'RCS' ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>

@@ -77,9 +77,11 @@ export function mentionImmatriculation(entreprise) {
 export function libellesImmatriculation(registre) {
   if (registre === 'RM') {
     return {
-      lieu: 'Département de la chambre de métiers',
-      lieuExemple: 'ex. 33 ou Gironde',
-      aide: 'Recopiez votre numéro SIREN (9 chiffres) et le département de votre chambre de métiers, tels qu’ils figurent sur votre extrait d’immatriculation (extrait RNE, sur data.inpi.fr).',
+      // Textes relus par juriste-btp le 3 nov. 2026 (chambres de métiers régionales depuis 2021 ; l'extrait RNE
+      // n'affiche pas « RM 33 » : on demande le département de l'établissement principal, en chiffres)
+      lieu: 'Département d’immatriculation (numéro)',
+      lieuExemple: 'ex. 33',
+      aide: 'Votre numéro SIREN (9 chiffres) et le numéro du département de votre établissement principal, comme sur votre extrait RNE (data.inpi.fr).',
     };
   }
   return {

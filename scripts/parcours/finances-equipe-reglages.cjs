@@ -672,7 +672,7 @@ module.exports = [
       await rubrique(page, { cliquer }, 'Légal');
       const a = await lire(page);
       verifier(a.registre === 'RM' && a.choisi === 'Métiers (RM)', `micro-entreprise : le répertoire des métiers d’abord (${JSON.stringify(a)})`);
-      verifier(/Département de la chambre de métiers/.test(a.lieu) && !a.type, `département demandé, pas de « Type » de RCS (« ${a.lieu} »)`);
+      verifier(/Département d’immatriculation/.test(a.lieu) && !a.type, `département demandé, pas de « Type » de RCS (« ${a.lieu} »)`);
       verifier(a.hauteurs.length === 2 && a.hauteurs.every((h) => h >= 36) && a.debordement <= 0, `choix lisible à 375 px, rien ne déborde (${JSON.stringify(a.hauteurs)}, ${a.debordement} px)`);
       await saisir(page, '#settings-field-rcs', '33');
       await saisir(page, '#settings-field-rcsNumero', '123 456 789');

@@ -317,7 +317,7 @@ export default function SaisieRamonage({ client, precedent = null, remplace = nu
                     <span className="text-base font-medium text-encre">Imprimer les conseils sur l’attestation</span>
                   </label>
                   {!imprimerConseils ? (
-                    <p className="mt-1 text-sm text-encre-2">Ils ne figureront pas sur l’attestation. Vous devez quand même conseiller votre client, de vive voix.</p>
+                    <p className="mt-1 text-sm text-encre-2">Ils ne figureront pas sur l’attestation. Vous devez quand même conseiller votre client, de vive voix ou par écrit.</p>
                   ) : null}
                   {imprimerConseils ? (<>
                   <div className="space-y-1">

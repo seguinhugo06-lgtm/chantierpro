@@ -54,7 +54,7 @@ describe('mentionImmatriculation : ce qui s’imprime', () => {
   });
 
   it('libellés du formulaire selon le registre', () => {
-    expect(libellesImmatriculation('RM').lieu).toBe('Département de la chambre de métiers');
+    expect(libellesImmatriculation('RM').lieu).toBe('Département d’immatriculation (numéro)');
     expect(libellesImmatriculation('RCS').lieu).toBe('Ville du greffe');
   });
 });
