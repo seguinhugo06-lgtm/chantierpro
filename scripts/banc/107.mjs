@@ -46,6 +46,10 @@ export async function verifier({ db, q, en, commeAnonyme, compte, verifier }) {
   await q(`INSERT INTO organization_members (organization_id, user_id, role) VALUES ($1, $2, 'owner')`, [ORG_TESTEUR, TESTEUR]);
   await q(`INSERT INTO subscriptions (user_id, plan, status, current_period_end) VALUES ($1, 'artisan', 'active', now() - interval '1 day')`, [TESTEUR]);
 
+  // Le salarié du socle est ouvrier : pour les vérifications du plan de l'entreprise, il passe comptable (droit de
+  // créer un devis). Le refus d'un ouvrier est vérifié plus bas.
+  await q(`UPDATE organization_members SET role = 'comptable' WHERE organization_id = $1 AND user_id = $2`, [ORG_PATRON, SALARIE]);
+
   // ── Plan gratuit : 10 dictées par mois pour l'organisation ──
   const premieres = [];
   for (let i = 0; i < 10; i++) premieres.push(await reserver(SOLO, ORG_SOLO));
@@ -97,6 +101,21 @@ export async function verifier({ db, q, en, commeAnonyme, compte, verifier }) {
   const testeur = await reserver(TESTEUR, ORG_TESTEUR);
   verifier(testeur.plan === 'gratuit' && testeur.limite === 10, `107 : une offre testeur échue vaut le plan gratuit (${testeur.plan})`);
 
+  // ── Tri du plan : une ligne gratuite au statut NULL ne masque pas l'abonnement Équipe du propriétaire ──
+  await q(`DELETE FROM subscriptions WHERE user_id = $1`, [SALARIE]);
+  await q(`INSERT INTO subscriptions (user_id, plan, status) VALUES ($1, 'gratuit', NULL)`, [SALARIE]);
+  const statutNul = await reserver(SALARIE, ORG_PATRON);
+  verifier(statutNul.plan === 'equipe', `107 : une ligne gratuite au statut NULL ne masque pas le plan Équipe du patron (${statutNul.plan})`);
+  await q(`DELETE FROM subscriptions WHERE user_id = $1 AND status IS NULL`, [SALARIE]);
+
+  // ── Rôle sans droit de créer un devis : refusé, rien n'est compté ──
+  await q(`UPDATE organization_members SET role = 'ouvrier' WHERE organization_id = $1 AND user_id = $2`, [ORG_PATRON, SALARIE]);
+  const avantOuvrier = await lignes(ORG_PATRON);
+  const ouvrier = await erreurDe(() => reserver(SALARIE, ORG_PATRON));
+  verifier(/SANS_DROIT/.test(ouvrier || '') && (await lignes(ORG_PATRON)) === avantOuvrier,
+    `107 : un ouvrier ne peut pas dicter, et rien n'est compté (${ouvrier})`);
+  await q(`UPDATE organization_members SET role = 'comptable' WHERE organization_id = $1 AND user_id = $2`, [ORG_PATRON, SALARIE]);
+
   // ── Plan gratuit : une nouvelle organisation ne rouvre pas le quota (relecture gardien-securite H1) ──
   const ORG_NEUVE = '10700000-0000-4000-8000-0000000000a3';
   await q(`INSERT INTO organizations (id, name, slug, owner_id) VALUES ($1, 'Neuve 107', 'neuve-107', $2)`, [ORG_NEUVE, SOLO]);
@@ -130,6 +149,36 @@ export async function verifier({ db, q, en, commeAnonyme, compte, verifier }) {
   verifier(jour.autorise === false && jour.motif === 'plafond', '107 : au-delà de 100 analyses dans la journée, refus (plafond)');
   await q(`DELETE FROM usage_ia_log WHERE user_id = $1`, [PAYEUR]);
 
+  // Au plan gratuit, le plafond du jour est 20 (délais non décomptés du quota mensuel)
+  const ORG_GRATUIT_JOUR = '10700000-0000-4000-8000-0000000000a6';
+  const GRATUIT_JOUR = '10700000-0000-4000-8000-000000000003';
+  await q(`INSERT INTO auth.users (id, email) VALUES ($1, 'jour@107.fr')`, [GRATUIT_JOUR]);
+  await q(`INSERT INTO organizations (id, name, slug, owner_id) VALUES ($1, 'Jour 107', 'jour-107', $2)`, [ORG_GRATUIT_JOUR, GRATUIT_JOUR]);
+  await q(`INSERT INTO organization_members (organization_id, user_id, role) VALUES ($1, $2, 'owner')`, [ORG_GRATUIT_JOUR, GRATUIT_JOUR]);
+  await q(`INSERT INTO usage_ia_log (organization_id, user_id, fonction, mois, statut, motif, created_at)
+    SELECT $1, $2, 'dictee', (now() AT TIME ZONE 'Europe/Paris')::date, 'echec', 'delai', now() - interval '3 hours' FROM generate_series(1, 19)`, [ORG_GRATUIT_JOUR, GRATUIT_JOUR]);
+  const vingtieme = await reserverBrut(GRATUIT_JOUR, ORG_GRATUIT_JOUR);
+  await q(`UPDATE usage_ia_log SET created_at = now() - interval '3 hours' WHERE user_id = $1`, [GRATUIT_JOUR]);
+  const vingtEtUnieme = await reserverBrut(GRATUIT_JOUR, ORG_GRATUIT_JOUR);
+  verifier(vingtieme.autorise === true && vingtEtUnieme.autorise === false && vingtEtUnieme.motif === 'plafond',
+    `107 : au plan gratuit, la 21e analyse du jour est refusée (${vingtieme.autorise},${vingtEtUnieme.motif})`);
+  await q(`DELETE FROM usage_ia_log WHERE user_id = $1`, [GRATUIT_JOUR]);
+
+  // ── Coupe-circuit global : 3 000 analyses par jour, tous comptes ──
+  await q(`INSERT INTO usage_ia_log (organization_id, user_id, fonction, mois, statut, created_at)
+    SELECT $1, NULL, 'dictee', (now() AT TIME ZONE 'Europe/Paris')::date, 'reussi', now() - interval '5 hours' FROM generate_series(1, 3000)`, [ORG_PATRON]);
+  const global = await reserverBrut(PAYEUR, ORG_PAYEUR);
+  verifier(global.autorise === false && global.motif === 'global', `107 : au-delà de 3 000 analyses par jour au total, coupe-circuit (${global.motif})`);
+  await q(`DELETE FROM usage_ia_log WHERE user_id IS NULL AND created_at > now() - interval '6 hours' AND created_at < now() - interval '4 hours'`);
+
+  // ── Jetons inconnus : gardés NULL (pas 0) ──
+  const inconnue = await reserverBrut(PAYEUR, ORG_PAYEUR);
+  await commeServeur(() => q(TERMINER, [inconnue.id, 'echec', 'claude-haiku-5-5', null, null, 15000, 'delai']));
+  const jetonsInconnus = (await q('SELECT jetons_entree, jetons_sortie FROM usage_ia_log WHERE id = $1', [inconnue.id])).rows[0];
+  verifier(jetonsInconnus.jetons_entree === null && jetonsInconnus.jetons_sortie === null,
+    `107 : un échec sans réponse garde des jetons inconnus (NULL), pas 0 (${JSON.stringify(jetonsInconnus)})`);
+  await q(`DELETE FROM usage_ia_log WHERE user_id = $1`, [PAYEUR]);
+
   // ── Abonnement inactif : il ne donne pas son plan (B3) ──
   const INACTIF = '10700000-0000-4000-8000-000000000002';
   const ORG_INACTIF = '10700000-0000-4000-8000-0000000000a4';
@@ -144,6 +193,16 @@ export async function verifier({ db, q, en, commeAnonyme, compte, verifier }) {
   await reserver(SOLO, ORG_SOLO);
   verifier(await compte(`SELECT count(*) AS n FROM usage_ia_log WHERE mois < (now() - interval '13 months')::date`) === 0,
     '107 : les lignes de plus de 12 mois sont supprimées');
+
+  // ── Suppression d'un compte : ses lignes du journal sont effacées (ON DELETE CASCADE), même chez le patron ──
+  const PARTI = '10700000-0000-4000-8000-000000000004';
+  await q(`INSERT INTO auth.users (id, email) VALUES ($1, 'parti@107.fr')`, [PARTI]);
+  await q(`INSERT INTO usage_ia_log (organization_id, user_id, fonction, mois, statut) VALUES ($1, $2, 'dictee', now()::date, 'reussi')`, [ORG_PATRON, PARTI]);
+  const avantSuppression = await compte('SELECT count(*) AS n FROM usage_ia_log WHERE user_id = $1', [PARTI]);
+  await q(`DELETE FROM auth.users WHERE id = $1`, [PARTI]);
+  verifier(avantSuppression === 1 && (await compte('SELECT count(*) AS n FROM usage_ia_log WHERE user_id = $1', [PARTI])) === 0
+    && (await compte('SELECT count(*) AS n FROM usage_ia_log WHERE user_id IS NULL AND organization_id = $1', [ORG_PATRON])) === 0,
+  '107 : à la suppression d\'un compte, ses lignes du journal sont effacées (pas gardées sans nom)');
 
   // ── Départ d'un membre (105) : son journal n'est pas réattribué au patron (B1) ──
   await q(`DELETE FROM organization_members WHERE organization_id = $1 AND user_id = $2`, [ORG_PATRON, SALARIE]);

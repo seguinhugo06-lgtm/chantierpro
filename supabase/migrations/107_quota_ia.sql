@@ -26,25 +26,36 @@
 --   Edge, après avoir vérifié le jeton de l'utilisateur). Un utilisateur qui pourrait réserver épuiserait le quota
 --   d'une autre entreprise ; qui pourrait clore « en échec » remettrait son compteur à zéro.
 -- - L'utilisateur doit être membre de l'organisation demandée (sinon HORS_ORGANISATION) ; sans organisation
---   demandée, sa première organisation.
+--   demandée, sa première organisation. Il doit pouvoir créer un devis : rôle owner, admin ou comptable, comme la page
+--   « ia-devis » (src/lib/permissions.js) ; sinon SANS_DROIT, sans rien compter (relecture gardien du 3 nov., 2).
 -- - Au plan gratuit, le quota se compte aussi PAR COMPTE (relecture gardien-securite du 3 nov., H1) : un compte peut
 --   créer des organisations à lui ; sans cela, chaque nouvelle organisation rouvrait 10 dictées.
--- - Plafond anti-abus quel que soit le plan (H2) : 5 analyses par minute et 100 par jour et par compte. Au-delà, refus
---   avec motif « plafond ». Le plafond du jour est un choix à confirmer par Hugo (docs/cloud/ia-socle.md).
+-- - Plafond anti-abus quel que soit le plan (H2) : 5 analyses par minute et, par jour et par compte, 20 au plan gratuit
+--   (un délai dépassé ne décompte pas du quota mensuel : sans cela, 100 appels par jour au lieu de 10 par mois) et 100
+--   aux plans payants. Au-delà, refus avec motif « plafond ». Plafonds à confirmer par Hugo (docs/cloud/ia-socle.md).
+-- - Coupe-circuit global : 3 000 analyses par jour et par fonction, tous comptes confondus → motif « global » (503 côté
+--   fonction Edge). Valeur à fixer par Hugo.
 -- - Verrous transactionnels par compte puis par organisation (toujours dans cet ordre) : deux appels simultanés ne
 --   dépassent pas le quota.
 -- - Nom en « _log » : la table est un journal ; les migrations 072 (suppression de compte) et 105 (départ d'un membre)
 --   n'en réattribuent pas les lignes au patron (B1). Lignes de plus de 12 mois supprimées à chaque réservation (B2,
---   durée annoncée dans la politique de confidentialité).
+--   durée annoncée dans la politique de confidentialité) ET chaque nuit par pg_cron (tâche « purger-journal-ia »), pour
+--   que la durée tienne même si la dictée est éteinte. À la suppression d'un compte, ses lignes sont effacées
+--   (ON DELETE CASCADE), comme la politique l'annonce.
 --
 -- ─── Vérification après application (éditeur SQL) ───────────────────────────
---   SELECT to_regclass('public.usage_ia_log') IS NOT NULL AS table_ok,
---          (SELECT relrowsecurity FROM pg_class WHERE oid = 'public.usage_ia_log'::regclass) AS rls,
---          has_table_privilege('authenticated', 'public.usage_ia_log', 'select') AS lisible_utilisateur,
---          has_function_privilege('authenticated', 'public.reserver_usage_ia(uuid,uuid,text,jsonb)', 'execute') AS reserver_public,
---          has_function_privilege('anon', 'public.terminer_usage_ia(bigint,text,text,integer,integer,integer,text)', 'execute') AS terminer_visiteur,
---          has_function_privilege('service_role', 'public.reserver_usage_ia(uuid,uuid,text,jsonb)', 'execute') AS serveur;
---     → table_ok t, rls t, lisible_utilisateur f, reserver_public f, terminer_visiteur f, serveur t
+--   SELECT p.proname, has_function_privilege('anon', p.oid, 'EXECUTE') AS visiteur,
+--          has_function_privilege('authenticated', p.oid, 'EXECUTE') AS connecte,
+--          has_function_privilege('service_role', p.oid, 'EXECUTE') AS serveur,
+--          p.prosecdef AS definer, array_to_string(p.proconfig, ',') AS reglages
+--     FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+--    WHERE n.nspname = 'public' AND p.proname IN ('plan_pour_usage_ia', 'reserver_usage_ia', 'terminer_usage_ia') ORDER BY 1;
+--     → 3 lignes : f, f, t, t, search_path=public, pg_temp
+--   SELECT (SELECT count(*) FROM pg_policies WHERE schemaname = 'public' AND tablename = 'usage_ia_log') AS policies,
+--          has_table_privilege('anon', 'public.usage_ia_log', 'SELECT,INSERT,UPDATE,DELETE') AS visiteur,
+--          has_table_privilege('authenticated', 'public.usage_ia_log', 'SELECT,INSERT,UPDATE,DELETE') AS connecte;
+--     → 0, f, f
+--   SELECT jobname, schedule FROM cron.job WHERE jobname = 'purger-journal-ia';   → 1 ligne, 17 3 * * *
 --   Après le déploiement de voice-intent et une dictée :
 --   SELECT fonction, statut, modele, jetons_entree, jetons_sortie, duree_ms FROM public.usage_ia_log ORDER BY id DESC LIMIT 5;
 -- ============================================================
@@ -52,7 +63,7 @@
 CREATE TABLE IF NOT EXISTS public.usage_ia_log (
   id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
-  user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
   fonction TEXT NOT NULL CHECK (fonction ~ '^[a-z][a-z_]{1,30}$'),
   mois DATE NOT NULL,
   statut TEXT NOT NULL DEFAULT 'reserve' CHECK (statut IN ('reserve', 'reussi', 'echec')),
@@ -70,6 +81,7 @@ COMMENT ON TABLE public.usage_ia_log IS
 CREATE INDEX IF NOT EXISTS idx_usage_ia_quota ON public.usage_ia_log (organization_id, fonction, mois);
 CREATE INDEX IF NOT EXISTS idx_usage_ia_user ON public.usage_ia_log (user_id, fonction, created_at);
 CREATE INDEX IF NOT EXISTS idx_usage_ia_mois ON public.usage_ia_log (mois);
+CREATE INDEX IF NOT EXISTS idx_usage_ia_jour ON public.usage_ia_log (fonction, created_at);
 
 ALTER TABLE public.usage_ia_log ENABLE ROW LEVEL SECURITY;
 -- Aucune policy : anon et authenticated n'y voient rien, même si un droit leur était rendu.
@@ -105,7 +117,7 @@ AS $$
            END AS plan,
            CASE
              WHEN stripe_subscription_id IS NULL AND plan_brut <> 'gratuit' AND fin IS NOT NULL AND fin < now() THEN 'canceled'
-             ELSE status
+             ELSE coalesce(status, 'active')
            END AS status,
            created_at
       FROM lignes
@@ -135,6 +147,7 @@ DECLARE
   v_limite INTEGER;
   v_utilise INTEGER;
   v_id BIGINT;
+  v_role TEXT;
 BEGIN
   IF p_user_id IS NULL THEN
     RAISE EXCEPTION 'reserver_usage_ia : utilisateur manquant';
@@ -150,10 +163,14 @@ BEGIN
     SELECT m.organization_id INTO v_org FROM public.organization_members m
      WHERE m.user_id = p_user_id ORDER BY m.joined_at ASC NULLS LAST LIMIT 1;
   END IF;
-  IF v_org IS NULL OR NOT EXISTS (
-    SELECT 1 FROM public.organization_members m WHERE m.organization_id = v_org AND m.user_id = p_user_id
-  ) THEN
+  SELECT m.role::text INTO v_role FROM public.organization_members m
+   WHERE m.organization_id = v_org AND m.user_id = p_user_id;
+  IF v_role IS NULL THEN
     RAISE EXCEPTION 'HORS_ORGANISATION';
+  END IF;
+  -- Comme la page « ia-devis » (devis.create : owner, admin, comptable). Refus avant tout décompte.
+  IF v_role NOT IN ('owner', 'admin', 'comptable') THEN
+    RAISE EXCEPTION 'SANS_DROIT';
   END IF;
 
   v_plan := public.plan_pour_usage_ia(p_user_id, v_org);
@@ -176,8 +193,15 @@ BEGIN
   IF (SELECT count(*) FROM public.usage_ia_log
        WHERE user_id = p_user_id AND fonction = p_fonction AND created_at > now() - interval '1 minute') >= 5
      OR (SELECT count(*) FROM public.usage_ia_log
-       WHERE user_id = p_user_id AND fonction = p_fonction AND created_at > now() - interval '1 day') >= 100 THEN
+       WHERE user_id = p_user_id AND fonction = p_fonction AND created_at > now() - interval '1 day')
+       >= (CASE WHEN v_plan = 'gratuit' THEN 20 ELSE 100 END) THEN
     RETURN jsonb_build_object('autorise', false, 'motif', 'plafond', 'plan', v_plan, 'limite', v_limite, 'utilise', NULL);
+  END IF;
+
+  -- Coupe-circuit global (tous comptes) : borne le coût d'une série de comptes ou d'entreprises (valeur à fixer par Hugo).
+  IF (SELECT count(*) FROM public.usage_ia_log
+       WHERE fonction = p_fonction AND created_at > now() - interval '1 day') >= 3000 THEN
+    RETURN jsonb_build_object('autorise', false, 'motif', 'global', 'plan', v_plan, 'limite', v_limite, 'utilise', NULL);
   END IF;
 
   -- Décomptent : réservés, réussis, et échecs provoqués par la dictée. Au plan gratuit : aussi ceux du même compte
@@ -218,9 +242,10 @@ BEGIN
   UPDATE public.usage_ia_log
      SET statut = p_statut,
          modele = left(p_modele, 60),
-         jetons_entree = greatest(p_jetons_entree, 0),
-         jetons_sortie = greatest(p_jetons_sortie, 0),
-         duree_ms = greatest(p_duree_ms, 0),
+         -- NULL = inconnu (échec sans réponse) ; greatest(NULL, 0) vaudrait 0.
+         jetons_entree = CASE WHEN p_jetons_entree IS NULL THEN NULL ELSE greatest(p_jetons_entree, 0) END,
+         jetons_sortie = CASE WHEN p_jetons_sortie IS NULL THEN NULL ELSE greatest(p_jetons_sortie, 0) END,
+         duree_ms = CASE WHEN p_duree_ms IS NULL THEN NULL ELSE greatest(p_duree_ms, 0) END,
          motif = left(p_motif, 40),
          termine_le = now()
    WHERE id = p_id AND statut = 'reserve';
@@ -230,3 +255,16 @@ END;
 $$;
 REVOKE ALL ON FUNCTION public.terminer_usage_ia(BIGINT, TEXT, TEXT, INTEGER, INTEGER, INTEGER, TEXT) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.terminer_usage_ia(BIGINT, TEXT, TEXT, INTEGER, INTEGER, INTEGER, TEXT) TO service_role;
+
+-- Purge quotidienne (12 mois), même si la dictée est éteinte. Sans pg_cron (banc), le bloc ne fait rien.
+-- cron.schedule avec un nom remplace la tâche du même nom : rejouable.
+DO $$
+BEGIN
+  IF to_regnamespace('cron') IS NULL OR to_regprocedure('cron.schedule(text,text,text)') IS NULL THEN
+    RAISE NOTICE 'pg_cron absent : purge purger-journal-ia non planifiée';
+    RETURN;
+  END IF;
+  PERFORM cron.schedule('purger-journal-ia', '17 3 * * *',
+    $purge$DELETE FROM public.usage_ia_log WHERE mois < (date_trunc('month', now() AT TIME ZONE 'Europe/Paris') - interval '12 months')::date$purge$);
+END;
+$$;

@@ -14,7 +14,8 @@
  * QUOTA ET COÛTS — table `usage_ia_log` et fonctions `reserver_usage_ia` / `terminer_usage_ia` (migration 107), appelées
  * avec la clé de service APRÈS vérification du jeton de l'utilisateur.
  *
- * Secrets : ANTHROPIC_API_KEY (réglé par Hugo). Sans clé, sans crédits ou API en panne : 503 « Dictée indisponible
+ * Secrets : ANTHROPIC_API_KEY (réglé par Hugo) ; IA_DICTEE : comptes autorisés à dicter (identifiants séparés par des
+ * virgules, ou « tous »). Sans IA_DICTEE, la dictée est fermée côté serveur (503), quel que soit FONCTIONS.ia. Sans clé, sans crédits ou API en panne : 503 « Dictée indisponible
  * pour le moment. Saisissez votre devis à la main. »
  *
  * Usage : supabase.functions.invoke('voice-intent', { body: { transcript, contexte, organisation } })
@@ -28,6 +29,7 @@ import { traiterDictee, type Reservation } from './regles.ts';
 // Compteur absent (migration 107 pas appliquée) : fonction ou table introuvable.
 const COMPTEUR_ABSENT = /PGRST202|PGRST205|42883|42P01/;
 
+const ouverture = Deno.env.get('IA_DICTEE') ?? '';
 const cleApi = Deno.env.get('ANTHROPIC_API_KEY') || undefined;
 // Une seule tentative de plus, et 15 s au plus par tentative : l'artisan attend devant son écran ; au-delà, on lui
 // propose la saisie à la main plutôt qu'un sablier.
@@ -36,6 +38,7 @@ const anthropic = cleApi ? new Anthropic({ apiKey: cleApi, maxRetries: 1, timeou
 serve((req) => traiterDictee(req, {
   cleServeur: CLE_SERVEUR || undefined,
   cleApi,
+  ouverte: (id) => ouverture === 'tous' || ouverture.split(',').map((s) => s.trim()).includes(id),
   utilisateur: utilisateurDuJeton,
   journal: journaliser('voice-intent'),
 
@@ -46,6 +49,7 @@ serve((req) => traiterDictee(req, {
     if (error) {
       if (COMPTEUR_ABSENT.test(`${error.code} ${error.message}`)) return { indisponible: true };
       if (/HORS_ORGANISATION/.test(error.message || '')) return { horsOrganisation: true };
+      if (/SANS_DROIT/.test(error.message || '')) return { sansDroit: true };
       throw new Error(error.message);
     }
     const r = (data || {}) as { autorise?: boolean; id?: number; limite?: number | null; utilise?: number | null; plan?: string; motif?: string };
@@ -54,7 +58,7 @@ serve((req) => traiterDictee(req, {
     }
     if (r.autorise === false) {
       return { autorise: false, limite: r.limite ?? null, utilise: r.utilise == null ? null : Number(r.utilise), plan: r.plan || 'gratuit',
-        motif: r.motif === 'plafond' ? 'plafond' : 'quota' };
+        motif: r.motif === 'plafond' ? 'plafond' : r.motif === 'global' ? 'global' : 'quota' };
     }
     throw new Error('réponse inattendue de reserver_usage_ia');
   },

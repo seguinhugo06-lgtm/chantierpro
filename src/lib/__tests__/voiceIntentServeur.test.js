@@ -26,6 +26,7 @@ function dependances(surcharges = {}) {
   return {
     cleServeur: 'cle-serveur',
     cleApi: 'sk-ant-test',
+    ouverte: () => true,
     utilisateur: vi.fn(async (jeton) => (jeton === 'jeton-utilisateur' ? UTILISATEUR : null)),
     reserver: vi.fn(async () => ({ autorise: true, id: 42, limite: 10, utilise: 3, plan: 'gratuit' })),
     terminer: vi.fn(async () => {}),
@@ -153,7 +154,7 @@ describe('voice-intent : API en panne ou crédits épuisés', () => {
     const cas = [
       [reponseModele(undefined, { stop_reason: 'refusal' }), 422, 'NON_TRAITEE', 'refus'],
       [reponseModele('{"resume": "coupé'), 502, 'ILLISIBLE', 'illisible'],
-      [reponseModele(undefined, { stop_reason: 'max_tokens' }), 502, 'ILLISIBLE', 'illisible'],
+      [reponseModele(undefined, { stop_reason: 'max_tokens' }), 502, 'ILLISIBLE', 'coupee'],
       [{ stop_reason: 'end_turn', content: [{ type: 'thinking', thinking: '' }], usage: {} }, 502, 'ILLISIBLE', 'illisible'],
     ];
     for (const [message, status, code, motif] of cas) {
@@ -215,5 +216,44 @@ describe('voice-intent : requête Haiku 5.5', () => {
     expect(m).not.toContain('Client 60');
     expect(m).not.toContain('objet');
     expect(m).not.toContain('<catalogue>');
+  });
+});
+
+describe('voice-intent : corrections du 3 nov.', () => {
+  it('sans le secret IA_DICTEE (ouverte absente ou fausse) : 503, rien de réservé, aucun appel', async () => {
+    for (const ouverte of [undefined, () => false]) {
+      const dep = dependances({ ouverte });
+      const r = await lire(await traiterDictee(demande(), dep));
+      expect(r.status).toBe(503);
+      expect(r.corps.code).toBe('IA_INDISPONIBLE');
+      expect(r.cors).toBe('*');
+      expect(dep.reserver).not.toHaveBeenCalled();
+      expect(dep.appeler).not.toHaveBeenCalled();
+    }
+  });
+
+  it('rôle sans droit de créer un devis : 403 SANS_DROIT, sans appel à l’API', async () => {
+    const dep = dependances({ reserver: vi.fn(async () => ({ sansDroit: true })) });
+    const r = await lire(await traiterDictee(demande(), dep));
+    expect(r.status).toBe(403);
+    expect(r.corps.code).toBe('SANS_DROIT');
+    expect(r.corps.error).toBe(MESSAGES.sansDroit);
+    expect(dep.appeler).not.toHaveBeenCalled();
+  });
+
+  it('coupe-circuit global : 503 IA_INDISPONIBLE (pas « quota »), sans appel à l’API', async () => {
+    const dep = dependances({ reserver: vi.fn(async () => ({ autorise: false, motif: 'global', limite: null, utilise: null, plan: 'artisan' })) });
+    const r = await lire(await traiterDictee(demande(), dep));
+    expect(r.status).toBe(503);
+    expect(r.corps.code).toBe('IA_INDISPONIBLE');
+    expect(dep.appeler).not.toHaveBeenCalled();
+  });
+
+  it('exception imprévue : 503 IA_INDISPONIBLE avec corsHeaders', async () => {
+    const dep = dependances({ utilisateur: vi.fn(async () => { throw new Error('boum'); }) });
+    const r = await lire(await traiterDictee(demande(), dep));
+    expect(r.status).toBe(503);
+    expect(r.corps.code).toBe('IA_INDISPONIBLE');
+    expect(r.cors).toBe('*');
   });
 });

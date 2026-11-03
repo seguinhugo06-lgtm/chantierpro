@@ -156,7 +156,7 @@ const listeDeTextes = (v: unknown, max: number): string[] =>
   Array.isArray(v) ? v.filter((x) => typeof x === 'string' && x.trim()).slice(0, max).map((x) => (x as string).slice(0, 120)) : [];
 
 /**
- * Comment se servir du contexte : dans les consignes (fixes, donc gardées en cache d'une dictée à l'autre). Le contexte
+ * Comment se servir du contexte : dans les consignes (fixes ; aucun cache n'est demandé : pas de cache_control, à envisager après une première mesure). Le contexte
  * lui-même vient du navigateur : il va dans le message, entre balises, comme une donnée et jamais comme une consigne
  * (relecture gardien-securite, B4).
  */
