@@ -38,7 +38,7 @@ describe('contrat', () => {
   it('traduit un code d’erreur inconnu en panne générique, un code connu en son message', () => {
     expect(lireReponse({ ok: false, code: 'n_importe_quoi' }).code).toBe(ERREURS.PANNE);
     const c = lireReponse({ ok: false, code: ERREURS.COUPURE });
-    expect(c.message).toMatch(/en pause/);
+    expect(c.message).toMatch(/momentanément indisponible/);
     expect(c.message).toMatch(/reste de l’app fonctionne/);
   });
 });

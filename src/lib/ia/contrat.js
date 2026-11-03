@@ -58,7 +58,7 @@ export const ERREURS = Object.freeze({
 export const MESSAGES_ERREUR = Object.freeze({
   [ERREURS.HORS_LIGNE]: 'Pas de réseau. Votre demande est gardée : réessayez quand le réseau revient.',
   [ERREURS.QUOTA]: 'Vous avez utilisé toutes vos demandes du mois. Tout le reste de l’app fonctionne normalement.',
-  [ERREURS.COUPURE]: 'L’assistant est en pause pour quelques jours. Tout le reste de l’app fonctionne normalement.',
+  [ERREURS.COUPURE]: 'L’assistant est momentanément indisponible. Tout le reste de l’app fonctionne normalement.',
   [ERREURS.LENT]: 'La réponse tarde. Réessayez dans un instant.',
   [ERREURS.REFUS]: 'Je n’ai pas pu traiter ce texte. Reformulez en quelques mots.',
   [ERREURS.PANNE]: 'Un souci technique m’empêche de répondre. Réessayez dans un instant.',

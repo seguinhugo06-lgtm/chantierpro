@@ -27,7 +27,7 @@ function Question({ q, onRepondre }) {
       {q.choix?.length ? (
         <div className="flex flex-wrap gap-2">
           {q.choix.map((c) => (
-            <Bouton key={c.valeur} variante="secondaire" className="whitespace-normal text-left h-auto min-h-[44px] py-2" onClick={() => onRepondre(q.id, c.valeur)}>
+            <Bouton key={c.valeur} variante="secondaire" className="!whitespace-normal text-left !h-auto min-h-[44px] py-2 max-w-full" onClick={() => onRepondre(q.id, c.valeur)}>
               {c.libelle}
             </Bouton>
           ))}
@@ -96,7 +96,7 @@ function CarteDevis({ p, questions, onRepondre, onValider, etat, voirPrix, peutC
       </dl>
       <Questions questions={questions} onRepondre={onRepondre} />
       {etat.fait ? (
-        <Fait action={<Bouton variante="secondaire" onClick={etat.ouvrir}>Ouvrir le brouillon</Bouton>}>
+        <Fait action={<Bouton variante="secondaire" onClick={etat.ouvrir}>Ouvrir le devis pour l’envoyer</Bouton>}>
           Brouillon {etat.fait.numero} enregistré. Il n’est pas envoyé : relisez-le, complétez-le, puis envoyez-le quand vous voulez.
         </Fait>
       ) : (
@@ -145,7 +145,7 @@ function CarteRelances({ p, onValider, etat, voirPrix, peutRelancer, demo }) {
       </ul>
       {etat.fait ? (
         <Fait>
-          {etat.fait} relance{etat.fait > 1 ? 's' : ''} validée{etat.fait > 1 ? 's' : ''}.{demo ? ' Démonstration : aucun message n’est parti.' : ''}
+          {etat.fait} relance{etat.fait > 1 ? 's' : ''} validée{etat.fait > 1 ? 's' : ''}. {demo ? 'Démonstration : aucun message n’est parti.' : 'Prototype : l’envoi n’est pas encore branché, aucun message n’est parti.'}
         </Fait>
       ) : (
         <>

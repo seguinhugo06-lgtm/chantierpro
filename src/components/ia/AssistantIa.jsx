@@ -116,7 +116,7 @@ export default function AssistantIa({ isOpen, onClose, page = '', entreprise = {
     <Modal isOpen={isOpen} onClose={onClose} size="md" title="Que voulez-vous faire ?">
       <div className="space-y-4" data-ui="assistant">
         <p className="text-sm text-encre-2">
-          Dites-le ou tapez-le en quelques mots. Je prépare, vous vérifiez et vous validez : rien n’est enregistré ni envoyé sans vous.
+          Dites-le ou tapez-le en quelques mots. Je prépare, vous vérifiez et vous validez : rien n’est ajouté à vos documents et rien n’est envoyé à vos clients sans votre accord.
         </p>
         {isDemo ? <p className="rounded-xl bg-info-fond text-info-texte text-sm font-medium px-3 py-2">Démonstration : réponses simulées, données d’exemple</p> : null}
 
@@ -126,7 +126,7 @@ export default function AssistantIa({ isOpen, onClose, page = '', entreprise = {
             <textarea
               id="assistant-demande"
               ref={champ}
-              rows={2}
+              rows={Math.min(4, Math.max(2, Math.ceil(texte.length / 30)))}
               maxLength={TEXTE_MAX}
               value={texte}
               onChange={(e) => { setTexte(e.target.value); if (phase !== 'saisie' && phase !== 'prepare') reinitialiser(); }}
@@ -161,7 +161,7 @@ export default function AssistantIa({ isOpen, onClose, page = '', entreprise = {
             <p className="text-xs font-medium text-encre-3 mb-2">Par exemple</p>
             <div className="flex flex-col gap-2">
               {EXEMPLES.map((ex) => (
-                <Bouton key={ex} variante="secondaire" className="justify-start text-left whitespace-normal h-auto min-h-[44px] py-2.5" onClick={() => envoyer(ex)}>
+                <Bouton key={ex} variante="secondaire" className="justify-start text-left !whitespace-normal !h-auto min-h-[44px] py-2.5" onClick={() => envoyer(ex)}>
                   {ex}
                 </Bouton>
               ))}
@@ -207,7 +207,7 @@ export default function AssistantIa({ isOpen, onClose, page = '', entreprise = {
         </div>
 
         <p className="text-xs text-encre-3">
-          Assistant automatique : il peut se tromper. Relisez avant de valider.
+          Assistant d’intelligence artificielle : il peut se tromper. Relisez avant de valider.
         </p>
       </div>
     </Modal>

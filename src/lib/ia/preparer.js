@@ -15,11 +15,15 @@ import { jourLocal } from '../dates';
 const arrondi = (n) => Math.round((Number(n) || 0) * 100) / 100;
 const nomClient = (c) => (c ? [c.prenom, c.nom].filter(Boolean).join(' ') || c.entreprise || 'Client' : '');
 
-/** Taux proposés : jamais choisis à la place de l'artisan (le 10 % et le 5,5 % ont des conditions). */
+/**
+ * Taux proposés : jamais choisis à la place de l'artisan (le 10 % et le 5,5 % ont des conditions, CGI art. 279-0 bis et
+ * 278-0 bis A ; libellés relus par juriste-btp le 3 nov. 2026). L'autoliquidation (sous-traitance) reste à ajouter avec
+ * le lot 1 : le brouillon ne sait pas encore la porter.
+ */
 export const CHOIX_TVA = Object.freeze([
   { valeur: '20', libelle: '20 %' },
-  { valeur: '10', libelle: '10 % (rénovation d’un logement de plus de 2 ans)' },
-  { valeur: '5.5', libelle: '5,5 % (rénovation énergétique)' },
+  { valeur: '10', libelle: '10 % — logement achevé depuis plus de 2 ans (le client certifie sur le devis)' },
+  { valeur: '5.5', libelle: '5,5 % — rénovation énergétique éligible, dans ce même logement (le client certifie)' },
 ]);
 
 /** Bornes d'une période, en jours « AAAA-MM-JJ » locaux. */

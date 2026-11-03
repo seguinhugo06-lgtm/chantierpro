@@ -47,7 +47,7 @@ module.exports = [
       const { page } = await ouvrir({ page: 'dashboard', largeur: 375 });
       verifier(await ouvrirAssistant(page, attendre), 'le bouton « Demander » de l’en-tête ouvre l’assistant');
       let t = await texteDialogue(page);
-      verifier(/rien n’est enregistré ni envoyé sans vous/.test(t), 'l’assistant dit qu’il ne fait rien sans validation');
+      verifier(/rien n’est envoyé à vos clients sans votre accord/.test(t), 'l’assistant dit qu’il ne fait rien sans validation');
       verifier(/Démonstration : réponses simulées/.test(t), 'la démonstration dit que les réponses sont simulées');
 
       // 1. Devis : client confirmé, HT/TTC et TVA demandés, brouillon seulement après les réponses
