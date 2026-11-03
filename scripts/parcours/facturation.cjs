@@ -7,14 +7,15 @@
 const path = require('path');
 
 const ligne = { id: 'l1', description: 'Remplacement tableau électrique', quantite: 1, prixUnitaire: 1000, tva: 10 };
-// Un devis à faire signer doit être encore valable (30 jours) : daté du jour du parcours, sinon il expire et « Faire
-// signer » disparaît (le parcours échouait depuis le 31 oct. 2026 avec un devis daté du 1er oct.).
-const jourDuParcours = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 const DEVIS_SIGNE = {
   id: 'd-parcours-signe', numero: 'DEV-2026-00095', type: 'devis', statut: 'signe', client_id: 'c1', date: '2026-10-01',
   objet: 'Tableau électrique', lignes: [ligne], sections: [{ id: 's1', titre: '', lignes: [ligne] }],
   tvaRate: 10, total_ht: 1000, tva: 100, total_ttc: 1100,
 };
+// Devis à faire signer : daté du jour, pour rester dans sa durée de validité quel que soit le jour où le parcours tourne
+// (daté du 1er oct. 2026, il a expiré le 31 oct. et « Faire signer » a disparu, à raison).
+const d0 = new Date();
+const AUJOURDHUI = `${d0.getFullYear()}-${String(d0.getMonth() + 1).padStart(2, '0')}-${String(d0.getDate()).padStart(2, '0')}`;
 const DEVIS_FACTURE = { ...DEVIS_SIGNE, id: 'd-parcours-facture', numero: 'DEV-2026-00096', statut: 'signe' };
 const FACTURE_EMISE = {
   id: 'f-parcours-emise', numero: 'FAC-2026-00096', type: 'facture', facture_type: 'totale', statut: 'envoye',
@@ -318,7 +319,7 @@ module.exports = [
     // expresse est recueillie avec la signature, et l'exemplaire part par e-mail avec l'accord du client (démo : simulé)
     nom: 'signature sur place : demande expresse enregistrée, exemplaire signé envoyé par e-mail avec l’accord du client (375 px)',
     async executer({ ouvrir, cliquer, attendre, verifier }) {
-      const envoye = { ...DEVIS_SIGNE, date: jourDuParcours(), id: 'd-sur-place', numero: 'DEV-2026-00099', statut: 'envoye' };
+      const envoye = { ...DEVIS_SIGNE, id: 'd-sur-place', numero: 'DEV-2026-00099', statut: 'envoye', date: AUJOURDHUI };
       const { page } = await ouvrir({ page: 'devis', largeur: 375, avantChargement: await demoAvec([envoye]) });
       await attendre(800);
       verifier(await ouvrirDocument(page, 'DEV-2026-00099'), 'le devis envoyé est dans la liste');
@@ -361,7 +362,7 @@ module.exports = [
     // l'exemplaire papier signé par les deux (L221-9, nullité L242-1), et rien ne part
     nom: 'signature sur place sans e-mail : la fiche rappelle l’exemplaire papier, rien ne part (375 px)',
     async executer({ ouvrir, cliquer, attendre, verifier }) {
-      const envoye = { ...DEVIS_SIGNE, date: jourDuParcours(), id: 'd-sur-place-papier', numero: 'DEV-2026-00100', statut: 'envoye' };
+      const envoye = { ...DEVIS_SIGNE, id: 'd-sur-place-papier', numero: 'DEV-2026-00100', statut: 'envoye', date: AUJOURDHUI };
       const { page } = await ouvrir({ page: 'devis', largeur: 375, avantChargement: await demoAvec([envoye]) });
       await attendre(800);
       verifier(await ouvrirDocument(page, 'DEV-2026-00100'), 'le devis envoyé est dans la liste');
