@@ -22,7 +22,7 @@ Commits (depuis `adbf08d`) :
 
 ### 1. « Enlever "prix par mois, TVA non applicable" »
 - **Cause** : le site affichait « Prix par mois — TVA non applicable, art. 293 B du CGI » au-dessus des tarifs (`PricingSection.jsx`), et la mention suivait chaque prix d'abonnement : site (offre annuelle, « Construit en public », FAQ « Puis-je essayer »), Mon plan, fenêtre d'abonnement, page de paiement réussi.
-- **Correction** : la mention n'est plus à côté des prix. Chaque prix garde sa période (« par mois », « par an »). Jamais « HT » ni « TTC » (D-19). Elle **reste** dans les CGV (art. 4), dans la réponse de la FAQ sur la facturation et sur les factures Stripe (obligatoire).
+- **Correction** : la mention n'est plus à côté des prix. Chaque prix garde sa période (« par mois », « par an »). Jamais « HT » ni « TTC » (D-19). Elle **reste** dans les CGV (art. 4), dans la réponse de la FAQ sur la facturation, et doit figurer sur les factures Stripe (obligatoire ; réglage à constater par Hugo, attente 7).
 - **Avis juriste (3 nov.)** : permis. Aucun texte n'impose la mention dans une grille de prix : c'est une mention de facture. Un prix « 9,90 € par mois » sans TVA ajoutée est le prix exact qu'un consommateur paie. Condition : la période doit rester collée à chaque prix, ce que les tests vérifient.
 - **Décision** : D-19 précisée dans `docs/decisions.md`. La règle `.claude/rules/marketing.md` disait encore « 9,90 / 19,90 € HT » : corrigée.
 - **Preuve** : parcours `site : tarifs et construit en public` (226 vérifications) et `abonnements` (Mon plan) verts. Tests unitaires `faq`, `prixPlan`, `prixAbonnementAffiche` adaptés. **Contre-essai** : avec l'ancien code, les deux parcours échouent (« l'introduction, sans « Prix par mois — TVA non applicable » » ; « Mon plan : plus de mention de franchise à côté des prix »).
@@ -104,7 +104,7 @@ Commits (depuis `adbf08d`) :
 - Le retrait de l'onglet « document » enlève du site la seule démonstration du PDF complet. Hugo l'a demandé.
 
 ## Résumé
-1. Prix : la mention « TVA non applicable » n'est plus à côté des prix (CGV, FAQ facturation et factures la gardent). Feu vert du juriste.
+1. Prix : la mention « TVA non applicable » n'est plus à côté des prix (CGV et FAQ facturation la gardent ; elle doit figurer sur les factures Stripe, réglage à constater par Hugo, attente 7). Feu vert du juriste.
 2. Site : le devis fictif qui répétait le devis vivant est retiré.
 3. Registre : choix guidé « Métiers (RM) » / « Commerce (RCS) » selon la forme juridique, même mention dans les deux PDF. Forme RM à confirmer au texte.
 4. Ramonage : la carte « Installer » couvrait le bas de page dans le navigateur ; corrigé.

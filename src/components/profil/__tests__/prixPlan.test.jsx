@@ -26,7 +26,7 @@ describe('Mon plan : prix en franchise de TVA', () => {
   const texte = rendre(null);
 
   // Retour d'Hugo du 26 oct. 2026 (avis juriste du 3 nov.) : la mention de franchise ne s'affiche plus à côté des prix ;
-  // elle reste dans les CGV (art. 4), la FAQ et les factures. Chaque prix garde sa période.
+  // elle reste dans les CGV (art. 4) et la FAQ, et doit figurer sur les factures Stripe (attente 7). Chaque prix garde sa période.
   it('le plan en cours et les plans payants : prix de prixAbonnement avec sa période, sans la mention de franchise', () => {
     expect(texte).toContain(lu(`${prixAbonnement(PLANS.artisan)} par mois`));
     expect(texte).not.toContain(MENTION_TVA_ABONNEMENT);
