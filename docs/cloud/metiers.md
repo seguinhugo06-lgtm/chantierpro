@@ -20,7 +20,8 @@ Méthode : six agents de recherche en parallèle (trois métiers chacun, plus un
   - **le n° RGE saisi dans Paramètres n'est imprimé nulle part** : `Settings.jsx` l. 767-770 enregistre `rge` et `rgeOrganisme` ; les deux générateurs (`devisHtmlBuilder.js` l. 454, `DevisPage.jsx` l. 1692) impriment `labels`, qu'aucun fichier n'écrit (recherche de `labels` dans `src/services`, `src/hooks`, `src/context`, `src/stores` : rien) ;
   - **« Qualiopi » figure parmi les organismes RGE** (`Settings.jsx` l. 140), alors que c'est la certification des organismes de formation ;
   - **aucune mention d'autoliquidation** n'est imprimée sur un devis ou une facture (seule une dépense porte le champ).
-- `npm ci` : réussi. `npm run verifier` : voir le résultat en fin de rapport.
+- `npm ci` : réussi.
+- `npm run verifier` (standard) sur `1981d16`, tout vert : tests 1199 réussis sur 1199, lint 0 erreur (241 avertissements déjà présents), smoke et build réussis. Le commit suivant n'ajoute que cette ligne au rapport.
 
 ## Ce qui n'a pas pu tourner, et pourquoi
 
