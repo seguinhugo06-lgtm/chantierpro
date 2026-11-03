@@ -41,6 +41,7 @@ import AideMot from './ui/AideMot';
 import LigneListe, { GroupeListe } from './ui/LigneListe';
 import { EnTetePage } from './ui/EnTete';
 import { jourLocal, dateLue } from '../lib/dates';
+import { ORGANISMES_RGE, raisonRgeNonImprime } from '../lib/qualifications';
 import { estEntrepreneurIndividuel, estEirl, nomImprime } from '../lib/identiteEntreprise';
 import { estSociete } from '../lib/mentionsFacture';
 import { minimumPenalites, libelleMinimumPenalites, tauxPenalitesValide } from '../lib/tauxInteretLegal';
@@ -117,7 +118,7 @@ const CHAMPS_IMPORTABLES = [
   'nom', 'nomEntrepreneur', 'formeJuridique', 'capital', 'adresse', 'ville', 'codePostal', 'pays', 'tel', 'email', 'siteWeb',
   'slogan', 'siret', 'codeApe', 'tvaIntra', 'rcs', 'rcsVille', 'rcsNumero', 'rcsType', 'iban', 'bic', 'banque', 'titulaireBanque',
   'decennaleAssureur', 'decennaleNumero', 'decennaleValidite', 'decennaleActivites', 'decennaleAssureurAdresse', 'decennaleZone',
-  'rcProAssureur', 'rcProNumero', 'rcProValidite', 'rcProMontantGarantie', 'rcProZone', 'rge', 'rgeOrganisme',
+  'rcProAssureur', 'rcProNumero', 'rcProValidite', 'rcProMontantGarantie', 'rcProZone', 'rge', 'rgeOrganisme', 'rgeValidite',
   'mediateur', 'mediateurContact', 'cgv', 'mentionDevis', 'mentionFacture', 'tvaDefaut', 'acompteDefaut', 'validiteDevis',
   'delaiPaiement', 'tauxPenalites', 'modePaiementDefaut', 'conditionsPaiementDefaut', 'tauxFraisStructure', 'couleur',
 ];
@@ -137,7 +138,8 @@ const optionsAcompte = (valeur) => {
   return [...ACOMPTES, { valeur: n, libelle: `${String(n).replace('.', ',')} %` }].sort((a, b) => a.valeur - b.valeur);
 };
 const TYPES_RCS = [{ valeur: 'A', libelle: 'A : commerçant' }, { valeur: 'B', libelle: 'B : société commerciale' }, { valeur: 'C', libelle: 'C : GIE' }, { valeur: 'D', libelle: 'D : société civile' }];
-const ORGANISMES_RGE = ['Qualibat', 'Qualifelec', 'Qualit\'EnR', 'Qualiopi', 'Autre'].map((v) => ({ valeur: v, libelle: v }));
+// Liste unique des organismes RGE (src/lib/qualifications.js) : « Qualiopi », certification des organismes de formation, en est retiré
+const OPTIONS_ORGANISMES_RGE = ORGANISMES_RGE.map((v) => ({ valeur: v, libelle: v }));
 
 const TITRE_CARTE = 'text-lg font-semibold text-encre';
 
@@ -763,12 +765,19 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
 
           <Bloc titre="Qualifications professionnelles">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <ChampParam id="settings-field-rge" cle="rge" libelle="Numéro RGE" facultatif aide="Reconnu garant de l’environnement.">
+              <ChampParam id="settings-field-rge" cle="rge" libelle="Numéro RGE" facultatif aide="Reconnu garant de l’environnement. Imprimé sur vos devis et factures.">
                 <DebouncedInput id="settings-field-rge" placeholder="E-12345" value={entreprise.rge || ''} onChange={maj('rge')} />
               </ChampParam>
-              <ChoixParam id="settings-field-rgeOrganisme" cle="rgeOrganisme" libelle="Organisme RGE" facultatif options={ORGANISMES_RGE}
+              <ChoixParam id="settings-field-rgeOrganisme" cle="rgeOrganisme" libelle="Organisme RGE" facultatif options={OPTIONS_ORGANISMES_RGE}
                 valeur={entreprise.rgeOrganisme || ''} onChange={maj('rgeOrganisme')} vide="Choisir l’organisme" />
+              <ChampParam id="settings-field-rgeValidite" cle="rgeValidite" libelle="Fin de validité" facultatif aide="Après cette date, la qualification n’est plus imprimée sur vos documents.">
+                <input id="settings-field-rgeValidite" type="date" className={CLASSE_CHAMP} value={entreprise.rgeValidite || ''} onChange={e => updateEntreprise(p => ({ ...p, rgeValidite: e.target.value }), 'rgeValidite')} />
+              </ChampParam>
             </div>
+            {/* Le RGE saisi s'imprime en pied des devis et factures (les trois générateurs), sauf dans ces cas */}
+            {raisonRgeNonImprime(entreprise) && (
+              <p className="mt-2 text-sm text-alerte-texte flex items-start gap-1"><AlertTriangle size={14} className="mt-0.5 shrink-0" aria-hidden="true" /> {raisonRgeNonImprime(entreprise)}</p>
+            )}
           </Bloc>
         </div>
       )}

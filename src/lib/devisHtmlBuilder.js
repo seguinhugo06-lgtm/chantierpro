@@ -25,6 +25,7 @@ import { imprimerHtml } from './imprimerHtml';
 import { nomImprime, formeImprimee } from './identiteEntreprise';
 import { estSociete } from './mentionsFacture';
 import { dateLue } from './dates';
+import { qualificationsHtml } from './qualifications';
 import { signatureDuClient } from './signatureDocument';
 import { finValidite } from './validiteDevis';
 import { estClientPro } from './relanceUtils';
@@ -451,7 +452,7 @@ function buildFooterHtml(e, rcsComplet, piedDePage = '', isClientMode = false) {
       ${e.decennaleAssureur && e.decennaleNumero ? `Assurance décennale: ${e.decennaleAssureur}${e.decennaleAssureurAdresse ? ` (${e.decennaleAssureurAdresse})` : ''} N°${e.decennaleNumero}${e.decennaleValidite ? ` (Valide jusqu'au ${dateLue(e.decennaleValidite).toLocaleDateString('fr-FR')})` : ''}${e.decennaleZone ? ` — Zone : ${e.decennaleZone}` : ''}${e.decennaleActivites ? ` — Activités : ${e.decennaleActivites}` : ''}` : ''}
       ${e.decennaleAssureur && e.decennaleNumero && e.rcProAssureur ? '<br>' : ''}
       ${e.rcProAssureur ? `RC Pro: ${e.rcProAssureur}${e.rcProNumero ? ` N°${e.rcProNumero}` : ''}${e.rcProValidite ? ` (Valide jusqu'au ${dateLue(e.rcProValidite).toLocaleDateString('fr-FR')})` : ''}` : ''}
-      ${e.mentionRGE !== false && Array.isArray(e.labels) && e.labels.filter(l => l.actif).length > 0 ? '<br>' + e.labels.filter(l => l.actif).map(l => `${l.nom}${l.numero ? ` N°${l.numero}` : ''}${l.organisme ? ` (${l.organisme})` : ''}${l.dateExpiration ? ` — Valide jusqu'au ${dateLue(l.dateExpiration).toLocaleDateString('fr-FR')}` : ''}`).join('<br>') : ''}
+      ${qualificationsHtml(e, h)}
     </div>
     ${piedDePage}
   </div>`;
@@ -491,6 +492,12 @@ function buildEntrepriseFields(entreprise) {
     decennaleZone: h(entreprise?.decennaleZone),
     mediateur: h(entreprise?.mediateur),
     mediateurContact: h(entreprise?.mediateurContact),
+    // Qualifications : texte brut, échappé par `qualificationsHtml` (src/lib/qualifications.js)
+    rge: entreprise?.rge || '',
+    rgeOrganisme: entreprise?.rgeOrganisme || '',
+    rgeValidite: entreprise?.rgeValidite || '',
+    labels: entreprise?.labels,
+    mentionRGE: entreprise?.mentionRGE,
   };
 }
 
