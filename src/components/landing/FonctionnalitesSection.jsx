@@ -3,13 +3,12 @@
  * action », `id="fonctionnalites"`, entre l'explorateur des métiers et le cycle ; le lien « Fonctionnalités » de la
  * barre y mène).
  *
- * Cinq onglets, chacun un exemple qu'on essaie, sur des données fictives : le document que reçoit le client (le vrai
- * générateur de devis), la signature en ligne, le métré express (le calcul de l'éditeur), le scénario de relances de
+ * Quatre onglets, chacun un exemple qu'on essaie, sur des données fictives : la signature en ligne, le métré express (le calcul de l'éditeur), le scénario de relances de
  * l'app, les encaissements d'une facture. Ils sont dans `exemples/OngletsExemples.jsx`.
  *
  * Chargement : ce fichier ne porte que le titre, le texte et la place réservée ; les onglets et les exemples arrivent à
- * la demande (`import()`), quand la section approche de l'écran (600 px avant). L'exemple du document charge à son
- * tour le générateur de devis et la bibliothèque des métiers : le premier écran du site ne grossit pas.
+ * la demande (`import()`), quand la section approche de l'écran (600 px avant) : le premier écran du site ne grossit
+ * pas. (L'onglet du document, qui répétait le devis vivant du premier écran, est retiré depuis le 3 nov. 2026.)
  * Introuvables (déploiement remplacé, réseau coupé) : un message à la place, pas une attente sans fin.
  */
 import { useEffect, useRef, useState } from 'react';
@@ -86,8 +85,8 @@ export default function FonctionnalitesSection() {
   return (
     <SectionSite id="fonctionnalites" fond="glacier" decor={<PlanArchitecte ton="glacier" />}>
       <EnTeteSection titre="Essayez, c’est l’application.">
-        Des exemples à manipuler, sur des données fictives. Le document, le métré et les relances sortent du code même
-        de l’application.
+        Des exemples à manipuler, sur des données fictives. Le métré et les relances sortent du code même de
+        l’application.
       </EnTeteSection>
       <div ref={zone} className="mt-10">
         {Onglets ? <Onglets /> : <Attente echec={echec} />}

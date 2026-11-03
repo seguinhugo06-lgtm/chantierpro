@@ -76,7 +76,7 @@ export function parametresDuDocument(lot, maintenant = new Date()) {
 /**
  * Le HTML du document montré par l'exemple : `buildDevisHtml` (le générateur de devis, passé en paramètre parce que la
  * page le charge à la demande) sur le lot « tableau » de la bibliothèque Électricité. Appelée telle quelle par la page
- * (`ExempleDocument.jsx`) et par le test d'honnêteté du site : le texte contrôlé est celui que le visiteur lit.
+ * (`ExempleDocument.jsx`, retiré le 3 nov. 2026) et par le test d’honnêteté du site.
  */
 export function htmlDuDocument(buildDevisHtml, bibliotheque, maintenant = new Date()) {
   return buildDevisHtml(parametresDuDocument(lotDemonstration(bibliotheque), maintenant));

@@ -10,15 +10,9 @@
 import { NUMERO_DEVIS } from './devisVivantEtapes';
 import { FACTURE_FICTIVE } from './exemples/donneesFictives';
 
+// L'onglet « Le document que reçoit votre client » est retiré le 3 nov. 2026 (retour d'Hugo du 26 oct.) : il
+// montrait le même devis fictif que le devis vivant du premier écran, juste au-dessus (répétition).
 export const ONGLETS = [
-  {
-    id: 'document',
-    titre: 'Le document que reçoit votre client',
-    titreCourt: 'Le document',
-    phrase: 'Produit par le générateur de Mallettico, sur un devis fictif.',
-    cadre: `Aperçu du devis ${NUMERO_DEVIS}`,
-    cadreCourt: `Aperçu · ${NUMERO_DEVIS}`,
-  },
   {
     id: 'signature',
     titre: 'Signature en ligne',
