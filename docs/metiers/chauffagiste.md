@@ -24,7 +24,7 @@ Propre au métier : l'attestation d'entretien (chaudière, PAC, poêle) est souv
 | Appellation « Professionnel du Gaz » (PG) | Qualigaz | Non | Certificat de conformité gaz sans visite systématique | `plombier.md` |
 | RGE chaudière gaz | Qualibat, Qualigaz (à vérifier) | Non | Plus aucune aide sur une chaudière gaz neuve (§ 7) **(à vérifier)** | — |
 
-Fluides : un arrêté du 21 nov. 2025 (JO du 6 déc. 2025) remplace les anciennes catégories I à V par de nouvelles catégories (A1, A1 FF, A1 HC, A2, A2 HC, D, E, V) en référence au règlement (UE) 2024/2215 ; une attestation d'aptitude de remise à niveau est exigée avant le 12 mars 2029 [16] **(à relire au texte : extraits fragmentaires)**. Mallettico ne doit pas déduire une catégorie : il se contente d'afficher celle que l'artisan saisit.
+Fluides : deux régimes coexistent dans les sources. L'un, l'arrêté du 30 juin 2008, avec les catégories I à V de l'attestation de capacité (voir `frigoriste.md`). L'autre, un arrêté du 21 nov. 2025 (JO du 6 déc. 2025, selon une source ; un projet de 2025 selon une autre) qui remplacerait ces catégories par de nouvelles (A1, A1 FF, A1 HC, A2, A2 HC, D, E, V) en référence au règlement (UE) 2024/2215, avec une attestation de remise à niveau avant le 12 mars 2029 [16] **(à vérifier : statut au JO et date d'effet, extraits fragmentaires)**. Mallettico ne code aucune catégorie : il se contente d'afficher celle que l'artisan saisit.
 
 ## 3. Documents remis au client
 
@@ -32,12 +32,12 @@ Fluides : un arrêté du 21 nov. 2025 (JO du 6 déc. 2025) remplace les ancienne
 - **Quand** : après chaque entretien annuel d'une chaudière gaz, fioul, bois, charbon ou multi-combustible de 4 à 400 kW (§ 4).
 - **Textes** : décret n° 2009-649 du 9 juin 2009 ; codifié au **code de l'environnement, R. 224-41-4 à R. 224-41-9** (partie législative : L. 224-1) ; arrêté du 15 sept. 2009 modifié (en 2020 pour étendre les opérations à l'installation de chauffage, puis le 21 nov. 2022) [1], [3], [5]. La codification actuelle est confirmée par la page du ministère [1] ; le texte consolidé n'a pas été ouvert.
 - **Contenu obligatoire** (annexe 5 de l'arrêté, d'après des modèles de fabricants et de fédérations [4], [5], [6]) : identité et coordonnées de l'entreprise et de l'intervenant ; adresse de l'installation, identité du commanditaire ; type de chaudière, combustible, marque, modèle, puissance ; date ; opérations faites (points de contrôle de l'annexe 1) ; **mesure du monoxyde de carbone (CO) ambiant en ppm**, avec la mention prévue selon la valeur (situation « normale » sous un seuil, à relire) ; **évaluation du rendement** comparé au rendement de référence (annexe 2) ; **évaluation des émissions de polluants** (NOx) pour certaines chaudières **(à vérifier)** ; **conseils** sur le bon usage, les améliorations possibles et l'intérêt d'un remplacement ; correctifs apportés **(liste à relire au texte avant de figer un modèle)**. La FFB publie des modèles PDF remplissables pour chaudières et PAC [4].
-- **Délai de remise** : **15 jours** suivant la visite [5] **(à vérifier : délai lu sur des sites commerciaux uniquement)**.
-- **Conservation** : **2 ans** par l'occupant (ou le propriétaire) pour la présenter ; le professionnel la conserverait aussi 2 ans selon une source commerciale [5] **(à vérifier)**.
+- **Délai de remise** : **15 jours** suivant la visite [5] ; cela correspond, selon le juriste, au régime de 2009 **(numéros à relire)**.
+- **Conservation** : **2 ans** par l'occupant (ou le propriétaire) pour la présenter [5] ; cela correspond, selon le juriste, au régime de 2009 **(numéros à relire)**. Aucun texte connu n'impose de durée au professionnel.
 
 ### 3.2 Attestation d'entretien de pompe à chaleur (4 à 70 kW)
 - **Textes** : décret n° 2020-912 du 28 juil. 2020 (entretien périodique des systèmes thermodynamiques), codifié au code de l'environnement **R. 224-44 et s.** (et non R. 224-41-4, qui vise les chaudières : voir `frigoriste.md`, d'après la page du ministère) [1], [7] **(numéros à relire au texte)** ; arrêté du 24 juil. 2020, dont l'annexe 3 fixe le contenu de l'attestation [8], [9].
-- **Délai** : remise au commanditaire dans les **15 jours** suivant l'entretien [8], [9] **[résumé]**.
+- **Délai et conservation** : remise au commanditaire dans les **15 jours** suivant l'entretien selon la CAPEB et l'AFPAC [résumé], non lu au texte ; conservation : rien d'officiel trouvé **(à vérifier : arrêté du 24 juil. 2020, annexe 3, et articles PAC)** [8], [9].
 - **Contenu** : identification de l'entreprise et du système, opérations faites, conseils ; si le système contient un fluide frigorigène, mention du contrôle d'étanchéité quand il est dû [9] **(liste exacte à relire au texte)**.
 - **Contrôle d'étanchéité** : exigé par la réglementation européenne sur les gaz fluorés selon la charge en équivalent CO2, par un opérateur titulaire de l'attestation de capacité [9], [16] **(seuils et règlement en vigueur à vérifier)**.
 
@@ -57,7 +57,7 @@ Fluides : un arrêté du 21 nov. 2025 (JO du 6 déc. 2025) remplace les ancienne
 | Obligation | Fréquence | Qui | Texte | Source |
 |---|---|---|---|---|
 | Entretien de chaudière 4 à 400 kW (gaz, fioul, bois…) | Annuelle | Occupant, sauf clause du bail ; propriétaire ou syndic pour le collectif | C. env. R. 224-41-4 et s. ; arrêté du 15 sept. 2009 | [1], [2], [3] |
-| Entretien de PAC et système thermodynamique 4 à 70 kW | **Tous les 2 ans** | Occupant ou propriétaire | Décret 2020-912 ; arrêté du 24 juil. 2020 | [7], [8], [10] |
+| Entretien de PAC et système thermodynamique 4 à 70 kW | **Tous les 2 ans** | Propriétaire, occupant ou exploitant selon les sources **(à vérifier)** | Décret 2020-912 ; arrêté du 24 juil. 2020 | [7], [8], [10] |
 | Inspection des systèmes > 70 kW | Tous les 5 ans | Propriétaire, exploitant | C. env. (section entretien et inspection, numéros à vérifier) | [1] |
 | Entretien de poêle ou insert à combustible solide | Annuelle **(à vérifier)** | Occupant | CSP R. 1331-67, R. 1331-68 | `metier-btp.md` § 10 |
 | Ramonage du conduit | Au moins 1 fois/12 mois (plus selon le règlement local) | Occupant | CSP R. 1331-71 | `metier-btp.md` § 10 |
@@ -69,9 +69,9 @@ Rappels : prospection directe, exception « client existant », jamais « obliga
 
 - Règles générales et certification : voir `commun.md`.
 - **Chaudière gaz ou fioul (fourniture et pose)** : **20 %** depuis le **1er mars 2025**, y compris condensation et THPE, logement ancien compris (loi de finances pour 2025, CGI 279-0 bis modifié) ; devis signés et acomptes versés avant cette date gardent l'ancien taux [18], [19]. Entre le 1er janv. et le 28 févr. 2025, 10 % (sortie du 5,5 % par l'arrêté du 4 déc. 2024) [20] **(à vérifier)**.
-- **Entretien et réparation d'une chaudière** dans un logement de plus de 2 ans : taux réduit maintenu selon les sources ; 10 % le plus probable, une source dit 5,5 % **(à vérifier au BOFiP : sources divergentes)**.
+- Entretien et réparation d'une chaudière gaz ou fioul dans un logement de plus de 2 ans : 10 % le plus probable (l'exclusion de 2025 vise la fourniture et la pose, à vérifier au BOFiP) ; jamais 5,5 %, les chaudières fossiles étant sorties de la liste au 1er janv. 2025.
 - **Pompe à chaleur air/eau, eau/eau, géothermie** : 5,5 % (CGI 278-0 bis A) si les critères techniques de l'arrêté sont remplis **(à vérifier : critères 2026 non lus)**.
-- **Pompe à chaleur air/air** : 5,5 % depuis le **18 juil. 2026** (arrêté du 13 juil. 2026, JO du 17 juil.) pour les PAC air/air réversibles fixes dans un logement de plus de 2 ans : fourniture, pose, entretien et réparation ; seuils ≤ 12 kW : classe A+ (multi-split) ou A++ (mono-split) en chauffage et en refroidissement ; au-delà, seuils SCOP/SEER ; fluide conforme au calendrier F-Gas à la signature du devis ; appareil connectable [21], [22], [23]. Un fabricant affirme que la main-d'œuvre de pose resterait à 10 % [24] : contradictoire avec la CAPEB **(à vérifier)**.
+- **Pompe à chaleur air/air** : 5,5 % depuis le **18 juil. 2026** (arrêté du 13 juil. 2026, JO du 17 juil.) pour les PAC air/air réversibles fixes dans un logement de plus de 2 ans : fourniture, pose, entretien et réparation ; seuils ≤ 12 kW : classe A+ (multi-split) ou A++ (mono-split) en chauffage et en refroidissement ; au-delà, seuils SCOP/SEER ; fluide conforme au calendrier F-Gas à la signature du devis ; appareil connectable [21], [22], [23]. Un fabricant affirme que la main-d'œuvre de pose resterait à 10 % [24] : contradictoire avec la CAPEB. Le 278-0 bis A couvre pose, installation et entretien d'un équipement éligible : proposer le même taux pour fourniture et pose **(à vérifier)**.
 - **Poêle, insert, chaudière biomasse** : 5,5 % si l'appareil atteint les critères de l'arrêté **(à vérifier : aucune source trouvée dans cette recherche)**.
 
 ## 6. Mentions particulières sur le devis et la facture
@@ -85,7 +85,7 @@ Rappels : prospection directe, exception « client existant », jamais « obliga
 ## 7. Aides du client et pièces que l'artisan fournit
 
 - **MaPrimeRénov' par geste** : rouverte le 23 févr. 2026 ; depuis le 1er janv. 2026, les chaudières biomasse n'y sont plus éligibles ; depuis le 1er sept. 2026, les poêles et inserts à bois en sortiraient aussi et le parcours par geste serait réservé aux PAC (décret n° 2026-822, selon la presse : voir `commun.md`, **à vérifier au décret**) ; forfait PAC air/eau 5 000 / 4 000 / 3 000 € selon les revenus (sites commerciaux) [27] **(à vérifier sur france-renov.gouv.fr)**. L'artisan doit être RGE dans le domaine des travaux ; il fournit devis, facture, attestation RGE.
-- **CEE « Coup de pouce Chauffage »** : bonification pour remplacer une chaudière charbon, fioul ou gaz par une PAC air/eau ou eau/eau (fiches BAR-TH-171, BAR-TH-172) [25] ; depuis le 1er sept. 2026, réservée aux modèles de PAC agréés, liste complétée le 15 oct. 2026 [26] **(à vérifier sur ecologie.gouv.fr)**. Le cadre de contribution avec l'« obligé » doit être signé avant le devis **(à vérifier)**.
+- **CEE « Coup de pouce Chauffage »** : bonification pour remplacer une chaudière charbon, fioul ou gaz par une PAC air/eau ou eau/eau (fiches BAR-TH-171, BAR-TH-172) [25] ; depuis le 1er sept. 2026, réservée aux modèles de PAC agréés, liste complétée le 15 oct. 2026 [26] **(à vérifier sur ecologie.gouv.fr)**. L'offre de l'obligé (ou de son délégataire) doit être faite au client avant qu'il signe le devis ; l'artisan ne la signe que s'il est partenaire de l'obligé (avis juriste-btp du 3 nov. 2026).
 - Pas de crédit d'impôt sur le chauffage dans le résidentiel en 2026 trouvé **(à vérifier)**.
 
 ## 8. Le terrain : problèmes concrets et ce qu'un logiciel simple devrait faire
@@ -101,9 +101,9 @@ Propositions :
 | Priorité | Proposition | Effort | Risque juridique |
 |---|---|---|---|
 | Indispensable | **Attestation d'entretien numérotée et figée** sur le modèle de l'attestation de ramonage, en trois variantes (chaudière, PAC, poêle/insert) : champs de l'annexe correspondante, mesure du CO (ppm), rendement, conseils ; PDF remis au client ; facture tirée de l'attestation | L | Moyen : le contenu doit suivre l'annexe à la lettre ; relire les annexes au texte avant de figer les champs |
-| Indispensable | **Rappel du prochain entretien** calculé selon l'appareil (12 mois chaudière ; 24 mois PAC ; poêle selon relecture) ; mêmes règles de prospection que le ramonage | M | Faible si les règles de `metier-btp.md` § 10 sont reprises |
-| Indispensable | Modèles de devis à jour de la TVA : chaudière gaz/fioul 20 % ; PAC air/air 5,5 % seulement si classe et fluide saisis ; date du devis contrôlée | M | Moyen : base légale à relire au BOFiP |
-| Utile | **Contrat d'entretien** : prix forfaitaire annuel, appareils couverts, visites incluses, reconduction ; génère l'attestation à chaque visite et la facture annuelle. Rappel d'information avant reconduction tacite (C. conso. L. 215-1, non recherché ici **à vérifier**) | L | Moyen : clauses de reconduction et hors établissement à relire par juriste-btp |
+| Indispensable | **Rappel du prochain entretien** calculé selon l'appareil (12 mois chaudière ; 24 mois PAC ; poêle selon relecture) ; mêmes règles de prospection que le ramonage. Citer l'obligation pour une chaudière (« entretien annuel obligatoire, C. env. R224-41-4 ») : décision d'Hugo ; d'ici là, jamais « obligatoire » (MB § 10) | M | Faible si les règles de `metier-btp.md` § 10 sont reprises |
+| Indispensable | Modèles de devis à jour de la TVA : chaudière gaz/fioul 20 % ; entretien de chaudière jamais à 5,5 % ; PAC air/air 5,5 % seulement si classe et fluide saisis, même taux pour fourniture et pose (à vérifier) ; date du devis contrôlée | M | Moyen : base légale à relire au BOFiP |
+| Utile | **Contrat d'entretien** : prix forfaitaire annuel, appareils couverts, visites incluses, reconduction ; génère l'attestation à chaque visite et la facture annuelle. Rappel d'information avant reconduction tacite : C. conso. L215-1 : le professionnel informe le consommateur par écrit, au plus tôt trois mois et au plus tard un mois avant le terme, de la possibilité de ne pas reconduire ; à défaut, le consommateur peut résilier à tout moment. | L | Moyen : clauses de reconduction et hors établissement à relire par juriste-btp |
 | Utile | Fiche « appareil » attachée au client (type, marque, puissance, fluide, date de pose) pour pré-remplir attestation et rappel | M | Nul |
 | Utile | Champ « attestation de capacité fluides » (n°, catégorie, validité) dans les paramètres, imprimé sur les attestations PAC | S | Faible |
 | Plus tard | Alerte sur une chaudière fioul neuve au devis : « interdite sauf dérogation : justificatif ? » | S | Faible en avertissement |
@@ -143,4 +143,10 @@ Propositions :
 
 ## Relecture juriste-btp
 
-Non faite. Points à lui soumettre en priorité : annexe 5 de l'arrêté du 15 sept. 2009 et annexe 3 de l'arrêté du 24 juil. 2020 (champs exacts avant de coder l'attestation) ; délai de 15 jours et conservation de 2 ans ; fréquence de l'entretien des poêles (R. 1331-68) ; TVA de l'entretien de chaudière (10 % ou 5,5 %) ; pose de PAC air/air (5,5 % ou 10 %) ; contrat d'entretien et reconduction tacite (C. conso. L. 215-1).
+Relue par juriste-btp le 03/11/2026, sans texte officiel ouvert (avis : `avis-juriste-2026-11-03.md`). Corrections appliquées. Restent à vérifier au texte :
+- annexe 5 de l'arrêté du 15 sept. 2009 et C. env. R224-41-4 et s. (15 jours, 2 ans) ;
+- annexe 3 de l'arrêté du 24 juil. 2020 et articles PAC (délai, conservation, qui) ;
+- catégories de fluides : arrêté du 30 juin 2008 ou arrêté du 21 nov. 2025 (statut, date d'effet) ;
+- TVA de l'entretien de chaudière (10 %, CGI 279-0 bis issu de la loi de finances 2025) ;
+- PAC air/air : même taux pour fourniture et pose (arrêtés du 13 juil. et du 14 août 2026) ;
+- fréquence de l'entretien des poêles (R. 1331-68).

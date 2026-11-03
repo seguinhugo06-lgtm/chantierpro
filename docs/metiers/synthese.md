@@ -91,7 +91,7 @@ Un seul moteur, celui du ramonage, paramétré par type d'appareil : chaudière 
 ### 3.5 Mentions
 - Dépannage (serrurier, plombier) : grille tarifaire dans les Paramètres avec page imprimable (affichage obligatoire de l'arrêté de 2017), case « urgence demandée par le client », pièces remplacées.
 - Sous-traitance : mention d'autoliquidation **imprimée**, dans les deux générateurs.
-- Décennale **par devis** et non plus seulement pour toute l'entreprise (prolonge D-24) : utile au peintre, au serrurier-métallier, au paysagiste.
+- Décennale **par devis** et non plus seulement pour toute l'entreprise (prolonge D-24) : utile au peintre, au serrurier-métallier, au paysagiste. **Sans valeur par défaut** : l'artisan répond, l'app ne qualifie pas ses travaux (juriste, 3 nov.).
 - Photos en annexe du devis et de la facture.
 
 ### 3.6 TVA par défaut
@@ -110,7 +110,7 @@ Effort : S (moins d'une session), M (une session), L (plusieurs). Risque juridiq
 | 1 | **« Mes qualifications »** + choix du métier (inscription et Paramètres) + catalogue trié | tous | Forte | M | Faible |
 | 2 | **Attestation d'entretien chaudière / PAC / poêle + rappel** (réutilise le ramonage) | chauffagiste, plombier-chauffagiste, ramoneur, frigoriste | Très forte : revenu récurrent, modèle déjà prouvé | M-L | Moyen : annexes des arrêtés à lire au texte |
 | 3 | **Dépannage express** : grille tarifaire affichable, devis en un écran, urgence, facture immédiate | serrurier, plombier, électricien, couvreur | Forte | M | Moyen : arrêté 2017 (déjà vérifié) |
-| 4 | **Électricien** : rappel Consuel à J-20, compte rendu d'intervention, TVA borne suggérée | électricien (Hugo et testeurs) | Forte | S-M | Moyen : base du 5,5 % borne non trouvée |
+| 4 | **Électricien** : rappel Consuel à J-20, compte rendu d'intervention (jamais « attestation de conformité »), TVA borne suggérée selon le local, pas selon le client | électricien (Hugo et testeurs) | Forte | S-M | Moyen : base du 5,5 % borne à relire (278-0 bis N ?) |
 | 5 | **Lignes structurées** menuiserie / isolation / PAC (valeurs des aides et du taux) | menuisier, plaquiste, couvreur, chauffagiste | Forte (dossiers CEE refusés sinon) | M | Élevé : seuils à relire au texte |
 | 6 | **Chantier long** : PV de réception, levée des réserves, retenue de garantie avec rappel à 1 an, avenant | maçon, charpentier, couvreur, plaquiste, carreleur | Moyenne à forte | M | Moyen |
 | 7 | **Autoliquidation imprimée** et décennale par devis | sous-traitants, peintre, serrurier-métallier | Moyenne | S-M | Moyen |
@@ -133,6 +133,31 @@ Chaque lot passe par `/tache` et le `critique-produit` avant le code, comme le d
 6. **TVA : suggestion ou blocage ?** Recommandé : suggestion seulement, tant qu'aucune règle n'est relue au texte.
 7. **Réseau de la prochaine session** : autoriser `legifrance.gouv.fr`, `bofip.impots.gouv.fr`, `service-public.fr`, `insee.fr` / `api.insee.fr`, `consuel.com` dans les réglages réseau de l'environnement, pour relire au texte avant tout code.
 
-## Relecture juriste-btp
+8. **Rappel d'entretien de chaudière** : peut-il citer l'obligation légale (« entretien annuel obligatoire »), qui est vraie pour une chaudière, ou garde-t-on la règle du ramonage (« jamais obligatoire » dans un rappel) ? (question du juriste)
+9. **Formules « réalisé selon la norme … »** (NF C 15-100, NF P01-012) proposées par l'app, comme engagement de l'artisan : oui ou non ? (question du juriste)
+10. **MaPrimeAdapt'** : avertissement avant la signature d'un devis destiné à l'aide (recommandé par le juriste), ou blocage ?
 
-Voir la section ajoutée après relecture, ci-dessous.
+## Relecture juriste-btp (3 nov. 2026)
+
+Avis complet : `avis-juriste-2026-11-03.md`. Comme la recherche, il n'a pu ouvrir aucun texte : il s'appuie sur `docs/metier-btp.md` et sur la connaissance du droit du relecteur. Corrections appliquées dans les fiches. Ce qui change dans cette synthèse :
+
+- **TVA des bornes** (bloquant) : le 5,5 % se rattacherait à CGI 278-0 bis N (selon la FFB), avec des critères techniques ; **le critère est le local d'habitation, pas la qualité du client**. Le lot 4 ne doit pas réserver le 5,5 % aux particuliers.
+- **Isolation des rampants et des combles** (bloquant si imprimé) : plus aidée par MaPrimeRénov' par geste depuis le 1er sept. 2026 ; couvreur et charpentier le disaient encore.
+- **Décennale par devis** : sans valeur par défaut. L'app ne qualifie pas les travaux ; l'artisan choisit (D-24).
+- **Entretien de chaudière** : jamais 5,5 % ; 10 % le plus probable (à vérifier).
+- **Extension** : « 20 % » des fiches contre « agrandissement > 10 % » de `metier-btp.md` § 4 : à trancher au BOFiP avant de coder.
+- **Documents** : le compte rendu de l'électricien ne s'appelle jamais « attestation de conformité » et n'imite pas le Consuel ; la fiche fluides se remplit sur le CERFA officiel, sans l'imiter.
+- **Services à la personne** : imprimer « organisme déclaré n° … », jamais « ouvre droit au crédit d'impôt » ; l'attestation fiscale ne compte que les paiements admis (pas les espèces).
+- **Serrurier** : l'alerte « abus de faiblesse » est un profilage : avis RGPD avant tout code.
+
+### Vérifications au texte avant tout code (ordre du juriste)
+1. Borne : 278-0 bis N ou 278-0 bis A, ancienneté du logement, qualification IRVE.
+2. PAC air-air à 5,5 % : arrêtés du 13 juil. et du 14 août 2026.
+3. Chaudières fossiles : l'exclusion de 2025 vise-t-elle l'entretien ?
+4. Annexe IV art. 30-0 D : fenêtres, seuils Uw/Sw et R, chauffe-eau, photovoltaïque.
+5. Décret n° 2026-822 : liste exacte du parcours par geste.
+6. Attestations d'entretien : arrêté du 15 sept. 2009, C. env. R224-41-4 et s. ; arrêté du 24 juil. 2020.
+7. Arrêté du 23 févr. 2018 : modèles de certificat gaz.
+8. Services à la personne : C. trav. D7233-1, -4, -5 ; CGI 199 sexdecies après la loi de finances 2026.
+9. TVA d'une extension : BOI-TVA-LIQ-30-20-90-20.
+10. D8222-4 et -5 (vigilance), arrêté du 16 juil. 2019 (amiante, 1er juil. 1997), CSP L1334-8 (plomb), CERFA 15497*04.

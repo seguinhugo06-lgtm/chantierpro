@@ -29,7 +29,7 @@ Un chauffe-eau électrique classique (cumulus) n'exige aucune qualification part
 
 ### 3.1 Certificat de conformité gaz
 - **Quand** : installation de gaz neuve, ou modifiée, dans un logement. Depuis le 1er janv. 2020 (arrêté du 23 févr. 2018), le remplacement d'un appareil est traité comme une modification : il exige un certificat [1], [2].
-- **Modèles** (arrêté du 23 févr. 2018) : **modèle 1** = installation collective d'immeuble d'habitation ; **modèle 2** = installation individuelle réalisée ou modifiée, y compris le remplacement d'une chaudière et la remise en sécurité après une panne ; **modèle 3** = chaufferies et sites de production d'énergie (à vérifier). Le **modèle 4** (remplacement à l'identique) **n'existe plus** : intégré au modèle 2 [1], [5]. Les sources qui parlent encore de quatre modèles décrivent l'ancien régime (arrêté de 1977).
+- **Modèles** : Arrêté du 23 févr. 2018 : le modèle 2 couvre, selon la CAPEB, le remplacement ou l'ajout d'un appareil, ex-modèle 4 compris ; définitions des modèles 1 et 3 à relire aux annexes avant tout pré-remplissage [1], [5]. Les sources qui parlent encore de quatre modèles décrivent l'ancien régime (arrêté de 1977).
 - **Qui le délivre** : l'installateur le remplit ; un **organisme habilité** le vise. Qualigaz est habilité pour les contrôles des articles 21 à 23 de l'arrêté et le visa des certificats **jusqu'au 31 déc. 2026** [4] : renouvellement à vérifier en janvier 2027. Si l'installateur est PG, visa après contrôle administratif et contrôles par sondage ; sinon, le client demande le certificat et une visite est organisée [5], [6] **(à vérifier : sources commerciales)**.
 - **Délai et conservation** : sans certificat visé, le distributeur ne met pas le gaz en service sur une installation neuve [3] **(à vérifier pour une modification)**. Durée de conservation : aucune source trouvée **(à vérifier)**. Conseil au client : le garder avec les papiers du logement.
 - **Coût** : le certificat est acheté à l'organisme par l'installateur et refacturé ; sans PG, environ 247 € TTC visite incluse selon un comparateur **(à vérifier, tarif non officiel)**.
@@ -48,7 +48,7 @@ Notices et garantie des appareils (chauffe-eau, adoucisseur) ; pour un chauffe-e
 
 | Obligation | Fréquence | Qui | Texte | Source |
 |---|---|---|---|---|
-| Contrôle de l'assainissement non collectif (fosse, micro-station) | Au plus tous les 10 ans (la commune peut faire plus court) | **SPANC** (service de la commune ou de l'intercommunalité), pas le plombier | CSP L1331-1-1 et s. ; arrêté du 27 avr. 2012 | [17], [18] |
+| Contrôle de l'assainissement non collectif (fosse, micro-station) | Au plus tous les 10 ans (la commune peut faire plus court) | **SPANC** (service de la commune ou de l'intercommunalité), pas le plombier | Périodicité : CGCT L2224-8, III (pas CSP L1331-1-1) ; arrêté du 27 avr. 2012 | [17], [18] |
 | Diagnostic assainissement à la vente | Contrôle de moins de 3 ans ; travaux dans l'année suivant la vente si non conforme | SPANC | CSP L1331-11-1 | [17], [18] |
 | Vidange de fosse | Selon le remplissage, par une entreprise agréée | Propriétaire | **(à vérifier)** | — |
 | Entretien du chauffe-eau thermodynamique (fluide) | Voir PAC, `chauffagiste.md` (4 à 70 kW : tous les 2 ans) — un CET est-il concerné ? **(à vérifier : puissance souvent < 4 kW)** | Propriétaire ou occupant | C. env. R. 224-44 et s. (voir `frigoriste.md`) | `chauffagiste.md` |
@@ -67,7 +67,7 @@ Le plombier peut réhabiliter une installation d'assainissement non collectif, m
 ## 6. Mentions particulières sur le devis et la facture
 
 - **Dépannage d'urgence** : devis préalable, affichage des prix, frais de déplacement annoncés (arrêté du 24 janv. 2017) : voir `commun.md`. La DGCCRF signale dans ce secteur des publicités trompeuses, la mise en avant de labels ou de qualifications que le professionnel n'a pas, des prix excessifs et des pratiques agressives [10], [11], [12]. Il n'existe pas de « liste noire » officielle des dépanneurs : aucune trouvée ; la DGCCRF fait bloquer des sites frauduleux [10] **(à vérifier)**.
-- **Hors établissement** (presque toujours en dépannage) : 14 jours de rétractation et aucun paiement avant 7 jours, sauf urgence demandée expressément par le client : voir `commun.md` **(exception d'urgence à décrire dans commun.md)**.
+- **Hors établissement** (presque toujours en dépannage) : 14 jours de rétractation et aucun paiement avant 7 jours, sauf urgence demandée expressément par le client : voir `commun.md`. Exception d'urgence relue au texte : MB § 2 (L221-10, 4° ; L221-28, 8°).
 - **Recherche de fuite** : séparer sur la facture la recherche de fuite, la réparation et la remise en état, car les assureurs ne les prennent pas en charge de la même façon [7]. Indiquer le n° de sinistre si le client l'a.
 - **Gaz** : ligne « certificat de conformité gaz modèle 2 » quand il est dû.
 - **Chauffe-eau aidé** : marque, référence, caractéristiques (COP pour un CET, surface de capteurs pour un solaire), n° RGE : les aides les exigent sur la facture **(liste exacte à vérifier sur france-renov.gouv.fr)**.
@@ -75,7 +75,7 @@ Le plombier peut réhabiliter une installation d'assainissement non collectif, m
 ## 7. Aides du client et pièces que l'artisan fournit
 
 - **MaPrimeRénov' par geste** : rouverte le 23 févr. 2026 après une suspension depuis le 1er janv. ; barèmes 2026 identiques à ceux de l'automne 2025 selon des sites commerciaux [16] **(à vérifier sur france-renov.gouv.fr)**. Chauffe-eau solaire et thermodynamique : **sortis du parcours par geste depuis le 1er sept. 2026** (décret n° 2026-822, selon la presse ; ils restent possibles dans une rénovation d'ampleur et finançables par les CEE) : voir `commun.md` **(à vérifier au décret)**. L'artisan doit être RGE à la date du devis ; il fournit devis, facture, attestation RGE.
-- **CEE** : fiches pour le chauffe-eau solaire et thermodynamique, via un « obligé » (fournisseur d'énergie) ; l'artisan signe le cadre de contribution avant le devis **(à vérifier)**.
+- **CEE** : fiches pour le chauffe-eau solaire et thermodynamique, via un « obligé » (fournisseur d'énergie) ; L'offre de l'obligé (ou de son délégataire) doit être faite au client avant qu'il signe le devis ; l'artisan ne la signe que s'il est partenaire de l'obligé.
 - **Assurance dégât des eaux** : pas une aide, mais le même besoin de pièces : facture détaillée, rapport de recherche de fuite, photos (§ 3.2).
 
 ## 8. Le terrain : problèmes concrets et ce qu'un logiciel simple devrait faire
@@ -90,9 +90,9 @@ Propositions :
 
 | Priorité | Proposition | Effort | Risque juridique |
 |---|---|---|---|
-| Indispensable | Devis de dépannage express : trois lignes types (déplacement, main-d'œuvre horaire, pièces), signé sur le téléphone avant intervention, avec la case « urgence demandée par le client » | M | Moyen : l'exception d'urgence au délai de 7 jours est à relire au texte (C. conso.) |
+| Indispensable | Devis de dépannage express : trois lignes types (déplacement, main-d'œuvre horaire, pièces), signé sur le téléphone avant intervention, avec la case « urgence demandée par le client », jamais pré-cochée : le client signe la phrase lui-même | M | Moyen. Exception d'urgence relue au texte : MB § 2 (L221-10, 4° ; L221-28, 8°). |
 | Indispensable | « Rapport de recherche de fuite » numéroté et figé, sur le modèle de l'attestation de ramonage : méthode, origine trouvée/non trouvée, photos, n° de sinistre ; facture tirée du rapport avec les trois postes séparés | M | Faible : document de constat ; jamais « responsable » ni « pris en charge » |
-| Indispensable | Modèle de devis « remplacement de chaudière gaz » avec la ligne certificat modèle 2 pré-remplie | S | Faible |
+| Indispensable | Modèle de devis « remplacement de chaudière gaz » avec une ligne certificat de conformité gaz ; modèle pré-rempli seulement après relecture des annexes de l'arrêté du 23 févr. 2018 | S | Moyen tant que les définitions des modèles ne sont pas relues |
 | Utile | Champ « appellation PG » (n°, validité) imprimé sur les devis gaz, séparé du champ RGE | S | Faible |
 | Utile | Chauffe-eau thermodynamique/solaire : TVA 5,5 % proposée seulement si l'équipement est marqué « éligible » par l'artisan ; mentions techniques demandées avant d'émettre | M | Moyen : critères à relire au BOFiP |
 | Plus tard | Rappel « entretien du chauffe-eau / détartrage » à 2 ans, présenté comme conseil (règles de prospection de `metier-btp.md` § 10) | S | Faible |
@@ -122,4 +122,8 @@ Propositions :
 
 ## Relecture juriste-btp
 
-Non faite. Points à lui soumettre : exception d'urgence au délai de 7 jours en hors établissement ; renouvellement de l'habilitation Qualigaz après le 31 déc. 2026 ; TVA de l'adoucisseur ; critères 2026 du 5,5 % pour CET et chauffe-eau solaire ; numéros d'articles du CSP pour le SPANC (L1331-1-1, L1331-11-1).
+Relue par juriste-btp le 03/11/2026, sans texte officiel ouvert (avis : `avis-juriste-2026-11-03.md`). Corrections appliquées. Restent à vérifier au texte :
+- annexes de l'arrêté du 23 févr. 2018 (définitions des modèles 1, 2 et 3) ;
+- renouvellement de l'habilitation Qualigaz après le 31 déc. 2026 ;
+- TVA de l'adoucisseur ; critères 2026 du 5,5 % pour CET et chauffe-eau solaire ;
+- seuils IRSI (HT ou TTC).

@@ -21,7 +21,7 @@ Niveaux de preuve : **[texte]** = vérifié au texte dans `metier-btp.md` · **[
 - L'origine de l'obligation de jointure est la loi « Macron » du 6 août 2015 [2] [résumé].
 - Conséquence produit : l'attestation est **un fichier fourni par l'assureur**, pas un texte que l'app génère. L'app peut le stocker, vérifier sa date de validité et ses activités face au devis, et le joindre au PDF. Elle ne doit jamais l'imiter.
 
-**Dommages-ouvrage** : obligation du maître d'ouvrage (vendeurs, promoteurs, mais aussi le particulier qui fait construire ou rénover lourdement : agrandissement, surélévation), avant l'ouverture du chantier ; sanction pénale citée : 6 mois et 75 000 € (L243-3) [1] [résumé]. Une exception pénale pour la personne physique qui construit pour elle-même ou sa famille est souvent citée : **(à vérifier)**, rien trouvé dans cette recherche.
+**Dommages-ouvrage** : obligation du maître d'ouvrage (vendeurs, promoteurs, mais aussi le particulier qui fait construire ou rénover lourdement : agrandissement, surélévation), avant l'ouverture du chantier ; sanction pénale citée : 6 mois et 75 000 € (L243-3) [1] [résumé]. L243-3 ne punit pas la personne physique qui construit un logement pour l'occuper elle-même ou le faire occuper par son conjoint, ses ascendants ou descendants (à relire au texte). L'obligation d'assurance (L242-1) demeure.
 
 **Garanties après réception** : parfait achèvement 1 an (C. civ. 1792-6), bon fonctionnement 2 ans (1792-3), décennale 10 ans (1792, 1792-4-1). Elles courent à la **réception** (PV avec ou sans réserves) : MB § 1 et § 6 [texte]. Conséquence produit : un PV de réception daté est la pièce qui fait partir les trois délais ; c'est un document commun à tous les métiers de construction.
 
@@ -29,7 +29,7 @@ Niveaux de preuve : **[texte]** = vérifié au texte dans `metier-btp.md` · **[
 
 Tout est vérifié au texte dans `metier-btp.md` ; résumé :
 - **Dépannage, réparation, entretien** (arrêté du 24 janv. 2017) : devis détaillé avant toute intervention, sans seuil ; il dit s'il est gratuit ou payant ; frais de déplacement ; le client peut garder les pièces remplacées ; taux horaires TTC et frais affichés dans les locaux et en ligne ; facture remise à la fin de l'intervention, avant le paiement. MB § 2 [texte]. Concerne au premier chef : électricien, plombier, chauffagiste, frigoriste, serrurier, ramoneur, multiservice.
-- **Contrat hors établissement** (signé chez le client) avec un particulier : aucun paiement ni contrepartie avant 7 jours (C. conso. L221-10), rétractation 14 jours avec formulaire (L221-18), exception de l'urgence demandée par le client (L221-10, 4° ; L221-28, 8°). Signé en ligne : contrat à distance (14 jours, pas les 7 jours). MB § 2 [texte]. L'urgence concerne surtout serrurier, plombier, électricien.
+- **Contrat hors établissement** (signé chez le client) avec un particulier : aucun paiement ni contrepartie avant 7 jours (C. conso. L221-10), rétractation 14 jours avec formulaire (L221-18), exception de l'urgence demandée par le client (L221-10, 4° ; L221-28, 8°). Signé en ligne : contrat à distance (14 jours, pas les 7 jours), sauf si le lien est signé chez le client ou juste après sa visite : le contrat est alors hors établissement (L221-1, I, 2°, MB § 2). MB § 2 [texte]. L'urgence concerne surtout serrurier, plombier, électricien.
 - **Médiateur de la consommation** : adhésion obligatoire pour qui travaille avec des particuliers (L612-1) ; nom et site sur le site, les CGV et les bons de commande (R616-1). MB § 2 [texte].
 - **Déchets de chantier** : tout devis de construction, rénovation ou démolition indique les modalités d'enlèvement et de gestion, leur coût, les installations de collecte et une estimation de la quantité (C. env. L541-21-2-3, décret n° 2020-1817). Absent des deux générateurs. MB § 2 [texte].
 - **Entrepreneur individuel** : « EI » après le nom (C. com. R526-27). MB § 2 [texte].
@@ -51,7 +51,7 @@ Tout est vérifié au texte dans `metier-btp.md` ; résumé :
   - cuisines équipées : **rien trouvé** ; les équipements ménagers et mobiliers relèvent d'une exclusion distincte [4] **(à vérifier)**.
   - L'exclusion du 10 % ne fait pas obstacle au 5,5 % si ses conditions sont remplies [3] [résumé].
   - Version en vigueur : BOI-TVA-LIQ-30-20-90-20 du 9 sept. 2026 [3] (non lue). **À relire au texte avant de coder** (liste exacte, et dates de bascule citées par des blogs seulement : chaudières fossiles au 1er mars 2025, PAC au 18 juil. 2026 [5] **(à vérifier)**).
-- **5,5 %** : équipements et critères aux art. 30-0 D à 30-0 D nonies de l'annexe IV, arrêté du 4 déc. 2024 [6] [résumé]. Nouveauté 2026 : la loi de finances pour 2026 fait entrer les **PAC air/air réversibles fixes** dans le 5,5 % ; un arrêté (du 13 juil. 2026 selon un site) insère un 1° bis à l'art. 30-0 D ter, critères cumulatifs [6] [résumé] **(à vérifier : date et numéro de l'arrêté)**. Être RGE n'est une condition du 5,5 % dans **aucune source trouvée** (c'est une condition des aides) **(à vérifier)**.
+- **5,5 %** : équipements et critères aux art. 30-0 D à 30-0 D nonies de l'annexe IV, arrêté du 4 déc. 2024 (JO du 24 déc. 2024 selon `menuisier.md` ; date de l'arrêté ou du JO **(à vérifier)**) [6] [résumé]. Nouveauté 2026 : la loi de finances pour 2026 fait entrer les **PAC air/air réversibles fixes** dans le 5,5 % ; un arrêté (du 13 juil. 2026 selon un site) insère un 1° bis à l'art. 30-0 D ter, critères cumulatifs [6] [résumé] **(à vérifier : date et numéro de l'arrêté)**. Être RGE n'est une condition du 5,5 % dans **aucune source trouvée** (c'est une condition des aides) **(à vérifier)**.
 - **Autoliquidation en sous-traitance BTP** (CGI 283-2 nonies, depuis le 1er janv. 2014) : le sous-traitant facture HT, sans TVA, avec la mention « Autoliquidation » exigée par CGI ann. II art. 242 nonies A, I, 13° [7] [résumé] ; MB § 1 [texte]. Chaque maillon d'une chaîne de sous-traitance facture ainsi ; exclus : prestations intellectuelles (études), location de matériel sans opérateur [7] [résumé]. La qualité de sous-traitant doit pouvoir être prouvée (CAA Lyon, 6 nov. 2025) [7] [résumé]. Sous-traitant en franchise en base : il facture sans TVA avec la mention 293 B, pas d'autoliquidation **(à vérifier)**.
 - **Recodification CIBS** et renvois au CGI admis sur les factures : MB § 3 et § 4 [texte].
 
@@ -67,11 +67,11 @@ Tout est vérifié au texte dans `metier-btp.md` ; résumé :
 ### Certificats d'économies d'énergie (CEE)
 - **Cadre** : 6e période du 1er janv. 2026 au 31 déc. 2030 (décret n° 2025-1048 du 30 oct. 2025) [12] [résumé]. Les fournisseurs d'énergie (« obligés ») financent des primes.
 - **Rôle actif et incitatif** : l'obligé (ou son délégataire) doit s'être engagé envers le client **avant** l'engagement de l'opération ; la date d'engagement est l'**acceptation du devis** (signature) [13] [résumé]. Une preuve fabriquée après la signature ne régularise pas le dossier [13] [résumé]. Depuis le 1er janv. 2026, le seuil minimal d'incitation financière a disparu [12] [résumé].
-- **Coup de pouce** : bonifications par chartes ; pour les PAC (« Coup de pouce Chauffage »), depuis le **1er sept. 2026** le modèle doit être agréé à la date d'engagement et le **n° d'agrément figurer sur la facture** [12][13] [résumé] **(à vérifier sur la charte)**.
+- **Coup de pouce** : bonifications par chartes ; pour les PAC (« Coup de pouce Chauffage »), depuis le **1er sept. 2026** le modèle doit être agréé à la date d'engagement et le **n° d'agrément figurer sur la facture** [12][13] [résumé] **(à vérifier sur la charte)**. Ne pas en faire une mention bloquante avant d'avoir lu la charte.
 - **Conséquence produit** : la date de signature du devis est une donnée à enjeu (elle ne doit jamais pouvoir être antidatée ni modifiée après coup) ; l'app peut demander « prime CEE prévue ? » avant l'envoi du devis pour rappeler que l'offre de prime doit être datée d'avant la signature. Elle ne remplit pas le dossier CEE.
 
 ### Éco-prêt à taux zéro (éco-PTZ)
-- Prolongé jusqu'au **31 déc. 2027** ; plafond cité 50 000 € [14] (source non officielle) **(à vérifier)**.
+- Prolongé jusqu'au **31 déc. 2027** ; plafond de 15 000 à 50 000 € selon le nombre de gestes ou le parcours (à vérifier) [14] (source non officielle).
 - Deux formulaires : « emprunteur » et « **entreprise** » ; le second est rempli par l'artisan **RGE**, avec les devis détaillés ; versement possible sur la base des devis [14][15] [résumé]. Il finance notamment les gestes sortis de MaPrimeRénov' par geste en sept. 2026 [10] [résumé].
 
 ### TVA réduite
@@ -130,4 +130,10 @@ Réception au 1er sept. 2026, émission au 1er sept. 2027 pour les TPE, par une 
 25. Activités accréditées Cofrac de Qualibat (avr. 2023) — https://www.qualibat.com/wp-content/uploads/2023/04/Activites_accreditees_cofrac_Avril-2023.pdf — consulté le 03/11/2026 — [résumé]
 
 ## Relecture juriste-btp
-Non faite. À demander avant de coder : jointure de l'attestation décennale (§ 1), gros équipements (§ 3), autoliquidation d'un sous-traitant en franchise (§ 3), date d'engagement CEE (§ 4), correction de la liste RGE (§ 5).
+Relue par juriste-btp le 03/11/2026, sans texte officiel ouvert (avis : `avis-juriste-2026-11-03.md`). Corrections appliquées. Restent à vérifier au texte :
+- exception pénale de L243-3 (personne physique qui construit pour elle-même ou sa famille) ;
+- plafonds de l'éco-PTZ (15 000 à 50 000 €) ;
+- n° d'agrément PAC sur la facture (charte Coup de pouce) : pas de mention bloquante avant lecture ;
+- liste exacte des mentions de l'attestation décennale (arrêté du 5 janv. 2016) ;
+- liste des gros équipements (BOI-TVA-LIQ-30-20-90-20) ; date de l'arrêté du 5,5 % (4 déc. 2024 ou JO du 24 déc.) ;
+- sous-traitant en franchise : 293 B sans autoliquidation (jugé juste, non lu au BOFiP).

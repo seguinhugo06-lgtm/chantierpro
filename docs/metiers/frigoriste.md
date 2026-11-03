@@ -17,15 +17,15 @@ Règles transverses (TVA 20/10/5,5, devis obligatoire en dépannage et entretien
 
 | Qualification | Organisme | Obligatoire ? | Ce qu'elle permet au client | Source |
 |---|---|---|---|---|
-| **Attestation de capacité** (entreprise), catégories I à V | Organisme agréé par l'État (liste sur le site du ministère ; vérification sur SYDEREP de l'ADEME) | **Oui** pour toute manipulation de fluide (mise en service, charge, récupération, contrôle d'étanchéité) | Fluides achetés et manipulés légalement ; fiche d'intervention valable | C. env. R543-99 [1, 5] [résumé] |
+| **Attestation de capacité** (entreprise), catégorie selon le régime en vigueur (à vérifier, ci-dessous) | Organisme agréé par l'État (liste sur le site du ministère ; vérification sur SYDEREP de l'ADEME) | **Oui** pour toute manipulation de fluide (mise en service, charge, récupération, contrôle d'étanchéité) | Fluides achetés et manipulés légalement ; fiche d'intervention valable | C. env. R543-99 [1, 5] [résumé] |
 | **Attestation d'aptitude** (chaque technicien) | Organisme évaluateur certifié ; délivrée aussi avec certains titres professionnels | **Oui** : l'entreprise n'obtient sa capacité que si son personnel est apte | — | C. env. R543-106 [31] [résumé] |
 | Qualification artisanale (CAP, BEP ou 3 ans d'expérience) | CMA | **Oui** : « climaticien » figure parmi les métiers de la catégorie « réseaux et équipements utilisant les fluides… » | — | C. artisanat L121-1 [30] [résumé] |
 | **RGE QualiPAC** | Qualit'EnR | Non | Condition des aides (CEE, MaPrimeRénov' en rénovation d'ampleur) pour une PAC | [29] [résumé] (à vérifier sur france-renov.gouv.fr) |
 | Inspecteur certifié (systèmes > 70 kW) | Organisme accrédité | Oui pour faire l'inspection | Rapport d'inspection valable | arrêté du 24 juil. 2020 [19] [résumé] |
 
-**Catégories de l'attestation de capacité** (arrêté du 30 juin 2008) : catégorie I = contrôle d'étanchéité, maintenance, assemblage, mise en service et récupération sur **tous** les équipements [1] ; catégorie III = récupération sur des équipements de moins de 2 kg ; les catégories III et IV ne reçoivent pas de fluide neuf [2] ; catégorie V = peut être limitée aux véhicules hors d'usage [3]. Le détail des catégories II et IV n'apparaît pas dans les résumés **(à vérifier)**.
+**Catégories de l'attestation de capacité** : deux régimes coexistent dans les sources. L'arrêté du 30 juin 2008 (catégories I à V, ci-après) ; et un arrêté du 21 nov. 2025 (JO du 6 déc. 2025 selon `chauffagiste.md`, simple projet de 2025 selon [3]) qui les remplacerait par de nouvelles catégories (A1, A1 FF, A1 HC, A2, A2 HC, D, E, V) **(à vérifier : statut au JO et date d'effet)**. Mallettico ne code aucune catégorie : il affiche celle que l'artisan saisit. Régime de 2008 : catégorie I = contrôle d'étanchéité, maintenance, assemblage, mise en service et récupération sur **tous** les équipements [1] ; catégorie III = récupération sur des équipements de moins de 2 kg ; les catégories III et IV ne reçoivent pas de fluide neuf [2] ; catégorie V = peut être limitée aux véhicules hors d'usage [3]. Le détail des catégories II et IV n'apparaît pas dans les résumés **(à vérifier)**.
 
-**Validité** : 5 ans, d'après un exemple d'attestation (08/09/2019 → 07/09/2024) [4] ; non vu dans un texte officiel **(à vérifier)**. Un projet d'arrêté de 2025 évoque une **attestation de remise à niveau** à obtenir avant le 12 mars 2029 au titre du règlement (UE) 2024/2215 [3] : statut au Journal officiel non confirmé **(à vérifier)**.
+**Validité** : 5 ans, d'après un exemple d'attestation (08/09/2019 → 07/09/2024) [4] ; non vu dans un texte officiel **(à vérifier)**. Une **attestation de remise à niveau** à obtenir avant le 12 mars 2029 au titre du règlement (UE) 2024/2215 est citée, par un projet d'arrêté de 2025 [3] ou par l'arrêté du 21 nov. 2025 (`chauffagiste.md`) : statut au Journal officiel **(à vérifier)**.
 
 ## 3. Documents remis au client
 
@@ -40,7 +40,7 @@ Règles transverses (TVA 20/10/5,5, devis obligatoire en dépannage et entretien
 ### Attestation d'entretien des PAC et climatiseurs de 4 à 70 kW
 - **Quand** : à l'entretien obligatoire, **tous les 2 ans** (C. env. R224-44 et s. ; arrêté du 24 juil. 2020 « entretien », art. 4 et annexe 3) [17, 18] [résumé]. Le ministère précise que R224-41-4 vise les chaudières, pas les PAC [17].
 - **Contenu** : fixé par l'annexe 3 de l'arrêté (non lue) **(à vérifier)**.
-- **Délai de remise, conservation** : rien trouvé d'officiel ; « 5 ans » vu sur un site commercial **(à vérifier)**.
+- **Délai de remise, conservation** : remise au commanditaire dans les **15 jours** suivant l'entretien selon la CAPEB et l'AFPAC [résumé], non lu au texte ; conservation : rien d'officiel trouvé **(à vérifier : arrêté du 24 juil. 2020, annexe 3, et articles PAC)** ; « 5 ans » de conservation vu sur un site commercial.
 
 ### Rapport d'inspection (systèmes > 70 kW)
 - Modèle de l'annexe 6 de l'arrêté du 24 juil. 2020 ; fait par un inspecteur certifié [19] [résumé]. Hors du cœur de cible (artisan chez des particuliers), mais concerne les frigoristes en froid commercial.
@@ -53,10 +53,10 @@ Règles transverses (TVA 20/10/5,5, devis obligatoire en dépannage et entretien
 
 | Obligation | Fréquence | Qui | Texte | Source |
 |---|---|---|---|---|
-| Contrôle d'étanchéité | ≥ 5 t éq. CO2 de HFC (ou ≥ 1 kg de HFO, compté en kg) : seuil de déclenchement. **5 à 50 t** : 12 mois, 24 mois avec détection de fuites. Au-delà : 6 mois et 3 mois cités sans confirmation au texte | Le détenteur fait faire, par un opérateur attesté | Règl. (UE) 2024/573, art. 5 | [10, 11, 12, 14] [résumé] ; tranches au-delà de 50 t **(à vérifier)** sur EUR-Lex |
+| Contrôle d'étanchéité | ≥ 5 t éq. CO2 de HFC (ou ≥ 1 kg de HFO, compté en kg) : seuil de déclenchement. **5 à 50 t** : 12 mois, 24 mois avec détection de fuites. Au-delà : 6 mois et 3 mois, doublés avec détection, conformes à la connaissance du juriste. Équipements hermétiquement scellés de moins de 10 t éq. CO2 exemptés (à vérifier) | Le détenteur fait faire, par un opérateur attesté | Règl. (UE) 2024/573, art. 5 | [10, 11, 12, 14] [résumé] ; tranches au-delà de 50 t **(à vérifier)** sur EUR-Lex |
 | Vérification du système permanent de détection de fuites | 12 mois | Détenteur | arrêté du 29 févr. 2016 | [14] [résumé] |
 | Système de détection de fuites obligatoire | dès 500 t éq. CO2 (ou 100 kg de HFO) | Détenteur | Règl. 2024/573, art. 6 | [10, 13] [résumé] |
-| Entretien PAC / climatiseur 4 à 70 kW | 2 ans | Propriétaire ou exploitant | C. env. R224-44 et s. ; arrêté du 24 juil. 2020 | [17, 18] [résumé] |
+| Entretien PAC / climatiseur 4 à 70 kW | 2 ans | Propriétaire, occupant ou exploitant selon les sources **(à vérifier)** | C. env. R224-44 et s. ; arrêté du 24 juil. 2020 | [17, 18] [résumé] |
 | Inspection > 70 kW | ≤ 5 ans (première dans les 5 ans de l'installation) | Propriétaire ou exploitant | décret 2020-912 ; C. env. R224-45 et s. | [19] [résumé] ; une fiche FFB cite encore un ancien seuil de 12 kW [20] (à vérifier) |
 
 **Calcul** : t éq. CO2 = charge en kg × PRG du fluide ÷ 1 000 (règl. 2024/573, art. 3) [12]. Ordre de grandeur pour un mono-split résidentiel : souvent sous 5 t éq. CO2, donc pas de contrôle périodique obligatoire ; c'est une déduction, à faire vérifier par le calcul sur la charge réelle.
@@ -83,7 +83,7 @@ Règles transverses (TVA 20/10/5,5, devis obligatoire en dépannage et entretien
 
 ## 7. Aides du client et pièces que l'artisan fournit
 
-- **MaPrimeRénov'** : la PAC air-air n'est **pas** aidée seule ; seulement dans une rénovation d'ampleur (parcours accompagné) selon plusieurs sites [28] (non officiel, **(à vérifier)** sur france-renov.gouv.fr).
+- **MaPrimeRénov'** : la PAC air-air n'est **pas** aidée seule ; son éligibilité en rénovation d'ampleur, citée par plusieurs sites [28], n'est pas établie (**à vérifier** sur france-renov.gouv.fr). Ne rien imprimer.
 - **CEE** (prime énergie) : PAC air-air éligible, sans bonification « Coup de pouce chauffage » [28] [résumé] ; l'artisan fournit devis et facture conformes à la fiche CEE et sa qualification RGE.
 - **Éco-PTZ** : sources contradictoires pour l'air-air **(à vérifier)**.
 - **TVA 5,5 %** : la certification du client, et la preuve des classes énergétiques (fiche produit).
@@ -100,9 +100,9 @@ Aucun retour de frigoriste n'est écrit dans le dépôt. Problèmes déduits des
 |---|---|---|---|
 | **Paramètres** : n° d'attestation de capacité, catégorie, organisme, date de fin de validité, avec alerte avant l'échéance (comme la décennale) | Indispensable | S | Faible (donnée de l'artisan) |
 | **Fiche équipement du client** (comme les appareils du ramonage) : type, marque, modèle, fluide, charge kg, t éq. CO2 calculée, classes SCOP/SEER | Indispensable | M | Faible si le PRG vient d'une table sourcée et datée |
-| **Rappel du prochain contrôle ou entretien**, calqué sur `rappelsDus` du ramonage (12/24 mois ou 2 ans pour l'entretien 4-70 kW), même mécanique de refus (CPCE L34-5, voir cadrage ramonage) | Utile | M (réutilise le ramonage) | Moyen : tranches > 50 t à relire sur EUR-Lex ; ne jamais écrire « obligatoire » si la charge est sous le seuil |
+| **Rappel du prochain contrôle ou entretien**, calqué sur `rappelsDus` du ramonage (12/24 mois ou 2 ans pour l'entretien 4-70 kW), même mécanique de refus (CPCE L34-5, voir cadrage ramonage) | Utile | M (réutilise le ramonage) | Moyen : tranches > 50 t à relire sur EUR-Lex ; « obligatoire » seulement à partir de 5 t éq. CO2, sinon le rappel est un conseil |
 | **Aide au taux 5,5 % PAC air-air** : case « classes A+/A++ vérifiées », référence produit imprimée ; sinon 10 % pose / 20 % fourniture | Utile | S | Élevé : à relire au texte de l'arrêté du 13 juil. 2026 (et du 14 août) avant de coder |
-| **Fiche d'intervention** générée depuis la saisie, au format exact du CERFA 15497*04, signée sur le téléphone par l'opérateur et le détenteur, figée et numérotée comme l'attestation de ramonage | Plus tard | L | Élevé : reproduire un CERFA impose sa mise en page et sa version ; lire le formulaire et sa notice ; vérifier si un équivalent électronique doit reprendre tous les cadres |
+| **Fiche d'intervention** : remplir le CERFA officiel 15497*04 depuis la saisie, signé sur le téléphone par l'opérateur et le détenteur ; jamais un document qui l'imite avec d'autres cadres | Plus tard | L | Élevé : lire le formulaire et sa notice ; vérifier si la forme électronique (R543-83) doit reprendre tous les cadres |
 | Attestation d'entretien 4-70 kW (annexe 3) | Plus tard | M | Moyen : annexe non lue |
 | BSFF : lien vers Trackdéchets, pas de génération | Plus tard | S | Faible |
 
@@ -142,4 +142,9 @@ Aucun retour de frigoriste n'est écrit dans le dépôt. Problèmes déduits des
 
 ## Relecture juriste-btp
 
-Non faite. Points à lui soumettre en priorité : TVA 5,5 % PAC air-air (arrêtés des 13 juil. et 14 août 2026, pose à 5,5 % ou 10 %) ; tranches de fréquence du contrôle d'étanchéité au-delà de 50 t éq. CO2 (règl. 2024/573, art. 5) ; reproduction électronique du CERFA 15497*04.
+Relue par juriste-btp le 03/11/2026, sans texte officiel ouvert (avis : `avis-juriste-2026-11-03.md`). Corrections appliquées. Restent à vérifier au texte :
+- catégories de fluides : arrêté du 30 juin 2008 ou arrêté du 21 nov. 2025 (statut, date d'effet) ; validité de 5 ans de l'attestation de capacité ;
+- PAC 4-70 kW : délai de remise, conservation et « qui » (arrêté du 24 juil. 2020, annexe 3) ;
+- tranches au-delà de 50 t et exemption des équipements hermétiquement scellés de moins de 10 t éq. CO2 (règl. 2024/573) ;
+- TVA 5,5 % PAC air-air (arrêtés des 13 juil. et 14 août 2026, pose comprise) ;
+- MaPrimeRénov' pour une PAC air-air en rénovation d'ampleur ; forme électronique du CERFA 15497*04.

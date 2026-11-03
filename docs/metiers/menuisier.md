@@ -36,7 +36,7 @@ L'app n'a qu'un champ RGE (n° + organisme). Pour un menuisier, ce qui compte po
 
 | Obligation | Fréquence | Qui | Texte | Source |
 |---|---|---|---|---|
-| Entretien des **portes automatiques de garage** des bâtiments d'habitation, par **contrat écrit** | Au moins 2 visites par an selon une source (non officielle) | Propriétaire (souvent un syndic) | CCH, ex-L125-3 et R125-3-1 et s., recodifiés au 1er juil. 2021 ; arrêté du 12 nov. 1990 (opérations du contrat) ; vise les portes installées avant le 7 janv. 1992 selon un résumé | [13][14][15] (à vérifier : champ exact et périodicité) |
+| Entretien des **portes automatiques de garage** des bâtiments d'habitation, par **contrat écrit** | Au moins 2 visites par an selon une source (non officielle) | Propriétaire (souvent un syndic) | CCH, ex-L125-3 et R125-3-1 et s., recodifiés au 1er juil. 2021 ; arrêté du 12 nov. 1990 (opérations du contrat) ; vise les portes installées avant le 7 janv. 1992 selon un résumé (champ à vérifier) | [13][14][15] (à vérifier : champ exact et périodicité) |
 | Maintenance des portes et portails automatiques **sur les lieux de travail** | Semestrielle | Employeur | Arrêté du 21 déc. 1993 (C. trav.) | [16] [résumé] |
 | Volets, fenêtres d'un particulier | Aucune obligation | — | — | Rien trouvé |
 
@@ -44,12 +44,12 @@ L'app n'a qu'un champ RGE (n° + organisme). Pour un menuisier, ce qui compte po
 
 ## 5. TVA propre au métier
 
-- **5,5 % (CGI 278-0 bis A)** sur les parois vitrées **seulement si une fenêtre, fenêtre de toit ou porte-fenêtre existante est remplacée** (arrêté publié au JO du 24 déc. 2024, appliqué au 1er janv. 2025) [17][18]. La **création** d'une fenêtre n'y est plus depuis le 1er janv. 2025 [18][19].
+- **5,5 % (CGI 278-0 bis A)** sur les parois vitrées **seulement si une fenêtre, fenêtre de toit ou porte-fenêtre existante est remplacée** (arrêté du 4 déc. 2024, publié au JO du 24 déc. 2024 selon une source ; date de l'arrêté ou du JO **(à vérifier)** ; appliqué au 1er janv. 2025) [17][18]. La **création** d'une fenêtre n'y est plus depuis le 1er janv. 2025 [18][19].
   - Seuils cités par des sources professionnelles, **pas lus dans l'arrêté** : fenêtre Uw ≤ 1,3 et Sw ≥ 0,3 ou Uw ≤ 1,7 et Sw ≥ 0,36 ; vitrage de remplacement sur menuiserie existante Ug ≤ 1,1 ; double fenêtre Uw ≤ 1,8 et Sw ≥ 0,32 [17][20][21]. **À relire au texte avant de coder.**
   - Remplacer **du simple vitrage** : condition nette pour MaPrimeRénov' [1] ; pour le 5,5 %, une source le dit [21], une autre parle seulement de « fenêtre existante remplacée » [17]. **À vérifier** : le 5,5 % vaut-il aussi pour remplacer un vieux double vitrage ?
-  - **RGE exigé pour le 5,5 % ?** Sources divergentes : non selon l'une [22], oui selon une autre [23]. Ne pas bloquer sur le RGE pour le taux tant que ce n'est pas tranché (Q à poser au juriste).
+  - **RGE exigé pour le 5,5 % ?** Sources divergentes : non selon l'une [22], oui selon une autre [23]. Selon le juriste, le CGI ne l'exige pas (à vérifier). Ne pas bloquer sur le RGE pour le taux.
 - **10 % (CGI 279-0 bis)** : pose de menuiseries hors critères (portes intérieures, placards intégrés, fenêtre sans gain énergétique) dans un logement achevé depuis plus de 2 ans.
-- **Cuisine** : 10 % pour les meubles **fixés au bâti** (encastrés, plan de travail intégré) fournis et posés par le même professionnel dans un logement de plus de 2 ans ; **20 %** pour les meubles autonomes, l'électroménager, la fourniture achetée à part par le client (seule la pose est alors à 10 %), et tout logement de moins de 2 ans [24][25] (sources non officielles ; BOFiP BOI-TVA-LIQ-30-20-90 **à relire**). Une même facture peut donc porter **trois taux** (5,5 / 10 / 20).
+- **Cuisine** : 10 % pour les meubles **fixés au bâti** (encastrés, plan de travail intégré) fournis et posés par le même professionnel dans un logement de plus de 2 ans ; **20 %** pour les meubles autonomes, l'électroménager, la fourniture achetée à part par le client (seule la pose est alors à 10 %), et tout logement de moins de 2 ans [24][25] (sources non officielles ; BOFiP BOI-TVA-LIQ-30-20-90 **à relire**). Ne pas proposer le 10 % cuisine automatiquement avant lecture du BOFiP. Une même facture peut donc porter **trois taux** (5,5 / 10 / 20).
 - **Portes de garage motorisées, portails** : la motorisation est un équipement ; taux à vérifier (non recherché).
 - Locaux professionnels, neuf : 20 % (voir `docs/metier-btp.md` § 4).
 
@@ -59,7 +59,7 @@ L'app n'a qu'un champ RGE (n° + organisme). Pour un menuisier, ce qui compte po
 - **Taux par ligne** : une cuisine mêle 10 % et 20 % ; une rénovation mêle 5,5 % et 10 %. Le devis doit séparer fourniture et pose quand les taux diffèrent.
 - **Délai de fabrication et de pose** : sur mesure, 4 à 10 semaines usuelles (pratique, non sourcée). Un délai ou une date d'exécution doit figurer dans l'information due au client particulier (C. conso. L111-1, à défaut 30 jours, L216-1 — **à vérifier au texte**, non recherché dans cette session).
 - **Acompte à la commande** : courant pour lancer la fabrication ; aucun plafond légal ; mais hors établissement, aucun paiement avant 7 jours (voir `docs/metier-btp.md` § 5 et `commun.md`). Le menuisier qui signe chez le client ne peut donc pas encaisser l'acompte de fabrication le jour même.
-- **Garde-corps** : hauteur minimale de 1 m (0,80 m si plus de 50 cm d'épaisseur) pour les balcons, terrasses et loggias hors rez-de-chaussée, ex-CCH R111-15 (renuméroté en 2021, **à vérifier**) ; la norme NF P01-012 (révisée le 22 nov. 2024) donne les dimensions, son caractère obligatoire est discuté (« préconisée, non d'application obligatoire » selon une présentation DREAL) [26][27][28]. Mention utile sur le devis : « garde-corps conforme à NF P01-012 » seulement si c'est vrai — affirmation vérifiable par l'artisan, jamais pré-cochée par l'app.
+- **Garde-corps** : hauteur minimale de 1 m (0,80 m si plus de 50 cm d'épaisseur) pour les balcons, terrasses et loggias hors rez-de-chaussée, ex-CCH R111-15 (renuméroté en 2021, **à vérifier**) ; la norme NF P01-012 (révisée le 22 nov. 2024) donne les dimensions, son caractère obligatoire est discuté (« préconisée, non d'application obligatoire » selon une présentation DREAL) [26][27][28]. Mention utile sur le devis : « garde-corps réalisé selon la norme NF P01-012 » (choisi par l'artisan) seulement si c'est vrai — affirmation vérifiable par l'artisan, jamais pré-cochée par l'app.
 
 ## 7. Aides du client et pièces que l'artisan fournit
 
@@ -83,7 +83,7 @@ L'app n'a qu'un champ RGE (n° + organisme). Pour un menuisier, ce qui compte po
 | Priorité | Proposition | Effort | Risque juridique |
 |---|---|---|---|
 | Indispensable | **Ligne « menuiserie »** structurée : type, largeur × hauteur (surface calculée), nombre, Uw, Sw (ou Ug), marque/référence, « remplace une menuiserie existante » (oui/non, simple vitrage oui/non). Imprimée dans les deux générateurs. | M | Faible si l'app n'affirme rien : les valeurs sont celles saisies par l'artisan |
-| Indispensable | **Aide au taux de TVA par ligne** : proposer 5,5 % seulement si « remplace existante » est coché et Uw/Sw saisis ; sinon 10 % ; 20 % pour l'électroménager et les meubles non fixés. Suggestion, jamais blocage, tant que les seuils ne sont pas relus au texte. | M | Moyen : un seuil faux = redressement chez l'artisan ; d'où « à relire au texte » |
+| Indispensable | **Aide au taux de TVA par ligne** : proposer 5,5 % seulement si « remplace existante » est coché et Uw/Sw saisis, sans condition de RGE ; sinon 10 % ; 20 % pour l'électroménager et les meubles non fixés. Pas de 10 % cuisine proposé automatiquement avant lecture du BOFiP. Suggestion, jamais blocage, tant que les seuils ne sont pas relus au texte. | M | Moyen : un seuil faux = redressement chez l'artisan ; d'où « à relire au texte » |
 | Indispensable | **Ne plus parler de MaPrimeRénov' par geste pour les fenêtres** dans les modèles de devis et textes d'aide (vérifier les 29 modèles, dont « rénovation énergétique »). | S | Élevé si on laisse une promesse d'aide fausse (pratique commerciale trompeuse) |
 | Utile | **Acompte de fabrication** : sur un devis signé hors établissement, la facture d'acompte porte « Paiement au plus tôt le … » (déjà codé : `echeanceApresSeptJours`) — l'expliquer dans le parcours du menuisier. | S | Déjà relu (L221-10) |
 | Utile | **Délai de fabrication et date de pose** affichés sur le devis, et rappel à l'artisan quand la date approche (relance fournisseur, prévenir le client). | S | Faible |
@@ -132,4 +132,9 @@ L'app n'a qu'un champ RGE (n° + organisme). Pour un menuisier, ce qui compte po
 
 ## Relecture juriste-btp
 
-Non faite. Questions à trancher avant tout code bloquant : seuils Uw/Sw/Ug de l'arrêté TVA du 4 déc. 2024 (ou du 24 déc.) ; RGE exigé ou non pour le 5,5 % ; remplacement d'un double vitrage au 5,5 % ; décennale de la pose de cuisine ; obligations du poseur sur la DoP (règl. 305/2011, art. 14) ; périodicité de l'entretien des portes de garage (arrêté du 12 nov. 1990, CCH recodifié).
+Relue par juriste-btp le 03/11/2026, sans texte officiel ouvert (avis : `avis-juriste-2026-11-03.md`). Corrections appliquées. Restent à vérifier au texte :
+- date de l'arrêté TVA fenêtres (4 déc. 2024) ou de sa publication (JO du 24 déc. 2024), seuils Uw/Sw/Ug, remplacement d'un double vitrage au 5,5 % ;
+- RGE non exigé pour le 5,5 % (CGI) ;
+- cuisine à 10 % (BOFiP) ;
+- champ des portes automatiques (avant 1992) et périodicité de leur entretien ;
+- décennale de la pose de cuisine ; obligations du poseur sur la DoP (règl. 305/2011, art. 14).

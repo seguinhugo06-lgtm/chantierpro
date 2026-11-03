@@ -36,13 +36,15 @@ Règles transverses (TVA, certification du taux réduit, décennale, devis oblig
 
 **Démoussage et produits biocides** [4] [5] [6] **[résumé]**
 - Traitement **curatif** (algicide, antimousse, produits TP2) : **Certibiocide « désinfectants » obligatoire depuis le 1er janv. 2026** pour le professionnel qui l'applique [4] [5] (arrêté du 23 janv. 2023 cité **(à vérifier)**).
-- Traitement **préventif** hydrofuge (produits TP10) : pas de Certibiocide selon la FFB [5] **[résumé]**. Beaucoup d'étiquettes portent TP2 et TP10 : c'est l'usage (curatif ou préventif) qui compte [6].
+- Traitement **préventif** hydrofuge (produits TP10) : pas de Certibiocide selon la FFB [5] **[résumé]**. Beaucoup d'étiquettes portent TP2 et TP10 [6]. Ne pas coder « préventif = pas de Certibiocide » : l'obligation suit le type de produit, à lire dans l'arrêté.
 - Pour l'app : le devis devrait nommer le produit et son type (TP2 / TP10), et l'artisan devrait pouvoir enregistrer son n° de Certibiocide.
 
 **Déclaration préalable de travaux (urbanisme)** [7] **[résumé]**
 - Obligation du **propriétaire**, pas du couvreur. Due quand la réfection **modifie l'aspect extérieur** (changement de matériau ou de couleur, tuiles → ardoises, isolation par l'extérieur qui rehausse la toiture) (C. urb. R421-17 a) [7]. Réfection **à l'identique** : en général dispensée [7].
 - Fenêtres de toit : sources divergentes **(à vérifier auprès de la mairie)** ; secteur protégé (abords de monuments) : règles plus strictes.
 - Pour le couvreur : demander au client si la DP est déposée et accordée avant de commander les matériaux ; le noter sur le devis.
+
+**Isolation embarquée** : une réfection de toiture portant sur plus de 50 % déclenche une obligation d'isoler (décret n° 2016-711, à relire : conditions et exceptions).
 
 **Échafaudage et domaine public** [8] **[résumé]**
 - Échafaudage posé sur le trottoir **sans emprise au sol** : **permis de stationnement** (autorité de police de la circulation, en général le maire). Avec **emprise** (scellé, palissade) : **permission de voirie** (gestionnaire de la voie : maire, département) [8].
@@ -82,10 +84,10 @@ Taux et certification : voir commun.md.
 
 ## 7. Aides du client et pièces que l'artisan fournit
 
-- **MaPrimeRénov' par geste 2026** : isolation des **rampants** et des **plafonds de combles** éligible (environ 15 à 25 €/m² selon les revenus) ; **combles perdus exclus** du parcours par geste depuis le 1er janv. 2026, mais éligibles en rénovation d'ampleur ; logement d'au moins 15 ans ; entreprise RGE [10] **(à vérifier : sources non officielles, montants à relire sur france-renov.gouv.fr)**.
+- MaPrimeRénov' par geste : l'isolation des combles et des rampants n'est plus aidée depuis le 1er sept. 2026 (décret n° 2026-822, à vérifier) ; possible en rénovation d'ampleur et par les CEE.
 - **CEE** : prime classique toujours possible avec une résistance thermique minimale (R ≥ 6 m².K/W cité pour les combles) [9] **(à vérifier)**. Le **« Coup de pouce isolation »** (l'« isolation à 1 € ») est **terminé** : fin en 2022, date exacte divergente (1er janvier ou 1er juillet 2022) [9] **(à vérifier)**.
-- Pièces fournies par l'artisan : devis et facture conformes aux exigences de l'aide, n° RGE valide à la date du devis, attestation sur l'honneur / cadre de contribution CEE signée **avant** le devis **(à vérifier : règle des CEE)**.
-- **Démarchage** : le démarchage **téléphonique** pour la rénovation énergétique est interdit depuis la loi du 24 juill. 2020 [13] **[résumé]** (n° de loi non relevé dans le résumé, **à vérifier**). La DGCCRF invite à vérifier la RGE et à signaler sur SignalConso [13]. Le démarchage **à domicile** reste légal mais encadré (hors établissement, voir commun.md). Les arnaques au démoussage en porte-à-porte sont documentées en Belgique [14] ; aucune alerte française propre au démoussage n'a été trouvée **(rien trouvé)**.
+- Pièces fournies par l'artisan : devis et facture conformes aux exigences de l'aide, n° RGE valide à la date du devis, attestation sur l'honneur. CEE : l'offre de l'obligé (ou de son délégataire) doit être faite au client avant qu'il signe le devis ; l'artisan ne la signe que s'il est partenaire de l'obligé.
+- **Démarchage** : le démarchage **téléphonique** pour la rénovation énergétique est interdit depuis la loi n° 2020-901 du 24 juil. 2020 [13] **[résumé]**. Depuis le 11 août 2026, le consentement préalable à l'appel est la règle générale (MB § 10). La DGCCRF invite à vérifier la RGE et à signaler sur SignalConso [13]. Le démarchage **à domicile** reste légal mais encadré (hors établissement, voir commun.md). Les arnaques au démoussage en porte-à-porte sont documentées en Belgique [14] ; aucune alerte française propre au démoussage n'a été trouvée **(rien trouvé)**.
 
 ## 8. Le terrain : problèmes concrets et ce qu'un logiciel simple devrait faire
 
@@ -105,8 +107,8 @@ Propositions :
 | Indispensable | Mode **« dépannage urgent »** (bâche, fuite) : devis court signé sur place avec la phrase d'urgence déjà prévue par l'app, paiement possible du strict nécessaire | S (existe en partie) | Moyen : périmètre L221-10 4° et L221-28 8° déjà relu ; ne pas l'étendre au démoussage |
 | Indispensable | Modèles de devis « démoussage curatif / préventif », « réfection à l'identique », « zinguerie », « isolation rampants » avec TVA proposée (10 % / 5,5 %) et lignes séparées | S | Moyen : TVA à relire au BOFiP |
 | Utile | Facture pour l'**assurance du client** après sinistre (photos, date du sinistre, nature) | S | Faible |
-| Utile | Champs Paramètres : n° Certibiocide (avec date de fin), certification SS3 / formation SS4 ; avertissement si un devis « fibrociment » n'a pas de repérage amiante | S | Faible si c'est une alerte, pas un blocage |
-| Utile | Rappel **« entretien conseillé »** (tous les N ans, choisi par l'artisan), libellé comme un conseil, **jamais « obligatoire »** ; consentement du client pour être recontacté | M | Moyen : prospection commerciale, consentement à vérifier (RGPD) |
+| Utile | Champs Paramètres : n° Certibiocide (avec date de fin), certification SS3 / formation SS4 ; avertissement si un devis « fibrociment » n'a pas de repérage amiante. Le besoin de Certibiocide suit le type de produit (arrêté à lire), jamais déduit de « préventif » | S | Faible si c'est une alerte, pas un blocage |
+| Utile | Rappel **« entretien conseillé »** (tous les N ans, choisi par l'artisan), libellé comme un conseil, **jamais « obligatoire »** ; consentement du client pour être recontacté ; « Appeler » reste interdit pour un particulier | M | Moyen : prospection commerciale. Le consentement pour un e-mail est plus strict que la loi (L34-5 permet l'opposition) : pas un problème |
 | Plus tard | Lignes « échafaudage » et « autorisation de voirie » avec un aide-mémoire (permis de stationnement / permission de voirie) | S | Faible |
 | Plus tard | Avenant « découverte d'amiante » ou « bois pourri » en cours de chantier, signé par le client | M | Moyen |
 
@@ -127,5 +129,11 @@ Propositions :
 13. economie.gouv.fr (DGCCRF) — https://www.economie.gouv.fr/node/3226140 ; préfecture d'Indre-et-Loire, communiqué du 25 juin 2024 sur les arnaques à la rénovation — https://indre-et-loire.gouv.fr/contenu/telechargement/42209/296366/file/2024-06-25%20-%20CP%20-%20Lutte%20contre%20les%20arnaques%20dans%20le%20secteur%20des%20travaux%20de%20r%C3%A9novation.pdf — consulté le 03/11/2026 — [résumé]
 14. Police belge, « Abus en matière de démarchage (dont démoussage de toitures) » — https://www.police.be/5302/node/12606 — consulté le 03/11/2026 — [résumé] (Belgique, pas le droit français)
 
----
-**Relecture juriste-btp** : non faite. Points à relire au texte avant tout code : frontière entretien / ouvrage pour la décennale (Cass. 3e civ., 30 mai 2024), Certibiocide TP2 (arrêté, date du 1er janv. 2026), R421-17 a (déclaration préalable), conditions du 5,5 % pour l'isolation (BOFiP du 9 sept. 2026), MaPrimeRénov' 2026 (france-renov.gouv.fr), loi de 2020 sur le démarchage téléphonique (numéro et périmètre).
+## Relecture juriste-btp
+
+Relue par juriste-btp le 03/11/2026, sans texte officiel ouvert (avis : `avis-juriste-2026-11-03.md`). Corrections appliquées. Restent à vérifier au texte :
+- décret n° 2026-822 : liste du parcours par geste au 1er sept. 2026 ;
+- décret n° 2016-711 (isolation embarquée, réfection > 50 %) ;
+- Certibiocide : obligation selon le type de produit (arrêté) ;
+- frontière entretien / ouvrage pour la décennale (Cass. 3e civ., 30 mai 2024) ;
+- conditions du 5,5 % pour l'isolation (BOFiP du 9 sept. 2026) ; R421-17 a.

@@ -61,7 +61,7 @@ Point de vigilance : un serrurier ne peut pas écrire « porte blindée A2P » s
 - **Référence et certification du produit posé** (marque, modèle, n° de certificat A2P s'il existe).
 - **Ce qu'il ne faut jamais imprimer** :
   - une référence à la **mairie**, à un service public ou des signes qui l'imitent (bleu-blanc-rouge, faux logo, « numéros utiles ») : la loi du 17 mars 2014 (« loi Hamon ») interdit de faire référence à un service public dans sa publicité sans son accord [8][9] **[résumé]** ; la DGCCRF décrit ces prospectus [10] **[résumé]** ;
-  - une certification ou un agrément non détenus : pratique commerciale trompeuse (C. conso. L121-2 à L121-4), punie de 2 ans d'emprisonnement et de 300 000 € d'amende, jusqu'à 10 % du chiffre d'affaires [11] **[résumé ; montant peut-être modifié en 2024 — à vérifier]**.
+  - une certification ou un agrément non détenus : pratique commerciale trompeuse (C. conso. L121-2 à L121-4 ; se dire agréé par un organisme public est une pratique réputée trompeuse de L121-4, article exact à vérifier), punie de 2 ans d'emprisonnement et de 300 000 € d'amende, jusqu'à 10 % du chiffre d'affaires [11] **[résumé ; montant peut-être modifié en 2024 — à vérifier]**.
 - **Abus de faiblesse** (C. conso. L121-8 à L121-10, sanctions L132-14 et L132-15) : profiter de la détresse d'une personne lors d'une visite à domicile ; une seule visite suffit (Cass. crim., 8 mars 2016, n° 14-88.347) ; contrat nul, sommes restituées ; peine annoncée de 3 ans et 375 000 € [12][13] **[résumé ; montant à vérifier au texte]**. C'est le risque n° 1 du dépannage d'urgence chez une personne âgée.
 
 ## 7. Aides du client et pièces que l'artisan fournit
@@ -93,7 +93,7 @@ Propositions :
 | Utile | **Facture « pour l'assureur »** : bloc « constat » (date et heure, adresse, traces d'effraction oui/non, photos jointes, fermeture provisoire), à imprimer ou envoyer plus tard | M | Faible ; aucune affirmation à la place de l'assureur |
 | Utile | Champ « produit certifié » par ligne (marque, modèle, n° de certificat CNPP) imprimé tel quel ; aucun texte « A2P » sans numéro | S | Faible ; évite la pratique trompeuse |
 | Utile | Case « pièces remplacées : conservées par le client / laissées à l'artisan » sur la facture | S | Faible |
-| Plus tard | Alerte douce si un client « particulier » a plus de X interventions en peu de temps ou un montant inhabituel (prévention de l'abus de faiblesse) | M | Moyen (données personnelles, ton) |
+| Plus tard | Alerte douce si un client « particulier » a plus de X interventions en peu de temps ou un montant inhabituel (prévention de l'abus de faiblesse) | M | Moyen (ton). **Avis RGPD requis** : c'est un profilage des clients (minimisation, aucune déduction de vulnérabilité stockée) |
 | Plus tard | Modèle « portail / garde-corps » avec décennale et acompte, séparé du dépannage | S | Voir commun.md |
 
 ## Sources
@@ -117,4 +117,7 @@ Propositions :
 
 ## Relecture juriste-btp
 
-Non faite (03/11/2026). Points à relire en priorité : TVA d'une ouverture de porte seule, montants actuels des peines (L132-2, L132-14), décharge pour les pièces remplacées au regard de l'art. 4 III de l'arrêté de 2017, seuil de 25 €.
+Relue par juriste-btp le 03/11/2026, sans texte officiel ouvert (avis : `avis-juriste-2026-11-03.md`). Corrections appliquées. Restent à vérifier au texte :
+- C. conso. L121-4 : article exact pour « se dire agréé par un organisme public » ;
+- alerte abus de faiblesse : avis RGPD avant tout code ;
+- TVA d'une ouverture de porte seule ; décharge pour les pièces remplacées (arrêté de 2017, art. 4 III) ; seuil de 25 €.

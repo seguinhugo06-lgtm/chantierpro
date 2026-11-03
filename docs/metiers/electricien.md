@@ -18,8 +18,8 @@ Propre au métier : une borne de plus de 3,7 kW posée sans qualification IRVE f
 | Qualification | Organisme | Obligatoire ? | Ce qu'elle permet au client | Source |
 |---|---|---|---|---|
 | CAP/BEP/titre RNCP ou 3 ans d'expérience | — (code de l'artisanat) | Oui, pour exercer | Rien de plus ; c'est la condition d'exercice | `metier-btp.md` § 7 |
-| IRVE (niveaux appelés P1, P2, P3 ; maintenance MA1 à MA3) | Qualifelec, AFNOR Certification, Qualit'EnR | Oui pour toute borne > 3,7 kW | Borne posée dans les règles ; TVA à 5,5 % ; aides éventuelles (ADVENIR en collectif) | [8], [9] |
-| QualiPV « Électricité » (et « Bâtiment » pour l'intégration des modules) | Qualit'EnR | Non pour poser ; oui pour les aides et l'obligation d'achat < 9 kWc | Contrat d'obligation d'achat, prime à l'autoconsommation | [19], [21] |
+| IRVE (niveaux appelés P1, P2, P3 ; maintenance MA1 à MA3) | Qualifelec, AFNOR Certification, Qualit'EnR | Oui pour toute borne > 3,7 kW | Borne posée dans les règles ; TVA à 5,5 % (condition à vérifier, voir § 5) ; aides éventuelles (ADVENIR en collectif) | [8], [9] |
+| QualiPV « Électricité » (et « Bâtiment » pour l'intégration des modules) | Qualit'EnR | Non pour poser ; oui pour les aides et l'obligation d'achat < 9 kWc (seuil à vérifier, ne pas l'imprimer) | Contrat d'obligation d'achat, prime à l'autoconsommation | [19], [21] |
 | RGE (chauffe-eau thermodynamique, PAC) | Qualifelec, Qualibat, Qualit'EnR | Non | MaPrimeRénov', CEE, éco-PTZ : voir `chauffagiste.md` | `chauffagiste.md` |
 | Habilitation électrique (NF C 18-510) | Délivrée par l'employeur après formation | Oui pour les salariés qui interviennent sur ou près d'une installation | Rien pour le client | [17], [18] |
 
@@ -41,6 +41,7 @@ Précisions :
 | Bleue | 15523*01 | Production d'électricité (photovoltaïque) sans stockage |
 | Violette | 15524*01 | Production d'électricité avec stockage (batterie) |
 
+  Définitions des attestations bleue et violette : à relire sur la fiche SC 170 avant d'imprimer une couleur.
   Pour le photovoltaïque, un dossier technique accompagne la demande : SC 144, ou SC 143 au-delà de 36 kVA [5], [7] **(à vérifier)**.
 - **Délai** : à envoyer au Consuel au moins 20 jours avant la mise en service (`metier-btp.md` § 7). Depuis le 1er janv. 2025 (décret 2024-1122 modifiant D342-19), le Consuel met l'attestation visée à disposition du gestionnaire de réseau en 1 à 2 jours [3], [4]. Aucun délai réglementaire de visite trouvé ; les sites commerciaux disent 5 à 20 jours ouvrés **(à vérifier)**.
 - **Validité** : formulaire valable un an à compter du visa, selon des sources commerciales **(à vérifier)** [2].
@@ -71,9 +72,9 @@ Pour un particulier, il n'existe pas d'équivalent du ramonage annuel en électr
 ## 5. TVA propre au métier
 
 - Règles générales 10 % / 5,5 % / 20 % et certification : voir `commun.md`.
-- **Borne de recharge** dans un logement achevé depuis plus de 2 ans : **5,5 %** pour la fourniture et la pose (et l'entretien), sous conditions, dont la qualification IRVE et une facture unique fourniture + pose [14], [15]. Une prise renforcée simple relèverait de 10 % ; une borne achetée seule par le client reste à 20 % ; une entreprise cliente, 20 % [15] **(à vérifier au BOFiP : base légale exacte, sources commerciales divergentes)**.
+- Borne de recharge dans un local d'habitation : 5,5 % (CGI art. 278-0 bis N selon la FFB ; critères techniques à l'annexe IV, arrêté du 27 mai 2021), fourniture et pose par la même entreprise ; prise renforcée exclue. Ancienneté du logement et qualification IRVE comme conditions du taux : à vérifier au BOFiP. Le critère est la nature du local, pas la qualité du client. [14], [15]
 - **Mise en sécurité, rénovation électrique** d'un logement de plus de 2 ans : 10 % (`commun.md`).
-- **Photovoltaïque** : taux non vérifié dans cette recherche **(à vérifier)**.
+- **Photovoltaïque** : selon le juriste, la loi de finances 2025 a créé un 5,5 % pour les installations de 9 kWc au plus, sous critères, à partir du 1er oct. 2025 **(à vérifier)**. Ne proposer aucun taux PV avant lecture.
 - **Chauffe-eau thermodynamique, PAC posés par un électricien** : voir `chauffagiste.md` et `plombier.md`.
 
 ## 6. Mentions particulières sur le devis et la facture
@@ -82,7 +83,7 @@ Pour un particulier, il n'existe pas d'équivalent du ramonage annuel en électr
 - Borne : numéro et organisme de la qualification IRVE ; puissance de la borne (kW) ; type (borne ou prise renforcée), car le taux de TVA et l'obligation de qualification en dépendent [14], [15].
 - Consuel : ligne distincte « attestation Consuel (frais de visa) » quand elle est due, avec la couleur.
 - Photovoltaïque : puissance crête (kWc), qualification QualiPV, mention de l'attestation sur l'honneur à cosigner [19].
-- Jamais « installation conforme NF C 15-100 » comme promesse invérifiable ; préférer « réalisée selon la norme NF C 15-100 » (engagement de moyens de l'artisan) **(formulation à valider par juriste-btp)**.
+- Jamais « installation conforme NF C 15-100 » comme promesse invérifiable ; préférer « réalisée selon la norme NF C 15-100 » (engagement de l'artisan) : acceptable selon juriste-btp ; décision d'Hugo.
 
 ## 7. Aides du client et pièces que l'artisan fournit
 
@@ -105,9 +106,9 @@ Propositions :
 |---|---|---|---|
 | Indispensable | Champ « qualification IRVE » (n°, organisme, niveau, validité) distinct du champ RGE ; imprimé sur les devis contenant une borne | S | Faible ; supprime le risque de qualification affichée sans numéro |
 | Indispensable | Modèle de devis borne : puissance obligatoire ; si > 3,7 kW et pas de qualification IRVE saisie, avertissement (pas de blocage tant que le texte n'est pas relu) | S | Moyen si bloquant ; faible en avertissement |
-| Indispensable | TVA borne : proposer 5,5 % seulement si logement > 2 ans, client particulier et qualification IRVE saisie ; sinon 20 % ; certification « commun.md » | M | Moyen : base légale à relire au BOFiP avant de coder |
-| Utile | Ligne « attestation Consuel » avec la couleur, et une tâche de chantier « envoyer au Consuel » à J-20 de la mise en service prévue | S | Faible |
-| Utile | « Compte rendu d'intervention et d'autocontrôle » numéroté et figé, sur le modèle de l'attestation de ramonage : mesures relevées, réserves, photos du tableau ; jamais le mot « conforme » | M | Faible si le vocabulaire est respecté |
+| Indispensable | TVA borne : proposer 5,5 % pour une borne dans un local d'habitation, fourniture et pose par la même entreprise, prise renforcée exclue (CGI 278-0 bis N selon la FFB) ; aucune condition sur la qualité du client (syndic, SCI, bailleur compris) ; ancienneté du logement et qualification IRVE : à vérifier au BOFiP ; certification « commun.md » | M | Moyen : base légale à relire au BOFiP avant de coder |
+| Utile | Ligne « attestation Consuel » avec la couleur (définitions à relire sur la SC 170), et une tâche de chantier « envoyer au Consuel » à J-20 de la mise en service prévue | S | Faible |
+| Utile | « Compte rendu d'intervention et d'autocontrôle » numéroté et figé, sur le modèle de l'attestation de ramonage : mesures relevées, réserves, photos du tableau ; jamais le mot « conforme » ; jamais appelé « attestation de conformité » ; ni les couleurs ni la mise en page du Consuel | M | Faible si le vocabulaire est respecté |
 | Utile | Dossier de fin de chantier en un PDF : schéma (photo ou fichier), notices, compte rendu, attestation Consuel visée (fichier joint) | M | Faible |
 | Plus tard | Photovoltaïque : pré-remplir les données de l'attestation sur l'honneur (puissance, onduleur, n° QualiPV) | M | Moyen : modèle officiel à suivre à la lettre |
 | Plus tard | Rappel « borne : vérification » à 1 ou 2 ans, présenté comme conseil, jamais comme obligation | S | Faible (règles de prospection de `metier-btp.md` § 10) |
@@ -140,4 +141,8 @@ Propositions :
 
 ## Relecture juriste-btp
 
-Non faite. Points à lui soumettre en priorité : base légale du 5,5 % sur les bornes ; fin du crédit d'impôt borne (loi de finances 2026) ; formulation « réalisée selon la NF C 15-100 » ; correspondance P1/P2/P3 avec le décret 2017-26.
+Relue par juriste-btp le 03/11/2026, sans texte officiel ouvert (avis : `avis-juriste-2026-11-03.md`). Corrections appliquées. Restent à vérifier au texte :
+- borne : CGI 278-0 bis N ou 278-0 bis A, ancienneté du logement, qualification IRVE, prise renforcée (Légifrance, BOFiP) ;
+- photovoltaïque : 5,5 % pour 9 kWc au plus depuis le 1er oct. 2025 ; seuil QualiPV de l'obligation d'achat ;
+- définitions des attestations Consuel bleue et violette (SC 170) ;
+- fin du crédit d'impôt borne (loi de finances 2026) ; correspondance P1/P2/P3 avec le décret 2017-26.

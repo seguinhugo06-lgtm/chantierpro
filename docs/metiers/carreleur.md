@@ -87,7 +87,7 @@ Propositions :
 |---|---|---|---|
 | Indispensable | Modèle de devis « carrelage » : lignes par pièce et par support (m²), préparation, étanchéité (SPEC / SEL, champ « procédé »), plinthes (ml), taux de chute affiché | S | Faible |
 | Indispensable | Garde-fou TVA : pas de 5,5 % proposé pour une ligne de carrelage ou de douche ; 10 % ou 20 % selon logement (règle commune) | S | Faible (prudent) |
-| Indispensable | Devis « pour MaPrimeAdapt' » marqué **non signable** tant que l'artisan n'a pas coché « accord de l'Anah reçu » ; phrase neutre : « Devis remis pour une demande d'aide ; à signer après l'accord de l'aide. » | M | Moyen : règle de l'Anah à relire avant de bloquer |
+| Indispensable | Devis « pour MaPrimeAdapt' » : **avertissement** (pas de blocage) tant que l'artisan n'a pas coché « accord de l'Anah reçu » ; phrase neutre : « Devis remis pour une demande d'aide ; à signer après l'accord de l'aide. » | M | Moyen : la règle de l'Anah sur la signature avant accord n'est pas établie ; avertissement plutôt que blocage |
 | Utile | Fiche « travaux réalisés » jointe à la facture : procédé d'étanchéité, référence de l'avis technique, photos avant fermeture (horodatées) | M | Faible ; sert la preuve |
 | Utile | Sous-traitance : rappel du parcours commun (autoliquidation, situations, retenue de garantie) depuis le devis d'un client « entreprise » | S | Voir commun.md |
 | Plus tard | Export du devis au modèle type de l'Anah, une fois ce modèle lu | M | Moyen (format officiel) |
@@ -116,4 +116,7 @@ Propositions :
 
 ## Relecture juriste-btp
 
-Non faite (03/11/2026). Points à relire en priorité : TVA d'une salle de bain PMR (10 % / 5,5 % ann. IV 30-0 B), sort du crédit d'impôt 200 quater A en 2026, règle de l'Anah sur le devis signé avant accord.
+Relue par juriste-btp le 03/11/2026, sans texte officiel ouvert (avis : `avis-juriste-2026-11-03.md`). Corrections appliquées. Restent à vérifier au texte :
+- règle de l'Anah sur le devis signé avant l'accord de MaPrimeAdapt' ;
+- sort du crédit d'impôt 200 quater A en 2026 (ne pas l'imprimer) ;
+- TVA d'une salle de bain PMR (10 % / 5,5 %, ann. IV 30-0 B).

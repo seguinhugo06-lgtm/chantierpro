@@ -11,7 +11,7 @@ Règles transverses (TVA, certification du taux réduit, autoliquidation, décen
 ## 1. Assurances
 
 - **Décennale** : obligatoire pour tout ouvrage de maçonnerie (voir commun.md). Propre au maçon : l'assureur ne couvre que les **activités déclarées** au contrat, souvent selon la nomenclature de France Assureurs (révisée en 2019, environ 50 activités en cinq familles selon un courtier) [1] **(à vérifier : libellé exact « Maçonnerie et béton armé » non retrouvé)**. Les juges lisent strictement les activités déclarées (Cass. 3e civ., 30 sept. 2021, n° 20-12.662, cité dans [1]) **(à vérifier)**. Un maçon qui fait aussi de la charpente, de la couverture ou un « clé en main » doit avoir ces activités au contrat.
-- **Dommages-ouvrage** : c'est l'assurance **du client** (maître d'ouvrage), pas du maçon (C. assur. L242-1) [2] **[résumé]**. Elle préfinance la réparation des désordres décennaux sans attendre un procès. Un particulier qui fait construire pour lui-même y est tenu, mais sans sanction pénale selon nos souvenirs de L243-3 **(à vérifier au texte)**. Le maçon peut seulement **demander** si elle existe et le noter : en cas de sinistre, son assureur décennal sera appelé par l'assureur DO.
+- **Dommages-ouvrage** : c'est l'assurance **du client** (maître d'ouvrage), pas du maçon (C. assur. L242-1) [2] **[résumé]**. Elle préfinance la réparation des désordres décennaux sans attendre un procès. Un particulier qui fait construire pour lui-même y est tenu. L243-3 ne punit pas la personne physique qui construit un logement pour l'occuper elle-même ou le faire occuper par son conjoint, ses ascendants ou descendants (à relire au texte). L'obligation d'assurance (L242-1) demeure (voir `commun.md`). Le maçon peut seulement **demander** si elle existe et le noter : en cas de sinistre, son assureur décennal sera appelé par l'assureur DO.
 - **Contrat de construction de maison individuelle (CCMI)** : voir § 3. S'il est requalifié, des garanties supplémentaires sont dues (garantie de livraison) que le maçon n'a en général pas.
 
 ## 2. Qualifications et ce qu'elles ouvrent au client
@@ -37,7 +37,7 @@ Règles transverses (TVA, certification du taux réduit, autoliquidation, décen
 
 **Attestation de vigilance URSSAF** [3] [4] **[résumé]**
 - Le **donneur d'ordre professionnel** (une entreprise générale qui sous-traite au maçon, un promoteur, un bailleur) doit l'obtenir de son cocontractant pour tout contrat d'**au moins 5 000 € HT**, puis **tous les 6 mois** jusqu'à la fin du contrat (C. trav. L8222-1, D8222-5). Sinon : solidarité financière pour les cotisations du sous-traitant.
-- Un **particulier** qui fait faire des travaux pour son usage personnel en serait exonéré selon un document de l'Assemblée nationale [4] **(à vérifier au texte : sources divergentes)**.
+- Particulier pour son usage personnel : vérification à la conclusion seulement, satisfaite par un devis portant nom, adresse et numéro d'immatriculation de l'entreprise (C. trav. D8222-4, à relire) ; pas d'attestation tous les 6 mois.
 - Pour le maçon : (a) la **fournir** quand il est sous-traitant ou travaille pour un professionnel ; (b) la **demander** à ses propres sous-traitants. Elle se télécharge sur l'espace URSSAF, avec un code de sécurité que le donneur d'ordre doit vérifier [3].
 - Seuil apprécié sur le montant total de la prestation, même payée en plusieurs fois [4] **[résumé]** ; une autre source parle d'un cumul annuel **(à vérifier)**.
 
@@ -49,7 +49,7 @@ Règles transverses (TVA, certification du taux réduit, autoliquidation, décen
 - TVA : **autoliquidation** entre le sous-traitant et l'entrepreneur principal, voir commun.md.
 
 **Repérage amiante avant travaux (RAT)** (C. trav. R4412-97 à R4412-97-6 ; arrêté du 16 juill. 2019) [8] **[résumé]**
-- C'est l'obligation du **donneur d'ordre / maître d'ouvrage / propriétaire** : avant toute opération qui peut exposer des travailleurs à l'amiante, dans un immeuble bâti construit avant 1997 **(date exacte à vérifier : 1er janvier ou 1er juillet 1997)**. Il fait appel à un opérateur certifié et **transmet le rapport aux entreprises avant le début des travaux** [8].
+- C'est l'obligation du **donneur d'ordre / maître d'ouvrage / propriétaire** : avant toute opération qui peut exposer des travailleurs à l'amiante, dans un immeuble bâti dont le permis de construire a été délivré avant le 1er juillet 1997 (arrêté du 16 juil. 2019, à relire). Il fait appel à un opérateur certifié et **transmet le rapport aux entreprises avant le début des travaux** [8].
 - Dispenses prévues à R4412-97-3 ; sanction pénale du donneur d'ordre (C. trav. L4754-1 cité par une DREETS) [8] **(à vérifier)**.
 - Pour le maçon : **demander le rapport avant de commencer** (percement, démolition de cloison, saignée), et le noter sur le devis. Ce n'est pas à lui de le faire, mais c'est lui et ses salariés qui respirent les fibres.
 - Retirer des matériaux amiantés = **sous-section 3**, entreprise certifiée ; intervenir sur un matériau amianté sans le retirer = **sous-section 4**, formation et mode opératoire (C. trav. R4412-94) [9] **[résumé]**.
@@ -90,6 +90,7 @@ Aucune obligation d'entretien périodique d'un ouvrage de maçonnerie n'a été 
 
 Taux et certification : voir commun.md. Propre au gros œuvre [17] [18] **[résumé]** :
 - **20 %** : construction neuve ; **extension (addition de construction)** ; **surélévation** ; travaux qui **augmentent la surface de plancher de plus de 10 %** ; travaux qui rendent l'immeuble « neuf » [17].
+- **Extension : deux lectures.** Ici, toute **extension (addition de construction)** est à 20 % [17]. `docs/metier-btp.md` § 4 dit « agrandissement > 10 % de surface ». À trancher au BOI-TVA-LIQ-30-20-90-20 avant de coder.
 - Immeuble « neuf » au sens fiscal : travaux refaisant à neuf **plus de la moitié** d'un des trois éléments du gros œuvre (fondations, murs porteurs, façades hors ravalement), ou **au moins les deux tiers de chacun** des six éléments de second œuvre [18] **[résumé ; réponse ministérielle ancienne, à relire au BOI-TVA-LIQ-30-20-90-20]**. Le calcul porte sur l'ensemble des travaux sur **deux ans** [18].
 - **10 %** : rénovation, transformation d'un logement achevé depuis plus de 2 ans, sans les effets ci-dessus.
 - Un même chantier peut mêler les deux : une extension à 20 % et la reprise de la maison existante à 10 % **(ventilation à vérifier au BOFiP)**.
@@ -127,7 +128,7 @@ Propositions :
 | Indispensable | **Retenue de garantie** : champ % (5 % max) sur le devis, déduite des situations, **rappel automatique à 1 an** de la réception pour la réclamer | S | Faible si le plafond 5 % et le délai d'un an sont relus au texte |
 | Utile | Case « Repérage amiante fourni ? » et « Étude G2 fournie ? » sur le devis, avec une phrase neutre si non | S | Faible : information, pas une affirmation de conformité |
 | Utile | Coffre de pièces de l'entreprise (attestation de vigilance, Kbis/RNE, décennale) avec date d'expiration et **rappel à 6 mois**, envoi en un geste au donneur d'ordre | M | Faible ; ne jamais générer l'attestation, seulement la stocker |
-| Utile | Devis « extension » : TVA 20 % proposée par défaut pour la partie extension, 10 % pour la partie existante, avec explication | S | Moyen : le seuil 10 % et la notion d'immeuble neuf sont à relire au BOFiP |
+| Utile | Devis « extension » : TVA 20 % pour la partie extension, 10 % pour la partie existante, avec explication. Deux lectures : toute extension à 20 %, ou agrandissement > 10 % de surface (MB § 4) ; à trancher au BOI-TVA-LIQ-30-20-90-20 avant de coder | S | Moyen : le seuil 10 % et la notion d'immeuble neuf sont à relire au BOFiP |
 | Plus tard | Sous-traitance : fiche du sous-traitant, demande d'acceptation au maître d'ouvrage, rappel de la caution art. 14 | L | Élevé : loi 75-1334 d'ordre public, à relire au texte |
 | Plus tard | Alerte « risque CCMI » si un même devis contient gros œuvre + charpente + couverture + menuiseries extérieures d'une maison neuve | S | Moyen : alerte seulement, jamais une qualification juridique |
 | Plus tard | Journal météo du chantier (jours d'arrêt) imprimable pour justifier un report | S | Faible |
@@ -153,5 +154,11 @@ Propositions :
 17. impots.gouv.fr, « Plusieurs taux de TVA » — https://impots.gouv.fr/particulier/plusieurs-taux-de-tva ; impots.gouv.fr, « Quel taux de TVA appliquer pour les travaux réalisés dans les logements ? » — https://www.impots.gouv.fr/professionnel/questions/quel-taux-de-tva-appliquer-pour-les-travaux-realises-dans-les-logements — consulté le 03/11/2026 — [résumé]
 18. Assemblée nationale, réponse ministérielle (immeuble neuf, gros œuvre / second œuvre) — https://questions.assemblee-nationale.fr/dyn/15/questions/QANR5L15QE20379.pdf ; CAPEB, guide pratique TVA 2017 — https://www.capeb.fr/www/capeb/media/aube/document/Guide_Pratique_TVA_V3_Fev2017.pdf — consulté le 03/11/2026 — [résumé]
 
----
-**Relecture juriste-btp** : non faite. Points à relire au texte avant tout code bloquant : retenue de garantie (loi 71-584 : 5 %, un an, prévue au contrat), D8222-5 (seuil, particuliers), loi 75-1334 (art. 3, 12, 14, 14-1), CCH L231-1 / L232-1 (périmètre du CCMI), CCH L132-4 et s. (G2), R4412-97 (date de 1997), TVA immeuble neuf (BOI-TVA-LIQ-30-20-90-20).
+## Relecture juriste-btp
+
+Relue par juriste-btp le 03/11/2026, sans texte officiel ouvert (avis : `avis-juriste-2026-11-03.md`). Corrections appliquées. Restent à vérifier au texte :
+- TVA d'une extension : addition de construction ou seuil de 10 % (BOI-TVA-LIQ-30-20-90-20), puis aligner MB § 4 ;
+- arrêté du 16 juil. 2019 (permis avant le 1er juillet 1997) ;
+- C. trav. D8222-4 et D8222-5 (particulier, seuil, cumul) ;
+- exception pénale de L243-3 ;
+- CCH L132-4 et s. (G2) ; sanctions du CCMI ; carte BTP du chef d'entreprise sans salarié.

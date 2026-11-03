@@ -16,7 +16,7 @@ Règles transverses : voir `commun.md` et `docs/metier-btp.md`. Le régime des s
 | Élagage, abattage | Travaux paysagers, à risque (hauteur) | 20 % ; RC pro indispensable |
 | « Petits travaux de jardinage » chez un particulier | **Service à la personne** possible | crédit d'impôt 50 % pour le client (§ 7) |
 
-Le statut social : un paysagiste relève de la MSA ; une réponse ministérielle (ancienne) disait qu'un auto-entrepreneur ne pouvait pas exercer comme paysagiste à titre principal, seulement des petits travaux de jardinage en SAP [2] **[résumé, ancienne — à vérifier]**.
+Le statut social : un paysagiste relève de la MSA ; une réponse ministérielle (ancienne) disait qu'un auto-entrepreneur ne pouvait pas exercer comme paysagiste à titre principal, seulement des petits travaux de jardinage en SAP [2] **[résumé, ancienne, probablement périmée selon le juriste — à vérifier, ne pas s'en servir]**.
 
 ## 1. Assurances
 
@@ -37,13 +37,13 @@ Le statut social : un paysagiste relève de la MSA ; une réponse ministérielle
 | Certificat de spécialisation « arboriste-élagueur » | ministère de l'Agriculture | non établi | — | **(à vérifier : non recherché faute de quota)** |
 | Qualification Qualipaysage | Qualipaysage | Non | Preuve de compétence | **(à vérifier : non recherché)** |
 
-**Loi Labbé** (loi n° 2014-110 du 6 févr. 2014) : depuis le **1er juillet 2022** (arrêté du 15 janv. 2021), l'usage des produits phytopharmaceutiques est interdit dans les **propriétés privées à usage d'habitation** et les lieux de vie (jardins de copropriété, campings, jardins familiaux, cimetières, terrains de sport hors haut niveau), **y compris pour les paysagistes** qui y travaillent ; restent permis les produits de **biocontrôle**, à faible risque ou utilisables en agriculture biologique [8][9] **[résumé]**. L'interdiction faite aux particuliers eux-mêmes (achat et usage) date de 2019 **(à vérifier)**. Conséquence : chez un particulier, le désherbage chimique n'est plus une prestation possible, sauf produits de biocontrôle ; le Certiphyto reste nécessaire pour ces produits chez un tiers **(à vérifier)**.
+**Loi Labbé** (loi n° 2014-110 du 6 févr. 2014) : depuis le **1er juillet 2022** (arrêté du 15 janv. 2021), l'usage des produits phytopharmaceutiques est interdit dans les **propriétés privées à usage d'habitation** et les lieux de vie (jardins de copropriété, campings, jardins familiaux, cimetières, terrains de sport hors haut niveau), **y compris pour les paysagistes** qui y travaillent ; restent permis les produits de **biocontrôle**, à faible risque ou utilisables en agriculture biologique [8][9] **[résumé]**. L'interdiction faite aux particuliers eux-mêmes (achat et usage) date de 2019. Dates conformes à la connaissance du juriste ; relire la version consolidée de l'arrêté du 15 janv. 2021. Conséquence : chez un particulier, le désherbage chimique n'est plus une prestation possible, sauf produits de biocontrôle ; le Certiphyto reste nécessaire pour ces produits chez un tiers **(à vérifier)**.
 
 ## 3. Documents remis au client
 
 - **Devis** : contenu commun (voir commun.md). Propre au métier : **surfaces** (m² de gazon, de terrasse), **linéaires** (haie, clôture, bordure), **végétaux** (essence, taille, nombre, garantie de reprise éventuelle), **évacuation des déchets verts** (volume, lieu, coût).
 - **Déchets** : pour les ouvrages (terrasse, muret, démolition), mention des déchets de chantier au devis (C. env. L541-21-2-3, metier-btp.md § 2). Pour les seuls déchets verts d'entretien, l'application de ce texte est **(à vérifier)** ; les indiquer de toute façon (coût réel, litige fréquent).
-- **Contrat d'entretien annuel** : nombre de passages, prestations par saison, prix (forfait annuel ou par passage), durée, reconduction. Signé chez le client : contrat hors établissement (voir commun.md). S'il se reconduit tacitement avec un particulier, le professionnel doit l'informer avant l'échéance de la possibilité de ne pas reconduire (C. conso. L215-1, « loi Chatel ») **(à vérifier : recherche non faite faute de quota)**.
+- **Contrat d'entretien annuel** : nombre de passages, prestations par saison, prix (forfait annuel ou par passage), durée, reconduction. Signé chez le client : contrat hors établissement (voir commun.md). S'il se reconduit tacitement avec un particulier, C. conso. L215-1 (« loi Chatel ») : le professionnel informe le consommateur par écrit, au plus tôt trois mois et au plus tard un mois avant le terme, de la possibilité de ne pas reconduire ; à défaut, le consommateur peut résilier à tout moment.
 - **Attestation fiscale annuelle** (SAP) : voir multiservice.md.
 - **Facture** : immédiate pour un passage ; mensuelle ou par passage dans un contrat d'entretien.
 - Conservation : voir commun.md.
@@ -91,7 +91,7 @@ Conséquence pour l'app : un même devis de paysagiste mélange presque toujours
 ## 7. Aides du client et pièces que l'artisan fournit
 
 **Crédit d'impôt services à la personne** (« petits travaux de jardinage ») [7][12] **[résumé]** :
-- **50 %** des dépenses, plafond de **5 000 € par an et par foyer** pour le jardinage (soit 2 500 € de crédit), dans le plafond global de 12 000 € ; **débroussaillage inclus** (C. trav. D7233-5).
+- **50 %** des dépenses, plafond de **5 000 € par an et par foyer** pour le jardinage (soit 2 500 € de crédit), dans le plafond global de 12 000 € ; **débroussaillage inclus** : il figure dans la liste de C. trav. D7231-1 ; le plafond est dans D7233-5.
 - Seulement si le prestataire est déclaré ou agréé SAP et ne facture que des « petits » travaux (pas la création d'un jardin, pas une terrasse).
 - **Condition d'activité exclusive** : assouplie depuis le 1er janv. 2025 selon des sites de conseil (seuil de 70 % du chiffre d'affaires en SAP cité) [7] **(à vérifier au C. trav. L7232-1-1 ; détail : multiservice.md)**.
 - Une question écrite de 2026 demandait le maintien du taux et du plafond [12] : vérifier la loi de finances en vigueur avant d'imprimer un chiffre.
@@ -141,4 +141,8 @@ Propositions :
 
 ## Relecture juriste-btp
 
-Non faite (03/11/2026). Points à relire en priorité : table TVA du § 5 (version en vigueur du BOFiP après la consultation d'octobre 2025), condition d'activité exclusive SAP depuis 2025, reconduction tacite (L215-1), champ de L541-21-2-3 pour les déchets verts.
+Relue par juriste-btp le 03/11/2026, sans texte officiel ouvert (avis : `avis-juriste-2026-11-03.md`). Corrections appliquées. Restent à vérifier au texte :
+- statut de l'auto-entrepreneur paysagiste (réponse ancienne) ;
+- loi Labbé : version consolidée de l'arrêté du 15 janv. 2021 ;
+- table TVA du § 5 (BOFiP en vigueur) ; condition d'activité exclusive SAP depuis 2025 ;
+- champ de L541-21-2-3 pour les déchets verts.
