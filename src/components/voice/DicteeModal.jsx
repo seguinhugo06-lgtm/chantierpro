@@ -27,6 +27,7 @@ import {
 } from '../../lib/voiceIntent';
 import { jourLocal } from '../../lib/dates';
 import { isDemo } from '../../supabaseClient';
+import { tauxTvaParDefaut } from '../../lib/franchiseTva';
 
 const UNITES = ['u', 'm²', 'm³', 'ml', 'h', 'j', 'forfait', 'pièce', 'sac', 'pot', 'kg', 'lot'];
 
@@ -156,7 +157,11 @@ export default function DicteeModal({
   setEditDevisId,
   orgId = null,
   onSaisieManuelle,
+  // Montants de la relecture : seulement avec canViewPrices (liste blanche ; absent = caché).
+  voitPrix = false,
 }) {
+  // Un montant n'est montré qu'à qui a le droit de voir les prix.
+  const prix = (n) => (voitPrix ? euros(n) : '');
   const dictation = useDictation();
   const [etape, setEtape] = useState('parler');   // parler | analyse | relecture
   const [erreur, setErreur] = useState(null);
@@ -334,9 +339,8 @@ export default function DicteeModal({
   }, [isOpen, etape, dictation.listening, dictation.dernierMot, dictation.texte, lancerAnalyse]);
 
   // ── TVA ────────────────────────────────────────────────────────────────────
-  // Le taux par défaut de l'artisan, pas 20 % : en rénovation c'est souvent 10 %,
-  // et forcer 20 % gonflerait le devis envoyé au client.
-  const tvaDefaut = Number(entreprise?.tvaDefaut ?? 10);
+  // Taux par défaut de l'entreprise : 0 en franchise (art. 293 B), sinon son taux (franchiseTva.js).
+  const tvaDefaut = tauxTvaParDefaut(entreprise);
   const [tvaDoc, setTvaDoc] = useState(tvaDefaut);
   useEffect(() => { setTvaDoc(tvaDefaut); }, [tvaDefaut]);
 
@@ -370,12 +374,12 @@ export default function DicteeModal({
     if (docActif && doc) {
       parts.push(
         doc.lignes.length
-          ? `${doc.type === 'facture' ? 'Facture' : 'Devis'} ${euros(totaux.ttc)}`
+          ? `${doc.type === 'facture' ? 'Facture' : 'Devis'}${voitPrix ? ` ${prix(totaux.ttc)}` : ''}`
           : `${doc.type === 'facture' ? 'Facture' : 'Devis'} à chiffrer`
       );
     }
     return parts;
-  }, [clientActif, client, chantiersActifs.length, docActif, doc, totaux.ttc]);
+  }, [clientActif, client, chantiersActifs.length, docActif, doc, totaux.ttc, voitPrix]);
 
   const rienASoumettre = !recap.length;
 
@@ -568,6 +572,8 @@ export default function DicteeModal({
             <p className={`text-xs ${textMuted}`}>
               {etape === 'relecture' ? 'Relisez, corrigez, validez' : 'Parlez, la mallette remplit'}
             </p>
+            {/* Règlement (UE) 2024/1689, art. 50 § 1 : dire qu'on interagit avec une IA (juriste-btp, 3 nov. 2026). */}
+            <p className={`text-xs ${textMuted}`}>Analyse par une intelligence artificielle (Claude, d’Anthropic) : elle peut se tromper, vous relisez tout.</p>
           </div>
           <button
             onClick={onClose}
@@ -645,7 +651,7 @@ export default function DicteeModal({
                     {/* Relecture juriste-btp du 3 nov. 2026 : « transcrite puis oubliée » était invérifiable (sur
                         Chrome, le son part aux serveurs de Google) ; seul est sûr que Mallettico ne reçoit pas le son. */}
                     Votre navigateur va demander l’accès au micro. Mallettico ne reçoit pas le son : votre navigateur
-                    le transforme en texte (sur Chrome, par les serveurs de Google). Seul ce texte nous est envoyé, pour l’analyse.
+                    le transforme en texte (sur Chrome, par les serveurs de Google). Seul ce texte nous est envoyé, puis analysé par une intelligence artificielle (Claude, d’Anthropic).
                   </p>
                 )}
 
@@ -705,6 +711,7 @@ export default function DicteeModal({
               {erreur && codeErreur && (
                 <div className="flex flex-wrap gap-2">
                   {onSaisieManuelle && (
+                    // App.jsx ne passe onSaisieManuelle qu'avec canPerform('devis', 'create').
                     <button
                       type="button"
                       onClick={() => { dictation.stop(); onClose?.(); onSaisieManuelle(); }}
@@ -865,7 +872,7 @@ export default function DicteeModal({
                   titre={doc.type === 'facture' ? 'Facture' : 'Devis'}
                   sousTitre={
                     doc.lignes.length
-                      ? `${doc.lignes.length} ligne${doc.lignes.length > 1 ? 's' : ''} · ${euros(totaux.ttc)} TTC`
+                      ? `${doc.lignes.length} ligne${doc.lignes.length > 1 ? 's' : ''}${voitPrix ? ` · ${prix(totaux.ttc)} TTC` : ''}`
                       : 'Aucun prix dicté — à chiffrer ensuite'
                   }
                   badge={lignesSansPrix ? `${lignesSansPrix} prix à compléter` : null}
@@ -926,6 +933,7 @@ export default function DicteeModal({
                           >
                             {[...new Set([l.unite || 'u', ...UNITES])].map((u) => <option key={u} value={u}>{u}</option>)}
                           </select>
+                          {voitPrix && (<>
                           <input
                             type="text" inputMode="decimal" value={l.prixUnitaire ?? ''}
                             onChange={(e) => majLigne(i, 'prixUnitaire', e.target.value.replace(',', '.'))}
@@ -935,8 +943,9 @@ export default function DicteeModal({
                             } bg-surface`}
                           />
                           <div className={`px-2 py-1.5 text-sm text-right font-medium ${textPrimary}`}>
-                            {euros((Number(l.quantite) || 0) * (Number(l.prixUnitaire) || 0))}
+                            {prix((Number(l.quantite) || 0) * (Number(l.prixUnitaire) || 0))}
                           </div>
+                          </>)}
                         </div>
                         {l._source && (
                           <div className={`text-[11px] mt-1.5 ${textMuted}`}>
@@ -960,11 +969,11 @@ export default function DicteeModal({
                       <Plus size={15} /> Ajouter une ligne
                     </button>
 
-                    {doc.lignes.length > 0 && (
+                    {voitPrix && doc.lignes.length > 0 && (
                       <div className={`pt-2 space-y-1 text-sm ${textPrimary}`}>
                         <div className={`flex justify-between ${textMuted}`}>
                           <span>Total HT</span>
-                          <span>{euros(totaux.ht)}</span>
+                          <span>{prix(totaux.ht)}</span>
                         </div>
                         <div className="flex justify-between items-center gap-2">
                           <label htmlFor="dictee-tva" className={textMuted}>TVA</label>
@@ -979,12 +988,12 @@ export default function DicteeModal({
                                 <option key={t} value={t}>{String(t).replace('.', ',')} %</option>
                               ))}
                             </select>
-                            <span className={textMuted}>{euros(totaux.tva)}</span>
+                            <span className={textMuted}>{prix(totaux.tva)}</span>
                           </div>
                         </div>
                         <div className="flex justify-between font-semibold pt-1">
                           <span>Total TTC</span>
-                          <span>{euros(totaux.ttc)}</span>
+                          <span>{prix(totaux.ttc)}</span>
                         </div>
                         {doc.lignes.some((l) => l.tva !== undefined && Number(l.tva) !== tvaDoc) && (
                           <p className={`text-[11px] ${textMuted}`}>

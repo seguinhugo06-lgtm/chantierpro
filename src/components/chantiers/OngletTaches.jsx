@@ -9,7 +9,6 @@ import Modal, { ModalHeader, ModalTitle, ModalBody, ModalFooter } from '../ui/Mo
 import { Bouton, BoutonIcone } from '../ui/Bouton';
 import { SegmentDefilant } from '../ui/Filtres';
 import { PHASES, calculateProgressByPhase, getAvailableProjectTypes } from '../../lib/templates/task-templates-v2';
-import { FONCTIONS } from '../../lib/fonctions';
 
 /**
  * Onglet « Tâches » de la fiche chantier : la liste type du chantier, par phase, et la saisie d'une tâche. Avant, un bloc
@@ -106,7 +105,7 @@ export default function OngletTaches({
         </h2>
         {peutModifier && taches.length > 0 && (
           <Bouton variante="discret" taille="compacte" icone={Sparkles} onClick={onGenerer} className="-mr-2">
-            {FONCTIONS.ia ? 'Compléter (IA)' : 'Tâches types'}
+            {'Tâches types'}
           </Bouton>
         )}
       </div>

@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { FONCTIONS } from '../lib/fonctions';
 import { ArrowLeft, Sparkles, Bug, Zap, Shield, Package, ChevronDown, ChevronUp } from 'lucide-react';
 import { dateLue } from '../lib/dates';
 
@@ -71,7 +70,6 @@ const CHANGELOG = [
     title: 'Modules métier avancés',
     changes: [
       { type: 'new', text: 'Trésorerie temps réel avec prévisionnel' },
-      ...(FONCTIONS.ia ? [{ type: 'new', text: 'IA Devis : analyse photo de chantier' }] : []),
       { type: 'new', text: 'Signature en ligne des devis' },
       { type: 'new', text: 'Export comptable (FEC, CSV, Excel)' },
     ],

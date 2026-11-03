@@ -86,6 +86,7 @@ import TrialBanner from './components/subscription/TrialBanner';
 import FeatureGuard from './components/subscription/FeatureGuard';
 import { useSubscriptionStore } from './stores/subscriptionStore';
 import { usePermissions } from './hooks/usePermissions';
+import { droitsDictee } from './lib/droitsDictee';
 import { fetchSubscription, computeLiveUsage } from './services/subscriptionsApi';
 import { Home, FileText, Building2, Users, Package, HardHat, Settings as SettingsIcon, Eye, EyeOff, Menu, Bell, Plus, ChevronRight, HelpCircle, Search, X, CheckCircle, AlertCircle, Info, Wifi, WifiOff, Wallet, ClipboardList, Smartphone, CreditCard, MessageCircle, CalendarCheck, Mic, PenLine, Clock, TrendingUp, Lightbulb, Mail, BookOpen, Hand, Rocket, Palette } from 'lucide-react';
 import { usePWA } from './hooks/usePWA';
@@ -157,6 +158,8 @@ export default function App() {
 
   // RBAC: organization role + permissions
   const { canAccess, canAccessBilling, canViewPrices, canPerform, role: userRole, loading: orgLoading, orgId } = usePermissions();
+  // Dictée : page « ia-devis » et droit de créer un devis (comme reserver_usage_ia, migration 107) ; montants selon canViewPrices.
+  const dictee = droitsDictee({ canAccess, canPerform, canViewPrices });
 
   // PWA install hook
   const { canInstall, install, isInstalled } = usePWA();
@@ -1785,7 +1788,7 @@ export default function App() {
 
           {/* RIGHT GROUP: Actions */}
           <div className="flex items-center gap-1 sm:gap-1.5 flex-shrink-0">
-            {FONCTIONS.ia && (<>
+            {FONCTIONS.ia && dictee.peutDicter && (<>
             {/* Dictée vocale — l'atout malin, accessible depuis n'importe quelle page */}
             <button
               onClick={() => setShowDictee(true)}
@@ -2104,7 +2107,7 @@ export default function App() {
       {showOnboarding && <OnboardingModal setShowOnboarding={setShowOnboarding} isDark={isDark} couleur={couleur} />}
 
       {/* Dictée vocale — client + chantier + devis en une seule prise de parole */}
-      {FONCTIONS.ia && showDictee && (
+      {FONCTIONS.ia && dictee.peutDicter && showDictee && (
         <Suspense fallback={null}>
           <DicteeModal
             isOpen={showDictee}
@@ -2130,7 +2133,8 @@ export default function App() {
             setEditDevisId={setEditDevisId}
             orgId={orgId}
             /* Repli quand l'analyse est indisponible (quota, panne, réseau) : un devis vierge, à la main. */
-            onSaisieManuelle={() => { setSelectedDevis(null); setCreateMode((p) => ({ ...p, devis: true })); setPage('devis'); }}
+            onSaisieManuelle={dictee.peutSaisirAMain ? () => { setSelectedDevis(null); setCreateMode((p) => ({ ...p, devis: true })); setPage('devis'); } : undefined}
+            voitPrix={dictee.voitPrix}
           />
         </Suspense>
       )}
@@ -2481,7 +2485,8 @@ function HelpModal({ setShowHelp, isDark: _isDark }) {
           { q: 'Comment changer mon plan ?', a: 'Dans Mon plan, vous voyez votre plan actuel et pouvez évoluer vers Artisan ou Équipe pour débloquer plus de fonctionnalités.' },
           { q: 'Comment exporter mes données comptables ?', a: 'Dans Finances > Export Comptable, exportez vos écritures au format FEC, CSV ou Excel, à remettre à votre comptable.' },
           { q: 'Comment fonctionne la trésorerie ?', a: 'Dans Finances > Trésorerie, visualisez vos flux de trésorerie en temps réel avec un prévisionnel automatique.' },
-          ...(FONCTIONS.ia ? [{ q: 'Comment utiliser l\'IA Devis ?', a: 'Prenez une photo du chantier ou décrivez les travaux. L\'IA génère automatiquement un devis détaillé. (Inclus dans tous les plans)' }] : []),
+          // À compléter selon la décision d'Hugo sur le plafond de 100 dictées par jour (juriste-btp, 3 nov. 2026).
+          ...(FONCTIONS.ia ? [{ q: 'Comment fonctionne la dictée ?', a: 'Touchez « Dicter », puis décrivez le client et les travaux, à la voix ou au clavier. Une intelligence artificielle (Claude, d’Anthropic) prépare un brouillon : client, chantier et lignes du devis. Elle peut se tromper : vous relisez et corrigez tout avant de créer. Plan Gratuit : 10 dictées par mois ; plans Artisan et Équipe : sans limite mensuelle.' }] : []),
           { q: 'Comment relancer un client ?', a: 'Mallettico détecte les devis en attente et vous propose des relances automatiques par email.' },
           { q: 'Comment ajouter un acompte ?', a: 'Lors de la création de la facture d\'acompte, indiquez le pourcentage souhaité. Le solde sera calculé automatiquement.' },
           { q: 'Les données sont-elles sécurisées ?', a: 'Elles sont chiffrées, et la base de données est hébergée à Paris. Vous pouvez les exporter et supprimer votre compte à tout moment, depuis les Réglages.' },

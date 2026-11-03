@@ -349,7 +349,7 @@ export default function LegalPages({ page, couleur: _couleur, setPage }) {
           <li><strong className={textPrimary}>Données de connexion :</strong> 12 mois conformément à la législation en vigueur</li>
           <li><strong className={textPrimary}>Données de géolocalisation :</strong> 3 mois</li>
           {FONCTIONS.ia && (
-            <li><strong className={textPrimary}>Dictée vocale :</strong> Mallettico ne reçoit pas le son et ne conserve pas le texte dicté (seul reste ce que vous validez). Le journal des analyses (entreprise, compte, date, offre, modèle, jetons, durée, issue) est conservé 12 mois, puis supprimé ; il est effacé plus tôt si vous supprimez votre compte. Conservation chez Anthropic : voir l'article 4</li>
+            <li><strong className={textPrimary}>Dictée vocale :</strong> Mallettico ne reçoit pas le son et ne conserve pas le texte dicté (seul reste ce que vous validez). Le journal des analyses (entreprise, compte, date, offre, modèle, jetons, durée, issue) est conservé 12 mois, puis supprimé ; il est effacé plus tôt si vous supprimez votre compte. Chez Anthropic : supprimé sous 30 jours, sauf contenu signalé par ses contrôles de sécurité (2 ans au plus) ou obligation légale (article 4)</li>
           )}
         </UL>
         <P>
@@ -398,10 +398,15 @@ export default function LegalPages({ page, couleur: _couleur, setPage }) {
               </tr>
               {FONCTIONS.ia && (
                 <tr>
-                  <td className={`px-4 py-3 font-medium ${textPrimary}`}>Anthropic</td>
+                  {/* Sources (lues le 3 nov. 2026 par juriste-btp) : https://www.anthropic.com/legal/commercial-terms (17 juin 2025) ;
+                      https://www.anthropic.com/legal/data-processing-addendum (24 févr. 2025) ;
+                      https://privacy.claude.com/en/articles/7996866-how-long-do-you-store-my-organization-s-data (1er juil. 2026) ;
+                      https://platform.claude.com/docs/en/manage-claude/api-and-data-retention ; résidence des données : page
+                      data-residency de la documentation d'Anthropic. À relire le jour de l'allumage. */}
+                  <td className={`px-4 py-3 font-medium ${textPrimary}`}>Anthropic (Anthropic Ireland, Limited, cocontractant pour l'Union européenne)</td>
                   <td className="px-4 py-3">Analyse des dictées vocales (intelligence artificielle), seulement quand vous utilisez la dictée</td>
                   <td className="px-4 py-3">États-Unis (stockage) ; calcul possible dans d'autres pays</td>
-                  <td className="px-4 py-3">Accord de traitement des données d'Anthropic, comprenant les clauses contractuelles types de la Commission européenne (RGPD, art. 46) ; copie sur demande à l'adresse de l'article 1. Selon Anthropic, les données ne servent jamais à entraîner ses modèles sans autorisation expresse, que Mallettico ne donne pas ; elles peuvent être conservées jusqu'à 2 ans si ses systèmes de sécurité les signalent, ou plus longtemps si la loi l'exige</td>
+                  <td className="px-4 py-3">Accord de traitement des données d'Anthropic (version du 24 février 2025), qui fait partie de ses conditions commerciales et comprend les clauses contractuelles types de la Commission européenne (décision (UE) 2021/914 ; RGPD, art. 46) ; copie sur demande à l'adresse de l'article 1. Selon Anthropic, les données envoyées à son API ne servent pas à entraîner ses modèles (Mallettico n'a donné aucune autorisation) ; elles sont supprimées dans les 30 jours suivant leur réception ou leur génération, sauf si ses contrôles de sécurité les signalent (conservation jusqu'à 2 ans) ou si la loi impose de les garder</td>
                 </tr>
               )}
             </tbody>
