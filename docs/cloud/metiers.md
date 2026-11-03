@@ -1,6 +1,6 @@
 # Rapport — session cloud « metiers » (3 nov. 2026)
 
-Branche `cloud/metiers` (copie identique poussée sur `claude/metiers-btp-rb0xi4`, la branche imposée par l'environnement). Rien sur `main`, aucune pull request, aucun accès à la production, aucun code.
+Branche `cloud/metiers` (copie identique poussée sur `claude/metiers-btp-rb0xi4`, la branche imposée par l'environnement). Rien sur `main`, aucune pull request, aucun accès à la production. Deux temps : la recherche (sans code), puis, à la demande d'Hugo (« fais tout ça »), le **lot 0** de la synthèse — voir « Suite : lot 0 » et « Comment arriver au reste » en fin de rapport.
 
 ## Ce qui est fait
 
@@ -73,3 +73,38 @@ Aucun texte destiné à être imprimé n'a été écrit (pas de code). Les 16 fi
 - Ordre : corrections, qualifications et métier, attestation d'entretien, dépannage, électricien.
 - 10 décisions attendent Hugo, dont le premier lot après le ramonage.
 - À faire ensuite : ouvrir le réseau aux sites officiels et relire les 10 points prioritaires.
+
+---
+
+## Suite : lot 0 (3 nov. 2026, après « fais tout ça »)
+
+Ce qui ne dépendait d'aucune décision d'Hugo a été fait. Le reste attend ses réponses ou une relecture au texte (ci-dessous).
+
+**Corrigé** (commits `3b0d6f1`, `9a2eed5`, `4526173`) :
+1. **Le RGE saisi s'imprime enfin**, dans les trois générateurs (`devisHtmlBuilder.js`, aperçu de `DevisPage.jsx`, `pdfHtmlBuilder.js`), par une règle unique `src/lib/qualifications.js`. Texte : « Entreprise RGE (Reconnu garant de l'environnement) — N° … (organisme) — Domaine : … — Valide jusqu'au … ». Jamais sans numéro, **jamais sans date de fin** ni après elle (validité jugée à la date du document), jamais avec Qualiopi. Paramètres : nouveaux champs « Fin de validité » et « Domaine(s) RGE » (réglages sans colonne : aucune migration), avertissement quand le RGE n'est pas imprimé et pourquoi.
+2. **Qualiopi retiré** de la liste des organismes RGE ; Certibat et Cerqual Qualitel ajoutés.
+3. **Chaudière gaz à 20 %** : le modèle de devis « Remplacement chaudière gaz » sortait au taux de l'entreprise (10 %), et la bibliothèque des métiers (compositeur de devis et site public) à **5,5 %** — illégal depuis le 1er janv. 2025 (relevé par `juriste-btp`). Les deux sont à 20 % (chaudières fossiles, 1er mars 2025). L'entretien garde le taux de l'entreprise, point marqué « à vérifier ».
+
+**Relecture** : `juriste-btp` sur le commit (rien de bloquant dans le correctif ; libellé, date obligatoire, date du document, textes d'aide corrigés comme il l'a demandé).
+
+**Preuves** :
+- tests `src/lib/__tests__/qualifications.test.js` (12) ; contre-essai : sans la correction, 4 échouent (générateurs, modèle, bibliothèque) ;
+- parcours navigateur « aperçu du devis : le RGE saisi s'imprime s'il est valide, pas s'il est expiré » ; contre-essai avec l'ancien aperçu : échoue (« aucun ») ;
+- `npm run parcours -- documents` : 16 parcours verts avant l'ajout ;
+- `npm run verifier -- --complet` sur `4526173` : tests (1211), lint (0 erreur), smoke, build, banc, audit d'interface **verts** ; parcours : **4 en échec**, dont le nouveau parcours RGE seul (les autres parcours « documents » sont verts). Les 4 rejoués un à un : 3 échouent **aussi sur `main` (`adbf08d`), sans mes changements** — « équipe : heures à valider », « signature sur place » (×2, « Faire signer » introuvable), « trésorerie : seuil d'alerte » — panne antérieure, probablement liée à la date du jour (à corriger dans une tâche à part, avant toute livraison qui exige le niveau complet). Le parcours RGE, rejoué seul, est vert ; son échec dans la chaîne complète vient d'une capture de 12 h 43, avant correction de son expression : à reconfirmer par la session locale ;
+- `npm run verifier` (standard) sur le commit final : résultat en dernière ligne de ce rapport.
+
+**Limites** :
+- La **page de signature en ligne** du client n'imprimera pas encore le RGE : la fonction SQL `get_devis_for_signature` ne renvoie pas les réglages de l'entreprise (défaut connu, tâche `documents-un-seul`). Aperçu, PDF et envoi par e-mail l'impriment.
+- Un artisan qui avait saisi un RGE sans date ne le verra pas imprimé tant qu'il n'a pas ajouté la date (l'écran le lui dit). Avant, il ne l'était jamais.
+- Non touché, à vérifier (relevé en passant) : dans la bibliothèque, le plancher chauffant, le désembouage et le thermostat sont à 5,5 %, ce qui semble douteux ; la PAC air/eau à 5,5 % est plausible.
+
+## Comment arriver au reste
+
+Dans l'ordre, ce qui débloque chaque étape :
+
+1. **Livrer le lot 0** : une session locale relit la branche `cloud/metiers` et la livre (`/livrer`). Rien à faire de ton côté.
+2. **Ouvrir le réseau** de l'environnement cloud aux sites officiels (Légifrance, BOFiP, service-public, INSEE, Consuel) : claude.ai › environnement › accès réseau. Sans eux, aucune règle de TVA ou d'attestation ne peut être relue au texte, et la suite reste bloquée.
+3. **Répondre aux décisions** (`docs/metiers/synthese.md` § 5). Les trois qui bloquent : choix du métier à l'inscription (multiple, recommandé) ; premier lot (attestation d'entretien chaudière / PAC / poêle, recommandé) ; rappel de chaudière « obligatoire » ou non.
+4. **Trouver un testeur** chauffagiste ou plombier dans ton entourage, comme tes amis ramoneurs. Sans testeur, ne pas construire le lot.
+5. Ensuite, une session par lot, avec `/tache` : critique-produit d'abord, relecture au texte des points listés par le juriste, code dans les générateurs, `juriste-btp`, vérification complète, livraison. Ordre : lot 1 (qualifications multiples et choix du métier), lot 2 (attestation d'entretien + rappel), lot 3 (dépannage express), lot 4 (électricien), puis les autres (`synthese.md` § 4).
