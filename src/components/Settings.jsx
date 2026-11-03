@@ -328,6 +328,14 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
     }, 150);
   }, [ouvrirRubrique]);
 
+  // « Renouveler » une assurance expirée ou bientôt expirée : la rubrique Assurances, sur la date de validité de CETTE
+  // assurance (retour d'Hugo du 3 nov. 2026 : le bouton ne faisait qu'ouvrir la rubrique, donc rien quand on y était
+  // déjà, et rien ne disait quoi changer). La nouvelle date s'enregistre comme toute saisie (état près du champ) ;
+  // aucune date n'est proposée d'office : seule l'attestation de l'assureur la donne.
+  const renouvelerAssurance = useCallback((type) => {
+    allerAuChamp('assurances', type === 'rc' ? 'rcProValidite' : 'decennaleValidite');
+  }, [allerAuChamp]);
+
   // Navigation demandée par une autre rubrique (ex. Facture 2026 → « Compléter »)
   useEffect(() => {
     const handleTabNav = (e) => {
@@ -414,6 +422,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
     return alerts;
   }, [entreprise.rcProValidite, entreprise.decennaleValidite]);
 
+  const bandeauAssurances = vueMobile === 'rubrique' ? (tab === 'assurances' ? 'hidden' : 'hidden md:flex') : (tab === 'assurances' ? 'md:hidden' : '');
   const hasAssuranceAlerts = alertesAssurances.some(a => a.severity === 'critical' || a.severity === 'warning');
   const TON_ALERTE = { critical: 'bg-danger-fond text-danger-texte', warning: 'bg-alerte-fond text-alerte-texte', info: 'bg-info-fond text-info-texte' };
 
@@ -477,15 +486,15 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
         <EtatProfil jauge={jauge} onAllerAuChamp={allerAuChamp} onAssistant={ouvrirAssistant} />
       </div>
 
-      {/* Alertes assurances critiques */}
+      {/* Alertes assurances critiques (dans la rubrique Assurances, l'alerte et son « Renouveler » y sont déjà) */}
       {alertesAssurances.filter(a => a.severity === 'critical').map((alert, i) => (
-        <div key={i} className={`rounded-2xl px-4 py-3 flex flex-wrap items-center gap-3 bg-danger-fond text-danger-texte ${vueMobile === 'rubrique' ? 'hidden md:flex' : ''}`}>
+        <div key={i} className={`rounded-2xl px-4 py-3 flex flex-wrap items-center gap-3 bg-danger-fond text-danger-texte ${bandeauAssurances}`}>
           <AlertCircle size={20} aria-hidden="true" className="flex-shrink-0" />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold">{alert.message}</p>
             <p className="text-sm">Expiration le {alert.date.toLocaleDateString('fr-FR')}</p>
           </div>
-          <Bouton taille="compacte" onClick={() => ouvrirRubrique('assurances')}>Renouveler</Bouton>
+          <Bouton taille="compacte" onClick={() => renouvelerAssurance(alert.type)}>Renouveler</Bouton>
         </div>
       ))}
 
@@ -810,7 +819,11 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                   <div className="flex-1 text-sm">
                     <p className="font-semibold">{alert.message}</p>
                     <p>Expiration le {alert.date.toLocaleDateString('fr-FR')}</p>
+                    {alert.severity !== 'info' ? <p className="mt-1">Saisissez la date de fin de votre nouvelle attestation.</p> : null}
                   </div>
+                  {alert.severity !== 'info' ? (
+                    <Bouton taille="compacte" onClick={() => renouvelerAssurance(alert.type)}>Renouveler</Bouton>
+                  ) : null}
                 </div>
               ))}
             </div>

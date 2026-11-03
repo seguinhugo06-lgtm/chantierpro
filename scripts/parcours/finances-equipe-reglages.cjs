@@ -596,6 +596,57 @@ module.exports = [
     },
   },
   {
+    // Retour d'Hugo (3 nov. 2026) : « "Renouveler" assurance ne marche pas ». Le bouton ne faisait qu'ouvrir la rubrique
+    // Assurances : dans la rubrique, rien ; ailleurs, la rubrique en haut, sans dire quoi changer. Il mène maintenant à
+    // la date de validité de l'assurance expirée, et la nouvelle date saisie s'enregistre en base.
+    nom: 'assurances : « Renouveler » mène à la date de validité de l’assurance expirée, la nouvelle date s’enregistre (réel, 1440 et 375 px)',
+    reel: true,
+    async executer({ ouvrir, sessionFactice, cliquer, attendre, verifier }) {
+      const EXPIREE = { ...ENTREPRISE, decennale_assureur: 'Assureur Exemple', decennale_numero: 'DEC-1', decennale_validite: '2026-01-15' };
+      const champ = (page) => page.evaluate(() => {
+        const el = document.getElementById('settings-field-decennaleValidite');
+        const r = el?.getBoundingClientRect();
+        return { focus: document.activeElement?.id || '', visible: !!r && r.top >= 0 && r.bottom <= innerHeight, valeur: el?.value || '' };
+      });
+      const boutons = (page) => page.evaluate(() => [...document.querySelectorAll('button')].filter((b) => { const r = b.getBoundingClientRect(); return r.width > 0 && r.height > 0 && b.innerText.trim() === 'Renouveler'; }).map((b) => Math.round(b.getBoundingClientRect().height)));
+
+      // Bureau : dans la rubrique Assurances, un seul « Renouveler », qui amène sur la date
+      const base = creerBase({ entreprise: [{ ...EXPIREE }] });
+      const bureau = await ouvrir({ reel: true, largeur: 1440, page: 'settings', session: sessionFactice(UID), supabase: (req, u) => base.reponse(req, u) });
+      await attendre(1500);
+      await rubrique(bureau.page, { cliquer }, 'Assurances');
+      await bureau.page.evaluate(() => window.scrollTo(0, 0));
+      const b1 = await boutons(bureau.page);
+      verifier(b1.length === 1, `un seul « Renouveler » dans la rubrique (${b1.length})`);
+      await cliquer(bureau.page, 'Renouveler');
+      await attendre(600);
+      const c1 = await champ(bureau.page);
+      verifier(c1.focus === 'settings-field-decennaleValidite' && c1.visible, `« Renouveler » amène sur la date de validité de la décennale (${JSON.stringify(c1)})`);
+      await bureau.page.evaluate(() => {
+        const el = document.getElementById('settings-field-decennaleValidite');
+        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(el, '2027-01-15');
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+      });
+      await attendre(2500);
+      verifier(ecrituresEntreprise(base).some((c) => c.decennale_validite === '2027-01-15'), 'la nouvelle date est écrite en base');
+      const reste = await bureau.page.evaluate(() => /Décennale expirée/.test(document.body.innerText));
+      verifier(!reste, 'l’alerte « Décennale expirée » disparaît');
+      await bureau.browser.close();
+
+      // Téléphone : depuis la liste des rubriques, le bandeau « Renouveler » mène aussi à la date
+      const base2 = creerBase({ entreprise: [{ ...EXPIREE }] });
+      const tel = await ouvrir({ reel: true, largeur: 375, page: 'settings', session: sessionFactice(UID), supabase: (req, u) => base2.reponse(req, u) });
+      await attendre(1500);
+      const b2 = await boutons(tel.page);
+      verifier(b2.length === 1 && b2[0] >= 44, `« Renouveler » sur la liste des rubriques, cible de 44 px (${JSON.stringify(b2)})`);
+      await cliquer(tel.page, 'Renouveler');
+      await attendre(600);
+      const c2 = await champ(tel.page);
+      verifier(c2.focus === 'settings-field-decennaleValidite' && c2.visible, `au téléphone aussi, sur la date de la décennale (${JSON.stringify(c2)})`);
+      await tel.browser.close();
+    },
+  },
+  {
     // Retour d'Hugo (3 nov. 2026) : « Registre métier ou commerce — Type à revoir car pas commerçant ». Le bloc ne
     // proposait que le RCS (« A : commerçant »…). Choix guidé : répertoire des métiers pour un artisan, RCS sinon.
     nom: 'légal : un artisan voit le répertoire des métiers, une société le RCS ; la mention imprimée suit (réel, 375 px)',
