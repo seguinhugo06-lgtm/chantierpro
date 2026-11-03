@@ -1,6 +1,6 @@
 # Une expérience par métier — synthèse
 
-> Recherche du 3 nov. 2026 (session cloud « metiers », branche `cloud/metiers`). Aucun code.
+> Recherche du 3 nov. 2026 (session cloud « metiers »). Livrée par la branche `cloud/metiers-docs`, qui ne contient **aucun code**. Le code du lot 0 (RGE imprimé, Qualiopi retiré, TVA des chaudières, modèles : commits `3b0d6f1`, `9a2eed5`, `4526173` et les corrections du 3 nov.) est resté sur la branche `cloud/metiers`, en attente de la décision n° 3 d'Hugo (§ 5).
 > Base : 15 fiches métier, `commun.md` (règles communes), `chiffres.md` (priorité chiffrée), et le code au commit `adbf08d`.
 > **Limite à lire d'abord** : le réseau de la session bloquait Légifrance, le BOFiP, service-public et l'INSEE. Toutes les sources ont été lues par **résumé de moteur de recherche** ([résumé]), aucun texte officiel n'a été ouvert. Rien ne doit devenir une règle bloquante sans relecture au texte. Relecture `juriste-btp` : voir la fin.
 
@@ -106,11 +106,11 @@ Effort : S (moins d'une session), M (une session), L (plusieurs). Risque juridiq
 
 | # | Lot | Métiers servis | Valeur | Effort | Risque juridique |
 |---|---|---|---|---|---|
-| 0 | **Corrections** : RGE imprimé, Qualiopi retiré, TVA chaudière gaz à 20 % dans les modèles et la bibliothèque — **fait le 3 nov. 2026** (`docs/cloud/metiers.md`, branche `cloud/metiers`, à livrer). Aucune promesse MaPrimeRénov' trouvée dans les modèles de devis | tous | Forte : mentions fausses aujourd'hui | S | Faible (on retire du faux) |
+| 0 | **Corrections** : RGE imprimé, Qualiopi retiré, TVA chaudière gaz à 20 % dans les modèles, la bibliothèque et le référentiel — **code prêt sur la branche `cloud/metiers`, non livré, en attente de la décision n° 3** (`docs/cloud/metiers.md`). Aucune promesse MaPrimeRénov' trouvée dans les modèles de devis | tous | Forte : mentions fausses aujourd'hui | S | Faible (on retire du faux) |
 | 1 | **« Mes qualifications »** + choix du métier (inscription et Paramètres) + catalogue trié | tous | Forte | M | Faible |
 | 2 | **Attestation d'entretien chaudière / PAC / poêle + rappel** (réutilise le ramonage) | chauffagiste, plombier-chauffagiste, ramoneur, frigoriste | Très forte : revenu récurrent, modèle déjà prouvé | M-L | Moyen : annexes des arrêtés à lire au texte |
 | 3 | **Dépannage express** : grille tarifaire affichable, devis en un écran, urgence, facture immédiate | serrurier, plombier, électricien, couvreur | Forte | M | Moyen : arrêté 2017 (déjà vérifié) |
-| 4 | **Électricien** : rappel Consuel à J-20, compte rendu d'intervention (jamais « attestation de conformité »), TVA borne suggérée selon le local, pas selon le client | électricien (Hugo et testeurs) | Forte | S-M | Moyen : base du 5,5 % borne à relire (278-0 bis N ?) |
+| 4 | **Électricien** : rappel Consuel à J-20, compte rendu d'intervention (jamais « attestation de conformité »), TVA borne suggérée selon le local, pas selon le client | électricien (Hugo et testeurs) | Forte | S-M | Moyen : base du 5,5 % borne relue au texte (CGI 278-0 bis N ; ann. IV art. 30-0 H) ; taux de la part fourniture à confirmer au BOFiP |
 | 5 | **Lignes structurées** menuiserie / isolation / PAC (valeurs des aides et du taux) | menuisier, plaquiste, couvreur, chauffagiste | Forte (dossiers CEE refusés sinon) | M | Élevé : seuils à relire au texte |
 | 6 | **Chantier long** : PV de réception, levée des réserves, retenue de garantie avec rappel à 1 an, avenant | maçon, charpentier, couvreur, plaquiste, carreleur | Moyenne à forte | M | Moyen |
 | 7 | **Autoliquidation imprimée** et décennale par devis | sous-traitants, peintre, serrurier-métallier | Moyenne | S-M | Moyen |
@@ -127,7 +127,7 @@ Chaque lot passe par `/tache` et le `critique-produit` avant le code, comme le d
 
 1. **Choix du métier à l'inscription** : multiple et passable (recommandé), ou unique, ou seulement dans Paramètres ?
 2. **Premier métier après le ramonage** : l'attestation d'entretien chaudière / PAC / poêle (recommandé : réutilise le ramonage, sert trois métiers) ou l'électricien (votre métier, vos testeurs) ?
-3. **Lot 0 maintenant** (RGE imprimé, Qualiopi retiré, modèles purgés) : à faire tout de suite, indépendamment du reste (recommandé).
+3. **Lot 0 maintenant** (RGE imprimé, Qualiopi retiré, modèles purgés) : à faire tout de suite, indépendamment du reste (recommandé). Le code est prêt sur `cloud/metiers`, non livré.
 4. **Un testeur par métier** : comme les amis ramoneurs. Qui, dans votre entourage, chauffagiste ou plombier ? Sans testeur, ne pas construire le lot (mesure du cadrage ramonage : attestations créées en 4 semaines).
 5. **Avance immédiate Urssaf** (multiservice) : demande un compte éditeur et une habilitation. À écarter pour l'instant (recommandé) ?
 6. **TVA : suggestion ou blocage ?** Recommandé : suggestion seulement, tant qu'aucune règle n'est relue au texte.
@@ -136,24 +136,25 @@ Chaque lot passe par `/tache` et le `critique-produit` avant le code, comme le d
 8. **Rappel d'entretien de chaudière** : peut-il citer l'obligation légale (« entretien annuel obligatoire »), qui est vraie pour une chaudière, ou garde-t-on la règle du ramonage (« jamais obligatoire » dans un rappel) ? (question du juriste)
 9. **Formules « réalisé selon la norme … »** (NF C 15-100, NF P01-012) proposées par l'app, comme engagement de l'artisan : oui ou non ? (question du juriste)
 10. **MaPrimeAdapt'** : avertissement avant la signature d'un devis destiné à l'aide (recommandé par le juriste), ou blocage ?
+11. **Décennale par devis sans valeur par défaut** (question 4 du juriste) : l'app ne qualifie pas les travaux, l'artisan choisit pour chaque devis (D-24). D'accord (recommandé par le juriste) ?
 
 ## Relecture juriste-btp (3 nov. 2026)
 
 Avis complet : `avis-juriste-2026-11-03.md`. Comme la recherche, il n'a pu ouvrir aucun texte : il s'appuie sur `docs/metier-btp.md` et sur la connaissance du droit du relecteur. Corrections appliquées dans les fiches. Ce qui change dans cette synthèse :
 
-- **TVA des bornes** (bloquant) : le 5,5 % se rattacherait à CGI 278-0 bis N (selon la FFB), avec des critères techniques ; **le critère est le local d'habitation, pas la qualité du client**. Le lot 4 ne doit pas réserver le 5,5 % aux particuliers.
+- **TVA des bornes** (bloquant) : 5,5 % sur la pose, l'installation et l'entretien d'une borne dans un local à usage d'habitation, destinée aux résidents (CGI 278-0 bis, N, relu au texte le 3 nov. 2026) ; configuration de l'ann. IV art. 30-0 H (type 2, ou prise de type E « renforcée » d'au moins 14 A, admise) ; sans condition d'ancienneté ; qualification de l'installateur exigée (décret n° 2017-26, art. 22) ; **le critère est le local d'habitation, pas la qualité du client**. Le lot 4 ne doit pas réserver le 5,5 % aux particuliers.
 - **Isolation des rampants et des combles** (bloquant si imprimé) : plus aidée par MaPrimeRénov' par geste depuis le 1er sept. 2026 ; couvreur et charpentier le disaient encore.
 - **Décennale par devis** : sans valeur par défaut. L'app ne qualifie pas les travaux ; l'artisan choisit (D-24).
-- **Entretien de chaudière** : jamais 5,5 % ; 10 % le plus probable (à vérifier).
-- **Extension** : « 20 % » des fiches contre « agrandissement > 10 % » de `metier-btp.md` § 4 : à trancher au BOFiP avant de coder.
+- **Entretien de chaudière** : 10 %, ou 5,5 % si la chaudière est THPE (ann. IV art. 30-0 D nonies).
+- **Extension** : toujours 20 % (addition de construction, BOI-TVA-LIQ-30-20-90-30 § 380) ; la règle des 10 % de surface s'applique en plus aux travaux sur l'existant. `docs/metier-btp.md` § 4 est aligné.
 - **Documents** : le compte rendu de l'électricien ne s'appelle jamais « attestation de conformité » et n'imite pas le Consuel ; la fiche fluides se remplit sur le CERFA officiel, sans l'imiter.
 - **Services à la personne** : imprimer « organisme déclaré n° … », jamais « ouvre droit au crédit d'impôt » ; l'attestation fiscale ne compte que les paiements admis (pas les espèces).
 - **Serrurier** : l'alerte « abus de faiblesse » est un profilage : avis RGPD avant tout code.
 
 ### Vérifications au texte avant tout code (ordre du juriste)
-1. Borne : 278-0 bis N ou 278-0 bis A, ancienneté du logement, qualification IRVE.
+1. Borne : relu le 3 nov. 2026 (278-0 bis N, sans condition d'ancienneté, qualification de l'installateur) ; reste le taux de la part fourniture au BOFiP.
 2. PAC air-air à 5,5 % : arrêtés du 13 juil. et du 14 août 2026.
-3. Chaudières fossiles : l'exclusion de 2025 vise-t-elle l'entretien ?
+3. Chaudières fossiles : relu le 3 nov. 2026, l'exclusion de 2025 ne vise pas l'entretien (BOI-TVA-LIQ-30-20-90-20 § 230 ; BOI-TVA-LIQ-30-20-95 § 35).
 4. Annexe IV art. 30-0 D : fenêtres, seuils Uw/Sw et R, chauffe-eau, photovoltaïque.
 5. Décret n° 2026-822 : liste exacte du parcours par geste.
 6. Attestations d'entretien : arrêté du 15 sept. 2009, C. env. R224-41-4 et s. ; arrêté du 24 juil. 2020.

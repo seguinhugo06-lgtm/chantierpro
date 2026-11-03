@@ -30,7 +30,7 @@ Un chauffe-eau électrique classique (cumulus) n'exige aucune qualification part
 ### 3.1 Certificat de conformité gaz
 - **Quand** : installation de gaz neuve, ou modifiée, dans un logement. Depuis le 1er janv. 2020 (arrêté du 23 févr. 2018), le remplacement d'un appareil est traité comme une modification : il exige un certificat [1], [2].
 - **Modèles** : Arrêté du 23 févr. 2018 : le modèle 2 couvre, selon la CAPEB, le remplacement ou l'ajout d'un appareil, ex-modèle 4 compris ; définitions des modèles 1 et 3 à relire aux annexes avant tout pré-remplissage [1], [5]. Les sources qui parlent encore de quatre modèles décrivent l'ancien régime (arrêté de 1977).
-- **Qui le délivre** : l'installateur le remplit ; un **organisme habilité** le vise. Qualigaz est habilité pour les contrôles des articles 21 à 23 de l'arrêté et le visa des certificats **jusqu'au 31 déc. 2026** [4] : renouvellement à vérifier en janvier 2027. Si l'installateur est PG, visa après contrôle administratif et contrôles par sondage ; sinon, le client demande le certificat et une visite est organisée [5], [6] **(à vérifier : sources commerciales)**.
+- **Qui le délivre** : l'installateur le remplit ; un **organisme habilité** le vise. Qualigaz est habilité pour les contrôles des articles 21 à 23 de l'arrêté et le visa des certificats (arrêté d'habilitation et échéance non retrouvés sur Légifrance le 3 nov. 2026 ; organismes cités par le ministère : Copraudit, Dekra, Qualigaz evonia). Ne jamais imprimer le nom d'un organisme habilité. Si l'installateur est PG, visa après contrôle administratif et contrôles par sondage ; sinon, le client demande le certificat et une visite est organisée [5], [6] **(à vérifier : sources commerciales)**.
 - **Délai et conservation** : sans certificat visé, le distributeur ne met pas le gaz en service sur une installation neuve [3] **(à vérifier pour une modification)**. Durée de conservation : aucune source trouvée **(à vérifier)**. Conseil au client : le garder avec les papiers du logement.
 - **Coût** : le certificat est acheté à l'organisme par l'installateur et refacturé ; sans PG, environ 247 € TTC visite incluse selon un comparateur **(à vérifier, tarif non officiel)**.
 
@@ -124,6 +124,6 @@ Propositions :
 
 Relue par juriste-btp le 03/11/2026, sans texte officiel ouvert (avis : `avis-juriste-2026-11-03.md`). Corrections appliquées. Restent à vérifier au texte :
 - annexes de l'arrêté du 23 févr. 2018 (définitions des modèles 1, 2 et 3) ;
-- renouvellement de l'habilitation Qualigaz après le 31 déc. 2026 ;
+- arrêté d'habilitation de Qualigaz et son échéance (non retrouvés sur Légifrance le 3 nov. 2026) ;
 - TVA de l'adoucisseur ; critères 2026 du 5,5 % pour CET et chauffe-eau solaire ;
 - seuils IRSI (HT ou TTC).

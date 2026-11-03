@@ -42,7 +42,7 @@ Mentions relevées dans les résumés [10, 11] [résumé], à relire au texte :
 Durée de l'intervention et prix horaire : non confirmés comme mentions obligatoires dans les résumés **(à vérifier)** ; pour le petit bricolage, la durée (≤ 2 h) sert à justifier l'éligibilité, donc à imprimer en pratique.
 
 ### Attestation fiscale annuelle (C. trav. D7233-4)
-- **Quand** : une fois par an, à chaque client, **avant le 31 mars de l'année N+1** (modèle service-public) [3] [résumé] ; un guide ancien dit « 31 janvier », vraisemblablement périmé [3] **(à vérifier)**.
+- **Quand** : une fois par an, à chaque client, date de remise non fixée par C. trav. D7233-4 ; « avant le 31 mars » vient du modèle service-public : à présenter comme un conseil, jamais comme une obligation légale [3] [résumé] ; un guide ancien dit « 31 janvier », vraisemblablement périmé [3] **(à vérifier)**.
 - **Pourquoi** : permettre au client le crédit d'impôt de CGI art. 199 sexdecies [4] [résumé].
 - **Contenu relevé** (à confirmer avec l'arrêté d'application, non trouvé) [3, 5] [résumé] : nom et adresse de l'organisme ; numéro et date de déclaration ; montant acquitté dans l'année, dont la part payée en CESU préfinancés ; récapitulatif des interventions (intervenant, date, durée) — cette dernière liste vient d'une version marquée abrogée **(à vérifier)**.
 - Modèle officiel : service-public R32522 [3].
@@ -85,7 +85,7 @@ Durée de l'intervention et prix horaire : non confirmés comme mentions obligat
 
 ## 7. Aides du client et pièces que l'artisan fournit
 
-- **Crédit d'impôt 50 %** : l'artisan fournit l'**attestation fiscale annuelle** avant le 31 mars (§ 3).
+- **Crédit d'impôt 50 %** : l'artisan fournit l'**attestation fiscale annuelle** (conseil : avant le 31 mars, aucune date légale, § 3).
 - **Avance immédiate** : l'artisan inscrit le client et fait les demandes de paiement (§ 4).
 - **CESU préfinancés** : acceptés par le prestataire déclaré ; la part payée ainsi figure sur l'attestation fiscale [5] **(à vérifier)**.
 - Travaux de rénovation énergétique : voir les fiches des métiers concernés.
