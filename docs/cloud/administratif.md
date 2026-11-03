@@ -93,7 +93,7 @@ Corrections appliquées mot pour mot :
 
 ## Décisions pour Hugo
 
-1. **Où garder les réponses** (TVA, impôt, salariés, rythme Urssaf) ? Aujourd'hui, sur l'appareil seulement : sur un autre téléphone, les questions reviennent. Les garder dans la fiche entreprise demande une migration (colonnes `entreprises`). Je ne l'ai pas faite, pour rester dans le périmètre.
+1. **Où garder les réponses** (impôt, salariés, rythme Urssaf) ? Aujourd'hui, sur l'appareil seulement : sur un autre téléphone, les questions reviennent. Les garder dans la fiche entreprise demande une migration (colonnes `entreprises`). Pour la TVA, un réglage existe déjà en base (`tresorerie_settings.regime_tva`, Trésorerie) : depuis le 3 nov., son choix explicite (franchise, mensuel) est lu ; aligner les deux réglages relève des tâches `tva-encaissements` et `franchise-reglage`.
 2. **EI ou société en franchise de TVA** (non micro) : la question TVA n'a pas de réponse « Je ne facture pas de TVA ». Faut-il l'ajouter ? (question du juriste)
 3. **Déclaration 1330-CVAE**, si le chiffre d'affaires dépasse 152 500 € HT : le juriste suggère de l'ajouter. Elle n'y est pas, faute d'une source officielle lue.
 4. **Vrais rappels par e-mail** : à décider plus tard. Il faudrait une fonction planifiée côté serveur. Pour l'instant, rien n'est promis.
@@ -101,7 +101,7 @@ Corrections appliquées mot pour mot :
 ## Risques
 
 - **Dates non relues au texte officiel** : voir « Ce qui reste », point 1. L'écran demande de vérifier chaque date sur le site indiqué, et met un lien sous chaque échéance du calendrier.
-- **Micro = franchise de TVA** dans l'app (`estFranchiseTva`) : une micro qui a opté pour la TVA ne voit pas ses CA3. C'est un cas rare.
+- **Micro = franchise de TVA** dans l'app (`estFranchiseTva`) : une micro qui facture la TVA ne voit pas ses CA3. Ce n'est pas un cas rare (relecture juriste du 3 nov.) : voir « Décisions d'Hugo », point 1, des corrections du 3 nov.
 - **Exercice clos le 31 décembre supposé** pour les liasses, l'IS et la CA12. Ces échéances affichent donc « Selon votre situation ».
 - **DSN** : un 15 qui tombe un dimanche s'affiche tel quel. C'est la date la plus tôt, donc sans risque.
 
