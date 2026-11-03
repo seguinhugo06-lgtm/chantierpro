@@ -149,7 +149,7 @@ Correctif :
 
   Ils semblent liés à la date du jour (début de mois, 3 nov.). C'est à traiter par la session locale, hors de cette mission.
 
-Sur le commit final, après le second tour de sécurité : `npm run verifier` (standard), voir la fin du rapport.
+Sur le commit final `0bdd481`, après le second tour de sécurité : `npm run verifier` (standard) → « Tout est vert » (tests 1 231, lint 0 erreur, smoke, build). Le banc tourne à part : « Tout est vert (687 vérifications) ».
 
 ## 2. Textes nouveaux soumis au juriste (relecture `juriste-btp` du 3 nov. 2026, sa version appliquée)
 Tous ces textes ne s'affichent **que si `FONCTIONS.ia` est allumé**. Aujourd'hui, rien ne change pour les utilisateurs (parcours 6).
