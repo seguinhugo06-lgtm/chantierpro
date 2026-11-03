@@ -125,7 +125,7 @@ export default function RamonageTab({ entreprise, setEntreprise }) {
               actif={entreprise?.ramonageConseils !== false}
               onChange={(v) => enregistrer({ ramonageConseils: v })}
               libelle="Imprimer les conseils sur l’attestation"
-              description="Pour un appareil au bois, aux granulés ou au charbon (hors chaudière), vous devez conseiller votre client (article R. 1331-77 du code de la santé publique). Activé : vous cochez les conseils donnés, et ils sont imprimés sur l’attestation, ce qui prouve que vous les avez donnés. Désactivé : ils ne sont plus demandés ni imprimés. Vous pouvez changer ce choix à chaque attestation."
+              description="Pour un appareil au bois, aux granulés ou au charbon (hors chaudière), vous devez conseiller votre client (article R. 1331-77 du code de la santé publique). Activé : vous cochez les conseils donnés, et ils sont imprimés sur l’attestation, ce qui en garde une trace écrite. Désactivé : ils ne sont plus demandés ni imprimés. Vous pouvez changer ce choix à chaque attestation."
             />
           </Carte>
 

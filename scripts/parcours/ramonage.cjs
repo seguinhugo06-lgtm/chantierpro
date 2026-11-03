@@ -183,7 +183,9 @@ module.exports = [
       verifier(/^Attestation RAM-\d{4}-\d{5}$/.test(titre), `l’attestation sans conseils s’enregistre (${titre})`);
       // Réimpression : la fiche de l'attestation enregistrée ne porte toujours pas les conseils
       const html = await page.evaluate(() => document.querySelector('[role="dialog"] iframe')?.getAttribute('srcdoc') || '');
-      if (html) verifier(!html.includes('Conseils donnés'), 'l’attestation enregistrée, relue, ne porte pas les conseils');
+      // Relecture du 3 nov. 2026 : sans aperçu, la vérification passait sans rien dire (panne verte)
+      verifier(html.length > 0, 'l’aperçu de l’attestation enregistrée est affiché');
+      verifier(!html.includes('Conseils donnés'), 'l’attestation enregistrée, relue, ne porte pas les conseils');
     },
   },
   {

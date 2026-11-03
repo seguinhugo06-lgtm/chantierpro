@@ -105,7 +105,7 @@ module.exports = [
   {
     // Avis juriste du 26 oct. 2026 (M4, R10) : une société imprime son capital (C. com. R123-238) ; un entrepreneur
     // individuel n'en a pas, et un capital resté sur sa fiche ne s'imprime pas. Aperçu réel : le générateur de DevisPage.
-    nom: 'aperçu du devis : le capital d’une SARL s’imprime, celui d’une EI avec un capital rempli, non ; RM pour l’EI, RCS pour la SARL',
+    nom: 'aperçu du devis : le capital d’une SARL s’imprime, celui d’une EI avec un capital rempli, non ; RNE pour l’EI, RCS pour la SARL',
     async executer({ ouvrir, attendre, verifier }) {
       for (const [forme, imprime] of [['EI', false], ['SARL', true]]) {
         const id = `ent-capital-${forme.toLowerCase()}`;
