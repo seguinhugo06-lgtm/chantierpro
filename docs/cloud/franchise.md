@@ -62,7 +62,9 @@ Une situation validée ou facturée qui porte de la TVA se réimprime telle quel
 | **Contre-essai** : le test seul, sans la correction (`git stash` du reste) | 8 tests sur 8 en échec (le 9e a été ajouté après), par exemple « expected … not to match /(HT\|TTC)/ » et « libellesColonnesPrix is not a function ». La correction remise : tout passe |
 | `npm run parcours -- "aperçu imprimé"` (nouveau scénario du parcours `documents`) | ✓ 10 vérifications. Aperçu réel du générateur de `DevisPage` en mode « réel simulé » : micro-entreprise, ni HT ni TTC, « Prix unitaire », mention 293 B ; SARL, « PU HT » et « Total TTC » |
 | `npm run verifier` (standard, avant commit) | Lint 0 erreur (242 avertissements), smoke ✓, build ✓. Tests : 1207 sur 1208, le seul échec était mon test (espace insécable), corrigé et relancé : 9 sur 9 |
-| `npm run verifier -- --complet` sur le commit | voir § 6 (ajouté à la fin de la session) |
+| `npm run verifier -- --complet` sur le commit `ab4faef` | Tests 1208 sur 1208 ✓, lint 0 erreur ✓, smoke ✓, build ✓, banc de migrations ✓. Le délai de 30 minutes de la session a coupé la chaîne pendant les parcours : ils ont été relancés à part |
+| `npm run parcours` (tous, relancés à part) | Tous réussis sauf **4 en échec, qui échouent à l'identique sur `main` (`adbf08d`) sans ce travail** : rejoués dans une copie de `main`. Ce sont « signature sur place » ×2 (bouton « Faire signer » introuvable), « trésorerie : pas de seuil d'alerte » et « équipe : une seule rangée d'onglets ». Ils sont étrangers à cette mission et à signaler à la session locale |
+| `node scripts/audit-ui.cjs` | **0 défaut**, 80 combinaisons |
 
 ## 3. Ce qui reste (recherche complète de `HT` / `TTC` dans `src/components`)
 
@@ -107,7 +109,7 @@ Textes nouveaux : « Prix unitaire », « Total », « Total avant remise », «
 - Un document émis avec TVA garde ses libellés (`franchiseAppliquee`). Les écrans de création (assistant, devis express) suivent `estFranchiseTva`, comme leurs totaux.
 - Le nouveau scénario du parcours `documents` dépend du bouton « Aperçu » de la fiche, comme le scénario de certification TVA.
 
-Vérification complète sur le commit : voir le résultat ci-dessous.
+- La vérification complète n'a pas pu enregistrer un « vert » d'un seul tenant : délai de la session, et 4 parcours déjà rouges sur `main` (voir § 2). La session locale doit relancer `npm run verifier -- --complet` avant de livrer.
 
 ## Résumé
 
@@ -119,4 +121,5 @@ Vérification complète sur le commit : voir le résultat ci-dessous.
 6. Un parcours navigateur ouvre l'aperçu réel : 10 vérifications réussies.
 7. Le juriste valide. Ses trois retouches sont appliquées.
 8. Décision pour Hugo : retirer la colonne « TVA » des PDF en franchise (recommandé).
-9. Restent hors périmètre : trésorerie (calcul), ramonage, ouvrages, exports CSV, historique.
+9. Vérification : tests, lint, build, banc et audit d'interface (0 défaut) au vert. 4 parcours sont rouges, mais déjà rouges sur `main`.
+10. Restent hors périmètre : trésorerie (calcul), ramonage, ouvrages, exports CSV, historique.
