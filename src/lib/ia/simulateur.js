@@ -1,10 +1,10 @@
 /**
  * Simulateur de l'assistant pour la démonstration (?demo=true) — joue le rôle du modèle, sans réseau ni coût.
- * Il renvoie EXACTEMENT la forme du contrat (`contrat.js`) : une intention, des paramètres désignant des fiches du
- * repère, et des questions pour ce qu'il ne sait pas. Il comprend les demandes les plus fréquentes de la feuille
+ * Il renvoie EXACTEMENT la forme du contrat (`contrat.js`, forme du socle : `{ success, intention: {…}, quota }`) : une
+ * intention, des paramètres désignant des fiches du repère, et des questions pour ce qu'il ne sait pas. Il comprend les demandes les plus fréquentes de la feuille
  * de route (docs/ia/ligne-directrice.md § 6) ; le vrai modèle comprendra bien plus de tournures.
  *
- * Il ne calcule aucun montant : les chiffres affichés viennent de `preparer.js`, à partir des données.
+ * Il ne calcule aucun total : il recopie le montant et les heures dits ; le reste vient de `preparer.js`, à partir des données.
  */
 import { INTENTIONS } from './contrat';
 
@@ -51,16 +51,20 @@ function comprendreDevis(texte, repere) {
     if (!prenomDit) {
       questions.push(question('client', `C’est bien ${clients[0].nom} ?`, [
         { valeur: clients[0].id, libelle: `Oui, ${clients[0].nom}` },
-        { valeur: 'nouveau', libelle: 'Non, un nouveau client' },
+        // Pas de « nouveau client » : l'app ne sait pas encore le créer (lot 1) ; « un autre » mène à la recherche
+        { valeur: 'autre', libelle: 'Non, un autre client' },
       ]));
     }
   } else if (clients.length > 1) {
     questions.push(question('client', 'Pour quel client ?', clients.map((c) => ({ valeur: c.id, libelle: c.nom }))));
   } else {
     const nom = texte.match(/\b(?:pour|chez)\s+((?:mme|madame|m\.|monsieur)\s+)?([A-ZÀ-Ý][\p{L}-]+)/u);
-    p.client_nom = nom ? `${nom[1] || ''}${nom[2]}`.trim() : null;
-    questions.push(question('client', p.client_nom ? `${p.client_nom} n’est pas dans vos clients. Je le crée ?` : 'Pour quel client ?',
-      p.client_nom ? [{ valeur: 'nouveau', libelle: `Créer « ${p.client_nom} »` }] : undefined));
+    const dit = nom ? `${nom[1] || ''}${nom[2]}`.trim() : '';
+    if (dit) p.client_nom = dit;
+    // Question au clavier : l'artisan tape le nom d'un client existant (créer un client attend le lot 1)
+    questions.push(question('client', dit
+      ? `${dit} n’est pas dans vos clients. Tapez le nom d’un de vos clients (pour un nouveau client, créez d’abord sa fiche).`
+      : 'Pour quel client ? Tapez son nom.'));
   }
 
   // Travaux : le morceau de phrase qui n'est ni le client ni le montant
@@ -90,7 +94,8 @@ function comprendreDevis(texte, repere) {
 
 function comprendreHeures(texte, repere) {
   const heures = lireHeures(texte);
-  const p = { heures: heures ?? 0 };
+  // Heures non dites : aucune valeur par défaut (la carte affiche « à préciser ») ; la question est posée
+  const p = heures != null ? { heures } : {};
   const questions = [];
   const t = sansAccents(texte);
   p.date = /\bhier\b/.test(t) ? 'hier' : 'aujourdhui';
@@ -103,10 +108,7 @@ function comprendreHeures(texte, repere) {
   if (equipe.length === 1) p.employe_id = equipe[0].id;
   else if (repere.equipe.length === 1) p.employe_id = repere.equipe[0].id;
   else if (repere.equipe.length) questions.push(question('employe', 'Pour qui ?', repere.equipe.map((e) => ({ valeur: e.id, libelle: e.nom }))));
-  if (!heures) {
-    p.heures = 1;
-    questions.push(question('heures', 'Combien d’heures ?'));
-  }
+  if (heures == null) questions.push(question('heures', 'Combien d’heures ? (par exemple 3 ou 3h30)'));
   return { intention: INTENTIONS.HEURES, parametres: p, questions, confiance: questions.length ? 'moyenne' : 'haute' };
 }
 
@@ -125,7 +127,7 @@ function comprendreEncaisse(texte) {
  */
 export function comprendreDemo(texte, repere = { clients: [], chantiers: [], equipe: [] }) {
   const t = sansAccents(texte).trim();
-  if (!t) return { ok: false, code: 'demande_refusee' };
+  if (!t) return { error: 'Demande vide.', code: 'DICTEE_VIDE' };
   // Une consigne glissée dans la demande (« ignore tes règles », « envoie à tous ») ne déclenche rien de plus :
   // l'intention reste une proposition à valider, et l'envoi n'existe pas dans le contrat.
   let r;
@@ -134,7 +136,7 @@ export function comprendreDemo(texte, repere = { clients: [], chantiers: [], equ
   else if (/\bdevis\b/.test(t)) r = comprendreDevis(texte, repere);
   else if (lireHeures(texte) != null || /\bheures?\b|\bpointe/.test(t)) r = comprendreHeures(texte, repere);
   else r = { intention: INTENTIONS.INCONNUE, parametres: {}, questions: [], confiance: 'basse' };
-  return { ok: true, ...r, restant: null };
+  return { success: true, intention: r, quota: null };
 }
 
 /** Exemples proposés sous le champ (les quatre demandes du prototype). */

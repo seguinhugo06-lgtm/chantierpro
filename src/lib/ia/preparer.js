@@ -1,8 +1,9 @@
 /**
  * Préparer — transforme une intention comprise (contrat.js) en proposition prête à valider, À PARTIR DES DONNÉES de
- * l'artisan. Aucun chiffre ne vient du modèle : l'encaissé, les factures en retard et les restes dus sont calculés
- * par les mêmes fonctions que les écrans (ventes.js, paiementsFacture.js, messageRelance.js) ; le montant d'un devis
- * est celui que l'artisan a dicté, et ce que personne n'a dit (HT ou TTC, taux de TVA) devient une question.
+ * l'artisan. Aucun total ni taux ne vient du modèle ; le seul nombre qu'il transmet est celui que l'artisan a dit.
+ * L'encaissé, les factures en retard et les restes dus sont calculés par les mêmes fonctions que les écrans
+ * (paiementsFacture.js, messageRelance.js) ; ce que personne n'a dit (client, montant, heures, HT ou TTC, taux de
+ * TVA) devient une question, posée par l'app si le modèle ne l'a pas posée.
  *
  * Rien ici n'écrit ni n'envoie : la proposition porte l'objet à enregistrer, le geste de validation l'enregistre.
  */
@@ -11,6 +12,7 @@ import { encaisseEntre } from '../paiementsFacture';
 import { relanceDe, texteCourt } from '../messageRelance';
 import { estFranchiseTva } from '../franchiseTva';
 import { jourLocal } from '../dates';
+import { lireMontant, lireHeures } from './simulateur';
 
 const arrondi = (n) => Math.round((Number(n) || 0) * 100) / 100;
 const nomClient = (c) => (c ? [c.prenom, c.nom].filter(Boolean).join(' ') || c.entreprise || 'Client' : '');
@@ -23,7 +25,7 @@ const nomClient = (c) => (c ? [c.prenom, c.nom].filter(Boolean).join(' ') || c.e
 export const CHOIX_TVA = Object.freeze([
   { valeur: '20', libelle: '20 %' },
   { valeur: '10', libelle: '10 % — logement achevé depuis plus de 2 ans (le client certifie sur le devis)' },
-  { valeur: '5.5', libelle: '5,5 % — rénovation énergétique éligible, dans ce même logement (le client certifie)' },
+  { valeur: '5.5', libelle: '5,5 % — rénovation énergétique éligible, logement achevé depuis plus de 2 ans (le client certifie sur le devis)' },
 ]);
 
 /** Bornes d'une période, en jours « AAAA-MM-JJ » locaux. */
@@ -41,7 +43,10 @@ export function bornesPeriode(periode = 'mois', maintenant = new Date()) {
   return { debut: jourLocal(new Date(a, m, 1)), fin: jourLocal(maintenant), libelle: 'ce mois-ci' };
 }
 
-/** « Combien j'ai encaissé » : le même calcul que la tuile « Encaissé » de l'accueil. */
+/**
+ * « Combien j'ai encaissé » : `encaisseEntre` (paiementsFacture.js), du 1er de la période à aujourd'hui. Le détail liste
+ * les paiements enregistrés ; `horsDetail` est la part du total venue de factures marquées payées sans paiement détaillé.
+ */
 export function repondreEncaisse({ periode = 'mois' } = {}, { devis = [], paiements = [] } = {}, maintenant = new Date()) {
   const { debut, fin, libelle } = bornesPeriode(periode, maintenant);
   const total = encaisseEntre(devis, paiements, debut, fin);
@@ -53,7 +58,8 @@ export function repondreEncaisse({ periode = 'mois' } = {}, { devis = [], paieme
       return { id: p.id, date: p.date, montant: Number(p.montant ?? p.amount) || 0, numero: f?.numero || '' };
     })
     .sort((x, y) => String(y.date).localeCompare(String(x.date)));
-  return { type: 'chiffre', total, libelle, debut, fin, lignes };
+  const detaille = arrondi(lignes.reduce((t, l) => t + l.montant, 0));
+  return { type: 'chiffre', total, libelle, debut, fin, lignes, horsDetail: Math.max(0, arrondi(total - detaille)) };
 }
 
 /** « Relance les factures en retard » : une relance par facture échue et due, avec le message déjà relu. */
@@ -78,22 +84,63 @@ export function proposerRelances({ devis = [], paiements = [], clients = [], ent
   return { type: 'relances', relances };
 }
 
+const sansAccents = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+const motsDe = (s) => sansAccents(s).split(/[^a-z0-9]+/).filter((m) => m.length >= 3);
+const MOTS_VIDES = new Set(['madame', 'monsieur', 'mme', 'client', 'sci', 'sarl', 'eurl', 'sas', 'fils']);
+
+/** Clients dont un mot du nom (prénom, nom, entreprise) figure dans le texte tapé. */
+export function clientsNommes(texte, clients = []) {
+  const dits = new Set(motsDe(texte).filter((m) => !MOTS_VIDES.has(m)));
+  if (!dits.size) return [];
+  return clients.filter((c) => motsDe([c.prenom, c.nom, c.entreprise].filter(Boolean).join(' ')).some((m) => !MOTS_VIDES.has(m) && dits.has(m)));
+}
+
 /**
- * Brouillon de devis. Le montant dicté est appliqué tel quel ; HT ou TTC et le taux de TVA viennent de l'artisan
- * (réponses), sinon restent des questions. En franchise (micro-entreprise), pas de TVA et pas de question.
+ * Le client du devis : la réponse de l'artisan (un identifiant choisi, ou un nom tapé), sinon celui du modèle.
+ * `autre` (« Non, un autre client ») et un nom qui ne correspond à rien laissent le client à préciser.
+ */
+function resoudreClient(parametres, reponses, clients) {
+  const r = reponses.client;
+  if (r == null || r === '') return { client: clients.find((c) => c.id === parametres.client_id) || null };
+  if (r === 'autre') return { client: null, autre: true };
+  const parId = clients.find((c) => c.id === r);
+  if (parId) return { client: parId };
+  const trouves = clientsNommes(r, clients);
+  if (trouves.length === 1) return { client: trouves[0] };
+  return { client: null, cherche: String(r), trouves };
+}
+
+/** Montant tapé en réponse : « 1 200 », « 1 200 € », « 1200,50 » (lireMontant, comme pour la demande). */
+export function lireMontantSaisi(valeur) {
+  const v = String(valeur ?? '').trim();
+  if (!v) return null;
+  return lireMontant(/€|euro/i.test(v) ? v : `${v} €`);
+}
+
+/** Heures tapées en réponse : « 3h », « 3 h 30 », « 2,5 heures » (lireHeures), ou un nombre seul (« 3 »). */
+export function lireHeuresSaisies(valeur) {
+  const v = String(valeur ?? '').trim();
+  if (!v) return null;
+  const h = lireHeures(v) ?? (/^\d{1,2}(?:[.,]\d{1,2})?$/.test(v) ? Number(v.replace(',', '.')) : null);
+  return h > 0 && h <= 24 ? h : null;
+}
+
+/**
+ * Brouillon de devis. Le montant dit est appliqué tel quel ; le client, HT ou TTC et le taux de TVA viennent de
+ * l'artisan (réponses), sinon restent des questions. En franchise (micro-entreprise), pas de TVA et pas de question.
  */
 export function proposerDevis(parametres = {}, reponses = {}, { clients = [], entreprise = {} } = {}, maintenant = new Date()) {
   const franchise = estFranchiseTva(entreprise);
-  const clientId = reponses.client && reponses.client !== 'nouveau' ? reponses.client : parametres.client_id;
-  const client = reponses.client === 'nouveau' ? null : clients.find((c) => c.id === clientId) || null;
+  const { client, autre, cherche, trouves } = resoudreClient(parametres, reponses, clients);
   const ligne = { ...(parametres.lignes?.[0] || { description: 'Travaux', quantite: 1, unite: 'forfait' }) };
   if (reponses.travaux) ligne.description = reponses.travaux;
-  const montantDit = Number(String(reponses.montant ?? '').replace(/\s/g, '').replace(',', '.')) || ligne.montant || null;
+  const montantRepondu = reponses.montant != null && reponses.montant !== '';
+  const montantDit = (montantRepondu ? lireMontantSaisi(reponses.montant) : null) ?? (ligne.montant > 0 ? ligne.montant : null);
   const base = franchise ? 'HT' : (reponses.base || parametres.base || null);
   const taux = franchise ? 0 : (reponses.tva != null ? Number(reponses.tva) : null);
 
   const manque = [];
-  if (!client) manque.push(reponses.client === 'nouveau' || parametres.client_nom ? 'client_a_creer' : 'client');
+  if (!client) manque.push('client');
   if (!montantDit) manque.push('montant');
   if (!base) manque.push('base');
   if (taux == null) manque.push('tva');
@@ -107,7 +154,8 @@ export function proposerDevis(parametres = {}, reponses = {}, { clients = [], en
     statut: 'brouillon',
     client_id: client.id,
     date: jourLocal(maintenant),
-    validite: 30,
+    // Comme l'éditeur et DevisPage : la durée de validité réglée par l'entreprise
+    validite: Number(entreprise?.validiteDevis || entreprise?.validite_devis) || 30,
     tvaRate: taux,
     lignes: [{ id: 'l1', description: ligne.description, quantite: 1, unite: ligne.unite || 'forfait', prixUnitaire: prixHT, montant: prixHT }],
     total_ht: totalHT,
@@ -116,8 +164,9 @@ export function proposerDevis(parametres = {}, reponses = {}, { clients = [], en
     notes: '',
   };
   return {
-    type: 'devis', client, clientNom: client ? nomClient(client) : (parametres.client_nom || ''), ligne,
+    type: 'devis', client, clientNom: client ? nomClient(client) : '', ligne,
     montantDit, base, taux, franchise, prixHT, totalTTC: brouillon?.total_ttc ?? null, manque, brouillon,
+    recherche: { autre: !!autre, cherche: cherche || '', trouves: trouves || [], montantIllisible: montantRepondu && !montantDit ? String(reponses.montant) : '' },
   };
 }
 
@@ -125,7 +174,9 @@ export function proposerDevis(parametres = {}, reponses = {}, { clients = [], en
 export function proposerHeures(parametres = {}, reponses = {}, { chantiers = [], equipe = [] } = {}, maintenant = new Date()) {
   const chantier = chantiers.find((c) => c.id === (reponses.chantier || parametres.chantier_id)) || null;
   const employe = equipe.find((e) => e.id === (reponses.employe || parametres.employe_id)) || null;
-  const heures = Number(String(reponses.heures ?? '').replace(',', '.')) || parametres.heures || null;
+  const heuresRepondues = reponses.heures != null && reponses.heures !== '';
+  const heuresLues = heuresRepondues ? lireHeuresSaisies(reponses.heures) : null;
+  const heures = heuresLues ?? (parametres.heures > 0 && parametres.heures <= 24 ? parametres.heures : null);
   const jour = parametres.date === 'hier' ? new Date(maintenant.getFullYear(), maintenant.getMonth(), maintenant.getDate() - 1) : maintenant;
   const manque = [];
   if (!chantier) manque.push('chantier');
@@ -133,13 +184,41 @@ export function proposerHeures(parametres = {}, reponses = {}, { chantiers = [],
   if (!(heures > 0 && heures <= 24)) manque.push('heures');
   return {
     type: 'heures', chantier, employe, heures, date: jourLocal(jour), manque,
+    heuresIllisibles: heuresRepondues && !heuresLues ? String(reponses.heures) : '',
     pointage: manque.length ? null : { employeId: employe?.id || null, chantierId: chantier.id, date: jourLocal(jour), heures, approuve: false, manuel: true },
   };
 }
 
-/** Questions encore ouvertes : celles du modèle, plus le taux de TVA que l'app pose toujours elle-même. */
+/**
+ * Questions encore ouvertes : celles du modèle, plus celles que l'app pose elle-même quand une information manque
+ * encore (client, montant, heures, taux de TVA, HT ou TTC) : jamais d'impasse sans explication. En franchise, ni
+ * « HT » ni « TTC » ni taux : ces questions-là ne sont pas posées.
+ */
 export function questionsOuvertes(comprise, proposition, reponses = {}) {
-  const posees = (comprise.questions || []).filter((q) => reponses[q.id] == null || reponses[q.id] === '');
+  const franchise = proposition?.type === 'devis' && proposition.franchise;
+  const posees = (comprise.questions || [])
+    .filter((q) => reponses[q.id] == null || reponses[q.id] === '')
+    .filter((q) => !(franchise && (q.id === 'base' || q.id === 'tva')));
+  const ajouter = (q) => { if (!posees.some((x) => x.id === q.id)) posees.push(q); };
+  if (proposition?.type === 'devis' && proposition.manque.includes('client')) {
+    const { autre, cherche, trouves } = proposition.recherche || {};
+    if (trouves?.length > 1) {
+      ajouter({ id: 'client', texte: `Plusieurs clients correspondent à « ${cherche} ». Lequel ?`, choix: trouves.slice(0, 8).map((c) => ({ valeur: c.id, libelle: nomClient(c) })) });
+    } else if (cherche) {
+      ajouter({ id: 'client', texte: `Aucun de vos clients ne correspond à « ${cherche} ». Tapez un autre nom, ou créez d’abord la fiche du client (Clients), puis refaites la demande.` });
+    } else if (autre) {
+      ajouter({ id: 'client', texte: 'Pour quel client ? Tapez son nom (pour un nouveau client, créez d’abord sa fiche).' });
+    } else {
+      ajouter({ id: 'client', texte: 'Pour quel client ? Tapez son nom.' });
+    }
+  }
+  if (proposition?.type === 'devis' && proposition.manque.includes('montant')) {
+    const illisible = proposition.recherche?.montantIllisible;
+    ajouter({ id: 'montant', texte: illisible ? `Je n’ai pas lu de montant dans « ${illisible} ». Tapez un nombre, par exemple 1 200.` : 'Quel montant ? (par exemple 1 200)' });
+  }
+  if (proposition?.type === 'heures' && proposition.manque.includes('heures')) {
+    ajouter({ id: 'heures', texte: proposition.heuresIllisibles ? `Je n’ai pas lu d’heures dans « ${proposition.heuresIllisibles} ». Tapez un nombre, par exemple 3 ou 3h30.` : 'Combien d’heures ? (par exemple 3 ou 3h30)' });
+  }
   if (proposition?.type === 'devis' && proposition.manque.includes('tva') && !posees.some((q) => q.id === 'tva')) {
     posees.push({ id: 'tva', texte: 'Quel taux de TVA ?', choix: CHOIX_TVA });
   }
