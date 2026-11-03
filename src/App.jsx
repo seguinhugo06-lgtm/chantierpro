@@ -70,6 +70,8 @@ import PortalLoader from './components/portal/PortalLoader';
 const GarantiesDashboard = lazyWithRetry(() => import('./components/chantiers/GarantiesDashboard'), 'Garanties');
 const PlanPage = lazyWithRetry(() => import('./components/profil/PlanPage'), 'Plan');
 const DicteeModal = lazyWithRetry(() => import('./components/voice/DicteeModal'), 'Dictée');
+// Assistant (prototype, docs/ia/ligne-directrice.md) : visible si FONCTIONS.ia, ou en démonstration pour l'essayer
+const AssistantIa = lazyWithRetry(() => import('./components/ia/AssistantIa'), 'Assistant');
 import CGUAcceptanceModal from './components/CGUAcceptanceModal';
 import { CGU_VERSION, CGU_VERSION_DATE } from './lib/cgu';
 import { useConfirm, useToast } from './context/AppContext';
@@ -253,6 +255,8 @@ export default function App() {
   const [selectedDevis, setSelectedDevis] = useState(null);
   const [createMode, setCreateMode] = useState({ devis: false, chantier: false, client: false });
   const [showDictee, setShowDictee] = useState(false);
+  const [showAssistant, setShowAssistant] = useState(false);
+  const assistantVisible = FONCTIONS.ia || isDemo;
   const [editDevisId, setEditDevisId] = useState(null); // devis à ouvrir directement dans l'éditeur (dictée)
   // Multi-entreprise context
   const {
@@ -1137,6 +1141,13 @@ export default function App() {
         return;
       }
 
+      // Cmd/Ctrl + J : l'assistant (prototype)
+      if ((e.metaKey || e.ctrlKey) && e.key === 'j' && (FONCTIONS.ia || isDemo)) {
+        e.preventDefault();
+        setShowAssistant(true);
+        return;
+      }
+
       // Cmd/Ctrl + N for new client
       if ((e.metaKey || e.ctrlKey) && e.key === 'n' && !isInput) {
         e.preventDefault();
@@ -1785,6 +1796,17 @@ export default function App() {
 
           {/* RIGHT GROUP: Actions */}
           <div className="flex items-center gap-1 sm:gap-1.5 flex-shrink-0">
+            {assistantVisible && (
+              <button
+                onClick={() => setShowAssistant(true)}
+                className="h-11 px-3 sm:px-3.5 rounded-full flex items-center gap-1.5 font-semibold text-sm transition-transform active:scale-95 bg-accent text-sur-accent"
+                title="Demander — dites ou tapez ce que vous voulez faire (Ctrl+J)"
+                aria-label="Demander à l’assistant"
+              >
+                <Mic size={18} aria-hidden="true" />
+                <span>Demander</span>
+              </button>
+            )}
             {FONCTIONS.ia && (<>
             {/* Dictée vocale — l'atout malin, accessible depuis n'importe quelle page */}
             <button
@@ -2102,6 +2124,19 @@ export default function App() {
 
       {/* Onboarding Modal for first-time users */}
       {showOnboarding && <OnboardingModal setShowOnboarding={setShowOnboarding} isDark={isDark} couleur={couleur} />}
+
+      {/* Assistant (prototype) — une seule entrée, voix ou clavier ; rien n'est enregistré sans validation */}
+      {assistantVisible && showAssistant && (
+        <Suspense fallback={null}>
+          <AssistantIa
+            isOpen={showAssistant}
+            onClose={() => setShowAssistant(false)}
+            page={page}
+            entreprise={entreprise}
+            ouvrirDevis={(d) => { setSelectedDevis(d); setPage('devis'); }}
+          />
+        </Suspense>
+      )}
 
       {/* Dictée vocale — client + chantier + devis en une seule prise de parole */}
       {FONCTIONS.ia && showDictee && (
