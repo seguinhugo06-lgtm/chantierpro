@@ -114,7 +114,10 @@ describe('documents imprimés en franchise', () => {
   it('blocs communs : colonnes « Prix unitaire / Total », totaux sans « Total HT »', () => {
     expect(libellesColonnesPrix(true)).toEqual({ pu: 'Prix unitaire', total: 'Total' });
     expect(libellesColonnesPrix(false)).toEqual({ pu: 'PU HT', total: 'Total HT' });
-    expect(texte(lignesTotauxHtml(doc, { isMicro: true }))).toBe('Net à payer 1 200,00 €');
+    // Arrêté n° 83-50/A du 3 oct. 1983, art. 3 ; arrêté du 24 janv. 2017, art. 4, I (décision d'Hugo du 3 nov. 2026)
+    expect(texte(lignesTotauxHtml(doc, { isMicro: true }))).toBe('Net à payer (hors taxes et toutes taxes comprises) 1 200,00 €');
+    expect(texte(lignesTotauxHtml({ ...doc, type: 'devis' }, { isMicro: true }))).toBe('Total (hors taxes et toutes taxes comprises) 1 200,00 €');
+    expect(texte(lignesTotauxHtml({ ...doc, facture_type: 'avoir', total_ht: -100, total_ttc: -100, lignes: [{ ...doc.lignes[0], prixUnitaire: -100 }] }, { isMicro: true }))).not.toMatch(/hors taxes/);
     expect(texte(lignesTotauxHtml({ ...doc, remise: 10 }, { isMicro: true }))).not.toMatch(HT_OU_TTC);
     expect(texte(lignesTotauxHtml({ ...doc, remise: 10 }, { isMicro: true }))).toContain('Total avant remise');
     expect(texte(lignesTotauxHtml(doc, { isMicro: false }))).toContain('Total HT');
@@ -125,9 +128,14 @@ describe('documents imprimés en franchise', () => {
     expect(micro).not.toMatch(HT_OU_TTC);
     // CGI art. 293 E, II : la mention mot pour mot, la même en en-tête et sous les totaux (juriste-btp, 3 nov. 2026)
     expect(micro.match(/TVA non applicable, article 293 B du CGI/g)).toHaveLength(2);
+    // Colonne « TVA » retirée en franchise (décision d'Hugo du 3 nov. 2026) ; la mention vaut pour toutes les lignes
+    const brut = buildDevisHtml({ doc, client, entreprise: MICRO, couleur: '#12336F' });
+    expect(brut).not.toMatch(/<th[^>]*>TVA<\/th>/);
+    expect(micro).toContain('Prix unitaire Total Remplacement tableau électrique 1 u 1 200,00 € 1 200,00 €');
     expect(micro).not.toMatch(/Code Général des Impôts|art\. 293 B/);
     const sarl = texte(buildDevisHtml({ doc: { ...doc, lignes: [{ ...doc.lignes[0], tva: 20 }], tva: 240, total_ttc: 1440 }, client, entreprise: SARL, couleur: '#12336F' }));
     expect(sarl).toContain('PU HT');
+    expect(buildDevisHtml({ doc: { ...doc, lignes: [{ ...doc.lignes[0], tva: 20 }], tva: 240, total_ttc: 1440 }, client, entreprise: SARL, couleur: '#12336F' })).toMatch(/<th[^>]*>TVA<\/th>/);
     expect(sarl).toContain('Total TTC');
   });
 
@@ -137,11 +145,20 @@ describe('documents imprimés en franchise', () => {
     const micro = texte(buildSituationFactureHtml({ situation, parentDevis: devisSource, client, chantier, entreprise: MICRO }));
     expect(micro).not.toMatch(HT_OU_TTC);
     expect(micro).not.toMatch(/TVA 10/);
-    expect(micro).toContain('NET À PAYER 500,00 €');
+    expect(micro).toContain('NET À PAYER (hors taxes et toutes taxes comprises) 500,00 €');
     expect(micro).toContain('TVA non applicable, article 293 B du CGI');
     const sarl = texte(buildSituationFactureHtml({ situation, parentDevis: devisSource, client, chantier, entreprise: SARL }));
     expect(sarl).toContain('Montant situation TTC');
     expect(sarl).toContain('NET À PAYER 550,00 €');
+  });
+
+  it('facture de situation validée mais pas facturée : sans TVA ; facturée avec TVA : telle quelle (décision du 3 nov. 2026)', () => {
+    const lignes = [{ description: 'Tableau', quantite: 1, unite: 'u', prixUnitaire: 1000, tva: 10, cumulActuel: 50, cumulPrecedent: 0 }];
+    const imprime = (statut) => texte(buildSituationFactureHtml({ situation: { numero: 1, statut, retenueGarantiePct: 0, lignes }, parentDevis: devisSource, client, chantier, entreprise: MICRO }));
+    expect(imprime('validee')).toContain('TVA non applicable, article 293 B du CGI');
+    expect(imprime('validee')).not.toMatch(/TVA 10/);
+    expect(imprime('facturee')).toMatch(/TVA 10/);
+    expect(imprime('payee')).toMatch(/TVA 10/);
   });
 
   it('facture de situation : retenue de garantie selon la loi n° 71-584 (art. 1er et 2)', () => {

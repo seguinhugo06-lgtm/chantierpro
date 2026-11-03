@@ -699,6 +699,9 @@ module.exports = [
           verifier(!ht, `${forme} : ni « HT » ni « TTC » dans l'aperçu imprimé (${ht ? ht[0] : ''})`);
           verifier(/Prix unitaire/.test(imprime), `${forme} : colonne « Prix unitaire »`);
           verifier(/TVA non applicable, article 293 B du CGI/.test(imprime), `${forme} : la mention 293 B reste`);
+          // Décisions d'Hugo du 3 nov. 2026 : formule littérale des arrêtés de 1983 et 2017, colonne « TVA » retirée
+          verifier(/Total \(hors taxes et toutes taxes comprises\)/.test(imprime), `${forme} : « Total (hors taxes et toutes taxes comprises) »`);
+          verifier(/Prix unitaire Total/.test(imprime), `${forme} : pas de colonne « TVA » entre « Prix unitaire » et « Total »`);
         } else {
           verifier(/PU HT/.test(imprime) && /Total TTC/.test(imprime), `${forme} : « PU HT » et « Total TTC » restent hors franchise`);
         }

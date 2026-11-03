@@ -129,10 +129,14 @@ export function lignesTotauxHtml(doc, { isMicro = false, tauxDefaut = 10 } = {})
       html.push(ligne(`TVA ${pourcent(doc?.tvaRate ?? doc?.tva_rate ?? tauxDefaut)}`, euros(doc?.tva ?? 0)));
     }
   }
-  // Franchise en base : pas de « TTC » (aucune TVA facturée), le total est net à payer
+  // Franchise en base : aucune TVA facturée, les deux montants sont égaux. Sur les pièces imprimées, la formule
+  // littérale des textes de la consommation : « La somme totale à payer hors taxes et toutes taxes comprises »
+  // (arrêté n° 83-50/A du 3 oct. 1983, art. 3) ; « la somme globale à payer hors taxes et toutes taxes comprises »
+  // (arrêté du 24 janv. 2017, art. 4, I). La mention 293 B, juste en dessous, précise le taux. Décision d'Hugo du
+  // 3 nov. 2026 (avis juriste-btp du même jour). L'avoir ne change pas. Les écrans restent sans « HT » ni « TTC ».
   const libelleTotal = !isMicro ? 'Total TTC'
     : doc?.facture_type === 'avoir' ? 'Total de l’avoir'
-      : doc?.type === 'facture' ? 'Net à payer' : 'Total';
+      : doc?.type === 'facture' ? 'Net à payer (hors taxes et toutes taxes comprises)' : 'Total (hors taxes et toutes taxes comprises)';
   html.push(`<div class="row total"><span>${libelleTotal}</span><span>${euros(t.totalTTC)}</span></div>`);
   return html.join('\n    ');
 }

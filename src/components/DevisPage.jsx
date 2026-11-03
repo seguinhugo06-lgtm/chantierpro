@@ -1433,7 +1433,7 @@ export default function DevisPage({ clients, addClient, devis, setDevis, chantie
         <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${quantite(l.quantite)}</td>
         <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${echap(l.unite || 'unité')}</td>
         <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:right">${formatMoney(parseFloat(l.prixUnitaire||l.prix_unitaire||0))}</td>
-        <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${isMicro ? '-' : pourcent(l.tva !== undefined ? l.tva : tauxTvaDocument(doc, entreprise))}</td>
+        ${isMicro ? '' : `<td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${pourcent(l.tva !== undefined ? l.tva : tauxTvaDocument(doc, entreprise))}</td>`}
         <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:right;font-weight:600;${getLineTotal(l)<0?'color:#dc2626;':''}">${formatMoney(getLineTotal(l))}</td>
       </tr>
     `;
@@ -1446,8 +1446,8 @@ export default function DevisPage({ clients, addClient, devis, setDevis, chantie
     const lignesHTML = _hasLots
       ? _lotSections.map(s => {
           const sub = s.lignes.reduce((sum, l) => sum + getLineTotal(l), 0);
-          const header = s.titre ? `<tr><td colspan="6" style="padding:14px 8px 6px;font-weight:700;font-size:10.5pt;color:${docColor};border-bottom:2px solid ${docColor}">${echap(s.titre)}</td></tr>` : '';
-          const subtotal = s.titre ? `<tr><td colspan="5" style="padding:6px 8px;text-align:right;font-size:8.5pt;color:#64748b;font-style:italic">Sous-total ${echap(s.titre)}</td><td style="padding:6px 8px;text-align:right;font-weight:700;font-size:9pt">${formatMoney(sub)}</td></tr>` : '';
+          const header = s.titre ? `<tr><td colspan="${isMicro ? 5 : 6}" style="padding:14px 8px 6px;font-weight:700;font-size:10.5pt;color:${docColor};border-bottom:2px solid ${docColor}">${echap(s.titre)}</td></tr>` : '';
+          const subtotal = s.titre ? `<tr><td colspan="${isMicro ? 4 : 5}" style="padding:6px 8px;text-align:right;font-size:8.5pt;color:#64748b;font-style:italic">Sous-total ${echap(s.titre)}</td><td style="padding:6px 8px;text-align:right;font-weight:700;font-size:9pt">${formatMoney(sub)}</td></tr>` : '';
           return header + s.lignes.map(renderRow).join('') + subtotal;
         }).join('')
       : filterValidLignes(doc.lignes).map(renderRow).join('');
@@ -1566,11 +1566,12 @@ export default function DevisPage({ clients, addClient, devis, setDevis, chantie
   <table aria-label="Détail des prestations du ${isAvoirDoc ? 'avoir' : 'devis'}">
     <thead>
       <tr>
-        <th scope="col" style="width:40%">Description</th>
+        <!-- En franchise (art. 293 B du CGI) : pas de colonne « TVA », la mention vaut pour toutes les lignes (décision d'Hugo du 3 nov. 2026) -->
+        <th scope="col" style="width:${isMicro ? 50 : 40}%">Description</th>
         <th scope="col" style="width:10%">Qté</th>
         <th scope="col" style="width:10%">Unité</th>
         <th scope="col" style="width:15%">${libellesColonnesPrix(isMicro).pu}</th>
-        <th scope="col" style="width:10%">TVA</th>
+        ${isMicro ? '' : '<th scope="col" style="width:10%">TVA</th>'}
         <th scope="col" style="width:15%">${libellesColonnesPrix(isMicro).total}</th>
       </tr>
     </thead>

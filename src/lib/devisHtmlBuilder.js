@@ -145,7 +145,7 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mod
       <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${quantite(l.quantite)}</td>
       <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${h(l.unite || 'unité')}</td>
       <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:right">${euros(pu)}</td>
-      <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${isMicro ? '-' : pourcent(l.tva !== undefined ? l.tva : tauxTvaDocument(doc, entreprise))}</td>
+      ${isMicro ? '' : `<td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${pourcent(l.tva !== undefined ? l.tva : tauxTvaDocument(doc, entreprise))}</td>`}
       <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:right;font-weight:600;${total < 0 ? 'color:#dc2626;' : ''}">${euros(total)}</td>
     </tr>`;
   };
@@ -161,11 +161,11 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mod
     ? lotSections.map(s => {
         const sub = s.lignes.reduce((sum, l) => sum + getLineTotal(l), 0);
         const header = s.titre
-          ? `<tr><td colspan="6" style="padding:14px 8px 6px;font-weight:700;font-size:10.5pt;color:${color};border-bottom:2px solid ${color}">${h(s.titre)}</td></tr>`
+          ? `<tr><td colspan="${isMicro ? 5 : 6}" style="padding:14px 8px 6px;font-weight:700;font-size:10.5pt;color:${color};border-bottom:2px solid ${color}">${h(s.titre)}</td></tr>`
           : '';
         const rows = s.lignes.map(renderRow).join('');
         const subtotal = s.titre
-          ? `<tr><td colspan="5" style="padding:6px 8px;text-align:right;font-size:8.5pt;color:#64748b;font-style:italic">Sous-total ${h(s.titre)}</td><td style="padding:6px 8px;text-align:right;font-weight:700;font-size:9pt">${euros(sub)}</td></tr>`
+          ? `<tr><td colspan="${isMicro ? 4 : 5}" style="padding:6px 8px;text-align:right;font-size:8.5pt;color:#64748b;font-style:italic">Sous-total ${h(s.titre)}</td><td style="padding:6px 8px;text-align:right;font-weight:700;font-size:9pt">${euros(sub)}</td></tr>`
           : '';
         return header + rows + subtotal;
       }).join('')
@@ -300,11 +300,12 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mod
   <table>
     <thead>
       <tr>
-        <th style="width:40%">Description</th>
+        <!-- En franchise (art. 293 B du CGI) : pas de colonne « TVA », la mention vaut pour toutes les lignes (décision d'Hugo du 3 nov. 2026) -->
+        <th style="width:${isMicro ? 50 : 40}%">Description</th>
         <th style="width:10%">Qté</th>
         <th style="width:10%">Unité</th>
         <th style="width:15%">${libellesColonnesPrix(isMicro).pu}</th>
-        <th style="width:10%">TVA</th>
+        ${isMicro ? '' : '<th style="width:10%">TVA</th>'}
         <th style="width:15%">${libellesColonnesPrix(isMicro).total}</th>
       </tr>
     </thead>
@@ -532,9 +533,10 @@ export function buildSituationFactureHtml({ situation, parentDevis, client, chan
   const defaultTvaRate = premierTaux(situation.tvaRate, parentDevis?.tvaRate, parentDevis?.tva_rate, 10);
   const tauxSaisi = (l) => (l.tva !== undefined ? parseFloat(l.tva) : defaultTvaRate);
 
-  // Franchise en base de TVA (art. 293 B du CGI), même règle que les autres pièces (franchiseAppliquee) : une situation
-  // en brouillon s'imprime sans TVA ; au-delà (validée, facturée), une situation portant de la TVA se réimprime telle
-  // quelle (une facture émise se conserve telle quelle et se corrige par un document rectificatif : CGI art. 289, I-4, I-5 et V ; la TVA qui y figure est due : art. 283, 3).
+  // Franchise en base de TVA (art. 293 B du CGI) : seule une situation facturée ou payée correspond à une facture émise ;
+  // si elle porte de la TVA, elle se réimprime telle quelle (CGI art. 289, I-4 et V ; art. 283, 3). Une situation en
+  // brouillon ou validée n'a pas de numéro de facture : elle s'imprime sans TVA, comme la facture qui en sera tirée
+  // (CGI art. 293 E, II). Décision d'Hugo du 3 nov. 2026 (avis juriste-btp du même jour).
   // Avant (relevé du 3 nov. 2026) : « PU HT », « TVA 10 % », « Montant situation TTC » et pas de mention 293 B pour
   // une micro-entreprise.
   const tvaSaisie = lignes.reduce((s, l) => {
@@ -542,7 +544,7 @@ export function buildSituationFactureHtml({ situation, parentDevis, client, chan
     return s + (marche * ((l.cumulActuel || 0) - (l.cumulPrecedent || 0)) / 100) * (tauxSaisi(l) / 100);
   }, 0);
   const isMicro = franchiseAppliquee(
-    { type: 'facture', statut: situation.statut === 'brouillon' ? 'brouillon' : 'envoye', tva: tvaSaisie },
+    { type: 'facture', statut: (situation.statut === 'facturee' || situation.statut === 'payee') ? 'envoye' : 'brouillon', tva: tvaSaisie },
     entreprise,
   );
   const ht = isMicro ? '' : ' HT';
@@ -723,7 +725,7 @@ export function buildSituationFactureHtml({ situation, parentDevis, client, chan
     ${isMicro ? '' : `<div class="totals-row sub"><span><strong>Montant situation TTC</strong></span><span><strong>${euros(totalSituationTTC)}</strong></span></div>`}
     ${retenueGarantiePct > 0 ? `<div class="totals-row deduction"><span>Retenue de garantie (${pourcent(retenueGarantiePct)})</span><span>- ${euros(retenueGarantie)}</span></div>` : ''}
     ${acompteVerse > 0 ? `<div class="totals-row deduction"><span>Acomptes déjà versés</span><span>- ${euros(acompteVerse)}</span></div>` : ''}
-    <div class="totals-row grand-total"><span>NET À PAYER</span><span>${euros(netAPayer)}</span></div>
+    <div class="totals-row grand-total"><span>NET À PAYER${isMicro ? ' (hors taxes et toutes taxes comprises)' : ''}</span><span>${euros(netAPayer)}</span></div>
   </div>
   ${isMicro ? '<div class="micro-mention">TVA non applicable, article 293 B du CGI</div>' : ''}
 
