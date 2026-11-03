@@ -2,11 +2,18 @@
 // Ce que l'on vérifie : un geste ouvre l'assistant ; chaque demande donne un résultat prêt à valider ; ce que
 // l'assistant ne sait pas (client, HT/TTC, TVA, personne) est demandé ; rien n'est enregistré avant la validation ;
 // la validation enregistre vraiment (le brouillon et le pointage apparaissent dans les données).
+// Visibilité (Q-ia-demo, option « cache ») : seulement sur /?demo=true&apercu=ia ; contre-essai : absent avec
+// /?demo=true seul (le lien « Voir la démo » du site) et en mode réel simulé.
+
+const { creerBase, UID } = require('../lib/fauxSupabase.cjs');
 
 const DLG = '[role="dialog"]';
+const BOUTON = 'button[aria-label="Demander (démonstration)"]';
+const APERCU = '/?demo=true&apercu=ia';
+const JOUR = '2026-11-03';
 
 async function ouvrirAssistant(page, attendre) {
-  await page.evaluate(() => document.querySelector('button[aria-label="Demander à l’assistant"]')?.click());
+  await page.evaluate((b) => document.querySelector(b)?.click(), BOUTON);
   await attendre(1200);
   return page.evaluate((d) => !!document.querySelector(`${d} [data-ui="assistant"]`), DLG);
 }
@@ -35,20 +42,22 @@ const boutonActif = (page, debut) => page.evaluate((d, t) => {
   const b = [...document.querySelectorAll(`${d} button`)].find((x) => x.innerText.trim().startsWith(t));
   return b ? !b.disabled : null;
 }, DLG, debut);
-const brouillons = (page) => page.evaluate(() => {
-  // Les données de démo vivent en mémoire de l'app : on compte les brouillons affichés sur la liste des devis
-  return document.body.innerText;
-});
+const boutonPresent = (page) => page.evaluate((b) => !!document.querySelector(b), BOUTON);
+const assistantOuvert = (page) => page.evaluate(() => !!document.querySelector('[data-ui="assistant"]'));
+async function ctrlJ(page, attendre) {
+  await page.keyboard.down('Control'); await page.keyboard.press('j'); await page.keyboard.up('Control');
+  await attendre(1200);
+}
 
 module.exports = [
   {
     nom: 'assistant : les quatre demandes du prototype, de la demande à la validation (375 px)',
     async executer({ ouvrir, attendre, verifier }) {
-      const { page } = await ouvrir({ page: 'dashboard', largeur: 375 });
-      verifier(await ouvrirAssistant(page, attendre), 'le bouton « Demander » de l’en-tête ouvre l’assistant');
+      const { page } = await ouvrir({ page: 'dashboard', largeur: 375, chemin: APERCU, jour: JOUR });
+      verifier(await ouvrirAssistant(page, attendre), 'sur /?demo=true&apercu=ia, le bouton « Demander » de l’en-tête ouvre l’assistant');
       let t = await texteDialogue(page);
       verifier(/rien n’est envoyé à vos clients sans votre accord/.test(t), 'l’assistant dit qu’il ne fait rien sans validation');
-      verifier(/Démonstration : réponses simulées/.test(t), 'la démonstration dit que les réponses sont simulées');
+      verifier(/Démonstration d’une fonction en préparation, pas encore disponible dans Mallettico : réponses simulées/.test(t), 'la démonstration dit que la fonction n’existe pas encore et que les réponses sont simulées');
 
       // 1. Devis : client confirmé, HT/TTC et TVA demandés, brouillon seulement après les réponses
       await demander(page, attendre, 'Devis pour Mme Martin, remplacement du tableau, 1 200 €');
@@ -81,8 +90,10 @@ module.exports = [
 
 
       // 3. Relances : factures en retard, message visible, aucun envoi avant validation.
-      // Au 3 nov. 2026, les données de démo n'ont aucune facture échue (l'assistant le dit) : on avance l'horloge
-      // de la page de 40 jours, le temps de cette demande, pour qu'une facture partiellement payée soit en retard.
+      // La page part du 3 nov. 2026 (ouvrir({ jour })), et les données de démo se calent sur ce jour : aucune facture
+      // n'y est échue (l'assistant le dit). On avance donc l'horloge de 40 jours APRÈS le chargement, le temps de cette
+      // demande, pour qu'une facture partiellement payée soit en retard ; le point de départ, lui, ne dépend plus du
+      // jour où le parcours tourne.
       await page.evaluate(() => {
         const D = Date; const decal = 40 * 86400000;
         window.__DateOrigine = D;
@@ -96,7 +107,9 @@ module.exports = [
       await cliquerDans(page, attendre, 'Voir le message', { partiel: true });
       t = await texteDialogue(page);
       verifier(/sauf erreur de ma part, la facture/.test(t), 'le message de relance (texte relu de l’app) est visible avant l’envoi');
-      await cliquerDans(page, attendre, 'Envoyer', { partiel: true });
+      t = await texteDialogue(page);
+      verifier(/Simuler l’envoi de \d+ relances?/.test(t) && !/Envoyer \d+ relance/.test(t), 'le bouton dit « Simuler l’envoi », jamais « Envoyer N relances »');
+      await cliquerDans(page, attendre, 'Simuler l’envoi', { partiel: true });
       t = await texteDialogue(page);
       verifier(/validées?\. Démonstration : aucun message n’est parti/.test(t), 'la validation est confirmée, et la démo dit que rien n’est parti');
       await cliquerDans(page, attendre, 'Autre demande');
@@ -121,16 +134,17 @@ module.exports = [
       await attendre(600);
       await page.evaluate(() => [...document.querySelectorAll('nav button')].find((b) => b.innerText.trim() === 'Devis')?.click());
       await attendre(1500);
-      const liste = await brouillons(page);
-      verifier(liste.includes('Martin'), 'la liste des devis montre le brouillon du client Martin');
+      // Le numéro relevé à l'enregistrement (nouveau : il n'existait pas avant) doit figurer dans la liste ; chercher
+      // « Martin » ne prouvait rien (la démo a déjà un devis de Jean Martin et un chantier « Salle de bain Martin »).
+      const liste = await page.evaluate(() => document.body.innerText);
+      verifier(!!numero && liste.includes(numero), `la liste des devis montre le brouillon ${numero}`);
     },
   },
   {
     nom: 'assistant : au clavier seul, Ctrl+J ouvre, Entrée prépare, Échap ferme (1440 px)',
     async executer({ ouvrir, attendre, verifier }) {
-      const { page } = await ouvrir({ page: 'dashboard', largeur: 1440 });
-      await page.keyboard.down('Control'); await page.keyboard.press('j'); await page.keyboard.up('Control');
-      await attendre(1200);
+      const { page } = await ouvrir({ page: 'dashboard', largeur: 1440, chemin: APERCU, jour: JOUR });
+      await ctrlJ(page, attendre);
       const focus = await page.evaluate(() => document.activeElement?.closest('[role="dialog"]') !== null);
       verifier(focus, 'Ctrl+J ouvre l’assistant et le focus y est');
       await page.focus('#assistant-demande');
@@ -142,6 +156,32 @@ module.exports = [
       await page.keyboard.press('Escape');
       await attendre(600);
       verifier(!(await page.evaluate(() => !!document.querySelector('[data-ui="assistant"]'))), 'Échap ferme l’assistant');
+    },
+  },
+  {
+    nom: 'assistant : contre-essai, absent avec /?demo=true seul (lien « Voir la démo » du site), ni bouton ni Ctrl+J (375 px)',
+    async executer({ ouvrir, attendre, verifier }) {
+      const { page } = await ouvrir({ page: 'dashboard', largeur: 375, jour: JOUR });
+      const accueil = await page.evaluate(() => document.body.innerText);
+      verifier(/Nouveau devis|Bonjour|Accueil/.test(accueil), 'la démo est bien chargée');
+      verifier(!(await boutonPresent(page)), 'aucun bouton « Demander » dans l’en-tête');
+      verifier(!/Assistant d’intelligence artificielle|\bDemander\b/.test(accueil), 'ni « Demander » ni « Assistant d’intelligence artificielle » à l’écran');
+      await ctrlJ(page, attendre);
+      verifier(!(await assistantOuvert(page)), 'Ctrl+J n’ouvre rien');
+    },
+  },
+  {
+    nom: 'assistant : contre-essai, absent en mode réel simulé, même avec ?apercu=ia (1440 px)',
+    reel: true,
+    async executer({ ouvrir, attendre, verifier, sessionFactice }) {
+      const base = creerBase({});
+      const { page } = await ouvrir({ reel: true, largeur: 1440, page: 'dashboard', chemin: '/?apercu=ia', session: sessionFactice(UID), supabase: base.reponse });
+      await attendre(2500);
+      const ecran = await page.evaluate(() => document.body.innerText);
+      verifier(/Nouveau devis|Accueil|Bonjour/.test(ecran), `le compte réel simulé est ouvert (« ${ecran.slice(0, 80).replace(/\s+/g, ' ')} »)`);
+      verifier(!(await boutonPresent(page)), 'aucun bouton « Demander » pour un vrai compte');
+      await ctrlJ(page, attendre);
+      verifier(!(await assistantOuvert(page)), 'Ctrl+J n’ouvre rien pour un vrai compte');
     },
   },
 ];

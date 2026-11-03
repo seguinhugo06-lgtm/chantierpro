@@ -28,6 +28,11 @@
  * établissement, « système de caisse » à voir avec le comptable) ; virement avec IBAN et « Paiement reçu »
  * suffisent. Les liens déjà envoyés restent valables (page /pay/…).
  *
+ * assistant — le prototype « Demander » (src/components/ia/, docs/ia/ligne-directrice.md) : bouton de l'en-tête, Ctrl+J
+ * et fenêtre. Éteint le 3 nov. 2026 et SÉPARÉ de `ia` : rallumer la dictée ne doit pas ouvrir l'assistant, qui n'a ni
+ * écran d'accord, ni fonction Edge, ni textes légaux. Visible seulement en démonstration avec `?apercu=ia`
+ * (src/lib/ia/visibilite.js, décision Q-ia-demo). À rallumer avec le lot 1 de la ligne directrice.
+ *
  * sousTraitantsChantier — l'onglet « Sous-traitants » de la fiche chantier. Éteint le 26 oct. 2026 (relecture de la
  * Task 6) : il ne fait que lister les sous-traitants de l'équipe, sans lien avec le chantier, et dit lui-même qu'on ne peut
  * pas les y affecter. À rallumer avec l'affectation d'un sous-traitant à un chantier (décision d'Hugo).
@@ -39,6 +44,7 @@ export const FONCTIONS = Object.freeze({
   receptionChantier: false,
   paiementEnLigne: false,
   sousTraitantsChantier: false,
+  assistant: false,
 });
 
 export default FONCTIONS;

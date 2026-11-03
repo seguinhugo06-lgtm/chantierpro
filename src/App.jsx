@@ -70,7 +70,7 @@ import PortalLoader from './components/portal/PortalLoader';
 const GarantiesDashboard = lazyWithRetry(() => import('./components/chantiers/GarantiesDashboard'), 'Garanties');
 const PlanPage = lazyWithRetry(() => import('./components/profil/PlanPage'), 'Plan');
 const DicteeModal = lazyWithRetry(() => import('./components/voice/DicteeModal'), 'Dictée');
-// Assistant (prototype, docs/ia/ligne-directrice.md) : visible si FONCTIONS.ia, ou en démonstration pour l'essayer
+// Assistant (prototype, docs/ia/ligne-directrice.md) : visible si FONCTIONS.assistant (éteint), ou en démo avec ?apercu=ia
 const AssistantIa = lazyWithRetry(() => import('./components/ia/AssistantIa'), 'Assistant');
 import CGUAcceptanceModal from './components/CGUAcceptanceModal';
 import { CGU_VERSION, CGU_VERSION_DATE } from './lib/cgu';
@@ -97,6 +97,7 @@ import EntrepriseSwitcher from './components/ui/EntrepriseSwitcher';
 import BandeauDonneesFictives from './components/ui/BandeauDonneesFictives';
 import { estDonneesFictives } from './lib/donneesFictives';
 import { FONCTIONS } from './lib/fonctions';
+import { assistantVisible as estAssistantVisible } from './lib/ia/visibilite';
 import { estNatif } from './lib/natif';
 import { appliquerTheme, COULEUR_DOCUMENTS_DEFAUT } from './lib/theme';
 import { dateEcheance, joursDeRetard, resteAPayer } from './lib/paiementsFacture';
@@ -256,7 +257,9 @@ export default function App() {
   const [createMode, setCreateMode] = useState({ devis: false, chantier: false, client: false });
   const [showDictee, setShowDictee] = useState(false);
   const [showAssistant, setShowAssistant] = useState(false);
-  const assistantVisible = FONCTIONS.ia || isDemo;
+  // Lu une fois à l'ouverture : l'adresse peut ensuite être réécrite (historique), le choix reste le même.
+  const [assistantVisible] = useState(() => estAssistantVisible({ demo: isDemo, recherche: window.location.search }));
+  const assistantVisibleRef = useRef(assistantVisible);
   const [editDevisId, setEditDevisId] = useState(null); // devis à ouvrir directement dans l'éditeur (dictée)
   // Multi-entreprise context
   const {
@@ -1142,7 +1145,7 @@ export default function App() {
       }
 
       // Cmd/Ctrl + J : l'assistant (prototype)
-      if ((e.metaKey || e.ctrlKey) && e.key === 'j' && (FONCTIONS.ia || isDemo)) {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'j' && assistantVisibleRef.current) {
         e.preventDefault();
         setShowAssistant(true);
         return;
@@ -1799,9 +1802,9 @@ export default function App() {
             {assistantVisible && (
               <button
                 onClick={() => setShowAssistant(true)}
-                className="h-11 px-3 sm:px-3.5 rounded-full flex items-center gap-1.5 font-semibold text-sm transition-transform active:scale-95 bg-accent text-sur-accent"
+                className="h-11 px-3 sm:px-3.5 rounded-full flex items-center gap-1.5 font-semibold text-sm transition-transform active:scale-95 border border-bord-fort bg-surface text-encre"
                 title="Demander — dites ou tapez ce que vous voulez faire (Ctrl+J)"
-                aria-label="Demander à l’assistant"
+                aria-label="Demander (démonstration)"
               >
                 <Mic size={18} aria-hidden="true" />
                 <span>Demander</span>
@@ -2133,6 +2136,7 @@ export default function App() {
             onClose={() => setShowAssistant(false)}
             page={page}
             entreprise={entreprise}
+            modeDiscret={modeDiscret}
             ouvrirDevis={(d) => { setSelectedDevis(d); setPage('devis'); }}
           />
         </Suspense>
