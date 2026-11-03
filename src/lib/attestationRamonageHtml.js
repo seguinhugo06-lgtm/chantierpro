@@ -18,7 +18,7 @@ import { dateLue } from './dates';
 import { adresseComplete } from './adresseEntreprise';
 import { PAGE_CSS } from './devisHtmlBuilder';
 import {
-  TYPES_APPAREIL, COMBUSTIBLES, CONDUITS, METHODES, QUALITES, CONSTATS, CONSEILS, libelleDe, estFoyerFermeSolide, jourDe,
+  TYPES_APPAREIL, COMBUSTIBLES, CONDUITS, METHODES, QUALITES, CONSTATS, CONSEILS, libelleDe, estFoyerFermeSolide, jourDe, conseilsImprimes,
 } from './ramonage';
 
 const jourFr = (jour) => (jour ? dateLue(String(jour).slice(0, 10)).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : '');
@@ -90,7 +90,8 @@ export function buildAttestationRamonageHtml({ ramonage: r, entreprise, preceden
     .join('');
   const conseilsChoisis = (r.conseils?.choix || []).map((cle) => libelleDe(CONSEILS, cle)).filter(Boolean);
   const conseilsTexte = String(r.conseils?.texte || '').trim();
-  const aDesConseils = conseilsChoisis.length > 0 || conseilsTexte;
+  // Le choix « imprimer les conseils » est celui enregistré avec l'attestation (src/lib/ramonage.js, conseilsImprimes)
+  const aDesConseils = conseilsImprimes(r) && (conseilsChoisis.length > 0 || conseilsTexte);
   const signature = signatureValide(r.signature)
     ? `<img src="${h(r.signature)}" alt="Signature" style="max-height:70px;max-width:220px;display:block;margin-top:6px" />`
     : '';

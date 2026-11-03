@@ -7,7 +7,7 @@ import Champ from '../ui/Champ';
 import {
   TYPES_APPAREIL, COMBUSTIBLES, CONDUITS, METHODES, QUALITES, RACCORDEMENTS, VACUITES, CONSTATS, CONSEILS,
   AIDE_FREQUENCE, AIDE_CHIMIQUE, manquants, nouveauBrouillon, prochainParDefaut, horsDelaiDouzeMois, nbDansAnnee,
-  conseilsExiges, ramonagePrecedent, jourDe, emetteurDe,
+  conseilsExiges, conseilsImprimes, conseilsAEnregistrer, ramonagePrecedent, jourDe, emetteurDe,
 } from '../../lib/ramonage';
 import { buildAttestationRamonageHtml } from '../../lib/attestationRamonageHtml';
 import { useConfirm } from '../../context/AppContext';
@@ -151,7 +151,7 @@ export default function SaisieRamonage({ client, precedent = null, remplace = nu
   const changerIntervenant = (nom) => setForm((f) => ({ ...f, intervenant_nom: nom, ...(signatureReprise ? { signature: signaturePour(nom) } : {}) }));
   const nbCalcule = nbDansAnnee(ramonages, form.appareil_ref, form.realise_le, remplace?.id);
   const nb = nbSaisi ?? (remplace ? remplace.nb_dans_annee : nbCalcule);
-  const donnees = { ...form, nb_dans_annee: nb, emetteur: emetteurDe(entreprise) };
+  const donnees = { ...form, conseils: conseilsAEnregistrer(form), nb_dans_annee: nb, emetteur: emetteurDe(entreprise) };
   const erreurDe = (champ) => erreurs.find((e) => e.champ === champ)?.message;
 
   useEffect(() => { if (initial.current === null) initial.current = JSON.stringify(form); }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -204,6 +204,7 @@ export default function SaisieRamonage({ client, precedent = null, remplace = nu
 
   const solide = conseilsExiges(form);
   const choixConseils = form.conseils?.choix || [];
+  const imprimerConseils = conseilsImprimes(form);
 
   return createPortal(
     <div role="dialog" aria-modal="true" aria-labelledby="saisie-ramonage-titre" className="fixed inset-0 z-[70] bg-fond flex flex-col">
@@ -309,6 +310,16 @@ export default function SaisieRamonage({ client, precedent = null, remplace = nu
               {solide && (
                 <fieldset id="ramonage-conseils">
                   <legend className="block mb-1.5 text-sm font-medium text-encre-2">Conseils donnés au client (article R. 1331-77 du code de la santé publique)</legend>
+                  {/* Facultatifs sur l'attestation (retour des ramoneurs, nov. 2026) ; le choix est enregistré avec elle */}
+                  <label className="flex items-center gap-3 min-h-[44px] cursor-pointer">
+                    <input id="ramonage-conseils-imprimes" type="checkbox" className="h-5 w-5 accent-[rgb(var(--accent))]" checked={imprimerConseils}
+                      onChange={(e) => { const oui = e.target.checked; setForm((f) => ({ ...f, conseils: { ...(f.conseils || {}), imprimes: oui } })); }} />
+                    <span className="text-base font-medium text-encre">Imprimer les conseils sur l’attestation</span>
+                  </label>
+                  {!imprimerConseils ? (
+                    <p className="mt-1 text-sm text-encre-2">Ils ne figureront pas sur l’attestation. Vous devez quand même conseiller votre client, de vive voix.</p>
+                  ) : null}
+                  {imprimerConseils ? (<>
                   <div className="space-y-1">
                     {CONSEILS.map((o) => (
                       <label key={o.valeur} className="flex items-center gap-3 min-h-[44px] cursor-pointer">
@@ -320,6 +331,7 @@ export default function SaisieRamonage({ client, precedent = null, remplace = nu
                   </div>
                   <Champ as="textarea" libelle="Autres conseils" facultatif value={form.conseils?.texte || ''} className="mt-2"
                     onChange={(e) => { const texte = e.target.value; setForm((f) => ({ ...f, conseils: { ...f.conseils, texte } })); }} />
+                  </>) : null}
                   {erreurDe('conseils') ? <p className="mt-1.5 text-sm font-medium text-danger-texte">{erreurDe('conseils')}</p> : null}
                 </fieldset>
               )}

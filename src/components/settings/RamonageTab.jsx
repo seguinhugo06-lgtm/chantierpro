@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Flame, BellRing, AlertTriangle } from 'lucide-react';
+import { Flame, BellRing, AlertTriangle, FileText } from 'lucide-react';
 import Carte from '../ui/Carte';
 import Champ from '../ui/Champ';
 import { TYPES_APPAREIL, AIDE_FREQUENCE, DELAI_RAPPEL_DEFAUT } from '../../lib/ramonage';
@@ -111,6 +111,22 @@ export default function RamonageTab({ entreprise, setEntreprise }) {
               <p className="text-sm text-encre-3">Si un client vous répond STOP ou vous le dit, touchez « Le client refuse les rappels » sur sa fiche (onglet Ramonage).</p>
               <p className="text-sm text-encre-3">{AIDE_FREQUENCE} La date du prochain ramonage est la vôtre : douze mois après le passage par défaut, modifiable à chaque attestation.</p>
             </div>
+          </Carte>
+
+          <Carte>
+            <div className="flex items-center gap-2 mb-3 text-encre-2">
+              <FileText size={18} aria-hidden="true" />
+              <h3 className="text-lg font-semibold text-encre">Attestation</h3>
+            </div>
+            {/* Retour des ramoneurs (nov. 2026) : conseils facultatifs sur l'attestation. R. 1331-77 oblige à conseiller
+                l'usager (combustible solide), pas à l'écrire ; par défaut imprimés, comme avant (src/lib/ramonage.js) */}
+            <Interrupteur
+              id="ramonage-conseils"
+              actif={entreprise?.ramonageConseils !== false}
+              onChange={(v) => enregistrer({ ramonageConseils: v })}
+              libelle="Imprimer les conseils sur l’attestation"
+              description="Pour un appareil au bois, aux granulés ou au charbon, vous devez conseiller votre client (article R. 1331-77 du code de la santé publique). Activé : vous cochez les conseils donnés, et ils sont imprimés sur l’attestation. Désactivé : ils ne sont plus demandés ni imprimés. Vous pouvez changer ce choix à chaque attestation."
+            />
           </Carte>
 
           <Carte>

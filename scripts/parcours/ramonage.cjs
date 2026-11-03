@@ -23,7 +23,7 @@ async function ouvrirFiche(page, attendre, nom) {
 const dansDialogue = (page, fn, arg) => page.evaluate(fn, arg);
 
 /** Remplit l'attestation comme au téléphone : listes, saisies, boutons, case, signature au doigt (souris réelle). */
-async function remplirAttestation(page, attendre) {
+async function remplirAttestation(page, attendre, { conseils = true } = {}) {
   await page.select('#ramonage-appareil_type', 'poele_bois');
   await page.select('#ramonage-combustible', 'bois');
   await page.select('#ramonage-conduit', 'tube_chemise');
@@ -39,10 +39,12 @@ async function remplirAttestation(page, attendre) {
     if (!ok) throw new Error(`choix « ${t} » introuvable`);
     await attendre(120);
   }
-  await dansDialogue(page, () => {
-    const l = [...document.querySelectorAll('[role="dialog"] label')].find((x) => x.innerText.includes('Qualité et stockage du combustible'));
-    l.querySelector('input').click();
-  });
+  if (conseils) {
+    await dansDialogue(page, () => {
+      const l = [...document.querySelectorAll('[role="dialog"] label')].find((x) => x.innerText.includes('Qualité et stockage du combustible'));
+      l.querySelector('input').click();
+    });
+  }
   const prix = await page.evaluateHandle(() => {
     const l = [...document.querySelectorAll('[role="dialog"] label')].find((x) => x.innerText.startsWith('Prix'));
     return document.getElementById(l.htmlFor);
@@ -61,7 +63,129 @@ async function remplirAttestation(page, attendre) {
   }
 }
 
+// Retour de ramoneurs (nov. 2026) : « scroll bug paramètre ramonage sur navigateur et pas sur app ». Dans un navigateur
+// (jamais dans l'app installée), la carte « Installer Mallettico » est fixée en bas de l'écran ; elle couvrait les derniers
+// champs de Paramètres › Ramonage même tout en bas de la page. Ce parcours NE la masque PAS (pas de sansInstallation).
+const SAFARI_IPHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1';
+// eslint-disable-next-line no-new-func
+const commeSafariIphone = new Function(`Object.defineProperty(navigator, 'userAgent', { get: () => ${JSON.stringify(SAFARI_IPHONE)} });`);
+
+async function ouvrirReglagesRamonage(page, attendre) {
+  await page.evaluate(() => [...document.querySelectorAll('button')].filter((b) => b.getClientRects().length)
+    .find((b) => b.innerText.trim() === 'Ramonage' || b.getAttribute('aria-label') === 'Ramonage')?.click());
+  await attendre(500);
+  if (await page.$eval('#ramonage-actif', (e) => e.getAttribute('aria-checked')) !== 'true') {
+    await page.click('#ramonage-actif');
+    await attendre(800);
+  }
+}
+
+const DERNIER_CHAMP = () => {
+  const champs = [...document.querySelector('[data-testid="reglages-ramonage"]').querySelectorAll('input, button, select, textarea')];
+  return champs[champs.length - 1];
+};
+
 module.exports = [
+  ...[375, 1440].map((largeur) => ({
+    nom: `ramonage : Paramètres › Ramonage défile jusqu’au dernier champ, visible et utilisable, carte « Installer » affichée (${largeur} px)`,
+    async executer({ ouvrir, attendre, verifier }) {
+      const { page } = await ouvrir({ page: 'settings', largeur, avantChargement: largeur < 768 ? commeSafariIphone : undefined });
+      await ouvrirReglagesRamonage(page, attendre);
+      if (largeur >= 768) {
+        // Chrome au bureau : l'invite d'installation arrive par cet évènement
+        await page.evaluate(() => {
+          const ev = new Event('beforeinstallprompt', { cancelable: true });
+          ev.prompt = () => Promise.resolve();
+          ev.userChoice = Promise.resolve({ outcome: 'dismissed' });
+          window.dispatchEvent(ev);
+        });
+      }
+      await attendre(3500); // la carte s'affiche après 3 s
+      const carte = await page.evaluate(() => {
+        const c = [...document.querySelectorAll('div.fixed')].find((d) => d.innerText.includes('Mallettico') && d.getBoundingClientRect().height > 0);
+        return c ? Math.round(c.getBoundingClientRect().height) : 0;
+      });
+      verifier(carte > 100, `la carte « Installer » est affichée, comme dans un navigateur (${carte} px)`);
+      // Défilement réel (molette) jusqu'en bas
+      await page.mouse.move(Math.round(largeur * 0.7), 300);
+      for (let i = 0; i < 30; i++) { await page.mouse.wheel({ deltaY: 400 }); await attendre(40); }
+      await attendre(600);
+      const r = await page.evaluate((code) => {
+        const dernier = (new Function(`return (${code})()`))();
+        const b = dernier.getBoundingClientRect();
+        const dessus = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2);
+        return {
+          libelle: dernier.labels?.[0]?.innerText || dernier.id,
+          bas: Math.round(b.bottom), haut: Math.round(b.top), hauteur: innerHeight,
+          enBas: Math.round(document.documentElement.scrollHeight - innerHeight - scrollY),
+          dessous: dessus === dernier || dernier.contains(dessus) ? '' : `${dessus?.tagName} « ${(dessus?.innerText || '').trim().slice(0, 40)} »`,
+        };
+      }, DERNIER_CHAMP.toString());
+      verifier(r.enBas <= 2, `la page est défilée jusqu’en bas (reste ${r.enBas} px)`);
+      verifier(r.haut >= 0 && r.bas <= r.hauteur, `le dernier champ « ${r.libelle} » est dans l’écran (${r.haut}–${r.bas} / ${r.hauteur})`);
+      verifier(!r.dessous, `le dernier champ n’est couvert par rien${r.dessous ? ` (couvert par ${r.dessous})` : ''}`);
+      // Utilisable : un vrai clic à cet endroit donne la main au champ
+      const el = await page.evaluateHandle((code) => (new Function(`return (${code})()`))(), DERNIER_CHAMP.toString());
+      const b = await el.boundingBox();
+      await page.mouse.click(b.x + b.width / 2, b.y + b.height / 2);
+      await attendre(200);
+      verifier(await el.evaluate((e) => document.activeElement === e), 'un toucher sur le dernier champ le sélectionne');
+    },
+  })),
+  {
+    nom: 'ramonage : conseils facultatifs — désactivés dans Paramètres, ni demandés ni imprimés, l’attestation s’enregistre (375 px)',
+    async executer({ ouvrir, cliquer, attendre, verifier }) {
+      const { page } = await ouvrir({ page: 'settings', largeur: 375, avantChargement: sansInstallation });
+      await ouvrirReglagesRamonage(page, attendre);
+      verifier(await page.$eval('#ramonage-conseils', (e) => e.getAttribute('aria-checked')) === 'true', 'par défaut, les conseils sont imprimés (comme avant)');
+      await page.click('#ramonage-conseils');
+      await attendre(800);
+      verifier(await page.$eval('#ramonage-conseils', (e) => e.getAttribute('aria-checked')) === 'false', 'le réglage « Imprimer les conseils sur l’attestation » est désactivé');
+
+      await page.evaluate(() => localStorage.setItem('cp_current_page', 'clients'));
+      await page.reload({ waitUntil: 'networkidle0' });
+      await attendre(1500);
+      await ouvrirFiche(page, attendre, 'Dupont');
+      await cliquer(page, 'Nouveau ramonage', { dans: '[data-testid="onglet-ramonage"]' });
+      await attendre(600);
+      await page.select('#ramonage-appareil_type', 'poele_bois');
+      await page.select('#ramonage-combustible', 'bois');
+      await attendre(200);
+      const etat = await page.evaluate(() => ({
+        coche: document.querySelector('#ramonage-conseils-imprimes')?.checked,
+        choix: [...document.querySelectorAll('[role="dialog"] label')].some((l) => l.innerText.includes('Qualité et stockage du combustible')),
+        aide: document.querySelector('#ramonage-conseils')?.innerText || '',
+      }));
+      verifier(etat.coche === false, 'à la saisie, « Imprimer les conseils sur l’attestation » est décoché (réglage de l’entreprise)');
+      verifier(!etat.choix, 'les choix de conseils ne sont pas demandés');
+      verifier(etat.aide.includes('Vous devez quand même conseiller votre client'), 'le rappel de l’obligation de conseil (R. 1331-77) est affiché');
+      await remplirAttestation(page, attendre, { conseils: false });
+      // Cocher la case pour cette attestation : les conseils redeviennent demandés
+      await page.click('#ramonage-conseils-imprimes');
+      await attendre(200);
+      await cliquer(page, 'Vérifier l’attestation', { dans: '[role="dialog"]' });
+      await attendre(300);
+      const manque = await page.evaluate(() => document.querySelector('[role="dialog"] [role="alert"]')?.innerText || '');
+      verifier(manque.includes('Les conseils donnés'), 'case cochée pour cette attestation : les conseils sont de nouveau demandés');
+      await page.click('#ramonage-conseils-imprimes');
+      await attendre(200);
+      await cliquer(page, 'Vérifier l’attestation', { dans: '[role="dialog"]' });
+      await attendre(500);
+      const apercu = await page.evaluate(() => document.querySelector('[role="dialog"] iframe')?.getAttribute('srcdoc') || '');
+      verifier(apercu.includes('Attestation de ramonage'), 'sans conseils, l’attestation passe à l’aperçu');
+      verifier(!apercu.includes('Conseils donnés') && !apercu.includes('donnés à titre indicatif'), 'l’aperçu ne porte pas les conseils');
+      for (const t of ['Vacuité du conduit sur toute sa longueur</th><td>Assurée', 'Conduits ramonés', 'ne vaut pas attestation d’entretien', 'À conserver au moins deux ans']) {
+        verifier(apercu.includes(t), `le contenu obligatoire reste : « ${t.replace(/<[^>]+>/g, ' ')} »`);
+      }
+      await cliquer(page, 'Enregistrer l’attestation', { dans: '[role="dialog"]' });
+      await attendre(1200);
+      const titre = await page.evaluate(() => document.querySelector('[role="dialog"] h2')?.innerText || '');
+      verifier(/^Attestation RAM-\d{4}-\d{5}$/.test(titre), `l’attestation sans conseils s’enregistre (${titre})`);
+      // Réimpression : la fiche de l'attestation enregistrée ne porte toujours pas les conseils
+      const html = await page.evaluate(() => document.querySelector('[role="dialog"] iframe')?.getAttribute('srcdoc') || '');
+      if (html) verifier(!html.includes('Conseils donnés'), 'l’attestation enregistrée, relue, ne porte pas les conseils');
+    },
+  },
   {
     nom: 'ramonage : activer, attestation au téléphone, PDF, facture sans ressaisie, historique, puis rappel (375 px)',
     async executer({ ouvrir, cliquer, attendre, verifier, RACINE }) {
