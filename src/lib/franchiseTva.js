@@ -1,6 +1,6 @@
 /**
  * Franchise en base de TVA (art. 293 B du CGI) : une micro-entreprise ne facture pas de TVA. Ses
- * documents impriment « TVA non applicable, art. 293 B du CGI » ; les montants enregistrés suivent :
+ * documents impriment « TVA non applicable, article 293 B du CGI » (CGI art. 293 E, II) ; les montants enregistrés suivent :
  * TVA 0, TTC = HT.
  *
  * Recette du 9 oct. 2026 : l'éditeur de devis et les factures d'acompte, de solde et d'échéancier

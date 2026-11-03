@@ -1,8 +1,12 @@
 import { describe, it, expect, vi } from 'vitest';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { estFranchiseTva } from '../../lib/franchiseTva';
 import { buildDevisHtml, buildSituationFactureHtml } from '../../lib/devisHtmlBuilder';
-import { lignesTotauxHtml, libellesColonnesPrix } from '../../lib/totauxDocument';
+import { lignesTotauxHtml, libellesColonnesPrix, totalLigne } from '../../lib/totauxDocument';
+import { situationDeFacture } from '../../lib/situationUtils';
 
 /**
  * « Franchise partout » (décision du 24 oct. 2026, docs/avis-juriste-2026-10-24-devis.md Q1) : pour une entreprise en
@@ -35,6 +39,7 @@ const { default: TemplateManager } = await import('../settings/TemplateManager')
 const { default: QuickChantierModal } = await import('../QuickChantierModal');
 const { default: SignaturePad } = await import('../SignaturePad');
 const { default: SituationsTravaux } = await import('../chantiers/SituationsTravaux');
+const { default: ChoixTva } = await import('../settings/ChoixTva');
 
 const texte = (html) => html.replace(/<style[\s\S]*?<\/style>/g, ' ').replace(/<[^>]*>/g, ' ')
   .replace(/&#x27;/g, "'").replace(/&amp;/g, '&').replace(/&nbsp;/g, ' ').replace(/[\s  ]+/g, ' ').trim();
@@ -161,12 +166,82 @@ describe('documents imprimés en franchise', () => {
     expect(imprime('payee')).toMatch(/TVA 10/);
   });
 
+  it('facture de situation émise avec TVA, situation introuvable : réimprimée avec sa TVA (contrôle du 3 nov. 2026)', () => {
+    // « PDF » d'une facture de situation (DevisPage) : la situation est relue dans le chantier, sinon refaite depuis la
+    // facture (situationDeFacture). Sans statut, elle passait pour un brouillon : une facture déjà émise avec TVA par une
+    // micro-entreprise se réimprimait sans TVA, alors qu'une facture émise se réimprime telle quelle (CGI art. 289, V).
+    const facture = { id: 'f7', type: 'facture', facture_type: 'situation', situation_numero: 2, numero: 'FAC-2026-00007',
+      statut: 'envoye', date: '2026-10-20', client_id: 'cl1',
+      lignes: [{ description: 'Situation n° 2', quantite: 1, unite: 'ens', prixUnitaire: 500, montant: 500, tva: 10 }],
+      total_ht: 500, tva: 50, total_ttc: 550 };
+    const imprime = (doc, chantierDoc) => texte(buildSituationFactureHtml({
+      situation: situationDeFacture(doc, chantierDoc, { montantLigne: totalLigne, tauxDefaut: 0 }),
+      parentDevis: {}, client, chantier: chantierDoc || {}, entreprise: MICRO,
+    }));
+    // Chantier supprimé, puis chantier sans situations : le statut de la facture fait foi
+    for (const chantierDoc of [undefined, { id: 'ch2', nom: 'Rénovation', situations_data: { situations: [] } }]) {
+      const emise = imprime(facture, chantierDoc);
+      expect(emise).toContain('TVA 10 % 50,00 €');
+      expect(emise).toContain('Montant situation TTC 550,00 €');
+      expect(emise).not.toContain('TVA non applicable');
+      // Une facture encore en brouillon : sans TVA, avec la mention (décision d'Hugo du 3 nov. 2026, D-31, 2)
+      const brouillon = imprime({ ...facture, statut: 'brouillon' }, chantierDoc);
+      expect(brouillon).not.toMatch(/TVA 10/);
+      expect(brouillon).toContain('TVA non applicable, article 293 B du CGI');
+    }
+    // Situation retrouvée dans le chantier : son statut à elle
+    const situationsData = { retenue_garantie_pct: 0, situations: [{ id: 's2', numero: 2, statut: 'facturee',
+      lignes: [{ description: 'Tableau', quantite: 1, unite: 'u', prixUnitaire: 1000, tva: 10, cumulActuel: 50, cumulPrecedent: 0 }] }] };
+    expect(imprime(facture, { id: 'ch3', nom: 'Rénovation', situations_data: situationsData })).toContain('TVA 10 % 50,00 €');
+  });
+
+  it('le HTML remis au client ne contient aucun commentaire interne (contrôle du 3 nov. 2026)', () => {
+    // « décision d'Hugo du 3 nov. 2026 » partait dans l'en-tête du tableau, « recette du 9 oct. 2026 » au-dessus des notes :
+    // invisibles, mais lisibles dans la source de la page de signature. Le générateur de DevisPage : parcours « aperçu imprimé ».
+    const notesInternes = (html) => (html.match(/<!--[\s\S]*?-->/g) || []).filter((c) => /Hugo|décision|recette|relecture|src\//i.test(c));
+    for (const entreprise of [MICRO, SARL]) {
+      for (const type of ['facture', 'devis']) {
+        const html = buildDevisHtml({ doc: { ...doc, type, notes: 'Accès par le garage' }, client, entreprise, couleur: '#12336F' });
+        expect(texte(html)).toContain('Accès par le garage');
+        expect(notesInternes(html)).toEqual([]);
+      }
+    }
+  });
+
   it('facture de situation : retenue de garantie selon la loi n° 71-584 (art. 1er et 2)', () => {
     const situation = { numero: 1, statut: 'brouillon', retenueGarantiePct: 5,
       lignes: [{ description: 'Tableau', quantite: 1, unite: 'u', prixUnitaire: 1000, tva: 10, cumulActuel: 50, cumulPrecedent: 0 }] };
     const imprime = texte(buildSituationFactureHtml({ situation, parentDevis: devisSource, client, chantier, entreprise: SARL }));
     expect(imprime).toContain("(loi n° 71-584 du 16 juillet 1971 : 5 % au plus). Libérée un an après la réception des travaux, avec ou sans réserves, sauf opposition motivée du maître de l'ouvrage notifiée par lettre recommandée.");
     expect(imprime).not.toMatch(/conformément|sauf réserves/);
+  });
+});
+
+// La mention que porte la facture, citée à l'écran : mot pour mot comme sur les PDF (CGI art. 293 E, II ; relecture du
+// 3 nov. 2026). Les libellés d'écran (« TVA non applicable, art. 293 B du CGI » sous un total) ne sont pas des citations.
+const MENTION_IMPRIMEE = 'TVA non applicable, article 293 B du CGI';
+const RACINE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
+const sources = (dossier) => fs.readdirSync(dossier, { withFileTypes: true }).flatMap((e) => {
+  const chemin = path.join(dossier, e.name);
+  if (e.isDirectory()) return e.name === '__tests__' ? [] : sources(chemin);
+  return /\.jsx?$/.test(e.name) ? [chemin] : [];
+});
+
+describe('écrans qui citent la mention de la facture', () => {
+  it('choix de la TVA (assistant et Paramètres), en franchise : la mention imprimée, mot pour mot', () => {
+    const micro = texte(renderToStaticMarkup(<ChoixTva entreprise={MICRO} updateEntreprise={() => {}} />));
+    expect(micro).toContain(`portent la mention « ${MENTION_IMPRIMEE} »`);
+    expect(texte(buildDevisHtml({ doc, client, entreprise: MICRO, couleur: '#12336F' }))).toContain(MENTION_IMPRIMEE);
+  });
+
+  it('trésorerie, Paramètres, choix de la TVA : chaque phrase qui cite la mention la reprend telle qu’elle est imprimée', () => {
+    const citations = sources(path.join(RACINE, 'src/components')).flatMap((f) =>
+      [...fs.readFileSync(f, 'utf8').matchAll(/[Mm]ention[^«\n]{0,60}«\s*(TVA non applicable[^»]*?)\s*»/g)]
+        .map((m) => ({ fichier: path.relative(RACINE, f), mention: m[1].replace(/\s+/g, ' ') })));
+    expect(citations.map((c) => c.fichier)).toEqual(expect.arrayContaining([
+      'src/components/tresorerie/TresorerieModule.jsx', 'src/components/Settings.jsx', 'src/components/settings/ChoixTva.jsx',
+    ]));
+    for (const c of citations) expect(c.mention, c.fichier).toBe(MENTION_IMPRIMEE);
   });
 });
 

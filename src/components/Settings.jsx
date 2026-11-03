@@ -748,7 +748,8 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               <Info size={18} aria-hidden="true" className="flex-shrink-0 mt-0.5" />
               <div className="text-sm">
                 <p className="font-semibold">Franchise en base de TVA</p>
-                <p className="mt-0.5">La mention « TVA non applicable, art. 293 B du CGI » est ajoutée d’elle-même sur vos devis et factures.</p>
+                {/* La mention de la facture, mot pour mot comme sur les PDF : CGI art. 293 E, II (contrôle du 3 nov. 2026) */}
+                <p className="mt-0.5">La mention « TVA non applicable, article 293 B du CGI » est ajoutée d’elle-même sur vos devis et factures.</p>
               </div>
             </div>
           ) : null}

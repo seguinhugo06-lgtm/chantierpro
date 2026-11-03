@@ -75,6 +75,7 @@ import { usePermissions } from '../hooks/usePermissions';
 import { ReadOnlyBanner } from './ui/PermissionGate';
 import PageHeader from './ui/PageHeader';
 import { printSituationFacture as printSitFacture, PAGE_CSS } from '../lib/devisHtmlBuilder';
+import { situationDeFacture } from '../lib/situationUtils';
 import { marquerDocumentFictif } from '../lib/donneesFictives';
 import { sendDocumentEmail, buildDocumentEmailBody, buildPaymentReceiptEmailBody } from '../lib/emailSender';
 import RelanceTimelineWidget from './RelanceTimelineWidget';
@@ -1362,25 +1363,10 @@ export default function DevisPage({ clients, addClient, devis, setDevis, chantie
       const client = clients.find(c => c.id === doc.client_id);
       const chantier = chantiers.find(c => c.id === doc.chantier_id);
       const parentDevis = doc.devis_source_id ? devis.find(d => d.id === doc.devis_source_id) : null;
-      // Reconstruct situation data from chantier.situations_data
-      const sitData = chantier?.situations_data;
-      const sit = sitData?.situations?.find(s => s.numero === doc.situation_numero) || null;
+      // Situation relue dans chantier.situations_data, sinon refaite depuis la facture. Son statut (celui de la facture
+      // quand la situation est introuvable) décide de la TVA imprimée en franchise : src/lib/situationUtils.js
       printSitFacture({
-        situation: {
-          ...(sit || {}),
-          numero: doc.situation_numero || sit?.numero || 1,
-          date: doc.date,
-          lignes: sit?.lignes || doc.lignes?.map(l => ({
-            description: l.description,
-            quantite: 1,
-            prixUnitaire: getLineTotal(l),
-            unite: l.unite || 'ens',
-            tva: l.tva !== undefined ? l.tva : tauxTvaDocument(doc, entreprise),
-            cumulActuel: 100,
-            cumulPrecedent: 0,
-          })) || [],
-          retenueGarantiePct: sit?.isDGD ? 0 : (sitData?.retenue_garantie_pct || 5),
-        },
+        situation: situationDeFacture(doc, chantier, { montantLigne: getLineTotal, tauxDefaut: tauxTvaDocument(doc, entreprise) }),
         parentDevis: parentDevis || {},
         client: client || {},
         chantier: chantier || {},
@@ -1427,6 +1413,9 @@ export default function DevisPage({ clients, addClient, devis, setDevis, chantie
       return details;
     })();
 
+    // En franchise (art. 293 B du CGI) : pas de colonne « TVA », ni en-tête ni cellule, la mention vaut pour toutes les
+    // lignes (décision d'Hugo du 3 nov. 2026, D-31, 3). Commentaire écrit ici, hors du gabarit : rien d'interne dans le HTML
+    // remis au client (contrôle du 3 nov. 2026 : il partait dans l'en-tête du tableau). Même règle dans devisHtmlBuilder.js.
     const renderRow = (l) => `
       <tr>
         <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;vertical-align:top;white-space:pre-line;overflow-wrap:anywhere">${echap(l.description)}</td>
@@ -1566,7 +1555,6 @@ export default function DevisPage({ clients, addClient, devis, setDevis, chantie
   <table aria-label="Détail des prestations du ${isAvoirDoc ? 'avoir' : 'devis'}">
     <thead>
       <tr>
-        <!-- En franchise (art. 293 B du CGI) : pas de colonne « TVA », la mention vaut pour toutes les lignes (décision d'Hugo du 3 nov. 2026) -->
         <th scope="col" style="width:${isMicro ? 50 : 40}%">Description</th>
         <th scope="col" style="width:10%">Qté</th>
         <th scope="col" style="width:10%">Unité</th>
@@ -1593,7 +1581,7 @@ export default function DevisPage({ clients, addClient, devis, setDevis, chantie
   ${mentionTvaReduiteHtml({ tvaDetails: calculatedTvaDetails, nomClient: formatClientName(client, ''), isMicro, isFacture, isAcompte: doc.facture_type === 'acompte', isAvoir: isAvoirDoc })}
 
   ${doc.notes && !isAvoirDoc ? `
-  <!-- NOTES (« Notes (visibles sur le PDF) » de l'éditeur ; même bloc que src/lib/devisHtmlBuilder.js) -->
+  <!-- NOTES -->${''/* « Notes (visibles sur le PDF) » de l'éditeur ; même bloc que src/lib/devisHtmlBuilder.js (commentaire hors du HTML remis au client, contrôle du 3 nov. 2026) */}
   <div class="conditions" style="margin-top:10px">
     <h4>NOTES</h4>
     <div style="white-space:pre-line">${echap(doc.notes)}</div>

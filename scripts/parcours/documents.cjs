@@ -663,7 +663,8 @@ module.exports = [
       const { creerBase, UID } = require('../lib/fauxSupabase.cjs');
       const ORG = '0e0e0e0e-0e0e-4e0e-8e0e-0e0e0e0e0e0e';
       const CLIENT = { id: 'c0c0c0c0-0000-4000-8000-000000000603', nom: 'Exemple', prenom: 'Lou', telephone: '0600000004', email: 'lou@exemple.fr', adresse: '9 rue Imaginaire, 24000 Exempleville', created_at: '2026-10-01T08:00:00Z' };
-      const devis = (franchise) => ({ id: 'd0d0d0d0-0000-4000-8000-000000000603', client_id: CLIENT.id, type: 'devis', statut: 'brouillon', numero: 'DEV-2026-0603', objet: 'Prises du salon',
+      // Des notes : le bloc NOTES est imprimé, avec son commentaire HTML (contrôle du 3 nov. 2026, voir plus bas)
+      const devis = (franchise) => ({ id: 'd0d0d0d0-0000-4000-8000-000000000603', client_id: CLIENT.id, type: 'devis', statut: 'brouillon', numero: 'DEV-2026-0603', objet: 'Prises du salon', notes: 'Accès par le garage',
         date: '2026-10-20', date_validite: '2099-11-20', total_ht: 100, total_tva: franchise ? 0 : 20, total_ttc: franchise ? 100 : 120, tva_rate: franchise ? 0 : 20, created_at: '2026-10-20T08:00:00Z',
         lignes: [{ id: 'l1', description: 'Pose prise 2P+T', quantite: 1, unite: 'u', prixUnitaire: 100, tva: franchise ? 0 : 20 }] });
       const entreprise = (forme) => ({ id: 'e0e0e0e0-0000-4000-8000-000000000603', user_id: UID, organization_id: ORG, nom: 'Élec Exemple', forme_juridique: forme,
@@ -687,13 +688,19 @@ module.exports = [
         const apercu = await actionFiche(page, attendre, ['Aperçu', 'Aperçu du document']);
         verifier(apercu, `${forme} : l'aperçu s'ouvre`);
         await attendre(1200);
-        const imprime = await page.evaluate(() => {
+        const { imprime, notesInternes } = await page.evaluate(() => {
           const f = [...document.querySelectorAll('iframe')].find((x) => (x.getAttribute('srcdoc') || '').length > 100);
-          const lu = new DOMParser().parseFromString(f?.getAttribute('srcdoc') || '', 'text/html');
+          const source = f?.getAttribute('srcdoc') || '';
+          const lu = new DOMParser().parseFromString(source, 'text/html');
           lu.querySelectorAll('style, script').forEach((x) => x.remove());
-          return (lu.body?.textContent || '').replace(/\s+/g, ' ');
+          // Contrôle du 3 nov. 2026 : des commentaires HTML internes (« décision d'Hugo… », « recette du 9 oct. », chemin
+          // d'un fichier source) partaient dans le document du client
+          const notes = (source.match(/<!--[\s\S]*?-->/g) || []).filter((c) => /Hugo|décision|recette|relecture|src\//i.test(c));
+          return { imprime: (lu.body?.textContent || '').replace(/\s+/g, ' '), notesInternes: notes };
         });
         verifier(/Pose prise 2P\+T/.test(imprime), `${forme} : l'aperçu montre le devis (${imprime.slice(0, 120)})`);
+        verifier(/Accès par le garage/.test(imprime), `${forme} : les notes du devis sont imprimées`);
+        verifier(!notesInternes.length, `${forme} : aucun commentaire interne dans le HTML imprimé (${notesInternes.join(' ').slice(0, 160)})`);
         if (franchise) {
           const ht = imprime.match(/.{0,30}(?<![A-Za-zÀ-ÿ])(HT|TTC)(?![A-Za-zÀ-ÿ]).{0,30}/);
           verifier(!ht, `${forme} : ni « HT » ni « TTC » dans l'aperçu imprimé (${ht ? ht[0] : ''})`);

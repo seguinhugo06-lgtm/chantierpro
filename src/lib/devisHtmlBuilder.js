@@ -135,6 +135,9 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mod
   // Filter out section markers, null/undefined, and lines with no description
   lignes = filterValidLignes(lignes);
 
+  // En franchise (art. 293 B du CGI) : pas de colonne « TVA », ni en-tête ni cellule, la mention vaut pour toutes les
+  // lignes (décision d'Hugo du 3 nov. 2026, D-31, 3). Commentaire écrit ici, hors du gabarit : rien d'interne dans le HTML
+  // remis au client (contrôle du 3 nov. 2026 : il partait dans l'en-tête du tableau). Même règle dans DevisPage.jsx.
   // Rendu d'une ligne
   const renderRow = (l) => {
     const pu = getLinePU(l);
@@ -300,7 +303,6 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mod
   <table>
     <thead>
       <tr>
-        <!-- En franchise (art. 293 B du CGI) : pas de colonne « TVA », la mention vaut pour toutes les lignes (décision d'Hugo du 3 nov. 2026) -->
         <th style="width:${isMicro ? 50 : 40}%">Description</th>
         <th style="width:10%">Qté</th>
         <th style="width:10%">Unité</th>
@@ -336,7 +338,7 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mod
   ${mentionTvaReduiteHtml({ tvaDetails: calculatedTvaDetails, nomClient: formatClientName(client, ''), isMicro, isFacture, isAcompte: doc.facture_type === 'acompte', isAvoir: doc.facture_type === 'avoir' })}
 
   ${doc.notes && doc.facture_type !== 'avoir' ? `
-  <!-- NOTES (« Notes (visibles sur le PDF) » de l'éditeur : n'étaient imprimées nulle part, recette du 9 oct. 2026) -->
+  <!-- NOTES -->${''/* « Notes (visibles sur le PDF) » de l'éditeur : n'étaient imprimées nulle part, recette du 9 oct. 2026 (commentaire hors du HTML remis au client, contrôle du 3 nov. 2026) */}
   <div class="conditions" style="margin-top:10px">
     <h4>NOTES</h4>
     <div style="white-space:pre-line">${h(doc.notes)}</div>
