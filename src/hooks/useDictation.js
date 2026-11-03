@@ -179,6 +179,10 @@ export function useDictation({ lang = 'fr-FR', continuous = true } = {}) {
     recognition.interimResults = true;
 
     recognition.onresult = (event) => {
+      // Arrêt demandé (micro coupé, correction au clavier) : le navigateur livre parfois encore un dernier résultat.
+      // Ce qu'il contient est déjà figé dans la base par stop() ; le recoller derrière doublerait le texte, ou
+      // effacerait la correction que l'artisan vient de taper.
+      if (recognitionRef.current !== recognition) return;
       // On reconstruit tout à chaque fois plutôt que de repartir de resultIndex :
       // le navigateur peut re-livrer des segments déjà vus, et on veut un texte
       // cohérent quoi qu'il arrive.

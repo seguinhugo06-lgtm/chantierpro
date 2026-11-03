@@ -26,6 +26,7 @@ import {
   analyserDictee, rapprocherClient, rapprocherChantier, enrichirLignes,
 } from '../../lib/voiceIntent';
 import { jourLocal } from '../../lib/dates';
+import { isDemo } from '../../supabaseClient';
 
 const UNITES = ['u', 'm²', 'm³', 'ml', 'h', 'j', 'forfait', 'pièce', 'sac', 'pot', 'kg', 'lot'];
 
@@ -153,10 +154,14 @@ export default function DicteeModal({
   setSelectedDevis,
   setSelectedChantier,
   setEditDevisId,
+  orgId = null,
+  onSaisieManuelle,
 }) {
   const dictation = useDictation();
   const [etape, setEtape] = useState('parler');   // parler | analyse | relecture
   const [erreur, setErreur] = useState(null);
+  // Code de l'échec d'analyse (QUOTA_ATTEINT, IA_INDISPONIBLE, RESEAU…) : décide des boutons proposés sous le message.
+  const [codeErreur, setCodeErreur] = useState(null);
   const [source, setSource] = useState('ia');
   const [resume, setResume] = useState('');
   const [incertitudes, setIncertitudes] = useState([]);
@@ -188,6 +193,7 @@ export default function DicteeModal({
     dictation.reset();
     setEtape('parler');
     setErreur(null);
+    setCodeErreur(null);
     setResume(''); setIncertitudes([]);
     setClient(null); setClientExistant(null); setListeChantiers([]); setDoc(null);
     setDocChantierIdx(0);
@@ -230,12 +236,26 @@ export default function DicteeModal({
   }, [isOpen]);
 
   // Le micro prend le focus à l'ouverture : la dictée démarre alors à la barre
-  // d'espace ou à Entrée, sans toucher la souris.
+  // d'espace ou à Entrée, sans toucher la souris. Sans micro (Firefox, certains
+  // iPhone), le bouton est désactivé et ne peut pas prendre le focus : c'est alors
+  // le champ de saisie qui le prend, pour taper tout de suite.
+  const texteRef = useRef(null);
   useEffect(() => {
     if (!isOpen) return undefined;
-    const t = setTimeout(() => microRef.current?.focus(), 50);
+    const t = setTimeout(() => (dictation.supported ? microRef.current : texteRef.current)?.focus(), 50);
     return () => clearTimeout(t);
-  }, [isOpen]);
+  }, [isOpen, dictation.supported]);
+
+  /**
+   * Saisie au clavier dans le champ du texte. Si le micro écoute encore, on le coupe d'abord : sinon (1) l'analyse
+   * automatique partait au milieu de la frappe, son délai de silence se comptant depuis le dernier mot PARLÉ ; et
+   * (2) le prochain résultat du micro recopiait derrière la correction ce qu'il avait déjà entendu (texte en double).
+   */
+  const saisirAuClavier = useCallback((valeur) => {
+    if (dictation.listening) dictation.stop();
+    dictation.setTranscript(valeur);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dictation.listening, dictation.stop, dictation.setTranscript]);
 
   const texteDicte = dictation.texte;
 
@@ -245,13 +265,14 @@ export default function DicteeModal({
     if (texte.length < 3) { setErreur('Dictez d’abord votre demande.'); return; }
     if (analyseLanceeRef.current) return;
 
-    // Le quota se vérifie ici : c'est l'analyse qui appelle Claude, pas le micro.
-    // On laisse donc toujours parler, et on n'arrête que devant le coût réel.
-    const { planId, openUpgradeModal } = useSubscriptionStore.getState();
+    // Le quota se vérifie à l'analyse : c'est elle qui appelle Claude, pas le micro. En réel, c'est le serveur qui
+    // compte, par entreprise et par mois (voice-intent, migration 107) ; le compteur du navigateur ne sert qu'au
+    // mode démo, qui analyse sur place.
+    const { planId } = useSubscriptionStore.getState();
     const limite = (PLANS[planId] || PLANS.gratuit).limits?.dictees ?? -1;
-    if (!quotaDictee(limite).autorise) {
+    if (isDemo && !quotaDictee(limite).autorise) {
       dictation.stop();
-      openUpgradeModal('dictees_limit');
+      useSubscriptionStore.getState().openUpgradeModal('dictees_limit');
       onClose?.();
       return;
     }
@@ -261,8 +282,9 @@ export default function DicteeModal({
     dictation.stop();
     setEtape('analyse');
     setErreur(null);
+    setCodeErreur(null);
     try {
-      const { intention, source: src } = await analyserDictee(texte, { clients, catalogue });
+      const { intention, source: src } = await analyserDictee(texte, { clients, catalogue, organisation: orgId });
       setSource(src);
       setResume(intention.resume || '');
       setIncertitudes(intention.incertitudes || []);
@@ -288,16 +310,18 @@ export default function DicteeModal({
           : null
       );
       setDocActif(!!intention.document);
-      compterDictee();
+      if (src === 'local') compterDictee();
       setEtape('relecture');
     } catch (e) {
+      // L'artisan garde son texte : il peut réessayer, ou saisir son devis à la main.
       setErreur(e.message);
+      setCodeErreur(e.code || null);
       setEtape('parler');
     } finally {
       analyseLanceeRef.current = false;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clients, chantiers, catalogue, dictation.stop]);
+  }, [clients, chantiers, catalogue, dictation.stop, orgId]);
 
   // Analyse automatique après un silence : l'artisan a fini de parler, il n'a
   // pas à chercher un bouton. Il peut aussi couper le micro pour partir tout de suite.
@@ -651,8 +675,9 @@ export default function DicteeModal({
                 </label>
                 <textarea
                   id="dictee-texte"
+                  ref={texteRef}
                   value={texteDicte}
-                  onChange={(e) => { dictation.setTranscript(e.target.value); }}
+                  onChange={(e) => saisirAuClavier(e.target.value)}
                   rows={4}
                   placeholder="« Madame Dupont, 12 rue des Lilas, 15 m² de carrelage à 45 euros… »"
                   className={`w-full px-3 py-2 rounded-xl border text-sm bg-surface border-bord-fort text-encre placeholder:text-encre-3`}
@@ -668,8 +693,33 @@ export default function DicteeModal({
               </div>
 
               {(dictation.error || erreur) && (
-                <div className={`rounded-xl p-3 text-sm bg-danger-fond text-danger-texte`}>
+                <div className={`rounded-xl p-3 text-sm bg-danger-fond text-danger-texte`} role="alert">
                   {dictation.error || erreur}
+                </div>
+              )}
+
+              {/* Échec de l'analyse : on propose toujours la suite, la saisie à la main (et les offres si le quota du
+                  mois est atteint). Le texte dicté reste dans le champ pour réessayer plus tard. */}
+              {erreur && codeErreur && (
+                <div className="flex flex-wrap gap-2">
+                  {onSaisieManuelle && (
+                    <button
+                      type="button"
+                      onClick={() => { dictation.stop(); onClose?.(); onSaisieManuelle(); }}
+                      className="min-h-[44px] px-4 py-2.5 rounded-xl text-sm font-semibold border border-bord-fort text-encre bg-surface"
+                    >
+                      Saisir mon devis à la main
+                    </button>
+                  )}
+                  {codeErreur === 'QUOTA_ATTEINT' && (
+                    <button
+                      type="button"
+                      onClick={() => { dictation.stop(); useSubscriptionStore.getState().openUpgradeModal('dictees_limit'); onClose?.(); }}
+                      className="min-h-[44px] px-4 py-2.5 rounded-xl text-sm font-medium text-accent-texte"
+                    >
+                      Voir les offres
+                    </button>
+                  )}
                 </div>
               )}
 
@@ -680,7 +730,7 @@ export default function DicteeModal({
                     {EXEMPLES.map((ex) => (
                       <button
                         key={ex.titre}
-                        onClick={() => dictation.setTranscript(ex.texte)}
+                        onClick={() => saisirAuClavier(ex.texte)}
                         className={`w-full text-left p-2.5 rounded-lg border border-bord hover:bg-surface-2`}
                       >
                         <span className="block text-xs font-semibold mb-0.5 text-accent-texte">

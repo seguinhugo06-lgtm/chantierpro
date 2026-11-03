@@ -6,11 +6,9 @@
  * c'est elle qui fait la différence avec les autres logiciels — sans devenir
  * un poste de dépense à fonds perdu.
  *
- * Le compteur vit dans le navigateur : il se remet à zéro si l'artisan change
- * d'appareil ou vide son stockage. C'est assumé — il s'agit d'inciter à
- * s'abonner, pas de verrouiller un accès payant. Un décompte inviolable
- * demanderait de le tenir côté serveur, ce que la fonction voice-intent pourra
- * faire le jour où ce sera nécessaire.
+ * En réel, le quota est tenu par le serveur, par entreprise et par mois (fonction voice-intent, table usage_ia,
+ * migration 107) : c'est lui qui refuse au-delà de PLANS[plan].limits.dictees. Ce compteur dans le navigateur ne
+ * sert plus qu'au mode démo, qui analyse la dictée sur place sans appeler Claude.
  */
 
 const CLE = 'mallettico_dictees';

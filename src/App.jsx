@@ -2128,6 +2128,9 @@ export default function App() {
             setSelectedDevis={setSelectedDevis}
             setSelectedChantier={setSelectedChantier}
             setEditDevisId={setEditDevisId}
+            orgId={orgId}
+            /* Repli quand l'analyse est indisponible (quota, panne, réseau) : un devis vierge, à la main. */
+            onSaisieManuelle={() => { setSelectedDevis(null); setCreateMode((p) => ({ ...p, devis: true })); setPage('devis'); }}
           />
         </Suspense>
       )}
