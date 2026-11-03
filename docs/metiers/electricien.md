@@ -44,7 +44,7 @@ Précisions :
   Définitions des attestations bleue et violette : à relire sur la fiche SC 170 avant d'imprimer une couleur.
   Pour le photovoltaïque, un dossier technique accompagne la demande : SC 144, ou SC 143 au-delà de 36 kVA [5], [7] **(à vérifier)**.
 - **Délai** : à envoyer au Consuel au moins 20 jours avant la mise en service (`metier-btp.md` § 7). Depuis le 1er janv. 2025 (décret 2024-1122 modifiant D342-19), le Consuel met l'attestation visée à disposition du gestionnaire de réseau en 1 à 2 jours [3], [4]. Aucun délai réglementaire de visite trouvé ; les sites commerciaux disent 5 à 20 jours ouvrés **(à vérifier)**.
-- **Validité** : formulaire valable un an à compter du visa, selon des sources commerciales **(à vérifier)** [2].
+- **Validité** : le formulaire d'attestation est valable un an à compter de sa date d'émission par le Consuel (CGV Consuel SC 178) ; il n'est ensuite ni repris ni échangé [2].
 - **Conservation** : aucun texte trouvé. Utile au client : une attestation Consuel de moins de 3 ans dispense du diagnostic électricité à la vente, selon une source commerciale **(à vérifier)** [16].
 - **Coût** : payé au Consuel par l'installateur, refacturé au client ; montant variable selon la couleur et le mode d'envoi (voir consuel.com) **(à vérifier)**.
 
@@ -72,7 +72,7 @@ Pour un particulier, il n'existe pas d'équivalent du ramonage annuel en électr
 ## 5. TVA propre au métier
 
 - Règles générales 10 % / 5,5 % / 20 % et certification : voir `commun.md`.
-- Borne de recharge dans un local d'habitation : 5,5 % (CGI art. 278-0 bis N selon la FFB ; critères techniques à l'annexe IV, arrêté du 27 mai 2021), fourniture et pose par la même entreprise ; prise renforcée exclue. Ancienneté du logement et qualification IRVE comme conditions du taux : à vérifier au BOFiP. Le critère est la nature du local, pas la qualité du client. [14], [15]
+- Borne de recharge dans un local à usage d'habitation, destinée aux résidents : 5,5 % sur la pose, l'installation et l'entretien (CGI art. 278-0 bis, N), si la configuration respecte l'art. 30-0 H de l'annexe IV (arrêté du 22 juin 2023 : socle ou connecteur de type 2, ou prise de type E dite « renforcée », d'au moins 14 A) et si l'installateur a l'habilitation et, le cas échéant, la qualification de l'art. 22 du décret n° 2017-26. Aucune condition d'ancienneté : logements neufs ou anciens. Le critère est la nature du local, pas la qualité du client. Taux de la part « fourniture » de la borne : à confirmer au BOFiP. [14], [15]
 - **Mise en sécurité, rénovation électrique** d'un logement de plus de 2 ans : 10 % (`commun.md`).
 - **Photovoltaïque** : selon le juriste, la loi de finances 2025 a créé un 5,5 % pour les installations de 9 kWc au plus, sous critères, à partir du 1er oct. 2025 **(à vérifier)**. Ne proposer aucun taux PV avant lecture.
 - **Chauffe-eau thermodynamique, PAC posés par un électricien** : voir `chauffagiste.md` et `plombier.md`.
@@ -106,7 +106,7 @@ Propositions :
 |---|---|---|---|
 | Indispensable | Champ « qualification IRVE » (n°, organisme, niveau, validité) distinct du champ RGE ; imprimé sur les devis contenant une borne | S | Faible ; supprime le risque de qualification affichée sans numéro |
 | Indispensable | Modèle de devis borne : puissance obligatoire ; si > 3,7 kW et pas de qualification IRVE saisie, avertissement (pas de blocage tant que le texte n'est pas relu) | S | Moyen si bloquant ; faible en avertissement |
-| Indispensable | TVA borne : proposer 5,5 % pour une borne dans un local d'habitation, fourniture et pose par la même entreprise, prise renforcée exclue (CGI 278-0 bis N selon la FFB) ; aucune condition sur la qualité du client (syndic, SCI, bailleur compris) ; ancienneté du logement et qualification IRVE : à vérifier au BOFiP ; certification « commun.md » | M | Moyen : base légale à relire au BOFiP avant de coder |
+| Indispensable | TVA borne : proposer 5,5 % pour une borne dans un local d'habitation, fourniture et pose par la même entreprise, prise renforcée de type E (≥ 14 A) admise (CGI ann. IV art. 30-0 H) ; aucune condition sur la qualité du client (syndic, SCI, bailleur compris) ; sans condition d'ancienneté ; qualification de l'installateur exigée (décret n° 2017-26, art. 22) ; certification « commun.md » | M | Moyen : base légale à relire au BOFiP avant de coder |
 | Utile | Ligne « attestation Consuel » avec la couleur (définitions à relire sur la SC 170), et une tâche de chantier « envoyer au Consuel » à J-20 de la mise en service prévue | S | Faible |
 | Utile | « Compte rendu d'intervention et d'autocontrôle » numéroté et figé, sur le modèle de l'attestation de ramonage : mesures relevées, réserves, photos du tableau ; jamais le mot « conforme » ; jamais appelé « attestation de conformité » ; ni les couleurs ni la mise en page du Consuel | M | Faible si le vocabulaire est respecté |
 | Utile | Dossier de fin de chantier en un PDF : schéma (photo ou fichier), notices, compte rendu, attestation Consuel visée (fichier joint) | M | Faible |

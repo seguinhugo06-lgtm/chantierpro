@@ -44,7 +44,7 @@ Règles transverses (TVA, certification du taux réduit, décennale, devis oblig
 - Fenêtres de toit : sources divergentes **(à vérifier auprès de la mairie)** ; secteur protégé (abords de monuments) : règles plus strictes.
 - Pour le couvreur : demander au client si la DP est déposée et accordée avant de commander les matériaux ; le noter sur le devis.
 
-**Isolation embarquée** : une réfection de toiture portant sur plus de 50 % déclenche une obligation d'isoler (décret n° 2016-711, à relire : conditions et exceptions).
+**Isolation embarquée** : une réfection de toiture qui remplace ou recouvre au moins 50 % de la couverture, hors ouvertures, oblige le propriétaire à isoler la toiture ou le plancher haut du dernier niveau occupé (CCH R173-5, issu du décret n° 2016-711). Exceptions (R173-6) : risque de pathologie, servitudes ou aspect, modification architecturale, temps de retour de plus de 10 ans, justifiés par une note d'un professionnel qualifié.
 
 **Échafaudage et domaine public** [8] **[résumé]**
 - Échafaudage posé sur le trottoir **sans emprise au sol** : **permis de stationnement** (autorité de police de la circulation, en général le maire). Avec **emprise** (scellé, palissade) : **permission de voirie** (gestionnaire de la voie : maire, département) [8].

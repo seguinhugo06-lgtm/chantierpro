@@ -68,7 +68,7 @@ Un rappel « inspection de charpente » ou « fin de garantie du traitement » e
 
 Taux et certification : voir commun.md et macon.md § 5.
 - **Extension en ossature bois** : **20 %** (addition de construction). Aussi 20 % si les travaux **augmentent la surface de plancher de plus de 10 %**, et pour une **surélévation** [13] **[résumé]**.
-- **Extension : deux lectures.** Ici, toute extension (addition de construction) est à 20 %. `docs/metier-btp.md` § 4 dit « agrandissement > 10 % de surface ». À trancher au BOI-TVA-LIQ-30-20-90-20 avant de coder.
+- **Extension** : toute extension (addition de construction) est à 20 % (BOI-TVA-LIQ-30-20-90-30 § 380) ; la règle des 10 % de surface s'applique en plus aux travaux sur l'existant.
 - **Remplacement d'une charpente** d'un logement de plus de 2 ans : en principe **10 %**, sauf si l'ensemble des travaux sur deux ans rend l'immeuble « neuf » (plus de la moitié d'un élément de gros œuvre, ou deux tiers de chacun des six éléments de second œuvre ; la charpente relève probablement des « éléments hors fondations déterminant la résistance et la rigidité » (CGI ann. II 245 A, à vérifier) — voir macon.md § 5.
 - **Traitement curatif** des bois d'un logement : 10 % (entretien, amélioration) **(à vérifier : aucune source spécifique)**.
 - **Isolation** de toiture posée par le charpentier : 5,5 % (voir couvreur.md § 5).

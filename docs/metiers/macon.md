@@ -37,7 +37,7 @@ Règles transverses (TVA, certification du taux réduit, autoliquidation, décen
 
 **Attestation de vigilance URSSAF** [3] [4] **[résumé]**
 - Le **donneur d'ordre professionnel** (une entreprise générale qui sous-traite au maçon, un promoteur, un bailleur) doit l'obtenir de son cocontractant pour tout contrat d'**au moins 5 000 € HT**, puis **tous les 6 mois** jusqu'à la fin du contrat (C. trav. L8222-1, D8222-5). Sinon : solidarité financière pour les cotisations du sous-traitant.
-- Particulier pour son usage personnel : vérification à la conclusion seulement, satisfaite par un devis portant nom, adresse et numéro d'immatriculation de l'entreprise (C. trav. D8222-4, à relire) ; pas d'attestation tous les 6 mois.
+- Particulier pour son usage personnel (ou celui de son conjoint, partenaire, concubin, ascendants ou descendants) : il satisfait à son obligation en se faisant remettre, à la conclusion du contrat puis tous les six mois jusqu'à la fin de son exécution, un seul des documents de D8222-5. Un devis portant le nom ou la dénomination, l'adresse complète et le numéro d'immatriculation de l'entreprise en est un (C. trav. D8222-4 ; D8222-5, 2°, c). L'attestation de vigilance ne lui est pas exigée.
 - Pour le maçon : (a) la **fournir** quand il est sous-traitant ou travaille pour un professionnel ; (b) la **demander** à ses propres sous-traitants. Elle se télécharge sur l'espace URSSAF, avec un code de sécurité que le donneur d'ordre doit vérifier [3].
 - Seuil apprécié sur le montant total de la prestation, même payée en plusieurs fois [4] **[résumé]** ; une autre source parle d'un cumul annuel **(à vérifier)**.
 
@@ -49,7 +49,7 @@ Règles transverses (TVA, certification du taux réduit, autoliquidation, décen
 - TVA : **autoliquidation** entre le sous-traitant et l'entrepreneur principal, voir commun.md.
 
 **Repérage amiante avant travaux (RAT)** (C. trav. R4412-97 à R4412-97-6 ; arrêté du 16 juill. 2019) [8] **[résumé]**
-- C'est l'obligation du **donneur d'ordre / maître d'ouvrage / propriétaire** : avant toute opération qui peut exposer des travailleurs à l'amiante, dans un immeuble bâti dont le permis de construire a été délivré avant le 1er juillet 1997 (arrêté du 16 juil. 2019, à relire). Il fait appel à un opérateur certifié et **transmet le rapport aux entreprises avant le début des travaux** [8].
+- C'est l'obligation du **donneur d'ordre / maître d'ouvrage / propriétaire** : avant toute opération qui peut exposer des travailleurs à l'amiante, dans tout immeuble bâti (C. trav. R4412-97 ; arrêté du 16 juil. 2019, art. 3) ; le donneur d'ordre transmet au repéreur la date du permis de construire. La date du 1er juil. 1997 délimite les obligations du propriétaire au titre du code de la santé publique (R1334-14 et s.), pas le champ du repérage avant travaux. Il fait appel à un opérateur certifié et **transmet le rapport aux entreprises avant le début des travaux** [8].
 - Dispenses prévues à R4412-97-3 ; sanction pénale du donneur d'ordre (C. trav. L4754-1 cité par une DREETS) [8] **(à vérifier)**.
 - Pour le maçon : **demander le rapport avant de commencer** (percement, démolition de cloison, saignée), et le noter sur le devis. Ce n'est pas à lui de le faire, mais c'est lui et ses salariés qui respirent les fibres.
 - Retirer des matériaux amiantés = **sous-section 3**, entreprise certifiée ; intervenir sur un matériau amianté sans le retirer = **sous-section 4**, formation et mode opératoire (C. trav. R4412-94) [9] **[résumé]**.
@@ -90,10 +90,10 @@ Aucune obligation d'entretien périodique d'un ouvrage de maçonnerie n'a été 
 
 Taux et certification : voir commun.md. Propre au gros œuvre [17] [18] **[résumé]** :
 - **20 %** : construction neuve ; **extension (addition de construction)** ; **surélévation** ; travaux qui **augmentent la surface de plancher de plus de 10 %** ; travaux qui rendent l'immeuble « neuf » [17].
-- **Extension : deux lectures.** Ici, toute **extension (addition de construction)** est à 20 % [17]. `docs/metier-btp.md` § 4 dit « agrandissement > 10 % de surface ». À trancher au BOI-TVA-LIQ-30-20-90-20 avant de coder.
+- **Extension** : toute extension (addition de construction) est à 20 % (BOI-TVA-LIQ-30-20-90-30 § 380) ; la règle des 10 % de surface s'applique en plus aux travaux sur l'existant [17].
 - Immeuble « neuf » au sens fiscal : travaux refaisant à neuf **plus de la moitié** d'un des trois éléments du gros œuvre (fondations, murs porteurs, façades hors ravalement), ou **au moins les deux tiers de chacun** des six éléments de second œuvre [18] **[résumé ; réponse ministérielle ancienne, à relire au BOI-TVA-LIQ-30-20-90-20]**. Le calcul porte sur l'ensemble des travaux sur **deux ans** [18].
 - **10 %** : rénovation, transformation d'un logement achevé depuis plus de 2 ans, sans les effets ci-dessus.
-- Un même chantier peut mêler les deux : une extension à 20 % et la reprise de la maison existante à 10 % **(ventilation à vérifier au BOFiP)**.
+- Un même chantier peut mêler les deux : une extension à 20 % et la reprise de la maison existante à 10 % (les constructions hors du volume existant ne comptent pas pour apprécier les 10 % des travaux sur l'existant, § 380).
 - Sous-traitance : autoliquidation, voir commun.md.
 
 ## 6. Mentions particulières sur le devis et la facture
@@ -128,7 +128,7 @@ Propositions :
 | Indispensable | **Retenue de garantie** : champ % (5 % max) sur le devis, déduite des situations, **rappel automatique à 1 an** de la réception pour la réclamer | S | Faible si le plafond 5 % et le délai d'un an sont relus au texte |
 | Utile | Case « Repérage amiante fourni ? » et « Étude G2 fournie ? » sur le devis, avec une phrase neutre si non | S | Faible : information, pas une affirmation de conformité |
 | Utile | Coffre de pièces de l'entreprise (attestation de vigilance, Kbis/RNE, décennale) avec date d'expiration et **rappel à 6 mois**, envoi en un geste au donneur d'ordre | M | Faible ; ne jamais générer l'attestation, seulement la stocker |
-| Utile | Devis « extension » : TVA 20 % pour la partie extension, 10 % pour la partie existante, avec explication. Deux lectures : toute extension à 20 %, ou agrandissement > 10 % de surface (MB § 4) ; à trancher au BOI-TVA-LIQ-30-20-90-20 avant de coder | S | Moyen : le seuil 10 % et la notion d'immeuble neuf sont à relire au BOFiP |
+| Utile | Devis « extension » : TVA 20 % pour la partie extension, 10 % pour la partie existante, avec explication. Toute extension à 20 % (BOI-TVA-LIQ-30-20-90-30 § 380) ; la règle des 10 % de surface s'ajoute pour les travaux sur l'existant (CGI 279-0 bis, 2) | S | Moyen : explication à faire relire par juriste-btp |
 | Plus tard | Sous-traitance : fiche du sous-traitant, demande d'acceptation au maître d'ouvrage, rappel de la caution art. 14 | L | Élevé : loi 75-1334 d'ordre public, à relire au texte |
 | Plus tard | Alerte « risque CCMI » si un même devis contient gros œuvre + charpente + couverture + menuiseries extérieures d'une maison neuve | S | Moyen : alerte seulement, jamais une qualification juridique |
 | Plus tard | Journal météo du chantier (jours d'arrêt) imprimable pour justifier un report | S | Faible |
