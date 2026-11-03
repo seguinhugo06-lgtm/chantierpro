@@ -42,7 +42,7 @@ Rien à rappeler périodiquement. Le rappel utile est ponctuel : fin de la garan
 
 ## 5. TVA propre au métier
 
-- **5,5 % (CGI 278-0 bis A)** : isolation thermique des murs, des combles et des rampants dans un logement achevé depuis plus de 2 ans, si l'isolant respecte les critères de l'arrêté (publié au JO du 24 déc. 2024, appliqué au 1er janv. 2025) [10][11]. Seuils cités par les sources pour l'ITI : **R ≥ 3,7 m².K/W** [12][13] ; combles perdus R ≥ 7, rampants R ≥ 6 [7] — ce sont les seuils de MaPrimeRénov' ; leur identité avec ceux du taux de TVA n'est **pas confirmée** (une source le signale) [13]. **À relire au texte avant de coder.**
+- **5,5 % (CGI 278-0 bis A)** : isolation thermique des murs, des combles et des rampants dans un logement achevé depuis plus de 2 ans, si l'isolant respecte les critères de l'arrêté (arrêté du 4 déc. 2024, publié au JO du 24 déc. 2024 selon une source ; date de l'arrêté ou du JO **(à vérifier)** ; appliqué au 1er janv. 2025) [10][11]. Seuils cités par les sources pour l'ITI : **R ≥ 3,7 m².K/W** [12][13] ; combles perdus R ≥ 7, rampants R ≥ 6 [7] — ce sont les seuils de MaPrimeRénov' ; selon le juriste, les seuils R du 5,5 % (murs 3,7 ; rampants 6 ; combles perdus 7) sont les mêmes, **à confirmer dans l'arrêté** [13]. **À relire au texte avant de coder.**
 - **Travaux induits** : la plaque de plâtre qui habille l'isolant (doublage collé, contre-cloison) suit en principe le taux de l'isolation comme travaux indissociables (BOFiP non lu, **à vérifier**). Les cloisons de distribution, les faux plafonds sans isolation, les enduits : **10 %** (CGI 279-0 bis) en rénovation de logement de plus de 2 ans.
 - Neuf, agrandissement, locaux professionnels : 20 % (voir `docs/metier-btp.md` § 4).
 - **Sous-traitance** (très fréquente pour ce métier, auprès d'une entreprise générale ou d'un maçon) : autoliquidation, pas de TVA facturée (voir `commun.md`).
@@ -51,7 +51,7 @@ Rien à rappeler périodiquement. Le rappel utile est ponctuel : fin de la garan
 
 - **Isolation** : pour chaque poste, la paroi (mur, rampant, plafond, combles perdus), la **surface en m²**, l'isolant (marque, référence, épaisseur), la **résistance thermique R**, le pare-vapeur ou la membrane [6][7]. Ces éléments conditionnent le 5,5 % et les aides.
 - **Règles de l'art** : NF DTU 25.41 « ouvrages en plaques de plâtre », édition de **février 2022** (remplace celle de déc. 2012 : cloisons jusqu'à 7 m, plaques BA18 et BA25, locaux EB+ collectifs) ; NF DTU 25.42 (complexes de doublage) reste à l'édition de déc. 2012 [14][15][16]. Citer le DTU sur le devis n'est pas obligatoire ; c'est une référence utile en cas de litige.
-- **Amiante** : pour un bâtiment dont le permis de construire est antérieur au **1er janv. 1997**, le donneur d'ordre doit faire réaliser un **repérage avant travaux** (C. trav. R4412-97, décret n° 2019-251 ; arrêté du 16 juil. 2019 pour les immeubles bâtis) par un opérateur certifié « avec mention » ; des cas de dispense existent (R4412-97-3) ; si de l'amiante est trouvé, les travaux doivent être qualifiés et organisés en conséquence [8][9][17]. La dépose de vieux plâtres, d'enduits ou de faux plafonds anciens est typiquement concernée. Le client particulier est donneur d'ordre : l'obligation lui incombe, mais l'artisan qui démarre sans repérage s'expose lui aussi (**à vérifier** : sanctions et cas du particulier pour son propre logement).
+- **Amiante** : pour un bâtiment dont le permis de construire est antérieur au **1er juillet 1997** (arrêté du 16 juil. 2019, à relire), le donneur d'ordre doit faire réaliser un **repérage avant travaux** (C. trav. R4412-97, décret n° 2019-251 ; arrêté du 16 juil. 2019 pour les immeubles bâtis) par un opérateur certifié « avec mention » ; des cas de dispense existent (R4412-97-3) ; si de l'amiante est trouvé, les travaux doivent être qualifiés et organisés en conséquence [8][9][17]. La dépose de vieux plâtres, d'enduits ou de faux plafonds anciens est typiquement concernée. Le client particulier est donneur d'ordre : l'obligation lui incombe, mais l'artisan qui démarre sans repérage s'expose lui aussi (**à vérifier** : sanctions et cas du particulier pour son propre logement).
 - **Plomb** : la dépose de plâtres peints dans un logement d'avant 1949 peut exposer au plomb (voir `peintre.md`).
 - **Déchets** : la dépose de plâtre produit des volumes importants ; mention des déchets obligatoire sur le devis (voir `docs/metier-btp.md` § 2).
 
@@ -118,4 +118,8 @@ Rien à rappeler périodiquement. Le rappel utile est ponctuel : fin de la garan
 
 ## Relecture juriste-btp
 
-Non faite. Questions à trancher avant tout code bloquant : seuils R de l'arrêté TVA (identiques ou non à ceux de MaPrimeRénov') ; taux de la plaque de plâtre d'un doublage isolant ; référence de l'arrêt de cassation sur les cloisons en plaques de plâtre ; obligation de repérage amiante pour un particulier dans son propre logement et responsabilité de l'artisan qui démarre sans repérage ; mentions CEE exigées sur devis et facture (« rôle actif et incitatif »).
+Relue par juriste-btp le 03/11/2026, sans texte officiel ouvert (avis : `avis-juriste-2026-11-03.md`). Corrections appliquées. Restent à vérifier au texte :
+- seuils R du 5,5 % (murs 3,7 ; rampants 6 ; combles perdus 7) dans l'arrêté ;
+- arrêté du 16 juil. 2019 (permis avant le 1er juillet 1997) ; repérage amiante d'un particulier dans son propre logement ;
+- taux de la plaque de plâtre d'un doublage isolant ;
+- mentions CEE exigées sur devis et facture.

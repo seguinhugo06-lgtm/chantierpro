@@ -34,7 +34,7 @@ Règles transverses (TVA, devis obligatoire, contrat hors établissement, décen
 
 | Qualification | Organisme | Obligatoire ? | Ce qu'elle permet au client | Source |
 |---|---|---|---|---|
-| **Qualification professionnelle** : diplôme de niveau CAP/BEP ou titre homologué équivalent, **ou 3 ans d'expérience** | CMA (attestation de qualification) | **Oui** : la DGCCRF place le ramonage dans le champ de l'art. 16 de la loi du 5 juil. 1996 (aujourd'hui C. artisanat L121-1, recodifié à droit constant au 1er juil. 2023) | Un ramonage fait par un professionnel qualifié | [3, 4, 9] [résumé] |
+| **Qualification professionnelle** : diplôme de niveau CAP/BEP ou titre homologué équivalent, **ou 3 ans d'expérience** | CMA (attestation de qualification) | **Oui** : l'ancien art. 16 de la loi n° 96-603 du 5 juil. 1996 nommait expressément « le ramonage » ; aujourd'hui C. artisanat L121-1, recodifié à droit constant au 1er juil. 2023 (MB § 7) | Un ramonage fait par un professionnel qualifié | [3, 4, 9] [résumé] |
 | Titre « ramoneur-fumiste » du COSTIC (RNCP, niveau 3) | COSTIC | Non (une des voies de la qualification) | — | [3, 10] [résumé] |
 | CQP ramoneur-fumiste | Branche | Ne suffit pas seul selon la DGCCRF | — | [3] [résumé] |
 | Qualibat | Qualibat | Non | Aucune qualification « ramonage » propre trouvée ; les codes 5111/5112 sont de la plomberie, pas du ramonage | [11] (à vérifier dans le catalogue Qualibat) |
@@ -72,7 +72,7 @@ Tubage, chemisage, débistrage : devis et facture ordinaires (voir `commun.md`).
 ## 5. TVA propre au métier
 
 - Ramonage : 10 % dans un logement de plus de 2 ans (vérifié, metier-btp § 10).
-- **Débistrage** : « élimination de suie et de dépôts corrosifs » est dans la même ligne du BOFiP que le ramonage (BOI-ANNX-000210, § 20, cité dans metier-btp § 10) ; le débistrage semble donc à 10 % au même titre — lecture à confirmer par juriste-btp.
+- **Débistrage** : « élimination de suie et de dépôts corrosifs » est dans la même ligne du BOFiP que le ramonage (BOI-ANNX-000210, § 20, cité dans metier-btp § 10) ; le débistrage semble donc à 10 % au même titre — lecture plausible selon juriste-btp, à confirmer au BOFiP.
 - Tubage, chemisage : travaux d'amélioration ou d'entretien d'un logement de plus de 2 ans, 10 % (voir `commun.md`).
 - Pose d'un poêle : voir la fiche chauffagiste (5,5 % possible sous conditions de performance).
 
@@ -130,4 +130,7 @@ Sources du dépôt : `docs/metier-btp.md` § 10, `docs/cadrage-ramonage.md`, `do
 
 ## Relecture juriste-btp
 
-Non faite pour les ajouts de cette fiche. À lui soumettre : annexes 1 et 3 de l'arrêté du 20 juil. 2023 (contenu de l'attestation d'entretien, délai de 15 jours ouvrés ou non, conservation) ; décennale du tubage ; débistrage à 10 % ; ramonage dans le champ de C. artisanat L121-1.
+Relue par juriste-btp le 03/11/2026, sans texte officiel ouvert (avis : `avis-juriste-2026-11-03.md`). Corrections appliquées. Restent à vérifier au texte :
+- débistrage à 10 % (BOI-ANNX-000210) ;
+- annexes 1 et 3 de l'arrêté du 20 juil. 2023 : contenu de l'attestation d'entretien, délai de 15 jours (ouvrés ou non), conservation ;
+- décennale du tubage.

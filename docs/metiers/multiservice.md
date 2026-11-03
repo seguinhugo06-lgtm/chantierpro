@@ -53,7 +53,7 @@ Durée de l'intervention et prix horaire : non confirmés comme mentions obligat
 |---|---|---|---|
 | Liste des activités | C. trav. D7231-1 ; y figurent les « petits travaux de jardinage, y compris les travaux de débroussaillage » et les « travaux de petit bricolage dits “homme toutes mains” » | D7231-1 | [1, 2] [résumé] |
 | **Jardinage** | dépenses retenues plafonnées à **5 000 € par an et par foyer** (crédit max. 2 500 €) ; entretien courant, taille de haies et d'arbres, hors travaux forestiers | D7233-5 ; CGI 199 sexdecies | [1, 14] [résumé] |
-| **Petit bricolage** | **500 € par an et par foyer** (crédit max. 250 €) ; **intervention ≤ 2 heures** ; ni vente de produits, ni travaux sur équipements électriques, gaz ou chauffage | D7233-5 (à vérifier) | [1, 13] [résumé] ; le « 2 heures » vient d'un tableau non officiel et d'un amendement au PLF 2026 (non adopté à notre connaissance) **(à vérifier)** |
+| **Petit bricolage** | **500 € par an et par foyer** (crédit max. 250 €) ; **intervention ≤ 2 heures** ; ni vente de produits, ni travaux sur équipements électriques, gaz ou chauffage | D7233-5 (à vérifier) | [1, 13] [résumé] ; Petit bricolage : 500 € par an et par foyer fiscal, intervention de deux heures au plus (C. trav. D7233-5, à relire au texte) ; l'amendement I-415 n'en est pas la source. |
 | Plafond général | 12 000 € par an, majoré sous conditions | CGI 199 sexdecies | [1] (à vérifier) |
 | **Condition d'activité exclusive** | pour ouvrir les avantages fiscaux, l'entreprise ne fait que du SAP (C. trav. L7232-1-1) ; **dispense** depuis le 1er janv. 2025 pour les micro-entrepreneurs (micro-BIC, micro-BNC) qui font du SAP à titre principal (décret n° 2024-851 du 25 juil. 2024), demande dans NOVA, à jour des déclarations TSA et EMA | L7232-1-1 | [8, 9, 12] [résumé] ; seuil « hors SAP ≤ 30 % du CA de l'année précédente » vu sur une seule source **(à vérifier)** |
 | Déclarations d'activité | états statistiques TSA (trimestriel ?) et EMA (annuel ?) dans NOVA | — | [12] [résumé] ; périodicité **(à vérifier)** |
@@ -79,7 +79,7 @@ Durée de l'intervention et prix horaire : non confirmés comme mentions obligat
 ## 6. Mentions particulières sur le devis et la facture
 
 - Facture SAP : celles de D7233-1 (§ 3), en plus des mentions communes (voir `commun.md`). Le n° SAP est la mention que l'app n'a pas.
-- Mention utile pour le client : « Prestation ouvrant droit au crédit d'impôt de l'article 199 sexdecies du CGI » ; aucune obligation trouvée de l'imprimer **(à vérifier)**. Ne jamais l'imprimer pour un travail exclu (électricité, plomberie, chauffage, au-delà de 2 h pour le bricolage), sinon c'est une affirmation fausse qui engage l'artisan.
+- Mention utile pour le client : « Prestation de services à la personne — organisme déclaré n° … du … (C. trav. D7233-1). » Ne pas écrire « ouvrant droit au crédit d'impôt » : le droit dépend du foyer, des plafonds et du moyen de paiement. Ne jamais l'imprimer pour un travail exclu (électricité, plomberie, chauffage, au-delà de 2 h pour le bricolage), sinon c'est une affirmation fausse qui engage l'artisan.
 - Séparer sur des factures distinctes la part SAP et la part « travaux du bâtiment » d'un même client : déduction pratique pour l'attestation fiscale **(à vérifier)**.
 - Devis SAP ≥ 100 € TTC par mois : mentions de l'arrêté du 17 mars 2015, art. 7 (non lues) **(à vérifier)**.
 
@@ -102,7 +102,7 @@ Aucun retour de multiservice n'est écrit dans le dépôt. Problèmes déduits d
 | Proposition | Priorité | Effort | Risque juridique |
 |---|---|---|---|
 | **Paramètres SAP** : n° et date de déclaration, mode (prestataire), imprimés sur les factures marquées « SAP » ; case par facture « prestation de services à la personne » avec la catégorie (bricolage, jardinage, autre) et la durée | Indispensable | S | Moyen : liste D7233-1 à relire au texte |
-| **Attestation fiscale annuelle générée automatiquement** : en janvier, pour chaque client, somme des factures SAP **payées** dans l'année (pas émises), détail des interventions, n° SAP ; PDF figé et numéroté comme l'attestation de ramonage ; rappel « à remettre avant le 31 mars » et envoi par e-mail | Indispensable | M (réutilise PDF, numérotation, envoi) | Élevé : contenu de l'arrêté d'application non lu ; une attestation fausse expose l'artisan et le client à un redressement. À relire au texte avant de coder |
+| **Attestation fiscale annuelle générée automatiquement** : en janvier, pour chaque client, somme des factures SAP **payées** dans l'année (pas émises), par un moyen de paiement admis seulement (pas les espèces, voir `commun.md` § 4), détail des interventions, n° SAP ; PDF figé et numéroté comme l'attestation de ramonage ; rappel « à remettre avant le 31 mars » et envoi par e-mail | Indispensable | M (réutilise PDF, numérotation, envoi) | Élevé : contenu de l'arrêté d'application non lu ; une attestation fausse expose l'artisan et le client à un redressement. À relire au texte avant de coder |
 | **Compteur de plafonds par foyer** : cumul de l'année par client et par catégorie (500 € bricolage, 5 000 € jardinage), alerte non bloquante à l'approche et au dépassement, alerte si une intervention bricolage dépasse 2 h | Utile | S | Moyen : le foyer fiscal n'est pas le client (deux clients d'un même foyer) ; l'app ne peut qu'aider, jamais affirmer « éligible » |
 | **Garde-fou électricité / plomberie / chauffage** : une ligne de ces catégories sur une facture SAP déclenche un avertissement (exclues du petit bricolage, et réservées aux qualifiés par L121-1) | Utile | S | Faible (avertissement) |
 | Indicateur « part hors SAP du chiffre d'affaires » de l'année précédente (dispense micro-entrepreneur) | Plus tard | S | Moyen : seuil de 30 % non confirmé |
@@ -133,4 +133,9 @@ Aucun retour de multiservice n'est écrit dans le dépôt. Problèmes déduits d
 
 ## Relecture juriste-btp
 
-Non faite. À lui soumettre en priorité : contenu exact de l'attestation fiscale (D7233-4 et arrêté) et de la facture (D7233-1) avant de coder la génération automatique ; plafond et durée du petit bricolage (D7233-5) ; loi de finances 2026 et crédit d'impôt ; TVA d'une prestation SAP non déclarée ; frontière bricolage SAP / travaux du bâtiment pour la décennale.
+Relue par juriste-btp le 03/11/2026, sans texte officiel ouvert (avis : `avis-juriste-2026-11-03.md`). Corrections appliquées. Restent à vérifier au texte :
+- plafond et durée du petit bricolage (C. trav. D7233-5) ;
+- contenu de la facture (D7233-1) et de l'attestation fiscale (D7233-4 et arrêté) avant de coder la génération automatique ;
+- CGI 199 sexdecies après la loi de finances 2026 ;
+- TVA d'une prestation SAP non déclarée ;
+- avance immédiate : à remonter à Hugo (habilitation, compte).

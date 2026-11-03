@@ -35,7 +35,7 @@ Règles transverses (TVA, certification du taux réduit, décennale, hors établ
 **Termites et insectes** [1] [2] [3] **[résumé]**
 - **Zones délimitées** par **arrêté préfectoral** quand des foyers sont identifiés (CCH **L131-3**) [1] [2]. La liste des communes se consulte en préfecture ou à la DDT.
 - **Déclaration en mairie** de la présence de termites par l'occupant, à défaut le propriétaire (CCH L126-4 et s.) [1] **(numérotation à vérifier : d'anciens textes citent L133-x)**.
-- **Vente** dans une zone délimitée : **état relatif à la présence de termites** établi par un **diagnostiqueur certifié** (CCH **L126-24**), annexé à la promesse ou à l'acte, valable **6 mois** (CCH D271-5 cité) [1] **[résumé]**. Ce n'est **pas** le charpentier qui le fait : il traite, le diagnostiqueur constate.
+- **Vente** dans une zone délimitée : **état relatif à la présence de termites** établi par un **diagnostiqueur certifié** (CCH **L126-24**), annexé à la promesse ou à l'acte, valable **6 mois** (CCH R271-5 probablement, et non D271-5 **(à vérifier)**) [1] **[résumé]**. Ce n'est **pas** le charpentier qui le fait : il traite, le diagnostiqueur constate.
 - **Construction neuve** : protection des bâtiments neufs contre les termites (barrière sol-bâtiment ou dispositif contrôlable, CCH R131-2 et s. cités) [3] **(à vérifier : source non officielle ; « partout en France » ou seulement dans les départements visés par arrêté ?)**.
 - **Démolition** en zone délimitée : bois et matériaux contaminés **incinérés sur place ou traités avant tout transport** [1] **[résumé]**. À chiffrer sur le devis de dépose.
 
@@ -57,7 +57,7 @@ Règles transverses (TVA, certification du taux réduit, décennale, hors établ
 
 | Obligation | Fréquence | Qui | Texte | Source |
 |---|---|---|---|---|
-| État termites à la vente (zone délimitée) | À chaque vente, valable 6 mois | Vendeur (diagnostiqueur) | CCH L126-24, D271-5 | [1] |
+| État termites à la vente (zone délimitée) | À chaque vente, valable 6 mois | Vendeur (diagnostiqueur) | CCH L126-24, R271-5 (à vérifier) | [1] |
 | Déclaration de termites / mérule | Dès qu'ils sont connus | Occupant, à défaut propriétaire | CCH L126-4, L126-5 | [1] [4] |
 | Contrôle du dispositif anti-termites d'un bâtiment neuf | **(à vérifier : rien trouvé)** | — | — | — |
 | Inspection de charpente | Conseillée, non obligatoire | Propriétaire | **Aucun texte trouvé** | (rien trouvé) |
@@ -67,8 +67,9 @@ Un rappel « inspection de charpente » ou « fin de garantie du traitement » e
 ## 5. TVA propre au métier
 
 Taux et certification : voir commun.md et macon.md § 5.
-- **Extension en ossature bois** : **20 %** (addition de construction). Aussi 20 % si les travaux **augmentent la surface de plancher de plus de 10 %**, et pour une **surélévation** [13] **[résumé — confirmé par impots.gouv.fr ; à relire au BOI-TVA-LIQ-30-20-90-20]**.
-- **Remplacement d'une charpente** d'un logement de plus de 2 ans : en principe **10 %**, sauf si l'ensemble des travaux sur deux ans rend l'immeuble « neuf » (plus de la moitié d'un élément de gros œuvre, ou deux tiers de chacun des six éléments de second œuvre ; la charpente compte-t-elle comme gros œuvre ? **(à vérifier au BOFiP)**) — voir macon.md § 5.
+- **Extension en ossature bois** : **20 %** (addition de construction). Aussi 20 % si les travaux **augmentent la surface de plancher de plus de 10 %**, et pour une **surélévation** [13] **[résumé]**.
+- **Extension : deux lectures.** Ici, toute extension (addition de construction) est à 20 %. `docs/metier-btp.md` § 4 dit « agrandissement > 10 % de surface ». À trancher au BOI-TVA-LIQ-30-20-90-20 avant de coder.
+- **Remplacement d'une charpente** d'un logement de plus de 2 ans : en principe **10 %**, sauf si l'ensemble des travaux sur deux ans rend l'immeuble « neuf » (plus de la moitié d'un élément de gros œuvre, ou deux tiers de chacun des six éléments de second œuvre ; la charpente relève probablement des « éléments hors fondations déterminant la résistance et la rigidité » (CGI ann. II 245 A, à vérifier) — voir macon.md § 5.
 - **Traitement curatif** des bois d'un logement : 10 % (entretien, amélioration) **(à vérifier : aucune source spécifique)**.
 - **Isolation** de toiture posée par le charpentier : 5,5 % (voir couvreur.md § 5).
 - Bois vendu sans pose : 20 %.
@@ -83,7 +84,7 @@ Taux et certification : voir commun.md et macon.md § 5.
 
 ## 7. Aides du client et pièces que l'artisan fournit
 
-- Isolation de toiture : MaPrimeRénov' par geste (rampants) et CEE si l'entreprise est **RGE** ; voir couvreur.md § 7.
+- Isolation de toiture : MaPrimeRénov' par geste : l'isolation des combles et des rampants n'est plus aidée depuis le 1er sept. 2026 (décret n° 2026-822, à vérifier) ; possible en rénovation d'ampleur et par les CEE (entreprise **RGE**) ; voir couvreur.md § 7.
 - Aucune aide publique trouvée pour une charpente ou un traitement des bois **(rien trouvé)**. Le traitement curatif peut être pris en charge par l'assurance habitation selon le contrat **(à vérifier)**.
 - Pour une vente, le client peut demander le **rapport de traitement** et la facture.
 
@@ -103,7 +104,7 @@ Propositions :
 |---|---|---|---|
 | Indispensable | **Échéancier** acompte à la commande / situation à la livraison du bois / solde, qui respecte le délai de 7 jours hors établissement (déjà géré par `delaiSeptJours`) | S | Moyen : ne jamais exiger un paiement pendant le délai (L221-10, déjà relu) |
 | Indispensable | **Avenant** au devis signé (bois attaqués, renfort) avec photos, signé par le client avant les travaux supplémentaires | M | Moyen : modèle à relire (C. civ. 1193) |
-| Indispensable | Modèles de devis : « charpente traditionnelle », « fermettes », « ossature bois extension » (TVA 20 % proposée), « traitement curatif » (TVA 10 %) | S | Moyen : TVA de l'extension à relire au BOFiP |
+| Indispensable | Modèles de devis : « charpente traditionnelle », « fermettes », « ossature bois extension » (TVA 20 % proposée), « traitement curatif » (TVA 10 %) | S | Moyen : TVA de l'extension à trancher au BOI-TVA-LIQ-30-20-90-20 avant de coder (toute extension à 20 %, ou agrandissement > 10 % de surface selon MB § 4) |
 | Utile | **Rapport de traitement des bois** (zones, produit, n° Certibiocide, date, photos) généré depuis la facture, comme l'attestation de ramonage | M | Moyen : ne pas l'appeler « état parasitaire » (document du diagnostiqueur) |
 | Utile | Paramètres : n° Certibiocide avec date de fin, activités décennales séparées (charpente / ossature / traitement) ; alerte si un devis d'ossature bois est émis sans l'activité correspondante | S | Faible si c'est une alerte |
 | Utile | Case « commune en zone termites » (saisie par l'artisan) et ligne « traitement des bois contaminés avant transport » proposée au devis de dépose | S | Faible |
@@ -126,5 +127,11 @@ Propositions :
 12. Construires.fr, « Extension de maison : DP ou PC selon les seuils 5, 20, 40 et 150 m² » — https://www.construires.fr/extension-habitation-150m2-r421-seuils/ ; CAUE 13, fiche « Travaux sur construction existante » (2026) — https://www.caue13.fr/sites/default/files/2026-07/17_FICHE-PRATIQUE_AUTORISATION-URBA_Travaux%20sur%20construction%20existante.pdf — consulté le 03/11/2026 — (à vérifier)
 13. impots.gouv.fr, « Plusieurs taux de TVA » — https://impots.gouv.fr/particulier/plusieurs-taux-de-tva — consulté le 03/11/2026 — [résumé]
 
----
-**Relecture juriste-btp** : non faite. Points à relire au texte avant tout code : CCH L126-4, L126-5, L126-24, L126-25, L131-3, R131-2 et s. (termites, mérule, neuf), Certibiocide TP8 (date de 2015, catégorie), règlement UE 305/2011 et EN 14081-1, seuils d'urbanisme (C. urb. R421-14 et s. **à vérifier**), TVA de l'extension (seuil de 10 % de surface de plancher) et place de la charpente dans le « gros œuvre » fiscal.
+## Relecture juriste-btp
+
+Relue par juriste-btp le 03/11/2026, sans texte officiel ouvert (avis : `avis-juriste-2026-11-03.md`). Corrections appliquées. Restent à vérifier au texte :
+- TVA d'une extension : addition de construction ou seuil de 10 % (BOI-TVA-LIQ-30-20-90-20), puis aligner MB § 4 ;
+- place de la charpente dans le gros œuvre fiscal (CGI ann. II 245 A) ;
+- CCH R271-5 (et non D271-5) ;
+- décret n° 2026-822 (rampants hors du parcours par geste) ;
+- CCH L126-4, L126-5, L126-25, R131-2 et s. ; Certibiocide TP8 ; seuils d'urbanisme (C. urb. R421-14 et s.).
