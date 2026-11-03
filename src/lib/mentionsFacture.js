@@ -23,6 +23,7 @@
 import { PROFIL_EXIGE } from './profilLegal';
 import { estEntrepreneurIndividuel, estEirl } from './identiteEntreprise';
 import { estFranchiseTva } from './franchiseTva';
+import { estInscritRm } from './immatriculation';
 
 const rempli = (valeur) => (typeof valeur === 'string' ? valeur.trim() !== '' : Boolean(valeur));
 // Entreprise relue telle quelle depuis la base : clés snake_case
@@ -34,10 +35,15 @@ export function estSociete(entreprise) {
   return rempli(lire(e, 'formeJuridique', 'forme_juridique')) && !estEntrepreneurIndividuel(e) && !estEirl(e);
 }
 
-/** RCS saisi : ville du greffe et numéro (Réglages › Légal, lus par les PDF), ou l'ancien champ libre `rcs`. */
+/**
+ * RCS saisi : ville du greffe et numéro (Réglages › Légal, lus par les PDF), ou l'ancien champ libre `rcs`.
+ * Un département et un numéro saisis pour le répertoire des métiers (`rcsType` 'RM', lib/immatriculation) ne
+ * sont pas un RCS.
+ */
 export function rcsRenseigne(entreprise) {
   const e = entreprise || {};
-  return (rempli(lire(e, 'rcsVille', 'rcs_ville')) && rempli(lire(e, 'rcsNumero', 'rcs_numero'))) || rempli(e.rcs);
+  if (rempli(e.rcs)) return true;
+  return !estInscritRm(e) && rempli(lire(e, 'rcsVille', 'rcs_ville')) && rempli(lire(e, 'rcsNumero', 'rcs_numero'));
 }
 
 /**
@@ -50,7 +56,8 @@ export function rcsRenseigne(entreprise) {
 export function rcsConcerne(entreprise) {
   const e = entreprise || {};
   if (rcsRenseigne(e) || estSociete(e)) return true;
-  const commence = rempli(lire(e, 'rcsVille', 'rcs_ville')) || rempli(lire(e, 'rcsNumero', 'rcs_numero'));
+  // Un entrepreneur individuel inscrit au répertoire des métiers n'a pas de RCS à compléter
+  const commence = !estInscritRm(e) && (rempli(lire(e, 'rcsVille', 'rcs_ville')) || rempli(lire(e, 'rcsNumero', 'rcs_numero')));
   return commence && (estEirl(e) || (estEntrepreneurIndividuel(e) && !estFranchiseTva(e)));
 }
 

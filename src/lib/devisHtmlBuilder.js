@@ -29,18 +29,15 @@ import { signatureDuClient } from './signatureDocument';
 import { finValidite } from './validiteDevis';
 import { estClientPro } from './relanceUtils';
 import { natureDuDocument, piedDePageHtml } from './piedDePageDocument';
+import { mentionImmatriculation } from './immatriculation';
 import { blocRetractationHtml, estConcerneParRetractation, lienRetractationEnLigne, mentionsSignatureClientHtml } from './retractation';
 
 /**
- * Formatte un RCS complet
+ * Immatriculation imprimée : « RCS Paris B 123 456 789 », « 123 456 789 RM 33 » ou l'ancien champ libre
+ * (lib/immatriculation, commun aux deux générateurs ; C. com. R123-237, décret n° 98-247 art. 9)
  */
 function getRCSComplet(entreprise) {
-  if (!entreprise?.rcsVille && !entreprise?.rcs_ville) return '';
-  const ville = entreprise.rcsVille || entreprise.rcs_ville || '';
-  const numero = entreprise.rcsNumero || entreprise.rcs_numero || '';
-  const type = entreprise.rcsType || entreprise.rcs_type || 'B';
-  if (!ville || !numero) return '';
-  return h(`RCS ${ville} ${type} ${numero}`);
+  return h(mentionImmatriculation(entreprise));
 }
 
 /**
@@ -258,7 +255,7 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mod
       <div class="entreprise-legal">
         ${e.siret ? `SIRET: ${e.siret}` : ''}
         ${e.codeApe ? ` · APE: ${e.codeApe}` : ''}
-        ${rcsComplet ? `<br>${rcsComplet}` : (e.rcs ? `<br>RCS: ${e.rcs}` : '')}
+        ${rcsComplet ? `<br>${rcsComplet}` : ''}
         ${e.tvaIntra ? `<br>TVA Intra: ${e.tvaIntra}` : ''}
         ${isMicro ? '<br><em>TVA non applicable, art. 293 B du CGI</em>' : ''}
       </div>
@@ -635,7 +632,7 @@ export function buildSituationFactureHtml({ situation, parentDevis, client, chan
       <div class="entreprise-legal">
         ${e.siret ? `SIRET: ${e.siret}` : ''}
         ${e.codeApe ? ` · APE: ${e.codeApe}` : ''}
-        ${e.rcs || rcsComplet ? `<br>RCS: ${rcsComplet || e.rcs}` : ''}
+        ${rcsComplet ? `<br>${rcsComplet}` : ''}
         ${e.tvaIntra ? `<br>TVA Intra: ${e.tvaIntra}` : ''}
       </div>
     </div>

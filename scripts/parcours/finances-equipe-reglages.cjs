@@ -595,4 +595,57 @@ module.exports = [
       await accueil.browser.close();
     },
   },
+  {
+    // Retour d'Hugo (3 nov. 2026) : « Registre métier ou commerce — Type à revoir car pas commerçant ». Le bloc ne
+    // proposait que le RCS (« A : commerçant »…). Choix guidé : répertoire des métiers pour un artisan, RCS sinon.
+    nom: 'légal : un artisan voit le répertoire des métiers, une société le RCS ; la mention imprimée suit (réel, 375 px)',
+    reel: true,
+    async executer({ ouvrir, sessionFactice, cliquer, attendre, verifier, saisir }) {
+      const lire = (page) => page.evaluate(() => {
+        const bloc = document.querySelector('[data-registre]');
+        const segments = [...(bloc?.querySelectorAll('[data-ui="Segmente"] button') || [])];
+        return {
+          registre: bloc?.dataset.registre || '',
+          choisi: segments.find((b) => b.getAttribute('aria-pressed') === 'true')?.innerText.trim() || '',
+          hauteurs: segments.map((b) => Math.round(b.getBoundingClientRect().height)),
+          lieu: document.querySelector('label[for="settings-field-rcs"], #settings-field-rcs-libelle')?.innerText.trim() || '',
+          type: !!document.getElementById('settings-field-rcsType'),
+          imprime: [...document.querySelectorAll('p')].find((p) => /^Sera imprimé/.test(p.innerText.trim()))?.innerText.trim() || '',
+          debordement: document.documentElement.scrollWidth - innerWidth,
+        };
+      });
+
+      const base = creerBase({ entreprise: [{ ...MICRO }] });
+      const { page, browser } = await ouvrir({ reel: true, largeur: 375, page: 'settings', session: sessionFactice(UID), supabase: (req, u) => base.reponse(req, u) });
+      await attendre(1500);
+      await rubrique(page, { cliquer }, 'Légal');
+      const a = await lire(page);
+      verifier(a.registre === 'RM' && a.choisi === 'Métiers (RM)', `micro-entreprise : le répertoire des métiers d’abord (${JSON.stringify(a)})`);
+      verifier(/Département de la chambre de métiers/.test(a.lieu) && !a.type, `département demandé, pas de « Type » de RCS (« ${a.lieu} »)`);
+      verifier(a.hauteurs.length === 2 && a.hauteurs.every((h) => h >= 36) && a.debordement <= 0, `choix lisible à 375 px, rien ne déborde (${JSON.stringify(a.hauteurs)}, ${a.debordement} px)`);
+      await saisir(page, '#settings-field-rcs', '33');
+      await saisir(page, '#settings-field-rcsNumero', '123 456 789');
+      await attendre(2500);
+      const b = await lire(page);
+      verifier(/123 456 789 RM 33/.test(b.imprime), `« Sera imprimé : 123 456 789 RM 33 » (« ${b.imprime} »)`);
+      const ecrites = ecrituresEntreprise(base);
+      verifier(ecrites.some((c) => c.rcs_ville === '33') && ecrites.some((c) => c.settings_json?.reglages?.rcsNumero === '123 456 789'),
+        'département et numéro écrits dans les mêmes champs qu’avant (rcs_ville, reglages.rcsNumero)');
+      await cliquer(page, 'Commerce (RCS)');
+      await attendre(1500);
+      const c = await lire(page);
+      verifier(c.registre === 'RCS' && /Ville du greffe/.test(c.lieu) && c.type, `« Commerce (RCS) » : ville du greffe et type (${JSON.stringify(c)})`);
+      verifier(ecrituresEntreprise(base).some((e) => e.settings_json?.reglages?.rcsType === 'A'), 'le choix est enregistré (type A pour un entrepreneur individuel)');
+      await browser.close();
+
+      // Données d'avant : une SARL avec ville et numéro, sans type, reste au RCS et imprime la même mention
+      const base2 = creerBase({ entreprise: [{ ...ENTREPRISE, rcs_ville: 'Bordeaux', settings_json: { reglages: { rcsNumero: '987 654 321' } } }] });
+      const s = await ouvrir({ reel: true, largeur: 375, page: 'settings', session: sessionFactice(UID), supabase: (req, u) => base2.reponse(req, u) });
+      await attendre(1500);
+      await rubrique(s.page, { cliquer }, 'Légal');
+      const d = await lire(s.page);
+      verifier(d.registre === 'RCS' && /RCS Bordeaux B 987 654 321/.test(d.imprime), `société, données anciennes : RCS inchangé (« ${d.imprime} »)`);
+      await s.browser.close();
+    },
+  },
 ];

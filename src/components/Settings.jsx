@@ -43,6 +43,8 @@ import { EnTetePage } from './ui/EnTete';
 import { jourLocal, dateLue } from '../lib/dates';
 import { estEntrepreneurIndividuel, estEirl, nomImprime } from '../lib/identiteEntreprise';
 import { estSociete } from '../lib/mentionsFacture';
+import { registreDe, libellesImmatriculation, mentionImmatriculation } from '../lib/immatriculation';
+import { Segmente } from './ui/Onglets';
 import { minimumPenalites, libelleMinimumPenalites, tauxPenalitesValide } from '../lib/tauxInteretLegal';
 import { URL_SIRENE, profilDepuisSirene } from '../lib/sirene';
 import { chiffreAffairesHT } from '../lib/ventes';
@@ -435,11 +437,8 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
   const telValide = (v) => /^(?:\+33|0)\s*[1-9](?:[\s.-]*\d{2}){4}$/.test((v || '').trim());
   const emailValide = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((v || '').trim());
 
-  // Formater RCS complet
-  const getRCSComplet = () => {
-    if (!entreprise.rcsVille || !entreprise.rcsNumero) return '';
-    return `RCS ${entreprise.rcsVille} ${entreprise.rcsType || 'B'} ${entreprise.rcsNumero}`;
-  };
+  // Immatriculation imprimée (RCS ou RM) : la même que les documents (lib/immatriculation)
+  const getRCSComplet = () => mentionImmatriculation(entreprise);
 
   const ouvrirAssistant = () => { setShowSetupWizard(true); setWizardStep(0); };
   // Taux de pénalités : refusé sous le minimum légal du semestre (src/lib/tauxInteretLegal.js), la saisie reste affichée
@@ -718,30 +717,57 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             </div>
           </Bloc>
 
-          {entreprise.formeJuridique !== 'Micro-entreprise' && entreprise.formeJuridique !== 'Auto-entrepreneur' ? (
-            <Bloc titre="RCS : registre du commerce" lexique={LEXIQUE.rcs} sousTitre="Format : RCS, ville du greffe, type, numéro (ex. RCS Paris B 123 456 789).">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <ChoixParam id="settings-field-rcs" cle="rcsVille" libelle="Ville du greffe" options={VILLES_RCS.map((v) => ({ valeur: v, libelle: v }))}
-                  valeur={entreprise.rcsVille || ''} onChange={maj('rcsVille')} vide="Choisir la ville" />
-                <ChoixParam id="settings-field-rcsType" cle="rcsType" libelle="Type" titre="Type d’immatriculation" options={TYPES_RCS}
-                  valeur={entreprise.rcsType || 'B'} onChange={maj('rcsType')} />
-                <ChampParam id="settings-field-rcsNumero" cle="rcsNumero" libelle="Numéro (9 chiffres)">
-                  <DebouncedInput id="settings-field-rcsNumero" inputMode="numeric" className={`${CLASSE_CHAMP} tabular-nums`} placeholder="123 456 789" maxLength={11} value={entreprise.rcsNumero || ''} onChange={maj('rcsNumero')} />
-                </ChampParam>
-              </div>
-              {getRCSComplet() && (
-                <p className="mt-4 p-3 rounded-xl text-sm bg-succes-fond text-succes-texte">Sera imprimé : <strong>{getRCSComplet()}</strong></p>
-              )}
-            </Bloc>
-          ) : (
-            <div className="rounded-2xl p-4 flex items-start gap-3 bg-info-fond text-info-texte">
-              <Info size={18} aria-hidden="true" className="flex-shrink-0 mt-0.5" />
-              <div className="text-sm">
-                <p className="font-semibold">Micro-entreprise</p>
-                <p className="mt-0.5">Le RCS ne concerne que les commerçants et les sociétés. Un artisan en micro-entreprise est inscrit au registre national des entreprises (RNE) : il n’a pas de numéro de RCS à saisir.</p>
-              </div>
-            </div>
-          )}
+          {/* Immatriculation : répertoire des métiers (artisan) ou RCS (commerçant, société), choix guidé par la forme
+              juridique (retour d'Hugo du 3 nov. 2026 : « Type à revoir car pas commerçant »). Mêmes champs qu'avant
+              (rcsType, rcsVille, rcsNumero) ; libellés, mention et sources dans lib/immatriculation. */}
+          {(() => {
+            const registre = registreDe(entreprise);
+            const textes = libellesImmatriculation(registre);
+            const mention = mentionImmatriculation(entreprise);
+            const choisirRegistre = (r) => {
+              if (r === registre) return;
+              updateEntreprise((p) => ({ ...p, rcsType: r === 'RM' ? 'RM' : (estSociete(p) ? 'B' : 'A') }), 'rcsType');
+            };
+            // Le répertoire des métiers proposé d'office à un entrepreneur individuel s'enregistre avec la première saisie :
+            // sans lui, ville et numéro se liraient « RCS » (données d'avant, lib/immatriculation)
+            const majImmat = (cle) => (val) => updateEntreprise((p) => ({ ...p, [cle]: val, ...(registre === 'RM' ? { rcsType: 'RM' } : {}) }), cle);
+            return (
+              <Bloc titre="Immatriculation" lexique={LEXIQUE.rcs} sousTitre="Le registre où votre entreprise est inscrite, imprimé sur vos devis et factures.">
+                <div data-registre={registre}>
+                  <p id="settings-registre-libelle" className="block text-sm font-medium text-encre-2 mb-1.5">Votre registre</p>
+                  <Segmente pleineLargeur ariaLabel="Votre registre" valeur={registre} onChange={choisirRegistre}
+                    options={[{ valeur: 'RM', libelle: 'Métiers (RM)' }, { valeur: 'RCS', libelle: 'Commerce (RCS)' }]} />
+                  <p className="mt-1.5 text-sm text-encre-3">
+                    {registre === 'RM'
+                      ? 'Artisan (entreprise individuelle, micro-entreprise ou société artisanale) : répertoire des métiers.'
+                      : 'Commerçant ou société commerciale (SARL, SAS…) : registre du commerce et des sociétés.'}
+                    {' '}Inscrit aux deux ? Choisissez celui qui figure sur votre extrait d’immatriculation.
+                  </p>
+                </div>
+                <div className={`mt-4 grid grid-cols-1 gap-4 ${registre === 'RCS' ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
+                  {registre === 'RCS' ? (
+                    <ChoixParam id="settings-field-rcs" cle="rcsVille" libelle={textes.lieu} options={VILLES_RCS.map((v) => ({ valeur: v, libelle: v }))}
+                      valeur={entreprise.rcsVille || ''} onChange={majImmat('rcsVille')} vide={textes.lieuExemple} />
+                  ) : (
+                    <ChampParam id="settings-field-rcs" cle="rcsVille" libelle={textes.lieu}>
+                      <DebouncedInput id="settings-field-rcs" placeholder={textes.lieuExemple} maxLength={40} value={entreprise.rcsVille || ''} onChange={majImmat('rcsVille')} />
+                    </ChampParam>
+                  )}
+                  {registre === 'RCS' ? (
+                    <ChoixParam id="settings-field-rcsType" cle="rcsType" libelle="Type" titre="Type d’immatriculation" options={TYPES_RCS}
+                      valeur={TYPES_RCS.some((t) => t.valeur === entreprise.rcsType) ? entreprise.rcsType : 'B'} onChange={maj('rcsType')} />
+                  ) : null}
+                  <ChampParam id="settings-field-rcsNumero" cle="rcsNumero" libelle="Numéro SIREN (9 chiffres)">
+                    <DebouncedInput id="settings-field-rcsNumero" inputMode="numeric" className={`${CLASSE_CHAMP} tabular-nums`} placeholder="123 456 789" maxLength={11} value={entreprise.rcsNumero || ''} onChange={majImmat('rcsNumero')} />
+                  </ChampParam>
+                </div>
+                <p className="mt-3 text-sm text-encre-3">{textes.aide}</p>
+                {mention && (
+                  <p className="mt-4 p-3 rounded-xl text-sm bg-succes-fond text-succes-texte">Sera imprimé : <strong>{mention}</strong></p>
+                )}
+              </Bloc>
+            );
+          })()}
 
           {franchiseTva ? (
             <div className="rounded-2xl p-4 flex items-start gap-3 bg-info-fond text-info-texte">

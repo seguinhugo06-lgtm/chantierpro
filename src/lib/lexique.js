@@ -23,7 +23,9 @@ export const LEXIQUE = {
   },
   rcs: {
     mot: 'le RCS et le RM',
-    texte: 'Le RCS (registre du commerce et des sociétés) inscrit les sociétés et les commerçants ; il se cite avec la ville du greffe et le numéro. Le répertoire des métiers (RM) des artisans est remplacé depuis 2023 par le registre national des entreprises (RNE).',
+    // Sources : C. com. R123-237 (RCS + ville du greffe) ; décret n° 98-247 art. 9 (RM + département) ; RNE depuis le
+    // 1er janv. 2023 (ordonnance n° 2021-1189). Formulation à faire relire (juriste-btp).
+    texte: 'Le RCS (registre du commerce et des sociétés) inscrit les sociétés et les commerçants ; il se cite avec la ville du greffe et le numéro. Le répertoire des métiers (RM) inscrit les artisans ; il se cite avec le département de la chambre de métiers et le numéro. Depuis 2023, toute entreprise est aussi inscrite au registre national des entreprises (RNE) : votre extrait RNE indique où vous êtes immatriculé.',
   },
   decennale: {
     mot: 'la décennale',

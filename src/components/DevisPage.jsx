@@ -45,6 +45,7 @@ import { generateId } from '../lib/utils';
 import { mapError } from '../lib/errorMapper';
 import { formatMoney as fmtMoney, filterValidLignes, formatClientName } from '../lib/formatters';
 import { normalizeNumero } from '../lib/devis-utils';
+import { mentionImmatriculation } from '../lib/immatriculation';
 import { apresPaiement, statutFacture, resteAPayer, dejaPaye, echeance, dateEcheance, joursDeRetard, paiementsDe, montantPaiement, estCorrection, correctionPossible, motifCorrection, resteSigne } from '../lib/paiementsFacture';
 import CorrectionEncaissementModal from './devis/CorrectionEncaissementModal';
 import EnTeteDocument from './devis/EnTeteDocument';
@@ -224,11 +225,8 @@ export default function DevisPage({ clients, addClient, devis, setDevis, chantie
   const textSecondary = "text-encre-2";
   const textMuted = "text-encre-2";
 
-  // Helper for PDF - format RCS complet
-  const getRCSComplet = () => {
-    if (!entreprise?.rcsVille || !entreprise?.rcsNumero) return '';
-    return `RCS ${entreprise.rcsVille} ${entreprise.rcsType || 'B'} ${entreprise.rcsNumero}`;
-  };
+  // Immatriculation imprimée (RCS ou RM) : même bloc que devisHtmlBuilder (lib/immatriculation)
+  const getRCSComplet = () => mentionImmatriculation(entreprise);
 
   const [mode, setMode] = useState(selectedDevis ? 'preview' : 'list');
   const [selected, setSelected] = useState(selectedDevis || null);

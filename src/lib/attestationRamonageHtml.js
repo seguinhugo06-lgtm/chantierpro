@@ -15,6 +15,7 @@ import { nomImprime, formeImprimee } from './identiteEntreprise';
 import { estSociete } from './mentionsFacture';
 import { marquerDocumentFictif, estDonneesFictives } from './donneesFictives';
 import { dateLue } from './dates';
+import { mentionImmatriculation } from './immatriculation';
 import { adresseComplete } from './adresseEntreprise';
 import { PAGE_CSS } from './devisHtmlBuilder';
 import {
@@ -65,7 +66,7 @@ export function buildAttestationRamonageHtml({ ramonage: r, entreprise, preceden
   const source = r.emetteur && typeof r.emetteur === 'object' && Object.keys(r.emetteur).length ? r.emetteur : (entreprise || {});
   const color = couleurCss(couleur || source.couleur || entreprise?.couleur);
   const nom = nomImprime(source);
-  const rcs = source.rcsVille && source.rcsNumero ? `RCS ${source.rcsVille} ${source.rcsType || 'B'} ${source.rcsNumero}` : (source.rcs ? `RCS ${source.rcs}` : '');
+  const rcs = mentionImmatriculation(source);
   const e = {
     nom: h(nom),
     forme: h(`${formeImprimee(source)}${source.capital && estSociete(source) ? ` au capital de ${source.capital} €` : ''}`),
