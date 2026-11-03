@@ -112,7 +112,8 @@ export function createCatalogueItem(articleBtp, customPrix = null) {
     prixUnitaire: customPrix || articleBtp.prixDefaut,
     prix_unitaire_ht: customPrix || articleBtp.prixDefaut,
     prixAchat: Math.round((customPrix || articleBtp.prixDefaut) * 0.6), // 40% de marge par défaut
-    tva: 10,
+    // Taux de l'article s'il en impose un (chaudières fossiles à 20 %, CGI 279-0 bis, 2 bis, c), sinon 10 % par défaut
+    tva: Number.isFinite(articleBtp.tva) ? articleBtp.tva : 10,
     categorie: articleBtp.categorieNom || articleBtp.categorieId,
     favori: false,
     actif: true,

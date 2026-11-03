@@ -4,6 +4,8 @@ import { buildDevisHtml } from '../devisHtmlBuilder';
 import { buildDocumentHTML } from '../pdfHtmlBuilder';
 import { prepareModeleLignes, getModele } from '../data/modeles';
 import { TRADE_LIBRARY } from '../templates/trade-library';
+import { ALL_OUVRAGES } from '../data/bibliotheque';
+import { ALL_ARTICLES_BTP, createCatalogueItem } from '../data';
 
 // Recherche « métiers » du 3 nov. 2026 (docs/metiers/synthese.md § 2) : le RGE saisi dans Paramètres (`rge`,
 // `rgeOrganisme`) n'était imprimé par aucun générateur, qui lisaient `labels`, jamais écrit. L'aperçu de DevisPage.jsx
@@ -82,8 +84,9 @@ describe('modèles de devis : taux imposé par le modèle', () => {
     expect(lignes.every((l) => l.tva === 20)).toBe(true);
   });
 
-  // Comportement actuel, pas une règle établie : l'exclusion de 2025 viserait peut-être aussi l'entretien (à vérifier au BOFiP)
-  it('l’entretien d’une chaudière garde, pour l’instant, le taux de l’entreprise', () => {
+  // L'exclusion de 2025 ne vise pas l'entretien (BOI-TVA-LIQ-30-20-90-20 § 230) : le taux de l'entreprise (10 %) est juste
+  // par défaut ; 5,5 % possible pour une chaudière THPE
+  it('l’entretien d’une chaudière garde le taux de l’entreprise (10 % par défaut)', () => {
     expect(prepareModeleLignes(getModele('chauffage', 'entretien-chaudiere'), 10).every((l) => l.tva === 10)).toBe(true);
   });
 });
@@ -94,5 +97,21 @@ describe('bibliothèque des métiers : chaudière gaz', () => {
     const gaz = [...lignes.matchAll(/\{[^{}]*chaudière gaz[^{}]*\}/gi)].map((m) => m[0]);
     expect(gaz.length).toBeGreaterThan(0);
     for (const l of gaz) expect(l).toMatch(/"tva":20/);
+  });
+
+  // Les trois sources d'une ligne de chaudière (bibliothèque des métiers, référentiel du catalogue, import des articles)
+  // proposaient 5,5, 10 ou 20 % selon l'écran (relecture du 3 nov. 2026) : toutes à 20 % (CGI 279-0 bis, 2 bis, c)
+  it('le référentiel du catalogue propose les chaudières gaz à 20 %', () => {
+    const gaz = ALL_OUVRAGES.filter((o) => /chaudière gaz/i.test(o.nom));
+    expect(gaz.map((o) => o.id)).toEqual(expect.arrayContaining(['PL_02_01_001', 'PL_02_01_002']));
+    for (const o of gaz) expect(o.tva).toBe(20);
+  });
+
+  it('l’import des articles crée les chaudières gaz et fioul à 20 %, les autres articles à 10 %', () => {
+    const articles = Object.values(ALL_ARTICLES_BTP).flatMap((c) => Object.values(c.sousCategories || {}).flatMap((s) => s.articles || []));
+    const fossiles = articles.filter((a) => ['chaud-gaz-mur', 'chaud-gaz-sol', 'chaud-fioul'].includes(a.id));
+    expect(fossiles).toHaveLength(3);
+    for (const a of fossiles) expect(createCatalogueItem(a).tva).toBe(20);
+    expect(createCatalogueItem(articles.find((a) => a.id === 'chaud-granules')).tva).toBe(10);
   });
 });
