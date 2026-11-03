@@ -35,7 +35,7 @@ Méthode : six agents de recherche en parallèle (trois métiers chacun, plus un
 
 ## Ce qui reste
 
-1. **Relire au texte** les 10 points listés par le juriste (`synthese.md`, fin) avant tout code : bornes IRVE, PAC air-air, chaudières fossiles, fenêtres et isolation (annexe IV), décret MaPrimeRénov' du 1er sept. 2026, attestations d'entretien, certificats gaz, services à la personne, TVA d'une extension.
+1. **Relire au texte** les points encore ouverts de la liste du juriste (`synthese.md`, fin) avant tout code : part « fourniture » des bornes (BOFiP), PAC air-air, fenêtres et isolation (annexe IV), décret MaPrimeRénov' du 1er sept. 2026, attestations d'entretien, certificats gaz, services à la personne, plomb (CSP L1334-8) et CERFA 15497*04. Relus au texte le 3 nov. 2026 : bornes (hors fourniture), entretien des chaudières, extension, vigilance d'un particulier, champ du repérage amiante.
 2. **Soldé** le 3 nov. 2026 (`71a36af`) : `docs/metier-btp.md` § 4 et les fiches maçon et charpentier sont alignés sur la TVA d'une extension (toute extension à 20 %, BOI-TVA-LIQ-30-20-90-30 § 380 ; la règle des 10 % de surface s'applique en plus aux travaux sur l'existant).
 3. Compléter `chiffres.md` par Sirene.
 4. Faire passer chaque lot par `/tache` et le `critique-produit`.
@@ -45,7 +45,7 @@ Méthode : six agents de recherche en parallèle (trois métiers chacun, plus un
 Détail dans `synthese.md` § 5. Les principales :
 1. Choix du métier à l'inscription : multiple et passable (recommandé) ?
 2. Premier lot après le ramonage : l'attestation d'entretien chaudière / PAC / poêle (recommandé) ou l'électricien ?
-3. Corrections immédiates (RGE imprimé, Qualiopi retiré, modèles purgés des aides et taux périmés) : à faire tout de suite (recommandé).
+3. Corrections immédiates (RGE imprimé, Qualiopi retiré, TVA des chaudières à 20 % dans les modèles, la bibliothèque et le référentiel ; les lignes qui citent MaPrimeRénov' ne sont pas touchées, voir `synthese.md` § 3.2) : à faire tout de suite (recommandé).
 4. Un testeur par métier avant de construire son lot.
 5. Avance immédiate Urssaf : à écarter pour l'instant (recommandé).
 6. TVA : suggestion seulement, jamais blocage, tant que rien n'est relu au texte (recommandé).
@@ -62,12 +62,12 @@ Sur `cloud/metiers-docs`, aucun texte destiné à être imprimé (pas de code). 
 
 - **Tout repose sur des résumés.** Une règle codée depuis ces fiches sans relecture au texte peut imprimer une mention ou un taux faux. Les fiches le disent en tête.
 - **Le droit des aides bouge vite** (MaPrimeRénov' modifié en février et en septembre 2026, TVA des PAC en juillet 2026). Dater toute règle et la relire avant chaque lot.
-- **Mentions d'aides des modèles de devis** : la session cloud craignait des promesses d'aides périmées (fenêtres, isolation), sans l'avoir vérifié ligne à ligne. Recherche faite le 3 nov. 2026 au soir (`synthese.md` § 3.2) : aucune ligne n'annonce un montant d'aide ni une éligibilité ; deux lignes facturent un service lié à MaPrimeRénov' (`renovation-energetique.js:111` ; `trade-library.js:1060`, pour de l'isolation), à revoir ; `maprimerenov-templates.js`, qui écrit « Travaux éligibles à MaPrimeRénov' … », n'est importé par aucun fichier.
+- **Mentions d'aides des modèles de devis** : la session cloud craignait des promesses d'aides périmées (fenêtres, isolation), sans l'avoir vérifié ligne à ligne. Recherche faite le 3 nov. 2026 au soir (`synthese.md` § 3.2) : aucune ligne du code utilisé par l'app n'annonce un montant d'aide ni une éligibilité ; deux lignes facturent un service lié à MaPrimeRénov' (`renovation-energetique.js:111` ; `trade-library.js:1060`, pour de l'isolation), à revoir ; `maprimerenov-templates.js`, qui écrit « Travaux éligibles à MaPrimeRénov' … », n'est importé par aucun fichier (pas plus que `renovation-compliance.js`, qu'il est seul à importer).
 
 ## Résumé
 
 - 15 fiches métier, un fichier commun, les chiffres et la synthèse sont dans `docs/metiers/`.
-- Aucun texte officiel n'a pu être ouvert : tout est à relire au texte avant de coder.
+- Aucun texte officiel n'a pu être ouvert par la session cloud ; seules les corrections du juriste du 3 nov. au soir ont été relues au texte : le reste est à relire avant de coder.
 - Relu par `juriste-btp` ; 2 erreurs bloquantes et une quinzaine d'autres corrigées.
 - Trois défauts constatés dans l'app : RGE jamais imprimé, « Qualiopi » dans la liste RGE, pas de mention d'autoliquidation.
 - Commun à tous : décennale, devis de dépannage, TVA par ligne, sous-traitance, photos.
@@ -75,7 +75,7 @@ Sur `cloud/metiers-docs`, aucun texte destiné à être imprimé (pas de code). 
 - Proposition : choisir son métier, catalogue trié, « Mes qualifications », documents sur le modèle du ramonage.
 - Ordre : corrections, qualifications et métier, attestation d'entretien, dépannage, électricien.
 - 11 décisions attendent Hugo (`synthese.md` § 5), dont le premier lot après le ramonage.
-- À faire ensuite : ouvrir le réseau aux sites officiels et relire les 10 points prioritaires.
+- À faire ensuite : ouvrir le réseau aux sites officiels et relire les points encore ouverts (`synthese.md`, fin).
 ## Suite : lot 0 (3 nov. 2026, après « fais tout ça ») — sur `cloud/metiers` seulement
 
 Ce qui ne dépendait d'aucune décision d'Hugo a été fait. Le reste attend ses réponses ou une relecture au texte (ci-dessous).
@@ -121,7 +121,7 @@ Deux relectures (code, puis juriste au texte officiel) ont été appliquées le 
 - `21c5b6c` (commit de ce rapport) : en-tête et suite du rapport, ligne du lot 0 de `synthese.md` ;
 - après le contrôle du 3 nov. au soir, en local (branche `corr-metiers-docs`) : `dbb0066` (restes des fiches, de la synthèse et de `docs/metier-btp.md`, détail plus bas), puis un commit qui ne touche que ce rapport (attributions, restes soldés, vérifications réellement faites).
 
-**Branche `cloud/metiers`** (code ; `cloud/metiers-docs` y est fusionnée pour garder les mêmes documents) :
+**Branche `cloud/metiers`** (code ; `cloud/metiers-docs` y est fusionnée jusqu'à `21c5b6c` (fusion `9f417f5`) ; `dbb0066` et le commit de ce rapport n'y sont pas encore) :
 - `8253088` : chaudières gaz et fioul à 20 % dans le référentiel du catalogue et l'import des articles ; commentaire de l'entretien corrigé ;
 - `b8a34f1` : RGE imprimé seulement avec intitulé et organisme (exigence Anah), « Autre » retiré, nouvelle ligne imprimée, date illisible refusée, aide de Paramètres nuancée ;
 - `5f0f4a0` : migration 108 (RGE sur la page de signature), en fichier, **appliquée nulle part** ;
@@ -146,7 +146,7 @@ Preuves (les cinq premières sont rapportées par la session cloud, pour `cloud/
   ✓ Tout est vert — niveau « standard ».
   ```
 
-- `cloud/metiers` : aucune vérification rapportée sur sa pointe (`9f417f5`), ni par la session cloud ni ici (la dernière rapportée, sur `ecf10af`, précède les corrections du 3 nov.). La session locale la lance avant de livrer, avec la vérification complète (`npm run verifier -- --complet`) des deux branches.
+- `cloud/metiers` : `npm run verifier` non lancé sur sa pointe (`9f417f5`), ni par la session cloud ni ici (cette étape ne portait que sur la branche de documents) (la dernière rapportée, sur `ecf10af`, précède les corrections du 3 nov.). La session locale la lance avant de livrer, avec la vérification complète (`npm run verifier -- --complet`) des deux branches.
 
 ### Textes nouveaux soumis au juriste
 
@@ -209,7 +209,7 @@ Tous recopiés de la correction exacte du juriste (points 3, 15 et 16), sans cha
 
 ### Contrôle du 3 nov. au soir (session locale)
 
-Le contrôle de la branche a relevé des restes. Corrigés par `dbb0066` (documents seuls) :
+Le contrôle de la branche a relevé des restes. Corrigés par `dbb0066` (documents seuls ; non relus par juriste-btp : reprise de son texte) :
 - `chauffagiste.md` l. 105 : « entretien de chaudière : 10 %, ou 5,5 % si la chaudière est THPE » (la proposition disait encore « jamais à 5,5 % ») ; l. 149 et 150 marquées relues au texte ;
 - listes « à vérifier » et tableaux alignés sur le texte déjà corrigé, ou marqués « relu le 3 nov. 2026, voir l. … » : `charpentier.md` l. 107 et 133, `macon.md` l. 160 et 161, `synthese.md` (vérifications n° 9 et 10), `electricien.md` l. 83, 99 et 145, `couvreur.md` l. 136, `commun.md` l. 135 et 136, `frigoriste.md` l. 146, `plaquiste.md` l. 123, `chiffres.md` l. 73, `multiservice.md` l. 105 ;
 - `macon.md` l. 131 : réserve sur la notion d'immeuble neuf rétablie (comme la l. 94) ;
@@ -224,9 +224,10 @@ Puis un commit qui ne touche que ce rapport : attributions (`71a36af`, `21c5b6c`
 - Sonde de Paramètres à 375 px et aller-retour de `rgeValidite` en mode réel simulé.
 - Vérifier la liste des organismes RGE sur l'annuaire France Rénov'.
 - Les lignes à 5,5 % douteuses de la bibliothèque (décision 4).
-- Rejouer `npm run verifier` sur la pointe de `cloud/metiers` (`9f417f5`), et `npm run verifier -- --complet` sur les deux branches (session locale, avant de livrer).
+- Fusionner la branche de documents corrigée (`8272064`) dans `cloud/metiers`, puis rejouer `npm run verifier` sur la nouvelle pointe, et `npm run verifier -- --complet` sur les deux branches (session locale, avant de livrer).
+- Faire relire par juriste-btp les alignements de `dbb0066`, en commençant par `peintre.md` l. 56 et 86.
 - Revoir les lignes qui citent MaPrimeRénov' (`synthese.md` § 3.2).
-- Restes de même nature repérés le 3 nov. au soir, hors de la liste du contrôle, non touchés : `electricien.md` l. 21 (TVA « condition à vérifier ») ; `frigoriste.md` l. 20 (régime « à vérifier ») ; `macon.md` l. 162 (D8222-4 et -5, déjà relus pour le particulier) ; `multiservice.md` l. 139 et `synthese.md` (vérification n° 8) : « CGI 199 sexdecies après la loi de finances 2026 », alors que `commun.md` l. 84 cite la loi n° 2026-492 ; en-têtes « sans texte officiel ouvert » des fiches ; « Ce qui reste », n° 1, et la dernière ligne du premier résumé ci-dessus (points du juriste en partie relus).
+- Restes de même nature repérés le 3 nov. au soir, hors de la liste du contrôle, non touchés : `electricien.md` l. 21 (TVA « condition à vérifier ») ; `frigoriste.md` l. 20 (régime « à vérifier ») ; `multiservice.md` l. 139 et `synthese.md` (vérification n° 8) : « CGI 199 sexdecies après la loi de finances 2026 », alors que `commun.md` l. 84 cite la loi n° 2026-492 ; en-têtes « sans texte officiel ouvert » des fiches.
 
 ### Risques
 - Un artisan qui avait saisi un RGE sans intitulé, ou avec « Autre », ne le verra plus imprimé tant qu'il n'a pas complété Paramètres (l'écran le lui dit). C'est voulu : sans intitulé, la mention peut tromper.

@@ -159,6 +159,6 @@ Propositions :
 Relue par juriste-btp le 03/11/2026, sans texte officiel ouvert (avis : `avis-juriste-2026-11-03.md`). Corrections appliquées. Restent à vérifier au texte :
 - TVA d'une extension : relue au texte le 3 nov. 2026 (BOI-TVA-LIQ-30-20-90-30 § 380 ; CGI 279-0 bis, 2 ; voir l. 93 et 96) ; MB § 4 aligné ; reste la notion d'immeuble neuf (l. 94) ;
 - champ du repérage amiante avant travaux : relu au texte le 3 nov. 2026 (tout immeuble bâti : C. trav. R4412-97 ; arrêté du 16 juil. 2019, art. 3 ; voir l. 52) ;
-- C. trav. D8222-4 et D8222-5 (particulier, seuil, cumul) ;
+- C. trav. D8222-4 et D8222-5 : relus au texte le 3 nov. 2026 pour le particulier (voir l. 40) ; restent le seuil et le cumul (l. 42) ;
 - exception pénale de L243-3 ;
 - CCH L132-4 et s. (G2) ; sanctions du CCMI ; carte BTP du chef d'entreprise sans salarié.
