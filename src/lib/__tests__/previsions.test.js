@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { statutPrevision, normaliserPrevision, estPrevisionMiroir, seuilAlerteRegle } from '../previsions';
+import { statutPrevision, normaliserPrevision, estPrevisionMiroir, seuilAlerteRegle, moisProjetePrevision } from '../previsions';
 
 describe('estPrevisionMiroir', () => {
   it('reconnaît les copies automatiques liées à un document', () => {
@@ -57,5 +57,26 @@ describe('seuilAlerteRegle', () => {
   it('un seuil choisi par l\'artisan est gardé', () => {
     expect(seuilAlerteRegle({ seuilAlerte: 2000 })).toBe(2000);
     expect(seuilAlerteRegle({ seuilAlerte: '8000' })).toBe(8000);
+  });
+});
+
+describe('moisProjetePrevision', () => {
+  const le3nov = new Date(2026, 10, 3, 10);
+  it('compte au premier mois projeté une prévision du mois en cours (règlement attendu le 26)', () => {
+    expect(moisProjetePrevision({ date: '2026-11-26' }, le3nov)).toEqual({ month: 11, year: 2026 });
+  });
+  it('compte au premier mois projeté une prévision en retard', () => {
+    expect(moisProjetePrevision({ date: '2026-10-24' }, le3nov)).toEqual({ month: 11, year: 2026 });
+  });
+  it('garde le mois d’une prévision à venir, y compris l’année suivante', () => {
+    expect(moisProjetePrevision({ date: '2026-12-13' }, le3nov)).toEqual({ month: 11, year: 2026 });
+    expect(moisProjetePrevision({ date: '2027-02-01' }, le3nov)).toEqual({ month: 1, year: 2027 });
+  });
+  it('le premier mois projeté de décembre est janvier', () => {
+    expect(moisProjetePrevision({ date: '2026-12-20' }, new Date(2026, 11, 3))).toEqual({ month: 0, year: 2027 });
+  });
+  it('sans date lisible : null', () => {
+    expect(moisProjetePrevision({}, le3nov)).toBeNull();
+    expect(moisProjetePrevision({ date: 'n’importe quoi' }, le3nov)).toBeNull();
   });
 });

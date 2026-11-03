@@ -287,7 +287,9 @@ export const DEMO_POINTAGES = [
   { id: 'p28', employeId: 'e2', chantierId: 'ch9', date: '2025-10-15', heures: 8, approuve: true, verrouille: true },
   // ch10 - Façade
   { id: 'p29', employeId: 'e1', chantierId: 'ch10', date: '2026-02-17', heures: 8, approuve: false },
-  { id: 'p30', employeId: 'e6', chantierId: 'ch10', date: '2026-02-17', heures: 8, approuve: false },
+  // Daté du jour de l'ancre (= aujourd'hui une fois décalé) : des heures à valider dans le mois en cours quel que soit le
+  // jour du mois (au 17 février, elles tombaient le mois précédent pendant la première semaine de chaque mois).
+  { id: 'p30', employeId: 'e6', chantierId: 'ch10', date: '2026-02-25', heures: 8, approuve: false },
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════════

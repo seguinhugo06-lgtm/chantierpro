@@ -1,4 +1,5 @@
 import { SEUIL_PAR_DEFAUT } from './tresorerieReglages';
+import { dateLocale } from './paiementsFacture';
 
 /**
  * Prévisions de trésorerie : le statut enregistré n'a que deux valeurs, 'prevu' et 'paye'.
@@ -42,4 +43,24 @@ export function seuilAlerteRegle(reglages) {
   const n = Number(reglages?.seuilAlerte);
   if (!Number.isFinite(n) || n <= 0 || n === SEUIL_PAR_DEFAUT) return null;
   return n;
+}
+
+/**
+ * Mois où la projection de trésorerie compte une prévision non réglée ({ month, year }), ou `null` sans date lisible.
+ *
+ * La projection part du solde d'aujourd'hui (prévisions réglées seulement) et commence au mois prochain. Jusqu'au
+ * 3 nov. 2026, une prévision non réglée du mois en cours ou en retard n'était comptée nulle part : un règlement client
+ * attendu le 26 disparaissait des projections le 3, et un « solde estimé négatif » apparaissait, alors que le même
+ * règlement, attendu le 13 du mois suivant, était compté. Comme les factures ouvertes (« en retard : le mois
+ * prochain »), elle est comptée au premier mois projeté.
+ *
+ * @param {{ date?: string }} prevision
+ * @param {Date} maintenant
+ */
+export function moisProjetePrevision(prevision, maintenant) {
+  const d = prevision?.date ? dateLocale(prevision.date) : null;
+  if (!d || Number.isNaN(d.getTime())) return null;
+  const premier = new Date(maintenant.getFullYear(), maintenant.getMonth() + 1, 1);
+  const retenu = d >= premier ? d : premier;
+  return { month: retenu.getMonth(), year: retenu.getFullYear() };
 }
