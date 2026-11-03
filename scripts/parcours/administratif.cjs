@@ -50,8 +50,13 @@ module.exports = [
       verifier(cal.length >= 2, `le calendrier liste des échéances à venir (${cal.length})`);
       verifier(ids.some((i) => i.startsWith('dsn-')), `avec salariés : une DSN dans les 90 jours (${ids.join(', ')})`);
       verifier(cal.every((x) => !/Dépassée/.test(x.texte) || x.id.startsWith('assurance-')), 'aucune échéance passée au calendrier');
-      const lien = await page.evaluate(() => [...document.querySelectorAll('[data-echeance] a')].map((a) => a.href).find(Boolean));
-      verifier(/^https:\/\/www\.(impots\.gouv\.fr|urssaf\.fr|autoentrepreneur\.urssaf\.fr)\//.test(lien || ''), `chaque échéance cite sa source officielle (${lien})`);
+      const lien = await page.evaluate(() => [...document.querySelectorAll('[data-echeance] [data-href]')].map((a) => a.dataset.href).find(Boolean));
+      verifier(/^https:\/\/(www\.)?(impots\.gouv\.fr|legifrance\.gouv\.fr|net-entreprises\.fr|entreprendre\.service-public\.gouv\.fr)\//.test(lien || ''), `chaque échéance cite sa source officielle (${lien})`);
+
+      // « Changer mes réponses » ramène aux questions (avant, 3 nov. 2026 : réponses effacées, rien ne les redemandait)
+      await cliquer(page, 'Changer mes réponses');
+      await attendre(500);
+      verifier(await page.evaluate(() => !!document.querySelector('[data-questions-profil]')), '« Changer mes réponses » ramène aux questions');
       verifier(jour() <= '2027-12-31', 'le calendrier de l’application couvre la date du jour (jusqu’au 31 déc. 2027)');
     },
   },

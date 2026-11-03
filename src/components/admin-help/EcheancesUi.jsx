@@ -1,9 +1,15 @@
 import { ExternalLink, AlertTriangle } from 'lucide-react';
-import { QUESTIONS, LIBELLES_CERTITUDE, dateEcheanceLue } from '../../lib/echeancesAdmin';
+import { QUESTIONS, LIBELLES_CERTITUDE, dateEcheanceLue, libelleQuestion } from '../../lib/echeancesAdmin';
+import { ouvrirLienExterne } from '../../lib/natif';
+import { captureException } from '../../lib/sentry';
 
-/** Compte à rebours d'une échéance : « Aujourd'hui », « J-12 », « Expirée depuis 3 j ». */
+/**
+ * Compte à rebours d'une échéance : « Aujourd'hui », « J-12 », « Dépassée de 3 j ». Une obligation déjà en vigueur
+ * (réception de la facture électronique depuis le 1er sept. 2026) affiche « En vigueur », pas « Dépassée ».
+ */
 export function compteARebours(x) {
   if (x.joursRestants === null || x.joursRestants === undefined) return null;
+  if (x.enVigueur && x.joursRestants <= 0) return { texte: 'En vigueur', ton: 'neutre' };
   if (x.joursRestants < 0) return { texte: `Dépassée de ${Math.abs(x.joursRestants)} j`, ton: 'danger' };
   if (x.joursRestants === 0) return { texte: 'Aujourd’hui', ton: 'danger' };
   return { texte: `J-${x.joursRestants}`, ton: x.joursRestants <= 7 ? 'danger' : x.joursRestants <= 14 ? 'alerte' : 'neutre' };
@@ -35,28 +41,34 @@ export function LigneEcheance({ echeance: x, detaillee = false }) {
         </div>
       </div>
       {detaillee && x.detail && <p className="text-xs text-encre-2 mt-2">{x.detail}</p>}
-      {detaillee && x.source?.url && (
-        <a href={x.source.url} target="_blank" rel="noopener noreferrer"
-          className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-accent-texte underline min-h-[44px]">
-          <ExternalLink size={12} aria-hidden="true" />
-          {x.source.libelle}
-        </a>
-      )}
+      {detaillee && [x.source, x.source?.note].filter((s) => s?.url).map((s) => <LienSource key={s.url} source={s} />)}
       {detaillee && !x.source?.url && x.source?.libelle && <p className="text-xs text-encre-3 mt-2">Source : {x.source.libelle}</p>}
     </div>
   );
 }
 
+/** Lien vers une source officielle : navigateur système dans l'app native (src/lib/natif.js). */
+function LienSource({ source }) {
+  const ouvrir = () => ouvrirLienExterne(source.url).catch((err) => captureException(err, { context: 'administratif : ouvrir une source' }));
+  return (
+    <button type="button" data-href={source.url} onClick={ouvrir}
+      className="mt-2 flex items-center gap-1 text-left text-xs font-medium text-accent-texte underline min-h-[44px]">
+      <ExternalLink size={12} className="flex-shrink-0" aria-hidden="true" />
+      {source.libelle}
+    </button>
+  );
+}
+
 /** Les questions encore sans réponse, posées une fois (réponses gardées sur cet appareil). */
-export function QuestionsProfil({ questions, onRepondre }) {
+export function QuestionsProfil({ questions, profil, onRepondre }) {
   if (!questions.length) return null;
   return (
     <div data-questions-profil className="p-3 rounded-lg bg-info-fond space-y-3">
-      <p className="text-sm text-info-texte">Pour des dates adaptées à votre situation, {questions.length === 1 ? 'une question, posée une seule fois' : `${questions.length} questions, posées une seule fois`} :</p>
+      <p className="text-sm text-info-texte">Pour des dates adaptées à votre situation, {questions.length === 1 ? 'une question, posée une seule fois' : `${questions.length} questions, posées une seule fois`} (réponses gardées sur cet appareil) :</p>
       {questions.map((cle) => (
         <div key={cle}>
-          <p className="text-sm font-medium text-encre mb-1.5">{QUESTIONS[cle].libelle}</p>
-          <div role="group" aria-label={QUESTIONS[cle].libelle} className="flex flex-wrap gap-2">
+          <p className="text-sm font-medium text-encre mb-1.5">{libelleQuestion(cle, profil)}</p>
+          <div role="group" aria-label={libelleQuestion(cle, profil)} className="flex flex-wrap gap-2">
             {QUESTIONS[cle].options.map((o) => (
               <button key={o.valeur} type="button" onClick={() => onRepondre(cle, o.valeur)}
                 className="min-h-[44px] px-3 rounded-lg text-sm font-medium bg-surface text-encre border border-bord-fort hover:bg-surface-2">

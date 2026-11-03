@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   profilAdmin, questionsManquantes, echeancesPour, prochainesEcheances, joursAvant, couvertureBientotFinie,
-  COUVERTURE_DEBUT, COUVERTURE_FIN, dateEcheanceLue,
+  COUVERTURE_DEBUT, COUVERTURE_FIN, dateEcheanceLue, libelleQuestion,
 } from '../echeancesAdmin';
 
 const ids = (liste) => liste.map((x) => x.id);
@@ -40,8 +40,13 @@ describe('échéances administratives : calcul selon le profil', () => {
     expect(l.some((x) => x.id.startsWith('dsn-'))).toBe(false);
     expect(ids(l)).toContain('ir-2027');
     expect(ids(l)).not.toContain('liasse-2031-2027');
-    // Date limite du changement de rythme non confirmée (31 octobre ou 31 janvier selon les sources) : avis juriste
-    expect(l.find((x) => x.id === 'micro-periodicite-2027').certitude).toBe('a_confirmer');
+    // Changement de rythme : avec la dernière déclaration de 2026, due le 31 janv. 2027 (CSS art. R613-7, juriste du 3 nov.)
+    const rythme = l.find((x) => x.id === 'micro-periodicite-2027');
+    expect(rythme).toMatchObject({ date: '2027-01-31', certitude: 'officielle' });
+    expect(rythme.detail).toMatch(/R613-7/);
+    // Note de week-end : sa source (service-public) est citée à côté de celle des dates (Légifrance)
+    expect(ca[0].source.note.url).toBe('https://entreprendre.service-public.gouv.fr/actualites/A19087');
+    expect(ca[1].source.note).toBeUndefined();
   });
 
   it('micro mensuel : 14 déclarations, chacune le dernier jour du mois pour le mois précédent', () => {
@@ -114,9 +119,50 @@ describe('échéances administratives : calcul selon le profil', () => {
     const l = echeancesPour(profilAdmin({ formeJuridique: 'SAS' }, { tva: 'ca12', salaries: 'oui' }), { decennaleValidite: '2027-01-01' });
     for (const x of l) {
       if (x.type === 'assurance') continue;
-      expect(x.source?.url, x.id).toMatch(/^https:\/\/(www\.)?(impots\.gouv\.fr|urssaf\.fr|autoentrepreneur\.urssaf\.fr)\//);
+      expect(x.source?.url, x.id).toMatch(/^https:\/\/(www\.)?(impots\.gouv\.fr|legifrance\.gouv\.fr|net-entreprises\.fr|entreprendre\.service-public\.gouv\.fr)\//);
       expect(x.source.consulte).toBe('2026-11-03');
     }
+  });
+});
+
+describe('corrections du 3 nov. 2026', () => {
+  it('régime de TVA explicite de la Trésorerie : franchise ou mensuel, plus redemandé ; « trimestriel » (défaut) ne compte pas', () => {
+    const franchise = profilAdmin({ formeJuridique: 'EI' }, {}, 'franchise');
+    expect(franchise.tva).toBe('franchise');
+    expect(questionsManquantes(franchise)).not.toContain('tva');
+    expect(echeancesPour(franchise).some((x) => x.id.startsWith('ca3-') || x.id.startsWith('ca12-'))).toBe(false);
+    const mensuel = profilAdmin({ formeJuridique: 'SARL' }, { tva: 'ca12' }, 'mensuel');
+    expect(mensuel.tva).toBe('ca3_mensuelle');
+    expect(echeancesPour(mensuel).filter((x) => x.id.startsWith('ca3-'))).toHaveLength(14);
+    const defaut = profilAdmin({ formeJuridique: 'EI' }, {}, 'trimestriel');
+    expect(defaut.tva).toBeNull();
+    expect(questionsManquantes(defaut)).toContain('tva');
+  });
+  it('formes juridiques reconnues par les fonctions communes ; SCI non prise en charge', () => {
+    expect(profilAdmin({ formeJuridique: 'Entreprise individuelle' })).toMatchObject({ formeConnue: true, individuelle: true });
+    expect(profilAdmin({ formeJuridique: 'SCI' })).toMatchObject({ formeConnue: false, nonPriseEnCharge: true });
+    expect(profilAdmin({ formeJuridique: 'SASU' })).toMatchObject({ formeConnue: true, societe: true });
+  });
+  it('question des salariés : libellé du dirigeant assimilé salarié pour une société seulement', () => {
+    expect(libelleQuestion('salaries', profilAdmin({ formeJuridique: 'SAS' }))).toMatch(/président de SAS ou SASU/);
+    expect(libelleQuestion('salaries', profilAdmin({ formeJuridique: 'EI' }))).toBe('Avez-vous des salariés ?');
+  });
+  it('déclaration de revenus : encore affichée le 20 mai et le 4 juin 2027 (dateFin), plus le 1er juillet', () => {
+    const micro = profilAdmin({ formeJuridique: 'Micro-entreprise' }, { periodiciteUrssaf: 'trimestrielle' });
+    const l = echeancesPour(micro);
+    expect(ids(prochainesEcheances(l, new Date(2027, 4, 20), 50))).toContain('ir-2027');
+    expect(ids(prochainesEcheances(l, new Date(2027, 5, 4), 50))).toContain('ir-2027');
+    expect(ids(prochainesEcheances(l, new Date(2027, 6, 1), 50))).not.toContain('ir-2027');
+  });
+  it('solde d’IS : daté du 15 mai 2027, report au mardi 18 mai cité (CGI ann. IV art. 199-0)', () => {
+    const is = echeancesPour(profilAdmin({ formeJuridique: 'SAS' }, { impot: 'is' })).find((x) => x.id === 'is-solde-2027');
+    expect(is.date).toBe('2027-05-15');
+    expect(is.detail).toMatch(/mardi 18 mai/);
+    expect(is.source.note.url).toMatch(/LEGIARTI000006301997/);
+  });
+  it('CFE 2027 : date fixe du 15 décembre, plus « à confirmer »', () => {
+    const cfe = echeancesPour(profilAdmin({})).find((x) => x.id === 'cfe-paiement-2027');
+    expect(cfe.certitude).toBe('officielle');
   });
 });
 

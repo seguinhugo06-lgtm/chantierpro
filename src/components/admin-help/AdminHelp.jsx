@@ -15,6 +15,7 @@ import { estOuverte } from '../../lib/ventes';
 import { jourLocal } from '../../lib/dates';
 import { profilAdmin, questionsManquantes, echeancesPour, prochainesEcheances, couvertureBientotFinie } from '../../lib/echeancesAdmin';
 import { LigneEcheance, QuestionsProfil } from './EcheancesUi';
+import { useRegimeTvaTresorerie } from '../../hooks/useRegimeTvaTresorerie';
 
 /**
  * Module Aide Administrative - Version simplifiée
@@ -33,7 +34,7 @@ const RESSOURCES = [
 const FAQ_ITEMS = [
   {
     q: 'Quelle TVA appliquer en rénovation ?',
-    a: '10 % pour l’amélioration, la transformation, l’aménagement ou l’entretien d’un logement achevé depuis plus de 2 ans ; 5,5 % pour la rénovation énergétique de ce logement ; 20 % pour le neuf. Le taux réduit suppose que le client certifie ces conditions sur le devis ou la facture.'
+    a: '10 % pour l’amélioration, la transformation, l’aménagement ou l’entretien d’un logement achevé depuis plus de 2 ans ; 5,5 % pour la rénovation énergétique de ce logement ; 20 % pour le neuf, les travaux qui augmentent la surface de plancher de plus de 10 %, le nettoyage, les espaces verts et les travaux comprenant la fourniture ou la pose d’une chaudière pouvant utiliser des combustibles fossiles. Le taux réduit suppose que le client certifie ces conditions sur le devis ou la facture.'
   },
   {
     q: 'DSN : quelle date limite ?',
@@ -45,7 +46,7 @@ const FAQ_ITEMS = [
   },
   {
     q: 'E-facturation : quand ?',
-    a: 'Recevoir : obligatoire pour toutes les entreprises depuis le 1er septembre 2026. Émettre : 1er septembre 2026 pour les grandes entreprises et les ETI, 1er septembre 2027 pour les PME et les micro-entreprises. Il faut passer par une plateforme agréée ; Mallettico n’en est pas une.'
+    a: 'Recevoir : obligatoire pour toutes les entreprises depuis le 1er septembre 2026. Émettre ses factures aux entreprises, et transmettre les données de ses ventes aux particuliers (e-reporting) : 1er septembre 2026 pour les grandes entreprises et les ETI, 1er septembre 2027 pour les PME et les micro-entreprises. Il faut passer par une plateforme agréée ; Mallettico n’en est pas une.'
   },
 ];
 
@@ -71,11 +72,21 @@ export default function AdminHelp({
     try { localStorage.setItem(CLE_REPONSES, JSON.stringify(nouvelles)); } catch { /* réponses non gardées : quota plein ou navigation privée ; redemandées au prochain passage */ }
   };
   const repondre = (cle, valeur) => enregistrerReponses({ ...reponses, [cle]: valeur });
+  // « Changer mes réponses » (calendrier) : les questions ne s'affichent que dans la vue d'ensemble, on y revient.
+  // Avant (relecture du 3 nov. 2026) : les réponses étaient effacées sans que rien ne les redemande.
+  const changerReponses = () => {
+    enregistrerReponses({});
+    setActiveSection('overview');
+    setTimeout(() => document.querySelector('[data-questions-ancre]')?.scrollIntoView({ block: 'center' }), 0);
+  };
 
   // Échéances tirées de la fiche entreprise et des réponses (src/lib/echeancesAdmin.js). Avant (31 oct. 2026) :
   // liste vide à l'accueil, et des « alertes email » réglables que rien n'envoyait.
-  const profil = useMemo(() => profilAdmin(entreprise, reponses), [entreprise, reponses]);
-  const questions = questionsManquantes(profil);
+  // Régime de TVA réglé dans la Trésorerie : un choix explicite (franchise, mensuel) n'est pas redemandé
+  const { regimeTva, charge: regimeTvaCharge } = useRegimeTvaTresorerie();
+  const profil = useMemo(() => profilAdmin(entreprise, reponses, regimeTva), [entreprise, reponses, regimeTva]);
+  // Tant que le réglage de la Trésorerie n'est pas lu, la question de TVA n'est pas posée (elle pourrait être inutile)
+  const questions = questionsManquantes(profil).filter((q) => regimeTvaCharge || q !== 'tva');
   const echeances = useMemo(() => echeancesPour(profil, entreprise), [profil, entreprise]);
   const prochaines = prochainesEcheances(echeances, new Date(), 3);
 
@@ -223,10 +234,13 @@ export default function AdminHelp({
                   Voir tout
                 </button>
               </div>
-              {!profil.formeConnue && (
-                <p className="text-sm text-encre-2 mb-3">Indiquez votre statut juridique dans Paramètres › Entreprise : les déclarations à faire en dépendent. En attendant, seules les dates communes à toutes les entreprises s’affichent.</p>
+              {profil.nonPriseEnCharge ? (
+                <p className="text-sm text-encre-2 mb-3">Forme juridique non prise en charge ({profil.forme}) : seules les dates communes à toutes les entreprises s’affichent.</p>
+              ) : !profil.formeConnue && (
+                <p className="text-sm text-encre-2 mb-3">Indiquez votre statut juridique dans Paramètres › Mon entreprise › Identité : les déclarations à faire en dépendent. En attendant, seules les dates communes à toutes les entreprises s’affichent.</p>
               )}
-              <QuestionsProfil questions={questions} onRepondre={repondre} />
+              <div data-questions-ancre />
+              <QuestionsProfil questions={questions} profil={profil} onRepondre={repondre} />
               <div className={`space-y-2 ${questions.length ? 'mt-3' : ''}`}>
                 {prochaines.length === 0 && (
                   <p className={`text-sm ${textMuted}`}>Aucune échéance à venir dans le calendrier de l’application (il couvre jusqu’à décembre 2027).</p>
@@ -299,7 +313,7 @@ export default function AdminHelp({
         return <TVAManager devis={devis} depenses={depenses} entreprise={entreprise} />;
 
       case 'calendar':
-        return <AdminCalendar echeances={echeances} profil={profil} onChangerReponses={() => enregistrerReponses({})} />;
+        return <AdminCalendar echeances={echeances} profil={profil} onChangerReponses={changerReponses} />;
 
       case 'checklist':
         return <DocumentChecklist chantiers={chantiers} />;
