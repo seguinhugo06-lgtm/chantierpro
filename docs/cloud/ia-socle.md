@@ -40,7 +40,7 @@ Restent des vérifications et des décisions d'Hugo (voir plus bas) avant d'allu
 - **Le plan** est lu en base comme l'app le choisit : la ligne du compte, celle de l'organisation et celle du propriétaire. Une ligne inactive ou une offre testeur échue vaut Gratuit.
 - **Ce qui décompte** : les dictées réussies, et les échecs provoqués par la dictée (refus du modèle, réponse illisible). Une panne de notre côté ne coûte pas de dictée : API en panne, crédits épuisés, clé refusée, délai, réseau.
 
-Preuve : `npm run banc:migrations` → **« Tout est vert (686 vérifications) »**, dont 37 pour 107. Elles vérifient :
+Preuve : `npm run banc:migrations` → **« Tout est vert (687 vérifications) »**, dont 38 pour 107. Elles vérifient :
 - le quota atteint (la 11e dictée est refusée) ;
 - le refus pour une autre organisation, pour un compte sans organisation, pour un utilisateur connecté, pour un visiteur ;
 - qu'on ne peut pas se rendre des dictées en effaçant ou en modifiant ses lignes ;
@@ -116,7 +116,7 @@ Correctif :
 | Commande | Résultat |
 |---|---|
 | `npm ci` | OK |
-| `npm run banc:migrations` | Tout est vert (686 vérifications) |
+| `npm run banc:migrations` | Tout est vert (687 vérifications) |
 | `npx vitest run` (nouveaux tests) | 32 tests verts : `voiceIntentServeur` (26), `erreurDictee` (4), `cguIa` (2) |
 | `npm run parcours -- dictee` | 6 parcours réussis (voir 1.8) |
 | Contre-essais | sans les correctifs : 3 parcours en échec (clavier, organisation absente, « non-2xx » affiché) ; sans le décompte par compte : banc en échec |
@@ -137,7 +137,19 @@ Correctif :
   - `scripts/lib/cgu.cjs` lit la version des CGU, qui suit maintenant l'interrupteur.
 
 ### 1.9 Vérification complète
-RESULTAT_VERIFICATION
+`npm run verifier -- --complet` sur `47d9d6b` (arbre propre) :
+- **verts** : tests (1 231), lint (0 erreur), smoke, build, banc de migrations, et les 6 parcours de la dictée ;
+- **4 parcours en échec**, et **les mêmes 4 échouent sur `main`** (`origin/main` `adbf08d`, rejoués dans une copie à part le 3 nov.) : ils ne viennent pas de cette branche.
+
+  | Parcours | Échec |
+  |---|---|
+  | « signature sur place » (×2) | « Bouton « Faire signer » introuvable » |
+  | « trésorerie : pas de seuil d'alerte… » | bandeau « negatif » |
+  | « équipe : … heures à valider » | « 0 h validées ce mois » |
+
+  Ils semblent liés à la date du jour (début de mois, 3 nov.). C'est à traiter par la session locale, hors de cette mission.
+
+Sur le commit final, après le second tour de sécurité : `npm run verifier` (standard), voir la fin du rapport.
 
 ## 2. Textes nouveaux soumis au juriste (relecture `juriste-btp` du 3 nov. 2026, sa version appliquée)
 Tous ces textes ne s'affichent **que si `FONCTIONS.ia` est allumé**. Aujourd'hui, rien ne change pour les utilisateurs (parcours 6).
@@ -166,7 +178,10 @@ Tous ces textes ne s'affichent **que si `FONCTIONS.ia` est allumé**. Aujourd'hu
 
   Non fait : un coupe-circuit de budget global dans la fonction. Je recommande plutôt la limite de dépense de la Console Anthropic (point 5.2) : au-delà, l'API refuse et l'app affiche « indisponible, à la main ».
 
-  Second tour sur les correctifs : RESULTAT_SECOND_TOUR
+  Second tour sur les correctifs : « les correctifs tiennent, rien de critique, haut ou moyen n'est ouvert ». Ses quatre points bas :
+- deux sont corrigés : un salarié qui dicte dans l'entreprise payante n'entame plus son quota gratuit personnel (vérification au banc ajoutée), et la purge ne bloque plus deux réservations (`SKIP LOCKED`) ;
+- le test de rafale vérifie maintenant les 5 premières ;
+- le dernier, le coût résiduel borné par la limite de dépense de la Console, est à régler par Hugo avant l'allumage (point 5.2).
 - **`juriste-btp`** (textes) : sa version est appliquée mot pour mot. Ses quatre blocages avant l'allumage sont repris en 5 et 6.
 
 ## 4. Marche exacte pour appliquer et déployer (l'ordre compte)
@@ -243,7 +258,7 @@ Tous ces textes ne s'affichent **que si `FONCTIONS.ia` est allumé**. Aujourd'hu
 ## Résumé
 1. La dictée passe à Claude Haiku 5.5 (effort `low`, sortie structurée, 3 000 jetons au plus). La forme de la requête a été vérifiée dans la documentation officielle.
 2. Migration 107 : quota serveur par entreprise, mois et fonction. Elle sert aussi de journal des jetons, réutilisable par le futur assistant.
-3. Banc vert : 686 vérifications, dont 37 pour 107 (quota atteint, autre entreprise, visiteur, contournement).
+3. Banc vert : 687 vérifications, dont 38 pour 107 (quota atteint, autre entreprise, visiteur, contournement).
 4. Crédits épuisés ou API en panne : « Dictée indisponible pour le moment. Saisissez votre devis à la main. » Un bouton ouvre alors un devis.
 5. L'app affiche enfin le vrai message du serveur, et non plus « non-2xx ».
 6. Saisie au clavier : taper coupe le micro, plus d'analyse au milieu de la frappe ni de texte en double.
