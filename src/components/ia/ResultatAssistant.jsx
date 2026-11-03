@@ -12,7 +12,8 @@ import { dateLue } from '../../lib/dates';
  */
 
 const jourCourt = (j) => (j ? dateLue(j).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' }) : '');
-const montant = (v, voirPrix) => (voirPrix ? formatMoney(v) : '—');
+/** Un montant à l'écran : « — » sans le droit de voir les prix, « ••• » en mode « Masquer les montants ». */
+const montant = (v, voirPrix, discret = false) => (!voirPrix ? '—' : discret ? '•••' : formatMoney(v));
 
 /** Une question : des choix en boutons (44 px), ou une réponse courte au clavier. */
 function Question({ q, onRepondre }) {
@@ -77,21 +78,27 @@ function Ligne({ libelle, children }) {
   );
 }
 
-function CarteDevis({ p, questions, onRepondre, onValider, etat, voirPrix, peutCreer }) {
+function CarteDevis({ p, questions, onRepondre, onValider, etat, voirPrix, discret, peutCreer }) {
   const pret = !!p.brouillon && !questions.length;
+  // En franchise (art. 293 B, règle unique estFranchiseTva, calculée par preparer.js) : ni « HT » ni « TTC »
+  const base = !p.franchise && p.base ? ` ${p.base === 'TTC' ? 'TTC' : 'HT'}` : '';
   return (
     <div className="space-y-3" data-ui="resultat-devis">
       <p className="text-base font-semibold text-encre flex items-center gap-2"><FileText size={18} aria-hidden="true" /> Brouillon de devis</p>
       <dl className="rounded-2xl border border-bord p-3">
         <Ligne libelle="Client">{p.clientNom || 'à préciser'}</Ligne>
         <Ligne libelle="Travaux">{p.ligne.description}</Ligne>
-        <Ligne libelle="Montant dicté">{p.montantDit ? `${montant(p.montantDit, voirPrix)}${p.base ? ` ${p.base === 'TTC' ? 'TTC' : 'HT'}` : ''}` : 'à préciser'}</Ligne>
+        <Ligne libelle="Montant dicté">{p.montantDit ? `${montant(p.montantDit, voirPrix, discret)}${base}` : 'à préciser'}</Ligne>
         {p.franchise ? <Ligne libelle="TVA">non applicable (franchise)</Ligne> : p.taux != null ? <Ligne libelle="TVA">{String(p.taux).replace('.', ',')} %</Ligne> : null}
         {pret && voirPrix ? (
-          <>
-            <Ligne libelle="Total HT">{formatMoney(p.brouillon.total_ht)}</Ligne>
-            {!p.franchise ? <Ligne libelle="Total TTC">{formatMoney(p.brouillon.total_ttc)}</Ligne> : null}
-          </>
+          p.franchise ? (
+            <Ligne libelle="Total">{montant(p.brouillon.total_ht, voirPrix, discret)}</Ligne>
+          ) : (
+            <>
+              <Ligne libelle="Total HT">{montant(p.brouillon.total_ht, voirPrix, discret)}</Ligne>
+              <Ligne libelle="Total TTC">{montant(p.brouillon.total_ttc, voirPrix, discret)}</Ligne>
+            </>
+          )
         ) : null}
       </dl>
       <Questions questions={questions} onRepondre={onRepondre} />
@@ -111,7 +118,7 @@ function CarteDevis({ p, questions, onRepondre, onValider, etat, voirPrix, peutC
   );
 }
 
-function CarteRelances({ p, onValider, etat, voirPrix, peutRelancer, demo }) {
+function CarteRelances({ p, onValider, etat, voirPrix, discret, voirEmail, peutRelancer, demo }) {
   const [choisies, setChoisies] = useState(() => new Set(p.relances.filter((r) => r.canal).map((r) => r.id)));
   const [ouverte, setOuverte] = useState(null);
   if (!p.relances.length) {
@@ -129,29 +136,32 @@ function CarteRelances({ p, onValider, etat, voirPrix, peutRelancer, demo }) {
               <input type="checkbox" className="mt-1 w-5 h-5 accent-[rgb(var(--accent))] flex-shrink-0" checked={choisies.has(r.id)} disabled={!r.canal || !!etat.fait} onChange={() => basculer(r.id)} />
               <span className="flex-1 min-w-0">
                 <span className="block text-sm font-semibold text-encre">{r.clientNom} · {r.facture.numero}</span>
-                <span className="block text-sm text-encre-2 tabular-nums">{montant(r.solde.reste, voirPrix)} dus · {r.solde.jours} jour{r.solde.jours > 1 ? 's' : ''} de retard</span>
+                <span className="block text-sm text-encre-2 tabular-nums">{montant(r.solde.reste, voirPrix, discret)} dus · {r.solde.jours} jour{r.solde.jours > 1 ? 's' : ''} de retard</span>
                 <span className="mt-1 inline-flex items-center gap-1.5 text-xs text-encre-3">
                   {r.canal === 'email' ? <Mail size={14} aria-hidden="true" /> : r.canal === 'sms' ? <MessageSquare size={14} aria-hidden="true" /> : <AlertTriangle size={14} aria-hidden="true" />}
-                  {r.canal === 'email' ? `par e-mail (${r.client.email})` : r.canal === 'sms' ? 'par SMS' : 'ni e-mail ni téléphone sur la fiche'}
+                  {r.canal === 'email' ? (voirEmail ? `par e-mail (${r.client.email})` : 'par e-mail') : r.canal === 'sms' ? 'par SMS' : 'ni e-mail ni téléphone sur la fiche'}
                 </span>
               </span>
             </label>
             <Bouton variante="discret" taille="compacte" className="mt-1" aria-expanded={ouverte === r.id} onClick={() => setOuverte(ouverte === r.id ? null : r.id)}>
               {ouverte === r.id ? 'Masquer le message' : 'Voir le message'}
             </Bouton>
-            {ouverte === r.id ? <p className="mt-2 rounded-xl bg-surface-2 p-3 text-sm text-encre-2 whitespace-pre-line">{voirPrix ? r.message : 'Message masqué : votre rôle ne permet pas de voir les montants.'}</p> : null}
+            {ouverte === r.id ? <p className="mt-2 rounded-xl bg-surface-2 p-3 text-sm text-encre-2 whitespace-pre-line">{!voirPrix ? 'Message masqué : votre rôle ne permet pas de voir les montants.' : discret ? 'Message masqué : les montants sont masqués (bouton « Masquer les montants »).' : r.message}</p> : null}
           </li>
         ))}
       </ul>
       {etat.fait ? (
         <Fait>
-          {etat.fait} relance{etat.fait > 1 ? 's' : ''} validée{etat.fait > 1 ? 's' : ''}. {demo ? 'Démonstration : aucun message n’est parti.' : 'Prototype : l’envoi n’est pas encore branché, aucun message n’est parti.'}
+          {etat.fait} relance{etat.fait > 1 ? 's' : ''} validée{etat.fait > 1 ? 's' : ''}. Démonstration : aucun message n’est parti.
         </Fait>
+      ) : !demo ? (
+        // Hors démo, tant que le lot 2 n'est pas livré : aucun bouton qui ferait croire à un envoi (C. conso. L121-2)
+        <p className={'text-sm text-encre-2'}>Pour l’instant, envoyez vos relances depuis chaque facture.</p>
       ) : (
         <>
           {!peutRelancer ? <p className="text-sm text-encre-2">Votre rôle ne permet pas d’envoyer des relances.</p> : null}
           <Bouton variante="principal" pleineLargeur icone={Mail} disabled={!nb || !peutRelancer} onClick={() => onValider([...choisies])}>
-            {nb ? `Envoyer ${nb} relance${nb > 1 ? 's' : ''}` : 'Choisissez au moins une facture'}
+            {nb ? `${demo ? 'Simuler l’envoi de' : 'Envoyer'} ${nb} relance${nb > 1 ? 's' : ''}` : 'Choisissez au moins une facture'}
           </Bouton>
         </>
       )}
@@ -159,15 +169,15 @@ function CarteRelances({ p, onValider, etat, voirPrix, peutRelancer, demo }) {
   );
 }
 
-function CarteChiffre({ p, voirPrix }) {
+function CarteChiffre({ p, voirPrix, discret }) {
   return (
     <div className="space-y-3" data-ui="resultat-chiffre">
       <div className="rounded-2xl bg-degrade-vedette border border-vedette-bord p-4">
         <p className="text-sm font-medium text-vedette-libelle flex items-center gap-2"><Wallet size={16} aria-hidden="true" /> Encaissé {p.libelle}</p>
-        <p className="mt-1 text-4xl font-bold tabular-nums text-vedette-valeur">{voirPrix ? formatMoney(Math.round(p.total)) : '—'}</p>
+        <p className="mt-1 text-4xl font-bold tabular-nums text-vedette-valeur">{montant(Math.round(p.total), voirPrix, discret)}</p>
         <p className="mt-1 text-sm text-vedette-contexte">{p.lignes.length ? `${p.lignes.length} paiement${p.lignes.length > 1 ? 's' : ''} enregistré${p.lignes.length > 1 ? 's' : ''}` : 'Aucun paiement enregistré sur la période'}</p>
       </div>
-      {voirPrix && p.lignes.length ? (
+      {voirPrix && !discret && p.lignes.length ? (
         <ul className="rounded-2xl border border-bord p-3">
           {p.lignes.slice(0, 5).map((l) => (
             <li key={l.id} className="flex justify-between gap-3 py-1.5 text-sm border-b border-bord last:border-0">
@@ -177,7 +187,9 @@ function CarteChiffre({ p, voirPrix }) {
           ))}
         </ul>
       ) : null}
-      <p className="text-xs text-encre-3">Calculé sur les paiements que vous avez enregistrés, comme la tuile « Encaissé » de l’accueil.</p>
+      <p className="text-xs text-encre-3">
+        Calculé sur les paiements que vous avez enregistrés{p.horsDetail > 0 ? ', et sur les factures marquées payées sans paiement détaillé' : ''}.
+      </p>
     </div>
   );
 }
