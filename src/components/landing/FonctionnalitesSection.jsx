@@ -26,18 +26,20 @@ function Attente({ echec }) {
   return (
     <div data-fonctionnalites-attente="" className="lg:grid lg:grid-cols-[minmax(0,19rem)_minmax(0,1fr)] lg:items-start lg:gap-8">
       <div aria-hidden="true" className="flex gap-2 overflow-hidden py-1 lg:flex-col lg:gap-1.5">
-        {[0, 1, 2, 3, 4].map((i) => (
+        {[0, 1, 2, 3].map((i) => (
           <span key={i} className="h-11 w-40 shrink-0 rounded-full border border-dashed border-marque-acier/70 lg:h-[4.75rem] lg:w-full lg:rounded-2xl" />
         ))}
       </div>
       <div className="mt-5 overflow-hidden rounded-[22px] border border-marque-acier/70 bg-white lg:mt-0">
         <div aria-hidden="true" className="h-11 border-b border-marque-acier/60 bg-marque-glacier-1" />
         {echec ? (
-          <p data-fonctionnalites-echec="" className="flex min-h-[46rem] items-center justify-center px-6 text-center text-base text-marque-ardoise lg:min-h-[40rem]">
+          <p data-fonctionnalites-echec="" className="flex min-h-[39.75rem] items-center justify-center px-6 text-center text-base text-marque-ardoise sm:min-h-[34.375rem] lg:min-h-[40rem]">
             Les exemples n’ont pas pu être chargés. Rechargez la page pour les essayer.
           </p>
         ) : (
-          <div aria-hidden="true" className="min-h-[46rem] lg:min-h-[40rem]" />
+          // Hauteur du premier exemple chargé (la signature : 636 px à 375 px, 550 px à 768 px, 640 px au bureau,
+          // mesurées le 3 nov. 2026) : l'arrivée des onglets ne décale pas la page (une ancre suivie reste juste).
+          <div aria-hidden="true" className="min-h-[39.75rem] sm:min-h-[34.375rem] lg:min-h-[40rem]" />
         )}
       </div>
     </div>
