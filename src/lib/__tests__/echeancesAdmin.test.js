@@ -40,6 +40,8 @@ describe('échéances administratives : calcul selon le profil', () => {
     expect(l.some((x) => x.id.startsWith('dsn-'))).toBe(false);
     expect(ids(l)).toContain('ir-2027');
     expect(ids(l)).not.toContain('liasse-2031-2027');
+    // Date limite du changement de rythme non confirmée (31 octobre ou 31 janvier selon les sources) : avis juriste
+    expect(l.find((x) => x.id === 'micro-periodicite-2027').certitude).toBe('a_confirmer');
   });
 
   it('micro mensuel : 14 déclarations, chacune le dernier jour du mois pour le mois précédent', () => {

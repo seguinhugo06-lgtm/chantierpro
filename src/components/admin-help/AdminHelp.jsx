@@ -33,7 +33,7 @@ const RESSOURCES = [
 const FAQ_ITEMS = [
   {
     q: 'Quelle TVA appliquer en rénovation ?',
-    a: '10% pour travaux amélioration (logement >2 ans), 5.5% pour rénovation énergétique, 20% pour neuf.'
+    a: '10 % pour l’amélioration, la transformation, l’aménagement ou l’entretien d’un logement achevé depuis plus de 2 ans ; 5,5 % pour la rénovation énergétique de ce logement ; 20 % pour le neuf. Le taux réduit suppose que le client certifie ces conditions sur le devis ou la facture.'
   },
   {
     q: 'DSN : quelle date limite ?',
@@ -41,7 +41,7 @@ const FAQ_ITEMS = [
   },
   {
     q: 'Quand le devis est-il obligatoire ?',
-    a: 'Pour tout travaux >150€ TTC. Le devis signé vaut contrat.'
+    a: 'Chez un particulier, un devis écrit est obligatoire avant tout dépannage, réparation ou entretien, quel que soit le montant (arrêté du 24 janvier 2017). Signé par le client, le devis vaut contrat.'
   },
   {
     q: 'E-facturation : quand ?',

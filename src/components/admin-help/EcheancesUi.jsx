@@ -52,7 +52,7 @@ export function QuestionsProfil({ questions, onRepondre }) {
   if (!questions.length) return null;
   return (
     <div data-questions-profil className="p-3 rounded-lg bg-info-fond space-y-3">
-      <p className="text-sm text-info-texte">Pour des dates justes, {questions.length === 1 ? 'une question' : `${questions.length} questions`} (posées une seule fois) :</p>
+      <p className="text-sm text-info-texte">Pour des dates adaptées à votre situation, {questions.length === 1 ? 'une question, posée une seule fois' : `${questions.length} questions, posées une seule fois`} :</p>
       {questions.map((cle) => (
         <div key={cle}>
           <p className="text-sm font-medium text-encre mb-1.5">{QUESTIONS[cle].libelle}</p>

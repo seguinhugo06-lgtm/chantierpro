@@ -138,9 +138,9 @@ function e(champs) {
 function cfe() {
   return [
     e({ id: 'cfe-prelevement-2026', date: '2026-11-30', type: 'fiscal', titre: 'CFE 2026 : adhérer au prélèvement à l’échéance',
-      detail: 'Dernier jour pour payer la CFE 2026 par prélèvement à l’échéance (sinon, paiement en ligne avant le 15 décembre).', source: SOURCES.cfe2026 }),
+      detail: 'Dernier jour pour adhérer au prélèvement à l’échéance de la CFE 2026 (sinon, paiement direct en ligne au plus tard le 15 décembre).', source: SOURCES.cfe2026 }),
     e({ id: 'cfe-paiement-2026', date: '2026-12-15', type: 'fiscal', titre: 'CFE 2026 : paiement',
-      detail: 'Paiement en ligne obligatoire, au plus tard le 15 décembre 2026. L’avis est dans votre espace professionnel sur impots.gouv.fr. Pas de CFE l’année de la création de l’entreprise.', source: SOURCES.cfe2026 }),
+      detail: 'Paiement en ligne obligatoire, au plus tard le 15 décembre 2026. L’avis est dans votre espace professionnel sur impots.gouv.fr. Pas de CFE l’année de la création de l’entreprise. Pas de CFE non plus si votre chiffre d’affaires ne dépasse pas 5 000 €.', source: SOURCES.cfe2026 }),
     e({ id: 'cfe-mensualisation-2027', date: '2026-12-15', type: 'fiscal', titre: 'CFE 2027 : adhérer à la mensualisation', certitude: 'selon_option',
       detail: 'Si vous voulez payer la CFE 2027 par prélèvements mensuels à partir de janvier.', source: SOURCES.cfe2026 }),
     e({ id: 'cfe-acompte-2027', date: '2027-06-15', type: 'fiscal', titre: 'CFE : acompte de juin', certitude: 'selon_option',
@@ -155,7 +155,7 @@ function facturationElectronique() {
     e({ id: 'efacture-reception', date: '2026-09-01', type: 'legal', titre: 'Facture électronique : réception obligatoire',
       detail: 'Depuis le 1er septembre 2026, toute entreprise, micro-entreprise comprise, doit pouvoir recevoir ses factures électroniques par une plateforme agréée. Mallettico n’est pas une plateforme agréée : choisissez-en une.', source: SOURCES.efacture }),
     e({ id: 'efacture-emission', date: '2027-09-01', type: 'legal', titre: 'Facture électronique : émission obligatoire (PME, micro)',
-      detail: 'À partir du 1er septembre 2027, les PME et micro-entreprises émettent leurs factures électroniques et transmettent leurs données (e-reporting) par une plateforme agréée. Mallettico produit déjà un PDF Factur-X, mais ne transmet pas encore les factures à une plateforme agréée.', source: SOURCES.efacture }),
+      detail: 'À partir du 1er septembre 2027, les PME et micro-entreprises émettent leurs factures électroniques et transmettent leurs données (e-reporting) par une plateforme agréée. Mallettico ne transmet pas encore vos factures à une plateforme agréée.', source: SOURCES.efacture }),
   ];
 }
 
@@ -179,7 +179,7 @@ function liasse2031() {
 function declarationsMicro(profil) {
   const out = [];
   const noteWeekend = (date) => (estWeekend(date)
-    ? ' Cette date tombe un week-end : l’Urssaf ne la reporte pas toujours, déclarez avant.' : '');
+    ? ' Cette date tombe un week-end : l’Urssaf ne la reporte pas toujours : déclarez au plus tard le vendredi précédent.' : '');
   if (profil.periodiciteUrssaf === 'mensuelle') {
     for (const [a, m] of moisCouverts()) {
       const date = iso(a, m, dernierJour(a, m));
@@ -195,9 +195,9 @@ function declarationsMicro(profil) {
         detail: `À l’Urssaf, avec le paiement des cotisations.${noteWeekend(date)}`, source: SOURCES.microDeclaration }));
     }
   }
-  out.push(e({ id: 'micro-periodicite-2027', date: '2027-01-31', type: 'social', certitude: 'selon_option',
+  out.push(e({ id: 'micro-periodicite-2027', date: '2027-01-31', type: 'social', certitude: 'a_confirmer',
     titre: 'Changer de rythme de déclaration Urssaf pour 2027',
-    detail: 'Pour passer du mois au trimestre (ou l’inverse) en 2027, faites la demande avant le 31 janvier 2027.', source: SOURCES.microDeclaration }));
+    detail: 'Pour changer de rythme (mois ou trimestre), la date limite de demande n’est pas confirmée (31 octobre de l’année précédente ou 31 janvier selon les sources) : vérifiez dans votre espace autoentrepreneur.urssaf.fr.', source: SOURCES.microDeclaration }));
   return out;
 }
 
@@ -216,12 +216,12 @@ function tva(profil) {
   }
   if (profil.tva === 'ca12') {
     out.push(e({ id: 'ca12-acompte-2026-12', date: '2026-12-15', type: 'fiscal', titre: 'TVA : acompte de décembre (régime simplifié)',
-      detail: 'Dernier acompte du régime simplifié. Date limite entre le 15 et le 24 décembre ; la date affichée est la plus tôt possible.', source: SOURCES.tvaSimplifieSupprime }));
+      detail: 'Dernier acompte du régime simplifié, sauf si la TVA due au titre de l’année précédente était inférieure à 1 000 € (pas d’acompte). Date limite entre le 15 et le 24 décembre ; la date affichée est la plus tôt possible.', source: SOURCES.tvaSimplifieSupprime }));
     out.push(e({ id: 'ca12-2026', date: '2027-05-04', type: 'fiscal', certitude: 'selon_option', titre: 'Dernière déclaration annuelle de TVA (CA12 2026)',
       detail: 'Si votre exercice se clôt le 31 décembre. Le régime simplifié de TVA est supprimé à partir du 1er janvier 2027.', source: SOURCES.tvaSimplifieSupprime }));
     for (const [date, libelle] of TRIMESTRES.slice(1)) {
       out.push(e({ id: `ca3-${date}`, date, type: 'fiscal', certitude: 'selon_option', titre: `Déclaration de TVA (CA3) du ${libelle}`,
-        detail: `Depuis le 1er janvier 2027, la CA3 remplace la CA12 : chaque trimestre si votre chiffre d’affaires reste sous 1 000 000 €, sinon chaque mois. ${NOTE_CA3}`, source: SOURCES.tvaSimplifieSupprime }));
+        detail: `Si votre exercice se clôt le 31 décembre. Depuis le 1er janvier 2027, la CA3 remplace la CA12 : chaque trimestre si votre chiffre d’affaires de l’année précédente n’a pas dépassé 1 000 000 € (1 100 000 € en cours d’année), sinon chaque mois. ${NOTE_CA3}`, source: SOURCES.tvaSimplifieSupprime }));
     }
     return out;
   }
@@ -241,10 +241,10 @@ function impotSocietes(profil) {
   for (const date of ['2026-12-15', '2027-03-15', '2027-06-15', '2027-09-15', '2027-12-15']) {
     const d = dateLue(date);
     out.push(e({ id: `is-acompte-${date}`, date, type: 'fiscal', certitude: 'selon_option', titre: `Impôt sur les sociétés : acompte du ${d.getDate()} ${MOIS[d.getMonth()]}`,
-      detail: `${si} Des exceptions existent (première année, petit montant) : voir la source.`, source: SOURCES.is }));
+      detail: `${si} Pas d’acompte la première année, ni si l’impôt de l’exercice précédent est inférieur à 3 000 €.`, source: SOURCES.is }));
   }
   out.push(e({ id: 'is-solde-2027', date: '2027-05-15', type: 'fiscal', certitude: 'selon_option', titre: 'Impôt sur les sociétés : solde de 2026',
-    detail: `${si} Le 15 mai 2027 est un samedi : payez avant.`, source: SOURCES.is }));
+    detail: `${si} Le 15 mai 2027 est un samedi : payez au plus tard le vendredi 14 mai, sauf report indiqué dans votre espace professionnel.`, source: SOURCES.is }));
   out.push(e({ id: 'liasse-2065-2027', date: '2027-05-04', type: 'fiscal', certitude: 'selon_option', titre: 'Liasse fiscale 2065 (résultat 2026)',
     detail: `${si} 2e jour ouvré après le 1er mai.`, source: SOURCES.liasses }));
   return out;
