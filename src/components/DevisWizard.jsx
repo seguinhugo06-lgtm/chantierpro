@@ -173,7 +173,7 @@ export default function DevisWizard({
   const totals = useMemo(() => {
     const estAvoir = initialData?.facture_type === 'avoir';
     const lignes = lignesDepuisEdition(form.lignes, estAvoir);
-    const t = totauxDesLignes(lignes, estAvoir, { remisePct: Number(form.remise) || 0, tauxDefaut: form.tvaDefaut, toutesLesLignes: true, franchise: estFranchiseTva(entreprise) });
+    const t = totauxDesLignes(lignes, estAvoir, { remisePct: Number(form.remise) || 0, tauxDefaut: form.tvaDefaut, toutesLesLignes: true, franchise });
     const totalCost = form.lignes.reduce((somme, l) => somme + (Number(l.quantite) || 0) * (Number(l.prixAchat) || 0), 0);
     const htApresRemise = t.totalHT;
     const costAfterRemise = totalCost * (1 - (Number(form.remise) || 0) / 100);

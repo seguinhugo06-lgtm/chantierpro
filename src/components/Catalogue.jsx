@@ -751,7 +751,7 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
       <Onglets ariaLabel="Sections du catalogue" actif={ongletActif} onChange={setActiveTab} onglets={onglets} />
 
       {ongletActif === 'bibliotheque' && canViewPrices && (
-        <Bibliotheque isDark={isDark} couleur={couleur} setPage={setPage} devis={devis} updateDevis={updateDevis} clients={clients} showToast={showToast} />
+        <Bibliotheque isDark={isDark} couleur={couleur} setPage={setPage} franchiseTva={franchiseTva} devis={devis} updateDevis={updateDevis} clients={clients} showToast={showToast} />
       )}
 
       {ongletActif === 'fournisseurs' && canViewPrices && (
