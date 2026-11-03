@@ -107,7 +107,7 @@ export function questionsFaq(plans = PLANS_APP) {
       q: 'Puis-je essayer avant de payer\u202f?',
       // Limites et prix lus dans PLANS ; tarif fondateur : D-08 ; retour au plan Gratuit, données conservées : CGV art. 7
       // (LegalPages.jsx, « À la fin de l'abonnement, le compte revient au plan Gratuit »)
-      a: `Oui, sans limite de durée\u202f: le plan ${gratuit.name} inclut ${devis} devis par mois, ${clients} clients et ${chantiers} chantiers, sans carte bancaire. Quand vous êtes prêt, passez à ${artisan.name} (${prixAbonnement(artisan)} par mois, sans ces limites) ou à ${equipe.name} (${prixAbonnement(equipe)} par mois, vous + ${equipe.limits.equipe} collaborateurs), ${MENTION_TVA_ABONNEMENT} — tarif fondateur, garanti tant que l’abonnement reste actif. Si vous arrêtez, votre compte revient au plan ${gratuit.name}\u202f: vos données sont conservées.`,
+      a: `Oui, sans limite de durée\u202f: le plan ${gratuit.name} inclut ${devis} devis par mois, ${clients} clients et ${chantiers} chantiers, sans carte bancaire. Quand vous êtes prêt, passez à ${artisan.name} (${prixAbonnement(artisan)} par mois, sans ces limites) ou à ${equipe.name} (${prixAbonnement(equipe)} par mois, vous + ${equipe.limits.equipe} collaborateurs) — tarif fondateur, garanti tant que l’abonnement reste actif. Si vous arrêtez, votre compte revient au plan ${gratuit.name}\u202f: vos données sont conservées.`,
     },
     {
       categorie: 'pricing',

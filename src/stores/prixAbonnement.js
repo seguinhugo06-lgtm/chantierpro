@@ -3,7 +3,9 @@
  * paiement réussi, règles) : un seul outil, à côté de `PLANS`.
  *
  * Les abonnements sont en franchise de TVA (décision D-19, docs/decisions.md) : on n'écrit jamais « HT » à côté
- * d'un prix d'abonnement, on écrit la mention `MENTION_TVA_ABONNEMENT`. (Les « HT » des devis et des factures
+ * d'un prix d'abonnement, ni « TTC ». La mention `MENTION_TVA_ABONNEMENT` ne s'affiche plus à côté des prix (retour
+ * d'Hugo du 26 oct. 2026, avis juriste du 3 nov.) : elle reste dans les CGV (art. 4), la FAQ sur la facturation et
+ * les factures. (Les « HT » des devis et des factures
  * des artisans, eux, sont ceux de leurs documents : ils n'ont rien à voir avec cet outil.)
  * Ce module ne tire rien de lourd (le format des montants de `lib/formatters.js`, sans dépendance) : le site
  * public peut l'importer sans alourdir son premier affichage.

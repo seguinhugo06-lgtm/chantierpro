@@ -216,9 +216,9 @@ module.exports = [
     },
   },
   {
-    // Les abonnements sont en franchise de TVA (D-19) : « TVA non applicable, art. 293 B du CGI » à la place de « HT »
-    // dans « Mon plan » ; prix lus dans PLANS. (La fenêtre d'abonnement n'a pas de chemin court en démo : elle est couverte par `prixAbonnementAffiche.test.jsx` ; la page `pricing` de l'app n'a aucun lien qui y mène : non parcourue.)
-    nom: 'abonnements : franchise de TVA à la place de « HT » (D-19)',
+    // Les abonnements sont en franchise de TVA (D-19) : jamais « HT » dans « Mon plan » ; depuis le retour d'Hugo du
+    // 26 oct. 2026 (avis juriste du 3 nov.), la mention « TVA non applicable… » n'accompagne plus les prix (CGV, FAQ, factures) ; prix lus dans PLANS. (La fenêtre d'abonnement n'a pas de chemin court en démo : elle est couverte par `prixAbonnementAffiche.test.jsx` ; la page `pricing` de l'app n'a aucun lien qui y mène : non parcourue.)
+    nom: 'abonnements : ni « HT » ni mention de franchise à côté des prix (D-19, retour du 26 oct.)',
     async executer({ ouvrir, attendre, verifier, RACINE }) {
       const { PLANS } = plansDuSite(RACINE);
       const MENTION = 'TVA non applicable, art. 293 B du CGI';
@@ -235,7 +235,7 @@ module.exports = [
         let texte = await lire(mon.page);
         verifier(texte.includes('Mon plan'), `« Mon plan » affiché ${a}`);
         verifier(sansHT(texte), `« Mon plan » : aucun « HT » ${a}`);
-        verifier(texte.includes(MENTION), `« Mon plan » : la mention de franchise de TVA ${a}`);
+        verifier(!texte.includes(MENTION), `« Mon plan » : plus de mention de franchise à côté des prix ${a}`);
         for (const id of ['artisan', 'equipe']) {
           verifier(texte.includes(`${prix(PLANS[id].priceMonthly)} par mois`), `« Mon plan » : ${PLANS[id].name} à ${prix(PLANS[id].priceMonthly)} par mois ${a}`);
         }
@@ -250,7 +250,7 @@ module.exports = [
         const abonne = await ouvrir({ page: 'plan', largeur, plan: 'artisan' });
         await attendre(500);
         texte = await lire(abonne.page);
-        verifier(texte.includes(`${prix(PLANS.artisan.priceMonthly)} par mois, ${MENTION}`) && sansHT(texte), `« Mon plan », abonné Artisan : prix, mention, aucun « HT » ${a}`);
+        verifier(texte.includes(`${prix(PLANS.artisan.priceMonthly)} par mois`) && !texte.includes(MENTION) && sansHT(texte), `« Mon plan », abonné Artisan : prix avec sa période, sans mention ni « HT » ${a}`);
         await abonne.browser.close();
       }
     },
