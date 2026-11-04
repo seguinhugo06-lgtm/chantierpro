@@ -38,7 +38,7 @@ describe('qualifications imprimées', () => {
     const e = { rge: 'E-1', rgeOrganisme: 'Qualibat', rgeDomaine: 'QualiPAC' };
     for (const v of ['30/06/2027', '2027-02-30', 'bientôt']) {
       expect(lignesQualifications({ ...e, rgeValidite: v }, AUJ)).toEqual([]);
-      expect(raisonRgeNonImprime({ ...e, rgeValidite: v }, AUJ)).toMatch(/pas lisible/);
+      expect(raisonRgeNonImprime({ ...e, rgeValidite: v }, AUJ)).toMatch(/n’est pas reconnue/);
     }
   });
 

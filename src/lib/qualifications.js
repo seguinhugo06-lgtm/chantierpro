@@ -50,7 +50,7 @@ export function raisonRgeNonImprime(entreprise, aujourdhui = jourLocal()) {
   if (!texte(entreprise?.rgeOrganisme) || texte(entreprise?.rgeOrganisme) === 'Autre') return 'Choisissez l’organisme qui a délivré votre RGE : l’Anah exige son nom sur les devis et factures des travaux aidés.';
   if (!texte(entreprise?.rgeDomaine)) return 'Ajoutez l’intitulé de votre qualification RGE, tel qu’il figure sur votre certificat : l’Anah l’exige sur les devis et factures des travaux aidés.';
   if (!texte(entreprise?.rgeValidite)) return 'Ajoutez la date de fin de validité indiquée sur votre certificat RGE : sans elle, le RGE n’est pas imprimé.';
-  if (!jourValide(entreprise?.rgeValidite)) return 'La date de fin de validité n’est pas lisible : ressaisissez-la ci-dessus. En attendant, le RGE n’est pas imprimé.';
+  if (!jourValide(entreprise?.rgeValidite)) return 'La date de fin de validité enregistrée n’est pas reconnue : ressaisissez-la dans le champ « Fin de validité ». En attendant, le RGE n’est pas imprimé sur vos documents.';
   if (expiree(entreprise?.rgeValidite, aujourdhui)) return 'La date de fin de validité est passée : le RGE n’est plus imprimé sur vos documents.';
   return null;
 }
