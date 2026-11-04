@@ -744,7 +744,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             const majImmat = (cle) => (val) => updateEntreprise((p) => ({ ...p, [cle]: val, ...(registre === 'RM' ? { rcsType: 'RM' } : {}) }), cle);
             return (
               <Bloc titre="Immatriculation" lexique={LEXIQUE.rcs} sousTitre="Le registre où votre entreprise est inscrite, imprimé sur vos devis et factures.">
-                <div data-registre={registre}>
+                <div id="settings-field-registre" tabIndex={-1} data-registre={registre}>
                   <p id="settings-registre-libelle" className="block text-sm font-medium text-encre-2 mb-1.5">Votre registre</p>
                   <Segmente pleineLargeur ariaLabel="Votre registre" valeur={registre} onChange={choisirRegistre}
                     options={[{ valeur: 'RM', libelle: 'Métiers et artisanat (RNE)' }, { valeur: 'RCS', libelle: 'Commerce (RCS)' }]} />

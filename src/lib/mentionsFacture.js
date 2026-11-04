@@ -117,7 +117,9 @@ export function mentionsFacture(entreprise) {
       id: 'rcs',
       libelle: 'RCS et ville du greffe (sociétés et commerçants)',
       onglet: 'legal',
-      champ: rempli(lire(e, 'rcsVille', 'rcs_ville')) ? 'rcsNumero' : 'rcs',
+      // Registre « Métiers et artisanat (RNE) » choisi (`rcsType` 'RM') : le champ RCS n'est pas affiché, et un numéro
+      // RNE n'est pas un RCS → « Compléter » mène au choix du registre (contrôle local du 3 nov. 2026)
+      champ: estInscritRm(e) ? 'registre' : rempli(lire(e, 'rcsVille', 'rcs_ville')) ? 'rcsNumero' : 'rcs',
       rempli: rcsRenseigne(e),
     });
   }
