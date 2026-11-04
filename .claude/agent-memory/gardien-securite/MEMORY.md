@@ -29,10 +29,13 @@ Jamais appliquée. Banc vert (665 vérifications). Applicable : rien de critique
 
 | Faille | Gravité | Statut |
 |---|---|---|
-| F1 `figer_compte_rendu` laisse un compte connecté vider `client_id`, `chantier_id`, `remplace_id` à volonté (casse « annule et remplace », libère l'index unique) ; inutile : l'action ON DELETE SET NULL s'exécute en propriétaire de la table et passe déjà la garde `current_user` | FAIBLE | ouverte (même design que 104) |
-| F2 `updated_at` réécrivable par le client, jamais remis à `now()` à la mise à jour | FAIBLE | ouverte (idem 104) |
-| F3 `signature`, `mesures`, textes sans borne de taille | FAIBLE | ouverte |
-| F4 rôle `readonly`/ouvrier crée, annule, lie une facture (pas de `mon_role_organisation`) | FAIBLE | ouverte → tâche `org-droits` |
-| F5 `regimeTva` (mentionTvaReduite.js) : marque gardée si la désignation change (seul un changement de taux l'efface) ; comparaison `Number(l.tva)` sur `doc.lignes` (et non sur les montants de `tvaDetails`) → certification 278-0 bis A supprimée à tort. Pas exploitable par un tiers (lignes écrites par les membres, jamais imprimée) | FAIBLE (fiscal) | ouverte |
+| F1 `figer_compte_rendu` laisse un compte connecté vider `client_id`, `chantier_id`, `remplace_id` à volonté (casse « annule et remplace », libère l'index unique) ; inutile : l'action ON DELETE SET NULL s'exécute en propriétaire de la table et passe déjà la garde `current_user` | FAIBLE | corrigée (`cee017c`, banc « un compte ne vide ni le remplacé… ») |
+| F2 `updated_at` réécrivable par le client, jamais remis à `now()` à la mise à jour | FAIBLE | corrigée (`cee017c`, `updated_at` posé par la base) |
+| F3 `signature`, `mesures`, textes sans borne de taille | FAIBLE | corrigée : `cee017c` (textes, mesures), puis 4 nov. au soir (émetteur, noms, contact, adresse, motif ; colonne `signature` retirée) |
+| F4 rôle `readonly`/ouvrier crée, annule, lie une facture (pas de `mon_role_organisation`) | FAIBLE | corrigée dans 111 (4 nov. au soir : policies INSERT/UPDATE `mon_role_organisation <> 'readonly'`) ; reste à faire dans 104 et 113 (tâche `org-droits`) |
+| F5 `regimeTva` (mentionTvaReduite.js) : marque gardée si la désignation change (seul un changement de taux l'efface) ; comparaison `Number(l.tva)` sur `doc.lignes` (et non sur les montants de `tvaDetails`) → certification 278-0 bis A supprimée à tort. Pas exploitable par un tiers (lignes écrites par les membres, jamais imprimée) | FAIBLE (fiscal) | en partie corrigée (`cee017c` : marque effacée au changement de désignation ; 4 nov. au soir : aussi par « TVA — appliquer à tout le devis ») ; comparaison des bases de `tvaDetails` : ouverte |
+| F6 `sceller_compte_rendu` (SECURITY DEFINER) passe avant `trg_verifier_organisation` : avec l'organisation d'un autre, ses messages (« Client inconnu… » / « Organisation interdite ») disaient si un identifiant lui appartient | FAIBLE | corrigée dans 111 (refus « Organisation interdite » avant le verrou, banc) ; même garde à reporter dans `sceller_ramonage` (104) et `sceller_entretien` (113) |
 
 Sain : RLS par organisation (salarié sorti 0 ligne), REVOKE ALL + GRANT S/I/U, aucune DELETE, `anon` rien ; `sceller` SECURITY DEFINER search_path fixé, non exécutable, numéro sous verrou consultatif par série/année Paris ; contrôles chantier/client/facture/remplacé dans la série (pas d'oracle : même message pour inconnu et étranger) ; découverte par 105 (index unique sur expression ignoré) et 072 ; HTML du PDF échappé, signature validée `data:image`, iframes `sandbox=""` ; `updateItem` en `.select().single()`.
+
+À la fusion avec `cloud/metier-entretien` : garder les deux sections de ce fichier (conflit de documentation seulement).

@@ -60,9 +60,73 @@ async function ouvrirOnglet({ ouvrir, attendre, sessionFactice, base }) {
 }
 const ouvrirCompteRendu = (page, numero) => page.evaluate((n) => [...document.querySelectorAll('[data-testid="onglet-electricite"] [data-ui="LigneListe"] > button')]
   .find((b) => b.innerText.includes(n))?.click(), numero);
+const marquee = (m) => m === true;
 const texteFenetre = (page) => page.evaluate(() => document.querySelector('[role="dialog"]')?.innerText || '');
 
 module.exports = [
+  {
+    // Relecture du 4 nov., point 14 : les DEUX générateurs reçoivent les lignes. Un devis avec une pose de borne marquée
+    // à 5,5 % et une ligne à 10 % : la certification « rénovation énergétique » (5,5 %) n'est pas imprimée, celle à 10 %
+    // l'est ; contre-essai : la même ligne sans la marque imprime la certification 5,5 %.
+    nom: 'électricien (base) : pose de borne marquée à 5,5 % — aperçu (DevisPage) et page de signature (devisHtmlBuilder), avec contre-essai (375 px)',
+    reel: true,
+    async executer({ ouvrir, attendre, verifier, sessionFactice, ORIGIN }) {
+      const jeu = jeuElectricite();
+      const RENO = 'nature de travaux de rénovation énergétique';
+      const DIX = 'supérieure à 10 %.';
+      const lignes = (marque) => [
+        { id: 'l1', description: 'Pose d’une borne de recharge 7 kW (type 2)', quantite: 1, unite: 'u', prixUnitaire: 600, montant: 600, tva: 5.5, ...(marque ? { regimeTva: 'borne_278_0_bis_N' } : {}) },
+        { id: 'l2', description: 'Remplacement du tableau électrique', quantite: 1, unite: 'u', prixUnitaire: 900, montant: 900, tva: 10 },
+      ];
+      const devis = (id, numero, marque) => ({ id, client_id: jeu.CLIENT.id, chantier_id: jeu.CHANTIER.id, type: 'devis', statut: 'envoye', numero, date: `${AN}-11-01`,
+        date_validite: `${AN + 1}-01-01`, validite: 60, objet: 'Borne et tableau', lignes: lignes(marque), sections: [], total_ht: 1500, total_tva: 123, total_ttc: 1623,
+        tva_rate: 10, created_at: `${AN}-11-01T08:00:00Z` });
+      for (const [marque, numero] of [[true, `DEV-${AN}-00111`], [false, `DEV-${AN}-00112`]]) {
+        // Une EI à la TVA (pas en franchise : sinon aucune TVA ni certification)
+        const base = creerBase({ clients: [jeu.CLIENT], chantiers: [jeu.CHANTIER], entreprise: [{ ...jeu.ENTREPRISE, forme_juridique: 'EI' }], devis: [devis(`d2d2d2d2-0000-4000-8000-00000000011${marque ? 1 : 2}`, numero, marque)] });
+        const { page, browser } = await ouvrir({ reel: true, largeur: 375, page: 'devis', session: sessionFactice(UID), supabase: base.reponse, avantChargement: sansInstallation });
+        await attendre(2000);
+        const ouvert = await page.evaluate((n) => {
+          const b = [...document.querySelectorAll('[data-ui="LigneListe"] > button')].find((x) => (x.innerText || '').includes(n));
+          b?.click();
+          return !!b;
+        }, numero);
+        verifier(ouvert, `le devis ${numero} s’ouvre`);
+        await attendre(1000);
+        const apercuOuvert = await page.evaluate(() => {
+          const l = ['Aperçu', 'Aperçu du document'];
+          const b = [...document.querySelectorAll('button')].find((x) => l.includes((x.innerText || '').trim()) || l.includes(x.title) || l.includes(x.getAttribute('aria-label')));
+          b?.click();
+          return !!b;
+        });
+        if (!apercuOuvert) {
+          await page.evaluate(() => document.querySelector('button[aria-label="Plus d\'actions"]')?.click());
+          await attendre(400);
+          await page.evaluate(() => [...document.querySelectorAll('[role="dialog"] button')].find((x) => ['Aperçu', 'Aperçu du document'].includes((x.innerText || '').trim()))?.click());
+        }
+        await attendre(1500);
+        const html = await page.evaluate(() => [...document.querySelectorAll('iframe')].map((f) => f.getAttribute('srcdoc') || '').find((x) => x.length > 100) || '');
+        verifier(html.includes('Pose d’une borne de recharge'), `l’aperçu (DevisPage) du devis ${numero} est affiché`);
+        verifier(html.includes(DIX), `aperçu : la certification 10 % reste (ligne du tableau) — ${marque ? 'marquée' : 'contre-essai'}`);
+        verifier(html.includes(RENO) === !marquee(marque), marque ? 'aperçu : pose marquée, pas de certification « rénovation énergétique »' : 'contre-essai, aperçu : sans la marque, la certification 5,5 % est imprimée');
+        await browser.close();
+
+        // Page de signature du client : l'autre générateur (devisHtmlBuilder), mêmes lignes
+        const reponse = {
+          devis: { ...devis('d-sig', numero, marque), lignes: JSON.stringify(lignes(marque)), sections: '[]', travaux_urgents: false, already_signed: false },
+          client: { nom: 'Exemple', prenom: 'Lucie', categorie: 'Particulier', email: 'lucie@exemple.fr' }, chantier: null,
+          entreprise: { nom: 'Électricité Exemple', forme_juridique: 'EI', siret: '00000000000000', email: 'contact@exemple.fr', couleur: '#12336F' },
+        };
+        const sig = await ouvrir({ reel: true, largeur: 375, supabase: (req, u) => (u.pathname === '/rest/v1/rpc/get_devis_for_signature' ? json(reponse) : json({})) });
+        await sig.page.goto(`${ORIGIN}/devis/signer/7a3f0c52-3c1e-4f8e-9a57-0c2f6e1b9d8${marque ? 7 : 8}`, { waitUntil: 'networkidle0' });
+        await attendre(1200);
+        const doc = await sig.page.evaluate(() => [...document.querySelectorAll('iframe')].map((f) => f.getAttribute('srcdoc') || '').join(''));
+        verifier(doc.includes('Pose d’une borne de recharge') && doc.includes(DIX), `page de signature du devis ${numero} : affichée, certification 10 % présente`);
+        verifier(doc.includes(RENO) === !marquee(marque), marque ? 'page de signature : pose marquée, pas de certification « rénovation énergétique »' : 'contre-essai, page de signature : sans la marque, certification 5,5 % imprimée');
+        await sig.browser?.close();
+      }
+    },
+  },
   {
     nom: 'électricien (base) : le compte rendu part sans numéro, la base le numérote, l’écran le reprend ; facture liée, annulation et rappel Consuel en base',
     reel: true,
