@@ -4515,6 +4515,7 @@ export default function DevisPage({ clients, addClient, devis, setDevis, chantie
       <DevisExpressModal
         isOpen={showDevisExpressModal}
         tvaDefaut={tauxTvaParDefaut(entreprise)}
+        metiersEntreprise={entreprise?.metiers}
         franchise={isMicro}
         onClose={() => setShowDevisExpressModal(false)}
         onCreateDevis={async (devisData) => {

@@ -24,6 +24,7 @@ import { buildDevisHtml } from '../lib/devisHtmlBuilder';
 import { calculerTotaux, messageLigneSansDesignation } from '../lib/totauxDocument';
 import { estFranchiseTva, premierTaux } from '../lib/franchiseTva';
 import { TRADE_LIBRARY } from '../lib/templates/trade-library';
+import { bibliothequeDes, partagerParMetier } from '../lib/metiers';
 import { jourLocal } from '../lib/dates';
 import { profilManquant, enPhrase } from '../lib/profilLegal';
 import { couleurPleine } from '../lib/theme';
@@ -119,6 +120,8 @@ export default function DevisComposer({
   const isEditMode = !!initialData;
   // Franchise en base (art. 293 B CGI) : aucune TVA, ni à l'écran ni dans ce qui est enregistré
   const franchise = estFranchiseTva(entreprise);
+  // Métiers choisis (src/lib/metiers.js) : leurs lots en premier ; sans choix, l'ordre d'aujourd'hui
+  const metiersBib = useMemo(() => bibliothequeDes(entreprise?.metiers), [entreprise?.metiers]);
   const tvaEntreprise = franchise ? 0 : premierTaux(entreprise?.tvaDefaut, entreprise?.tva_defaut, 10);
 
   const blankForm = () => ({
@@ -812,6 +815,7 @@ export default function DevisComposer({
             {form.lignes.length === 0 && (
               <div className={`border-t border-bord p-3 sm:p-4`}>
                 <QuickStart templates={METIER_TEMPLATES} articles={quickArticles} persoTemplates={customTemplates}
+                  metiersBib={metiersBib} onAppendBloc={appendBloc} franchise={franchise}
                   onApplyTemplate={applyTemplate} onApplyPerso={applyPersoTemplate} onAddArticle={addLigne}
                   onOpenLibrary={() => setShowLibrary(true)}
                   isDark={isDark} couleur={couleur} textPrimary={textPrimary} textMuted={textMuted} />
@@ -963,6 +967,7 @@ export default function DevisComposer({
         onAppendBloc={appendBloc}
         onAddArticle={addLigne}
         franchise={franchise}
+        metiersBib={metiersBib}
         isDark={isDark} couleur={couleur}
         textPrimary={textPrimary} textMuted={textMuted} inputBg={inputBg}
       />
@@ -1424,7 +1429,7 @@ function MetreModal({ isDark: _isDark, couleur: _couleur, inputBg, textPrimary, 
  * ses missions et leurs prix AVANT de l'appliquer — on ne choisit pas « 9 lignes »
  * à l'aveugle. Tout s'ajoute à la suite, rien n'est jamais écrasé.
  */
-function LibraryPanel({ open, onClose, persoTemplates = [], articles = [], onAppendBloc, onAddArticle, franchise = false, isDark: _isDark, couleur: _couleur, textPrimary, textMuted, inputBg }) {
+function LibraryPanel({ open, onClose, persoTemplates = [], articles = [], onAppendBloc, onAddArticle, franchise = false, metiersBib = [], isDark: _isDark, couleur: _couleur, textPrimary, textMuted, inputBg }) {
   const [q, setQ] = useState('');
   const [openTrade, setOpenTrade] = useState(null);
 
@@ -1443,6 +1448,9 @@ function LibraryPanel({ open, onClose, persoTemplates = [], articles = [], onApp
       || t.lots.some(l => norm(l.nom).includes(n) || l.lignes.some(li => norm(li.designation).includes(n)))
       || t.prestations.some(p => norm(p.designation).includes(n));
   });
+  // Les métiers de l'artisan en tête, puis « Autres métiers » : rien n'est masqué (critique-produit, 4 nov. 2026)
+  const { premiers, autres } = partagerParMetier(trades, metiersBib, ([k]) => k);
+  const entreesMetiers = autres.length && premiers.length ? [...premiers, 'autres', ...autres] : trades;
   const persoFiltered = persoTemplates.filter(t => !q.trim() || norm(t.nom).includes(norm(q)));
   const articlesFiltered = articles.filter(a => !q.trim() || norm(a.nom || '').includes(norm(q)));
 
@@ -1500,7 +1508,9 @@ function LibraryPanel({ open, onClose, persoTemplates = [], articles = [], onApp
           <div>
             {sectionTitle(Sparkles, `Modèles métier (${trades.length})`)}
             <div className="space-y-2">
-              {trades.map(([key, t]) => {
+              {entreesMetiers.map((entree) => {
+                if (entree === 'autres') return <p key="autres-metiers" className="pt-2 text-xs font-semibold text-encre-3">Autres métiers</p>;
+                const [key, t] = entree;
                 const isOpen = openTrade === key;
                 return (
                   <div key={key} className={`rounded-xl border overflow-hidden bg-surface border-bord`}>
@@ -1701,8 +1711,10 @@ function SaveTemplateModal({ isDark: _isDark, couleur: _couleur, inputBg, textPr
 }
 
 /* ── Démarrage éclair : modèles métier + articles fréquents ── */
-function QuickStart({ templates, articles, persoTemplates = [], onApplyTemplate, onApplyPerso, onAddArticle, onOpenLibrary, isDark: _isDark, couleur: _couleur, textPrimary, textMuted }) {
+function QuickStart({ templates, articles, persoTemplates = [], metiersBib = [], onAppendBloc, franchise = false, onApplyTemplate, onApplyPerso, onAddArticle, onOpenLibrary, isDark: _isDark, couleur: _couleur, textPrimary, textMuted }) {
   const trades = Object.entries(TRADE_LIBRARY);
+  // Les lots chiffrés des métiers choisis (4 au plus) ; la bibliothèque complète reste à un geste
+  const lotsDuMetier = metiersBib.flatMap((k) => (TRADE_LIBRARY[k]?.lots || []).map((lot) => ({ metier: TRADE_LIBRARY[k], lot }))).slice(0, 4);
   const cardCls = `group flex flex-col items-center gap-1.5 p-3 rounded-xl border transition-all hover:-translate-y-0.5 hover:shadow-md active:scale-95 bg-surface border-bord hover:border-bord-fort`;
   return (
     <div className="space-y-4">
@@ -1719,6 +1731,29 @@ function QuickStart({ templates, articles, persoTemplates = [], onApplyTemplate,
                 <span className={`text-xs ${textMuted}`}>{(tpl.lignes || []).length} lignes{tpl.categorie ? ` · ${tpl.categorie}` : ''}</span>
               </button>
             ))}
+          </div>
+        </div>
+      )}
+      {lotsDuMetier.length > 0 && (
+        <div data-testid="lots-du-metier">
+          <p className="text-sm font-semibold mb-2 flex items-center gap-1.5 text-encre-2">
+            <Layers size={12} className="text-accent-texte" aria-hidden="true" /> Votre métier
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {lotsDuMetier.map(({ metier, lot }) => {
+              const total = lot.lignes.reduce((s, l) => s + l.quantite * l.prixUnitaire, 0);
+              return (
+                <button key={`${metier.id}-${lot.id}`} type="button" onClick={() => onAppendBloc?.(lot.lignes, lot.nom)}
+                  className="flex items-center gap-2.5 p-3 min-h-[44px] rounded-xl border text-left transition-colors bg-surface border-bord hover:border-bord-fort">
+                  <span aria-hidden="true" className="text-lg flex-shrink-0">{metier.icon}</span>
+                  <span className="flex-1 min-w-0">
+                    <span className={`block text-sm font-semibold ${textPrimary}`}>{lot.nom}</span>
+                    <span className={`block text-xs ${textMuted}`}>{metier.nom} · {lot.lignes.length} lignes</span>
+                  </span>
+                  <span className="text-xs font-bold whitespace-nowrap tabular-nums text-encre">{Math.round(total).toLocaleString('fr-FR')} €{franchise ? '' : ' HT'}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
       )}
@@ -1744,7 +1779,7 @@ function QuickStart({ templates, articles, persoTemplates = [], onApplyTemplate,
             explicitement plutôt que de la cacher derrière « Tous les métiers ». */}
         <button type="button" onClick={onOpenLibrary}
           className={`mt-2 inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg border transition-all border-bord text-encre-2 hover:bg-surface-2`}>
-          <Library size={13} /> Parcourir les {trades.length} métiers chiffrés
+          <Library size={13} /> {lotsDuMetier.length > 0 ? `Afficher tous les métiers (${trades.length})` : `Parcourir les ${trades.length} métiers chiffrés`}
         </button>
       </div>
 

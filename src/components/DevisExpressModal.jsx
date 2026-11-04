@@ -6,6 +6,7 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { sansTva } from '../lib/franchiseTva';
 import { X, ChevronLeft, ChevronRight, Search, Check, FileText, TrendingUp, Minus, Plus, Trash2, FolderOpen, UserPlus, Clock, RotateCcw } from 'lucide-react';
+import { modelesDes, partagerParMetier } from '../lib/metiers';
 import { getMetiersWithModeles, getModelesByMetier, prepareModeleLignes, calculateModeleTotal, calculateModeleMarge, searchModeles } from '../lib/data/modeles-devis';
 import { formatClientName } from '../lib/formatters';
 import Modal, { ModalTitle } from './ui/Modal';
@@ -32,6 +33,8 @@ export default function DevisExpressModal({
   recentTemplates = [],
   onTrackUsage,
   customTemplates = [],
+  // Métiers de l'artisan (src/lib/metiers.js) : leurs modèles en premier, les autres derrière (rien n'est masqué)
+  metiersEntreprise = [],
 }) {
   const [step, setStep] = useState(1); // 1: Métier, 2: Modèle, 3: Personnalisation
   const [selectedMetier, setSelectedMetier] = useState(null);
@@ -300,7 +303,10 @@ export default function DevisExpressModal({
   };
 
   // Get métiers
-  const metiers = useMemo(() => getMetiersWithModeles(), []);
+  const metiers = useMemo(() => {
+    const { premiers, autres } = partagerParMetier(getMetiersWithModeles(), modelesDes(metiersEntreprise), (m) => m.id);
+    return [...premiers, ...autres];
+  }, [metiersEntreprise]);
 
   // Get modèles for selected métier
   const modeles = useMemo(() => {
@@ -882,6 +888,7 @@ export default function DevisExpressModal({
         onClose={() => setShowTemplateSelector(false)}
         onSelectTemplate={handleTemplateSelect}
         customTemplates={customTemplates}
+        metiersEntreprise={metiersEntreprise}
         isDark={isDark}
         couleur={couleur}
       />
