@@ -1086,6 +1086,58 @@ export const FIELD_MAPPINGS = {
     }),
   },
 
+  // ── Comptes rendus d'intervention et d'autocontrôle, électricité (migration 111) ─────
+  // Même règle que les ramonages : numéro et dates posés par la base ; à la mise à jour, seuls la facture liée et
+  // l'annulation comptent, et ne partent que s'ils sont connus de la ligne (une création rejouée n'efface rien).
+  comptes_rendus_electricite: {
+    toSupabase: (item) => ({
+      id: item.id,
+      chantier_id: item.chantier_id || null,
+      client_id: item.client_id || null,
+      remplace_id: item.remplace_id || null,
+      ...Object.fromEntries(['facture_id', 'annulee_le', 'annulation_motif']
+        .filter((cle) => item[cle] !== undefined).map((cle) => [cle, item[cle] || null])),
+      realise_le: item.realise_le,
+      intervenant_nom: item.intervenant_nom || '',
+      emetteur: item.emetteur || null,
+      client_nom: item.client_nom || '',
+      client_contact: item.client_contact || null,
+      adresse_intervention: item.adresse_intervention || '',
+      nature: item.nature,
+      travaux: item.travaux || '',
+      mesures: item.mesures || {},
+      reserves: item.reserves || null,
+      observations: item.observations || null,
+      prix_ht: item.prix_ht === '' || item.prix_ht === null || item.prix_ht === undefined ? null : Number(String(item.prix_ht).replace(',', '.')),
+      signature: item.signature || null,
+    }),
+    fromSupabase: (row) => ({
+      id: row.id,
+      numero: row.numero || null,
+      chantier_id: row.chantier_id || null,
+      client_id: row.client_id || null,
+      remplace_id: row.remplace_id || null,
+      facture_id: row.facture_id || null,
+      realise_le: row.realise_le,
+      intervenant_nom: row.intervenant_nom || '',
+      emetteur: (typeof row.emetteur === 'string' ? JSON.parse(row.emetteur) : row.emetteur) || null,
+      client_nom: row.client_nom || '',
+      client_contact: row.client_contact || '',
+      adresse_intervention: row.adresse_intervention || '',
+      nature: row.nature,
+      travaux: row.travaux || '',
+      mesures: (typeof row.mesures === 'string' ? JSON.parse(row.mesures) : row.mesures) || {},
+      reserves: row.reserves || '',
+      observations: row.observations || '',
+      prix_ht: row.prix_ht === null || row.prix_ht === undefined ? null : Number(row.prix_ht),
+      signature: row.signature || null,
+      annulee_le: row.annulee_le || null,
+      annulation_motif: row.annulation_motif || '',
+      created_at: row.created_at,
+      user_id: row.user_id,
+    }),
+  },
+
   // ── Devis Templates (user-saved quote templates) ────────────────────
   devis_templates: {
     toSupabase: (item) => ({
@@ -1253,6 +1305,7 @@ export async function loadAllData(userId, orgId, entrepriseId, onCore) {
       devisTemplatesRes,
       templateUsagesRes,
       ramonagesRes,
+      comptesRendusRes,
     ] = await Promise.all([
       pClients,
       pChantiers,
@@ -1281,6 +1334,8 @@ export async function loadAllData(userId, orgId, entrepriseId, onCore) {
       scopeToOrg(supabase.from('template_usages').select('*'), orgId, userId).order('used_at', { ascending: false }).limit(50).then(r => r, () => ({ data: [] })),
       // Attestations de ramonage (104) : un échec de lecture se dit (l'historique vide ferait croire à des passages perdus)
       scopeToOrg(supabase.from('ramonages').select('*'), orgId, userId).order('realise_le', { ascending: false }).then(r => r, (e) => ({ data: [], error: { message: e?.message || String(e) } })),
+      // Comptes rendus d'électricité (111) : table absente tant que la migration n'est pas appliquée (erreur de schéma, muette)
+      scopeToOrg(supabase.from('comptes_rendus_electricite').select('*'), orgId, userId).order('realise_le', { ascending: false }).then(r => r, (e) => ({ data: [], error: { message: e?.message || String(e) } })),
     ]);
 
     // Échecs de chargement : supabase-js ne lève pas, il renvoie `error` et `data: null`. Sans ce
@@ -1290,7 +1345,7 @@ export async function loadAllData(userId, orgId, entrepriseId, onCore) {
     const erreurs = detecterEchecsChargement({
       clients: clientsRes, chantiers: chantiersRes, devis: devisRes, depenses: depensesRes,
       equipe: equipeRes, pointages: pointagesRes, catalogue: catalogueRes, planningEvents: planningEventsRes,
-      paiements: paiementsRes, memos: memosRes, ramonages: ramonagesRes,
+      paiements: paiementsRes, memos: memosRes, ramonages: ramonagesRes, comptesRendus: comptesRendusRes,
     });
 
     const data = {
@@ -1321,6 +1376,7 @@ export async function loadAllData(userId, orgId, entrepriseId, onCore) {
       devisTemplates: (devisTemplatesRes?.data || []).map(FIELD_MAPPINGS.devis_templates.fromSupabase),
       templateUsages: (templateUsagesRes?.data || []).map(FIELD_MAPPINGS.template_usages.fromSupabase),
       ramonages: (ramonagesRes?.data || []).map(FIELD_MAPPINGS.ramonages.fromSupabase),
+      comptesRendus: (comptesRendusRes?.data || []).map(FIELD_MAPPINGS.comptes_rendus_electricite.fromSupabase),
     };
 
     logger.debug('Loaded data from Supabase:', {

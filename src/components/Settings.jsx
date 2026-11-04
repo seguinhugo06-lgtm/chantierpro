@@ -4,6 +4,7 @@ import {
   Download, FileText, RefreshCw, AlertCircle, AlertTriangle, Info, Calculator, Building2, ChevronLeft, Shield, Check,
   Home, Smartphone, Fuel, Landmark, BarChart3, CreditCard, Users, HardDrive, FolderOpen, Construction, Receipt, Mail,
   GraduationCap, Flame, Package, LayoutTemplate, Scale,
+  Zap,
 } from 'lucide-react';
 import { captureException } from '../lib/sentry';
 import AdminHelp from './admin-help/AdminHelp';
@@ -13,6 +14,7 @@ import { estFranchiseTva, tvaARegulariser } from '../lib/franchiseTva';
 import Facture2026Tab from './settings/Facture2026Tab';
 import RelanceConfigTab from './settings/RelanceConfigTab';
 import RamonageTab, { Interrupteur } from './settings/RamonageTab';
+import ElectriciteTab from './settings/ElectriciteTab';
 import PaymentConfigTab from './settings/PaymentConfigTab';
 import EntrepriseSettingsPage from './settings/EntrepriseSettingsPage';
 import TeamManagement from './settings/TeamManagement';
@@ -71,6 +73,8 @@ const GROUPES = [
     { cle: 'postchantier', libelle: 'Post-chantier', icone: Construction },
     // Parcours ramoneur (D-30) : attestations, rappels, tarifs
     { cle: 'ramonage', libelle: 'Ramonage', icone: Flame },
+    // Électricité (lot 4) : rappel Consuel, comptes rendus d'intervention et d'autocontrôle
+    { cle: 'electricite', libelle: 'Électricité', icone: Zap },
   ]},
   { id: 'finance', libelle: 'Finance', rubriques: [
     { cle: 'comptabilite', libelle: 'Comptabilité', icone: Calculator },
@@ -1018,6 +1022,10 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
 
       {tab === 'ramonage' && (
         <RamonageTab entreprise={entreprise} setEntreprise={updateEntreprise} />
+      )}
+
+      {tab === 'electricite' && (
+        <ElectriciteTab entreprise={entreprise} setEntreprise={updateEntreprise} />
       )}
 
       {tab === 'postchantier' && (

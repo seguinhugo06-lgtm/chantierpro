@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Archive, CalendarPlus, CheckCircle, CheckSquare, ChevronDown, Clock, Copy, Edit3, FileText, Plus, Receipt, Shield, UserCog, AlertTriangle } from 'lucide-react';
 import { Onglets } from '../ui/Onglets';
+import OngletElectricite from '../electricite/OngletElectricite';
 import { Bouton } from '../ui/Bouton';
 import Carte from '../ui/Carte';
 import { PastilleStatut } from '../ui/Pastille';
@@ -481,6 +482,8 @@ export default function FicheChantier({
     ...(voitPrix ? [{ id: 'finances', libelle: 'Finances' }] : []),
     { id: 'notes', libelle: 'Notes', compte: (ch.messages || []).filter((m) => !m.read).length },
     { id: 'journal', libelle: 'Journal' },
+    // Électricité (Paramètres › Électricité) : rappel Consuel, comptes rendus d'intervention
+    ...(entreprise?.electriciteActif ? [{ id: 'electricite', libelle: 'Électricité' }] : []),
     ...(sousTraitants.length > 0 ? [{ id: 'soustraitants', libelle: 'Sous-traitants', compte: sousTraitants.length }] : []),
     ...(FONCTIONS.receptionChantier && (reception || ch.statut === 'termine') ? [{ id: 'garanties', libelle: 'Garanties', compte: garanties.filter((g) => g.statut === 'active').length }] : []),
   ];
@@ -544,6 +547,13 @@ export default function FicheChantier({
             onOuvrirDocument={(docId) => ouvrirDevis?.({ ouvrir: docId })}
             onCreerDevis={() => (nouveauDevisPour ? nouveauDevisPour(ch.client_id, ch.id) : setPage?.('devis'))}
             onAjouterFichier={ajouterFichier} onSupprimerFichier={(fichierId) => modifier({ documents: (ch.documents || []).filter((d) => d.id !== fichierId) })}
+          />
+        )}
+        {ongletActif === 'electricite' && (
+          <OngletElectricite
+            chantier={ch} client={clients.find((c) => c.id === ch.client_id) || null} entreprise={entreprise}
+            peutModifier={peutModifier} peutMemo={peutMemo} peutFacturer={peutDevis} addDevis={addDevis} showToast={showToast}
+            onAjouterFichier={ajouterFichier} onOuvrirFacture={(f) => ouvrirDevis?.({ ouvrir: f.id })}
           />
         )}
         {ongletActif === 'finances' && (

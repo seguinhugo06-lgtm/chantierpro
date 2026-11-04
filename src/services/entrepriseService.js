@@ -53,6 +53,9 @@ export const REGLAGES_SANS_COLONNE = {
   ramonageRappelJours: 30,
   ramonageEnvoiAuto: false,
   ramonageTarifs: {},
+  // Électricité (lot 4, migration 111) : onglet « Électricité » de la fiche chantier (rappel Consuel, comptes rendus
+  // d'intervention et d'autocontrôle). Éteint par défaut.
+  electriciteActif: false,
 };
 
 function reglagesDe(row) {

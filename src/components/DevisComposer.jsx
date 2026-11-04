@@ -9,6 +9,7 @@
  * @module DevisComposer
  */
 
+import TvaBorne from './devis/TvaBorne';
 import { useState, useMemo, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import {
@@ -376,7 +377,13 @@ export default function DevisComposer({
       showToast?.('Erreur lors de l\'enregistrement du modèle', 'error');
     }
   };
-  const updateLigne = (id, field, value) => setForm(p => ({ ...p, lignes: p.lignes.map(l => l.id === id ? { ...l, [field]: value } : l) }));
+  // Un autre taux qu'à 5,5 % retire la marque « pose de borne » (CGI 278-0 bis, N) posée par TvaBorne
+  const updateLigne = (id, field, value) => setForm(p => ({ ...p, lignes: p.lignes.map(l => {
+    if (l.id !== id) return l;
+    const suivante = { ...l, [field]: value };
+    if (field === 'tva' && Number(value) !== 5.5) delete suivante.regimeTva;
+    return suivante;
+  }) }));
   const removeLigne = (id) => setForm(p => ({ ...p, lignes: p.lignes.filter(l => l.id !== id) }));
   const moveLigne = (index, dir) => setForm(p => {
     const n = [...p.lignes]; const j = index + dir;
@@ -1336,6 +1343,7 @@ function LigneRow({ ligne, index, total, franchise = false, isDark, couleur: _co
           <span className="font-bold text-encre tabular-nums">{eur(lineTotal)}</span>
         </p>
       </div>
+      {!franchise && <TvaBorne ligne={ligne} onUpdate={onUpdate} />}
     </div>
   );
 }

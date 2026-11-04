@@ -23,6 +23,10 @@
  * générateur inline de DevisPage.jsx (aperçu et impression).
  */
 
+import { totalLigne } from './totauxDocument';
+import { filterValidLignes } from './formatters';
+import { REGIME_BORNE } from './electricite';
+
 const SOUSSIGNE_INCONNU = '............................ (Nom, prénoms)';
 
 const DEVIS_10 = 'Je soussigné(e) {NOM} certifie, en qualité de preneur de la prestation, que les travaux réalisés concernent'
@@ -54,11 +58,22 @@ const echapper = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp
  * @param {Record<string, {base: number}>} tvaDetails - { "10": { base, montant }, "5.5": {...} }
  * @returns {{ dix: boolean, cinqCinq: boolean }}
  */
-export function tauxReduitsPresents(tvaDetails = {}) {
+export function tauxReduitsPresents(tvaDetails = {}, { lignes, tauxDefaut } = {}) {
   const taux = Object.entries(tvaDetails || {})
     .filter(([, d]) => (d?.base ?? 0) > 0)
     .map(([t]) => parseFloat(String(t).replace(',', '.')));
-  return { dix: taux.includes(10), cinqCinq: taux.includes(5.5) };
+  const presents = { dix: taux.includes(10), cinqCinq: taux.includes(5.5) };
+  // Pose d'une borne de recharge (CGI 278-0 bis, N ; lot électricien, 4 nov. 2026) : la certification de 278-0 bis A
+  // (rénovation énergétique, locaux achevés depuis plus de deux ans) et de 279-0 bis ne la vise pas. Une ligne marquée
+  // « borne » ne déclenche donc pas le modèle ; les autres lignes au même taux, si. Sans les lignes : comportement d'avant.
+  const valides = Array.isArray(lignes) ? filterValidLignes(lignes) : null;
+  if (valides && valides.some((l) => l.regimeTva === REGIME_BORNE)) {
+    const tauxDe = (l) => Number(l.tva !== undefined && l.tva !== null && l.tva !== '' ? l.tva : tauxDefaut);
+    const autre = (t) => valides.some((l) => l.regimeTva !== REGIME_BORNE && tauxDe(l) === t && totalLigne(l) > 0);
+    presents.dix = presents.dix && autre(10);
+    presents.cinqCinq = presents.cinqCinq && autre(5.5);
+  }
+  return presents;
 }
 
 /**
@@ -92,10 +107,12 @@ const CONSERVATION = 'Document à conserver jusqu’au 31 décembre de la cinqui
  * @param {boolean} [p.isFacture]
  * @param {boolean} [p.isAcompte] - facture d'acompte : certification au futur
  * @param {boolean} [p.isAvoir] - un avoir ne se règle pas : il ne porte pas la certification
+ * @param {object[]} [p.lignes] - lignes du document : une pose de borne (`regimeTva`) ne déclenche pas la certification
+ * @param {number} [p.tauxDefaut] - taux des lignes sans taux propre
  */
-export function mentionTvaReduiteHtml({ tvaDetails, nomClient, isMicro = false, isFacture = false, isAcompte = false, isAvoir = false }) {
+export function mentionTvaReduiteHtml({ tvaDetails, nomClient, isMicro = false, isFacture = false, isAcompte = false, isAvoir = false, lignes, tauxDefaut }) {
   if (isMicro || isAvoir) return '';
-  const presents = tauxReduitsPresents(tvaDetails);
+  const presents = tauxReduitsPresents(tvaDetails, { lignes, tauxDefaut });
   const textes = textesCertification(presents, nomClient, { isFacture, isAcompte });
   if (!textes.length) return '';
   const taux = [presents.cinqCinq && '5,5 %', presents.dix && '10 %'].filter(Boolean).join(' et ');

@@ -15,6 +15,7 @@ import { celebrateMilestone } from '../lib/celebrate';
 import { captureException } from '../lib/sentry';
 import { estEcritureDifferable, estSessionExpiree, messageEcritureRefusee } from '../lib/erreursEcriture';
 import { numeroRamonageDemo } from '../lib/ramonage';
+import { numeroCompteRenduDemo } from '../lib/electricite';
 
 /**
  * DataContext - Global data state (clients, devis, chantiers, etc.)
@@ -220,6 +221,14 @@ export function DataProvider({ children, initialData = {} }) {
     }
     return initialData.ramonages ?? [];
   });
+  // Comptes rendus d'intervention et d'autocontrôle, électricité (migration 111)
+  const [comptesRendus, setComptesRendus] = useState(() => {
+    if (isDemo) {
+      const data = loadDemoData();
+      return data?.comptesRendus ?? initialData.comptesRendus ?? [];
+    }
+    return initialData.comptesRendus ?? [];
+  });
 
   // Custom templates (user-saved devis templates)
   const [customTemplates, setCustomTemplates] = useState(() => {
@@ -300,12 +309,13 @@ export function DataProvider({ children, initialData = {} }) {
         // Oubliés jusqu'au 10 oct. 2026 : un rendez-vous de démo disparaissait au rechargement
         planningEvents,
         ramonages,
+        comptesRendus,
       });
       logger.debug('💾 Demo data saved to localStorage');
     }, 500);
 
     return () => clearTimeout(timeoutId);
-  }, [clients, devis, chantiers, depenses, pointages, equipe, ajustements, catalogue, paiements, echanges, ouvrages, memos, customTemplates, templateUsages, planningEvents, ramonages]);
+  }, [clients, devis, chantiers, depenses, pointages, equipe, ajustements, catalogue, paiements, echanges, ouvrages, memos, customTemplates, templateUsages, planningEvents, ramonages, comptesRendus]);
 
   // Listen for auth state changes to get userId
   useEffect(() => {
@@ -443,6 +453,7 @@ export function DataProvider({ children, initialData = {} }) {
         if (data.ouvrages) setOuvrages(clean(data.ouvrages));
         appliquer('memos', setMemos, data.memos && clean(data.memos));
         appliquer('ramonages', setRamonages, data.ramonages && clean(data.ramonages));
+        appliquer('comptesRendus', setComptesRendus, data.comptesRendus && clean(data.comptesRendus));
         if (data.devisTemplates) setCustomTemplates(clean(data.devisTemplates));
         if (data.templateUsages) setTemplateUsages(clean(data.templateUsages));
 
@@ -1118,6 +1129,37 @@ export function DataProvider({ children, initialData = {} }) {
     return modifierEnBase('ramonages', id, avant, updates, setRamonages);
   }, [ramonages, userId, modifierEnBase]);
 
+  // ============ COMPTES RENDUS D'ÉLECTRICITÉ (migration 111) ============
+  // Même mécanique que les attestations de ramonage : numéro CRI-AAAA-NNNNN donné par la base, contenu figé ; seuls
+  // changent la facture liée et l'annulation.
+  const addCompteRendu = useCallback(async (data) => {
+    if (!(await exigerCgu())) {
+      toast.info('Compte rendu non enregistré', 'Les conditions d’utilisation n’ont pas été acceptées.');
+      return null;
+    }
+    const nouveau = {
+      ...data,
+      id: crypto.randomUUID(),
+      numero: isDemo ? numeroCompteRenduDemo(comptesRendus) : null,
+      user_id: userId,
+      created_at: new Date().toISOString(),
+    };
+    setComptesRendus(prev => [nouveau, ...prev]);
+    return creerEnBase('comptes_rendus_electricite', nouveau, setComptesRendus);
+  }, [comptesRendus, userId, creerEnBase, exigerCgu]);
+
+  const suivreCompteRendu = useCallback(async (id, suivi) => {
+    if (!isDemo && !userId) {
+      toast.info('Connexion en cours', 'Réessayez dans un instant.');
+      return false;
+    }
+    const permis = ['facture_id', 'annulee_le', 'annulation_motif'];
+    const updates = Object.fromEntries(Object.entries(suivi || {}).filter(([cle]) => permis.includes(cle)));
+    const avant = comptesRendus.find(x => x.id === id);
+    setComptesRendus(prev => prev.map(r => (r.id === id ? { ...r, ...updates } : r)));
+    return modifierEnBase('comptes_rendus_electricite', id, avant, updates, setComptesRendus);
+  }, [comptesRendus, userId, modifierEnBase]);
+
   const toggleMemo = useCallback(async (id) => {
     const memo = memos.find(m => m.id === id);
     if (!memo) return;
@@ -1234,8 +1276,9 @@ export function DataProvider({ children, initialData = {} }) {
   const etatsParTable = useMemo(() => ({
     clients, devis, chantiers, depenses, pointages, equipe, catalogue, ajustements, paiements, echanges,
     ouvrages, memos, planning_events: planningEvents, devis_templates: customTemplates, ramonages,
+    comptes_rendus_electricite: comptesRendus,
   }), [clients, devis, chantiers, depenses, pointages, equipe, catalogue, ajustements, paiements, echanges,
-    ouvrages, memos, planningEvents, customTemplates, ramonages]);
+    ouvrages, memos, planningEvents, customTemplates, ramonages, comptesRendus]);
 
   const rejouerEcriture = useCallback(async ({ action, entity, data }) => {
     if (isDemo || !userId) return false;
@@ -1392,6 +1435,11 @@ export function DataProvider({ children, initialData = {} }) {
     addRamonage,
     suivreRamonage,
 
+    // Électricité (comptes rendus d'intervention et d'autocontrôle)
+    comptesRendus,
+    addCompteRendu,
+    suivreCompteRendu,
+
     // Conditions d'utilisation : la garde unique (App.jsx l'enregistre)
     exigerCgu,
     enregistrerGardeCgu,
@@ -1414,7 +1462,7 @@ export function DataProvider({ children, initialData = {} }) {
     userId,
   }), [
     clients, devisAvecAvoirs, chantiers, depenses, pointages, equipe, ajustements,
-    catalogue, paiements, echanges, ouvrages, planningEvents, memos, ramonages, loading, dataLoading, loadError, retryLoad, rechargerDonnees,
+    catalogue, paiements, echanges, ouvrages, planningEvents, memos, ramonages, comptesRendus, loading, dataLoading, loadError, retryLoad, rechargerDonnees,
     customTemplates, templateUsages,
     addClient, updateClient, deleteClient, getClient,
     addDevis, updateDevis, deleteDevis, getDevis, getDevisByClient, getDevisByChantier, generateNextNumero,
@@ -1429,7 +1477,7 @@ export function DataProvider({ children, initialData = {} }) {
     addOuvrage, updateOuvrage, deleteOuvrage,
     addPlanningEvent, updatePlanningEvent, deletePlanningEvent,
     addMemo, updateMemo, deleteMemo, toggleMemo,
-    addRamonage, suivreRamonage, exigerCgu, enregistrerGardeCgu,
+    addRamonage, suivreRamonage, addCompteRendu, suivreCompteRendu, exigerCgu, enregistrerGardeCgu,
     addTemplate, updateTemplate, deleteTemplate, toggleTemplateFavori, trackTemplateUsage,
     getChantierBilan, rejouerEcriture, userId,
   ]);
