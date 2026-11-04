@@ -195,7 +195,7 @@ Tous recopiés de la correction exacte du juriste (points 3, 15 et 16), sans cha
 11. Vigilance d'un particulier : `macon.md` l. 40 — fait (`71a36af`).
 12. Amiante : `macon.md` l. 52, `plaquiste.md` l. 54 et 83 — fait (`71a36af`).
 13. Isolation lors d'une réfection de toiture : `couvreur.md` l. 47 — fait (`71a36af`).
-14. Chaudières à 10 % restantes : `ouvrages-lot08-plomberie-cvc.js` (PL_02_01_001 et 002 à 20 %), `articles-btp-suite.js` (`tva: 20` sur les trois chaudières fossiles) — fait (`8253088`). **Corrigé le 4 nov.** : `createCatalogueItem`, cité ici comme le chemin de l'import, n'était appelé par aucun écran (fonction morte, supprimée). Le vrai chemin, le sélecteur du référentiel (`ArticlePicker`), était déjà corrigé sur `main` (`tvaArticleReferentiel`) ; l'import en masse (`importerReferentiel`, `Catalogue.jsx`) ne recopiait aucun taux : corrigé par `620b737`, avec son test. L'entreprise en franchise repasse les lignes à 0 % au moment du devis (`sansTva`, inchangé).
+14. Chaudières à 10 % restantes : `ouvrages-lot08-plomberie-cvc.js` (PL_02_01_001 et 002 à 20 %), `articles-btp-suite.js` (`tva: 20` sur les trois chaudières fossiles) — fait (`8253088`). **Corrigé le 4 nov.** : `createCatalogueItem`, cité ici comme le chemin de l'import, n'était appelé par aucun écran (fonction morte, supprimée). Le vrai chemin, le sélecteur du référentiel (`ArticlePicker`), était déjà corrigé sur `main` (`tvaArticleReferentiel`) ; l'import en masse (`importerReferentiel`, `Catalogue.jsx`) ne recopiait aucun taux : corrigé par `620b737`, avec son test. L'entreprise en franchise repasse les lignes à 0 % au moment du devis (`sansTva`, inchangé). **Repris au contrôle local du 4 nov.** : `620b737` imposait 10 % aux articles sans taux propre ; corrigé par `aa7f0f7` (dernière section).
 15. RGE absent de la page de signature : migration 108 (`5f0f4a0`) et aide de `settings-field-rge` nuancée (`b8a34f1`) — fait, migration non appliquée.
 16. Libellé RGE : même correction que le point 3 — fait (`b8a34f1`).
 
@@ -264,10 +264,10 @@ Session cloud du 4 nov. 2026 (consigne metiers-v3). Branche `cloud/metiers`, pou
 
 ### Lot 0 (D-32)
 - **Fusion de `origin/main`** : `a4d580a` (merge, pas de rebase). Deux conflits. `docs/cloud/metiers.md` : version de `main` gardée, la vérification complète de `00f0009` y est reportée. `src/lib/pdfHtmlBuilder.js` : les deux imports gardés (`qualifications` et `echapperHtml` de la branche, `mentionImmatriculation` de `main`).
-- **Import du référentiel** : `620b737`. Le sélecteur (`ArticlePicker`) garde `tvaArticleReferentiel` de `main`, déplacée dans `src/lib/data` et toujours exportée par `ArticlePicker`. L'import en masse (`importerReferentiel`) passe par `articlesAImporterDuReferentiel`, qui recopie le taux de chaque article : chaudière gaz ou fioul à 20 %, dépose et chaudière granulés à 10 %, 0 % en franchise.
+- **Import du référentiel** : `620b737`. Le sélecteur (`ArticlePicker`) garde `tvaArticleReferentiel` de `main`, déplacée dans `src/lib/data` et toujours exportée par `ArticlePicker`. L'import en masse (`importerReferentiel`) passe par `articlesAImporterDuReferentiel`, qui recopie le taux de chaque article : chaudière gaz ou fioul à 20 %, dépose et chaudière granulés à 10 %, 0 % en franchise. **Défaut relevé au contrôle local** : ces 10 % n'étaient portés par aucun article, `620b737` les imposait à tout article sans taux propre (espaces verts compris) ; corrigé par `aa7f0f7` (dernière section).
 
 ### Point par point
-1. [important] ArticlePicker et import : `620b737`. `createCatalogueItem` (fonction morte) et son test sont supprimés. Test `tvaChaudiere.test.js` « import en masse du référentiel » (3 cas). Contre-essai : sans la ligne `tva`, 2 tests échouent. Le point 14 et le résumé du 3 nov. sont corrigés dans ce rapport.
+1. [important] ArticlePicker et import : `620b737`. `createCatalogueItem` (fonction morte) et son test sont supprimés. Test `tvaChaudiere.test.js` « import en masse du référentiel » (3 cas). Contre-essai : sans la ligne `tva`, 2 tests échouent. Le point 14 et le résumé du 3 nov. sont corrigés dans ce rapport. Les 10 % imposés aux articles sans taux propre : corrigé par `aa7f0f7` (dernière section).
 2. [important] Rapport en conflit : `a4d580a`. Phrases périmées corrigées : point 7, ligne « `dbb0066` … n'y sont pas encore » et « Ce qui reste ». Vérification complète du commit de fusion : voir plus bas.
 3. [mineur] Date du document : `c21686f`. Test `pdfHtmlBuilder` : une facture du 1er juin 2025, avec une fin de validité au 31 déc. 2025, garde sa ligne RGE. Contre-essai : la même facture datée du 10 janv. 2026 ne l'a pas. Autre contre-essai : sans `jourDuDocument(doc)` dans `pdfHtmlBuilder.js`, le test échoue. Dans le parcours RGE, un 3e cas met la fin au lendemain de la date du devis ouvert (lue dans l'aperçu), donc déjà passée aujourd'hui : la ligne est imprimée. Contre-essai : sans `jourDuDocument(doc)` dans `DevisPage.jsx`, le parcours échoue (« fin 2026-10-12 : RGE imprimé (aucun) »).
 4. [mineur] Ancien format `labels` : supprimé de `qualifications.js` et de `buildEntrepriseFields` (`df85e76`). Le test vérifie qu'il n'est plus imprimé.
@@ -310,7 +310,7 @@ Session cloud du 4 nov. 2026 (consigne metiers-v3). Branche `cloud/metiers`, pou
 - Vérifier `ORGANISMES_RGE` sur l'annuaire France Rénov'.
 - Après livraison : appliquer la 108 (ou la 110 seule), contrôler le md5 du corps, rétablir l'aide du numéro RGE.
 - Numéro 107 en double (ia-socle, franchise-suite) : en renuméroter un, hors de cette branche.
-- Tâche TVA de la décision 4 : y joindre « Dépose ancienne chaudière fioul/gaz » (RE_03_01_006, à 5,5 %), et les chaudières bois et granulés de l'import, que le nouveau test fige à 10 % (5,5 % peut-être possible, ann. IV art. 30-0 D ter, à vérifier).
+- Tâche TVA de la décision 4 : y joindre « Dépose ancienne chaudière fioul/gaz » (RE_03_01_006, à 5,5 %), et les chaudières bois et granulés de l'import, qui repartent sans taux depuis `aa7f0f7` (la base leur met son défaut, 20 %, comme avant la branche ; 5,5 % peut-être possible, ann. IV art. 30-0 D ter, à vérifier).
 
 ### Décisions d'Hugo (recopiées, non appliquées)
 - Lignes à 5,5 % douteuses de la bibliothèque (plancher chauffant, désembouage) : ouvrir une tâche. Recommandé : 10 % par défaut, sauf travaux liés à une opération éligible, après lecture du BOI-TVA-LIQ-30-20-95 § 20.
@@ -322,12 +322,12 @@ Session cloud du 4 nov. 2026 (consigne metiers-v3). Branche `cloud/metiers`, pou
 - Un seul : l'avertissement de la date illisible (point 6). Relu, sa formulation est appliquée.
 
 ### Risques
-- Avant ce correctif, en mode réel, l'import en masse mettait tous les articles à 20 % (base, « ?? 20 »), même ceux à 10 %. Les articles déjà importés gardent leur taux : rien n'est repris en base.
+- Avant ce correctif, en mode réel, l'import en masse mettait tous les articles à 20 % (base, « ?? 20 »). Correction du contrôle local : aucun article du référentiel ne porte 10 % (seules les chaudières gaz et fioul portent un taux, 20 %) ; depuis `aa7f0f7`, les autres reprennent ce défaut de la base, comme avant la branche. Les articles déjà importés gardent leur taux : rien n'est repris en base. `620b737` n'est pas sur `main` (vérifié le 4 nov. par `git merge-base --is-ancestor`).
 - Jamais rejouer 108 après 110 : écrit dans la 108 et dans `etat-production.md`.
 
 ### Résumé
 - `main` fusionnée (`a4d580a`) : rapport pris sur `main`, deux imports gardés dans `pdfHtmlBuilder.js`.
-- L'import en masse du référentiel garde le taux de chaque article : chaudières gaz et fioul à 20 % (`620b737`).
+- L'import en masse du référentiel garde le taux de chaque article : chaudières gaz et fioul à 20 % (`620b737`). Les articles sans taux propre ne sont plus mis à 10 % : la base leur met son défaut (`aa7f0f7`, contrôle local).
 - `createCatalogueItem` (fonction morte) et l'ancien format `labels` sont supprimés.
 - La validité RGE est jugée à la date du document : nouveau test sur une facture (pdfHtmlBuilder) et 3e cas dans le parcours, chacun avec son contre-essai.
 - Les commentaires TVA citent le CGI et le BOFiP.
@@ -335,3 +335,41 @@ Session cloud du 4 nov. 2026 (consigne metiers-v3). Branche `cloud/metiers`, pou
 - 108 : « jamais après 110 » est écrit dans la migration et dans `etat-production.md`.
 - Vérification complète verte sur `4a2ff48`. Standard et banc verts sur `0d5ae01`.
 - Reste à la session locale : complète sur le commit livrable, sonde à 375 px, aller-retour en réel simulé, puis la 108.
+
+## Correction du contrôle local du 4 nov. (taux à l'import du référentiel)
+
+Session locale du 4 nov. 2026. Branche locale `corr-import-taux`, partie de `origin/cloud/metiers` (`53c8727`). Aucun push, rien sur `main`, aucune requête sur la base de production.
+
+### Le défaut
+- L'import en masse (`importerReferentiel`, `Catalogue.jsx`, par `articlesAImporterDuReferentiel` de `src/lib/data`) posait 10 % sur tout article sans taux propre (`620b737`). Avant la branche, ces articles partaient sans taux et l'écriture en base leur mettait son défaut (`useSupabaseSync` : `tva_rate: item.tva ?? item.tva_rate ?? 20`).
+- Effet : les 9 articles « Espaces verts » du paysagisme (`articles-btp-fin.js` : gazon, plantations, massif, paillage, géotextile) passaient de 20 % à 10 %. La recherche donne 20 % à la création et à l'entretien d'espaces verts (`docs/metiers/paysagiste.md` § 5).
+- Constaté sur le code de `53c8727` : le nouveau test échoue (« Gazon semis: expected 10 to be undefined » ; 523 articles importés avec un taux au lieu de 3), le nouveau parcours aussi (« Gazon semis 10, Gazon en rouleau 10, … Géotextile 10 »).
+
+### La correction (`aa7f0f7`)
+- `tauxPropreArticle(article, franchiseTva)` (`src/lib/data/index.js`) : 0 en franchise en base, sinon le taux que porte l'article, sinon `null`. Sur les 523 articles du référentiel, seules les trois chaudières gaz et fioul en portent un (20 %).
+- `articlesAImporterDuReferentiel` n'écrit `tva` que si ce taux existe. Un article sans taux propre part sans taux, comme avant la branche : la base pose son défaut (20 %). En franchise, 0 % (et `Catalogue.creerArticle` force toujours 0 %).
+- `ArticlePicker` (sélection d'un article) : vérifié, même règle. Le taux propre est présélectionné (chaudière gaz : 20 %), 0 % en franchise. Sans taux propre, le sélecteur propose 10 % comme avant (sur `main` et avant la branche), affiché et modifiable avant l'ajout. `tvaArticleReferentiel` revient dans `ArticlePicker.jsx`, comme sur `main`, et s'appuie sur `tauxPropreArticle`. Lu sur le code corrigé (`tvaArticleReferentiel` appelée hors de l'app, par la liste et par la recherche du référentiel) : « 10 » pour les 9 articles d'espaces verts, « 0 » en franchise, « 20 » pour les trois chaudières gaz et fioul.
+
+### Preuves
+- Tests (`src/lib/__tests__/tvaChaudiere.test.js`, « import en masse du référentiel ») : les 9 articles d'espaces verts importés n'ont pas de taux, et la base reçoit 20 % ; une chaudière gaz ou fioul importée a 20 % ; seuls les 3 articles qui portent un taux en ont un (ni la dépose ni la chaudière granulés) ; en franchise, tout est à 0 %.
+- Contre-essais : sur le code d'avant la correction, 2 tests échouent (messages ci-dessus). `tauxPropreArticle` qui ignore le taux de l'article : 3 échecs (sélecteur à « 10 » pour la chaudière murale, chaudière importée sans taux, liste vide). Sans la règle de la franchise : 2 échecs (sélecteur à « 20 », import en franchise).
+- Nouveau parcours (`scripts/parcours/clients-catalogue.cjs`, « référentiel BTP, import en masse… », 375 px, base simulée) : import de Paysagisme et Chauffage (61 articles), puis la chaudière murale choisie au sélecteur, hors franchise (SARL) puis en franchise (micro-entreprise). Vert sur le code de `aa7f0f7` (20 vérifications ; rejoué après le commit, code identique) : espaces verts à 20 %, aucun article à 10 %, chaudières gaz et fioul à 20 %, chaudière proposée à 20 % au sélecteur et enregistrée à 20 % ; en franchise, tout à 0 % et aucun taux proposé. Contre-essai : sur le code d'avant la correction, il échoue (message ci-dessus).
+- Les deux parcours existants du sélecteur (« référentiel BTP : le prix d’achat n’est jamais inventé… », « catalogue : en franchise en base… ») sont verts sur le code corrigé (21 et 29 vérifications). Pour un article d'électricité sans taux propre, ils constatent 10 % proposé (les deux), 5,5 % choisi puis enregistré (le premier), 10 % enregistré (le second) ; en franchise, 0 %.
+- `npm run verifier` (standard) sur `aa7f0f7`, arbre propre :
+
+  ```
+  Vérification « standard » de aa7f0f7
+    ✓ Tests (23.3 s) — 1315 passed (1315)
+    ✓ Lint (0 erreur) (2.9 s) — 241 problems (0 errors, 241 warnings)
+    ✓ Smoke (11.9 s)
+    ✓ Build (10.5 s)
+  ✓ Tout est vert — niveau « standard ».
+  ```
+  Le commit suivant ne touche que ce rapport.
+- **Limite** : la vérification complète (`--complet`) n'a pas été rejouée. Seuls les trois parcours du référentiel l'ont été.
+
+### Ce qui reste
+- Le sélecteur propose toujours 10 % aux articles d'espaces verts (comportement d'avant, non touché), que la recherche donne à 20 %. Cela relève de la suggestion de taux par ligne (`paysagiste.md` § 8, « Indispensable », table à relire par juriste-btp).
+- Hors chaudières fossiles, aucun article du référentiel ne porte de taux propre. Leur taux n'a pas été recherché ici.
+- Même situation au chauffage : « Entretien annuel chaudière gaz », « Chaudière bois bûches », « Chaudière granulés (pellets) » et « Dépose ancienne chaudière » n'ont pas de taux propre. L'import les remet au défaut de la base (20 %), comme avant la branche ; le sélecteur les propose à 10 %. Pour l'entretien, `chauffagiste.md` § 5 donne 10 % dans un logement de plus de 2 ans (5,5 % si THPE). Leur donner un taux propre est une décision de taux, à faire relire par juriste-btp : non fait ici, la consigne étant que seuls les articles qui portent un taux le transmettent.
+- `npm run verifier -- --complet` sur le commit livrable (exigé par `/livrer`).
