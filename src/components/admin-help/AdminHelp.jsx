@@ -13,7 +13,7 @@ import { calculateTVASummary } from '../../lib/integrations/accounting';
 import { estFranchiseTva } from '../../lib/franchiseTva';
 import { estOuverte } from '../../lib/ventes';
 import { jourLocal } from '../../lib/dates';
-import { profilAdmin, questionsManquantes, echeancesPour, prochainesEcheances, couvertureBientotFinie } from '../../lib/echeancesAdmin';
+import { profilAdmin, tvaRegleeDansLaTresorerie, questionsManquantes, echeancesPour, prochainesEcheances, couvertureBientotFinie } from '../../lib/echeancesAdmin';
 import { LigneEcheance, QuestionsProfil } from './EcheancesUi';
 import { useRegimeTvaTresorerie } from '../../hooks/useRegimeTvaTresorerie';
 
@@ -63,6 +63,7 @@ export default function AdminHelp({
   entreprise = {},
   isDark: _isDark = false,
   couleur: _couleur,
+  onOuvrirTresorerie,
 }) {
   const [activeSection, setActiveSection] = useState('overview');
   const [expandedFaq, setExpandedFaq] = useState(null);
@@ -86,6 +87,9 @@ export default function AdminHelp({
   const { regimeTva, charge: regimeTvaCharge } = useRegimeTvaTresorerie();
   const profil = useMemo(() => profilAdmin(entreprise, reponses, regimeTva), [entreprise, reponses, regimeTva]);
   // Tant que le réglage de la Trésorerie n'est pas lu, la question de TVA n'est pas posée (elle pourrait être inutile)
+  // Régime venu de la Trésorerie : on le dit, et on renvoie vers la Trésorerie pour le changer (relecture du 3 nov. 2026 :
+  // avant, la question disparaissait sans explication et « Changer mes réponses » annonçait une TVA qu'il ne changeait pas)
+  const tvaTresorerie = tvaRegleeDansLaTresorerie(profil, regimeTva);
   const questions = questionsManquantes(profil).filter((q) => regimeTvaCharge || q !== 'tva');
   const echeances = useMemo(() => echeancesPour(profil, entreprise), [profil, entreprise]);
   const prochaines = prochainesEcheances(echeances, new Date(), 3);
@@ -239,6 +243,19 @@ export default function AdminHelp({
               ) : !profil.formeConnue && (
                 <p className="text-sm text-encre-2 mb-3">Indiquez votre statut juridique dans Paramètres › Mon entreprise › Identité : les déclarations à faire en dépendent. En attendant, seules les dates communes à toutes les entreprises s’affichent.</p>
               )}
+              {tvaTresorerie && (
+                <p data-tva-tresorerie className="text-sm text-encre-2 mb-3">
+                  Régime de TVA : celui réglé dans la Trésorerie ({tvaTresorerie}). Pour le changer : Trésorerie › Paramètres de trésorerie.
+                  {onOuvrirTresorerie && (
+                    <>
+                      {' '}
+                      <button type="button" onClick={onOuvrirTresorerie} className="min-h-[44px] font-medium text-accent-texte underline">
+                        Ouvrir la Trésorerie
+                      </button>
+                    </>
+                  )}
+                </p>
+              )}
               <div data-questions-ancre />
               <QuestionsProfil questions={questions} profil={profil} onRepondre={repondre} />
               <div className={`space-y-2 ${questions.length ? 'mt-3' : ''}`}>
@@ -313,7 +330,7 @@ export default function AdminHelp({
         return <TVAManager devis={devis} depenses={depenses} entreprise={entreprise} />;
 
       case 'calendar':
-        return <AdminCalendar echeances={echeances} profil={profil} onChangerReponses={changerReponses} />;
+        return <AdminCalendar echeances={echeances} profil={profil} onChangerReponses={changerReponses} tvaDansLaTresorerie={!!tvaTresorerie} />;
 
       case 'checklist':
         return <DocumentChecklist chantiers={chantiers} />;

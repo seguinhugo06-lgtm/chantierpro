@@ -13,7 +13,7 @@ import { Bouton } from '../ui/Bouton';
  * « Prochaines échéances » de l'accueil. Avant (31 oct. 2026) : un tableau en dur qui s'arrêtait en septembre 2026.
  */
 
-export default function AdminCalendar({ echeances = [], profil = null, onChangerReponses, isDark: _isDark = false, couleur: _couleur }) {
+export default function AdminCalendar({ echeances = [], profil = null, onChangerReponses, tvaDansLaTresorerie = false, isDark: _isDark = false, couleur: _couleur }) {
   const [currentMonth, setCurrentMonth] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth())); // le mois en cours
   const [selectedDate, setSelectedDate] = useState(null);
   const [filter, setFilter] = useState('all');
@@ -204,7 +204,7 @@ export default function AdminCalendar({ echeances = [], profil = null, onChanger
         </div>
         {profil?.formeConnue && onChangerReponses && (
           <button type="button" onClick={onChangerReponses} className="mt-3 min-h-[44px] text-sm font-medium text-accent-texte underline">
-            Changer mes réponses (rythme Urssaf, TVA, impôt, salariés)
+            {tvaDansLaTresorerie ? 'Changer mes réponses (rythme Urssaf, impôt, salariés)' : 'Changer mes réponses (rythme Urssaf, TVA, impôt, salariés)'}
           </button>
         )}
       </div>

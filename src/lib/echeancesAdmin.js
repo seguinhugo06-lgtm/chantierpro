@@ -110,6 +110,18 @@ function tvaDeLaTresorerie(regimeTresorerie) {
   return null;
 }
 
+// Libellés de la Trésorerie (TresorerieModule.jsx, réglage « Régime de TVA »)
+const LIBELLES_TVA_TRESORERIE = { franchise: 'Franchise en base', mensuel: 'Réel normal (mensuel)' };
+
+/**
+ * Le libellé du régime de TVA quand il vient de la Trésorerie (la question n'est alors pas posée ici), sinon null.
+ * Une micro-entreprise est en franchise par sa fiche entreprise, pas par la Trésorerie : null.
+ */
+export function tvaRegleeDansLaTresorerie(profil, regimeTresorerie) {
+  if (!profil || profil.micro || !tvaDeLaTresorerie(regimeTresorerie)) return null;
+  return LIBELLES_TVA_TRESORERIE[regimeTresorerie];
+}
+
 /**
  * Le profil administratif : tiré de la fiche entreprise (forme juridique), du régime de TVA de la Trésorerie
  * et des réponses de l'artisan. Une micro-entreprise est en franchise de TVA dans l'app (src/lib/franchiseTva.js).

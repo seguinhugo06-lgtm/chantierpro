@@ -428,6 +428,12 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
     setPage?.('finances');
   };
 
+  // Administratif › « Ouvrir la Trésorerie » : l'onglet Trésorerie de Finances, où se règle le régime de TVA
+  const ouvrirTresorerie = () => {
+    try { sessionStorage.setItem('cp_finances_onglet', 'tresorerie'); } catch (e) { captureException(e, { contexte: 'ouvrirTresorerie' }); }
+    setPage?.('finances');
+  };
+
   // Validation format TVA
   const validateTVA = (value) => /^FR[0-9A-Z]{2}\d{9}$/.test(value.replace(/\s/g, '').toUpperCase());
   // Validation SIRET
@@ -1444,6 +1450,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
           entreprise={entreprise}
           isDark={isDark}
           couleur={couleur}
+          onOuvrirTresorerie={setPage ? ouvrirTresorerie : undefined}
         />
       )}
         </div>

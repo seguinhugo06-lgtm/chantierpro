@@ -60,4 +60,51 @@ module.exports = [
       verifier(jour() <= '2027-12-31', 'le calendrier de l’application couvre la date du jour (jusqu’au 31 déc. 2027)');
     },
   },
+  {
+    // Régime de TVA réglé dans la Trésorerie (cp_tresorerie_settings en démo) : pas redemandé ici, et il commande les CA3.
+    // Contre-essai : le même compte réglé « mensuel » a une CA3 chaque mois. Relecture du 3 nov. 2026.
+    nom: 'administratif (démo) : le régime de TVA de la Trésorerie est suivi (franchise : aucune CA3 ; mensuel : une CA3 par mois) (390 px)',
+    async executer({ ouvrir, attendre, verifier }) {
+      const { page } = await ouvrir({ page: 'settings', largeur: 390 });
+      const ouvrirAvec = async (regimeTva) => {
+        await page.evaluate((r) => {
+          localStorage.removeItem('cp_admin_profil');
+          localStorage.setItem('cp_tresorerie_settings', JSON.stringify({ regimeTva: r }));
+        }, regimeTva);
+        await page.reload({ waitUntil: 'networkidle0' }).catch(() => {});
+        await attendre(800);
+        await page.evaluate(() => [...document.querySelectorAll('button, a')].find((b) => /^Administratif/.test((b.innerText || '').trim()))?.click());
+        await attendre(800);
+        const accueil = await page.evaluate(() => ({
+          questionTva: [...document.querySelectorAll('[data-questions-profil] button')].some((b) => /\(CA3\)|CA12|Franchise/.test(b.innerText)),
+          ligne: document.querySelector('[data-tva-tresorerie]')?.innerText || '',
+        }));
+        await page.evaluate(() => [...document.querySelectorAll('button[aria-pressed]')].find((b) => b.getAttribute('aria-label') === 'Calendrier')?.click());
+        await attendre(500);
+        const cal = await echeances(page);
+        const bouton = await page.evaluate(() => [...document.querySelectorAll('button')].map((b) => b.innerText.trim()).find((t) => t.startsWith('Changer mes réponses')) || '');
+        return { ...accueil, ids: cal.map((x) => x.id), bouton };
+      };
+
+      const f = await ouvrirAvec('franchise');
+      verifier(!f.questionTva, 'franchise : la question de TVA n’est pas posée');
+      verifier(f.ligne.includes('Régime de TVA : celui réglé dans la Trésorerie (Franchise en base)'), `franchise : la ligne le dit (${f.ligne})`);
+      verifier(f.ligne.includes('Ouvrir la Trésorerie'), 'franchise : un lien mène à la Trésorerie');
+      verifier(f.ids.length >= 1 && !f.ids.some((i) => i.startsWith('ca3-')), `franchise : aucune CA3 au calendrier (${f.ids.join(', ')})`);
+      verifier(f.bouton && !f.bouton.includes('TVA'), `franchise : « Changer mes réponses » n’annonce plus la TVA (${f.bouton})`);
+
+      const m = await ouvrirAvec('mensuel');
+      const mois = [...new Set(m.ids.filter((i) => i.startsWith('ca3-')))];
+      verifier(!m.questionTva && m.ligne.includes('(Réel normal (mensuel))'), `mensuel : pas de question, la ligne le dit (${m.ligne})`);
+      verifier(mois.length >= 3, `mensuel (contre-essai) : une CA3 chaque mois sur 90 jours (${mois.join(', ')})`);
+
+      // Le lien mène bien à la Trésorerie, où se règle le régime
+      await page.evaluate(() => [...document.querySelectorAll('button[aria-pressed]')].find((b) => b.getAttribute('aria-label') === 'Vue d\'ensemble')?.click());
+      await attendre(400);
+      await page.evaluate(() => [...document.querySelectorAll('[data-tva-tresorerie] button')].find((b) => b.innerText.trim() === 'Ouvrir la Trésorerie')?.click());
+      await attendre(1500);
+      verifier(await page.evaluate(() => !!document.querySelector('[aria-label="Paramètres de trésorerie"]')), '« Ouvrir la Trésorerie » ouvre la Trésorerie et son bouton « Paramètres de trésorerie »');
+      await page.evaluate(() => localStorage.removeItem('cp_tresorerie_settings'));
+    },
+  },
 ];
