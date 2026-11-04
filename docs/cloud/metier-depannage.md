@@ -165,7 +165,7 @@ Session cloud de correction (consigne metier-depannage-v3). Branche mise à jour
 - `npx vitest run src/lib/__tests__/depannage.test.js` : 36 tests verts. Contre-essai avec l'ancien `depannage.js` : 12 échecs (libellés, annexe 2, obligations, sources, avertissement, deux générateurs).
 - `npm run parcours -- depannage` : les deux parcours sont verts (démo : 28 vérifications ; base : 8).
 - `npm run verifier` (standard) : vert (1330 tests, lint 0 erreur, smoke, build). Il a tourné sur l'arbre modifié avant deux retouches de texte demandées par juriste-btp (fenêtre de remise, « Réessayez »), puis commitées dans `29c5a58` : seule la vérification complète porte sur le commit exact.
-- `npm run verifier -- --complet` sur `29c5a58` : voir la ligne ajoutée ci-dessous.
+- `npm run verifier -- --complet` sur `29c5a58` (commit exact) : **vert**. 1330 tests, lint 0 erreur, smoke, build, banc de migrations, parcours navigateur (2395 s), audit d'interface.
 - Les deux générateurs impriment le bloc de l'annexe 2, qui vient de `mentionsDepannageHtml` dans `src/lib/`. Testé pour `devisHtmlBuilder` et `pdfHtmlBuilder`. L'aperçu de `DevisPage` est vérifié par le parcours.
 
 ### Textes nouveaux soumis au juriste (juriste-btp, session cloud, sans Légifrance)
@@ -205,6 +205,6 @@ Session cloud de correction (consigne metier-depannage-v3). Branche mise à jour
 5. Sondes à 375 et 768 px : 0 débordement, 0 cible sous 44 px.
 6. Nouveau parcours en mode réel simulé (grille en base, devis et catégories).
 7. 36 tests unitaires, avec contre-essais.
-8. Standard vert. Complet : voir la ligne de résultat.
+8. `verifier --complet` vert sur `29c5a58`, le dernier commit de code.
 9. À relire au texte en local : L221-8 et l'annexe 2.
 10. Sept décisions d'Hugo recopiées ci-dessus.
