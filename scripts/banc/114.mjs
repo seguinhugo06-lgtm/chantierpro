@@ -41,6 +41,12 @@ export async function verifier({ db, q, commeAnonyme, verifier }) {
     `114 : les lignes gardent leur ordre, leur désignation et leur prix de vente`);
   await q(`UPDATE devis SET lignes = NULL WHERE numero = 'FAC-114-1'`);
   verifier((await paiement('pay-114-micro')).facture?.lignes == null, '114 : une facture sans lignes renvoie toujours null');
+  // Lignes mal formées : la fonction ne plante pas et renvoie la valeur telle quelle (sauf les objets, filtrés)
+  for (const [valeur, attendu] of [['[]', []], ['"texte"', 'texte'], ['[1, "x", null, {"description": "A", "prixAchat": 5}]', [1, 'x', null, { description: 'A' }]]]) {
+    await q(`UPDATE devis SET lignes = $1::jsonb WHERE numero = 'FAC-114-1'`, [valeur]);
+    let lu; try { lu = (await paiement('pay-114-micro')).facture?.lignes; } catch (e) { lu = `erreur : ${e.message}`; }
+    verifier(JSON.stringify(lu) === JSON.stringify(attendu), `114 : lignes ${valeur} → ${JSON.stringify(lu)}`);
+  }
 
   await q(`UPDATE entreprise SET forme_juridique = 'SARL' WHERE id = $1`, [fiche]);
   verifier((await paiement('pay-114-micro')).entreprise?.forme_juridique === 'SARL', '114 : contre-essai, une SARL est renvoyée telle quelle');

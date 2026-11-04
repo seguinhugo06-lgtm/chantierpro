@@ -7,8 +7,9 @@
 --   get_facture_for_payment (106) ne renvoie pas sa forme juridique (règle unique : estFranchiseTva, src/lib/franchiseTva.js).
 -- Effet : la fonction renvoie aussi entreprise.forme_juridique (information déjà imprimée sur la facture remise au
 --   client, et déjà renvoyée par get_devis_for_signature). Elle retire aussi des lignes le prix d'achat de l'artisan
---   (clés prixAchat et prix_achat), que 106 renvoyait à tout visiteur muni du lien ; même expression que la migration
---   110 pour get_devis_for_signature. Rien d'autre ne change : même corps que 106, mêmes droits
+--   (clés prixAchat et prix_achat), que 106 renvoyait à tout visiteur muni du lien. La même expression est à reprendre
+--   dans get_devis_for_signature (migration 110 de cloud/metier-qualifications, qui ne filtre pas encore, ni dans
+--   lignes ni dans sections[].lignes). Rien d'autre ne change : même corps que 106, mêmes droits
 --   (CREATE OR REPLACE garde les droits d'exécution).
 -- Attention : toute migration qui réécrit à nouveau get_facture_for_payment repart du corps de 114 (sinon la forme
 --   juridique disparaît ; relecture gardien-securite du 4 nov. 2026).
@@ -141,7 +142,7 @@ BEGIN
       'payment_completed_at', v_facture.payment_completed_at,
       'stripe_session_id', CASE WHEN v_serveur THEN v_facture.stripe_session_id END,
       -- 114 : les lignes sans le prix d'achat de l'artisan (prixAchat, prix_achat) : un visiteur muni du lien ne doit pas
-      --   lire le coût ni la marge. Même expression que get_devis_for_signature (110). La page ne lit pas les lignes.
+      --   lire le coût ni la marge. Expression à reprendre telle quelle dans get_devis_for_signature (110). La page ne lit pas les lignes.
       'lignes', CASE WHEN jsonb_typeof(v_facture.lignes) = 'array' THEN (
         SELECT COALESCE(jsonb_agg(CASE WHEN jsonb_typeof(l.v) = 'object' THEN l.v - 'prixAchat' - 'prix_achat' ELSE l.v END
                                   ORDER BY l.n), '[]'::jsonb)
