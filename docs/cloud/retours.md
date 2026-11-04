@@ -45,7 +45,7 @@ Commits (depuis `adbf08d`) :
 
 ### 5. « Conseils ramonage à mettre en facultatif »
 - **Correction** : réglage « Imprimer les conseils sur l'attestation » (Paramètres › Ramonage, carte « Attestation », activé par défaut : rien ne change pour les attestations existantes), et une case du même nom à chaque attestation (combustible solide, hors chaudière). Le choix est enregistré **dans l'attestation** (`conseils.imprimes`, colonne déjà figée par la base) : une réimpression donne le même document. Réglage dans la fiche entreprise (`ramonageConseils`), **aucune migration**.
-- **Juriste** : rien d'obligatoire n'est retiré. Les conduits ramonés et la vacuité (R. 1331-75), le titre, le numéro, l'identité, le SIRET, l'assurance, la mention « ne vaut pas attestation d'entretien » et le pied de page restent. R. 1331-77 oblige à conseiller, pas à l'écrire sur l'attestation. Réserve : l'arrêté du 20 juillet 2023 n'a pas pu être relu (réseau).
+- **Juriste** : rien d'obligatoire n'est retiré. Les conduits ramonés et la vacuité (R. 1331-75), le titre, le numéro, l'identité, le SIRET, l'assurance, la mention « ne vaut pas attestation d'entretien » et le pied de page restent. R. 1331-77 oblige à conseiller, pas à l'écrire sur l'attestation. L'arrêté du 20 juillet 2023 a été relu sur Légifrance le 3 nov. 2026 (contrôle local et juriste) : il joint les conseils à l'attestation d'entretien, jamais à l'attestation de ramonage. Réglage et case gardés (`docs/metier-btp.md` § 10).
 - **Preuve** : tests du rendu avec et sans conseils (et d'une attestation d'avant le réglage) ; parcours « conseils facultatifs » ; les 11 parcours `ramonage` verts. Contre-essai : avec l'ancien générateur, le test échoue (« not to contain 'Conseils donnés' »).
 
 ### 6 et 7. Changer le statut d'un devis ou d'une facture directement
@@ -95,7 +95,7 @@ Commits (depuis `adbf08d`) :
 - Mention RCS « RCS Paris B 123… » : R. 123-237 dit « numéro, RCS, ville » ; la lettre B est un usage. Forme existante, non changée.
 - Vue tableau de la liste des documents (écran large) : pas de bouton « Statut » (la fiche et les cartes en ont un).
 - Parcours : pas de cas « rôle lecture seule ne voit pas « Statut » » (relecture sécurité, F1).
-- Allongement du bas de page sous la carte « Installer » : constaté sur Paramètres › Ramonage, puis (corrections du 3 nov.) sur l'accueil, la liste des devis, le planning et les chantiers, à 375 px avec l'agent Safari iPhone. L'audit d'interface, lui, n'affiche jamais la carte (ni agent mobile ni `beforeinstallprompt`) : il ne couvre pas ce cas.
+- Allongement du bas de page sous la carte « Installer » : constaté sur Paramètres › Ramonage, puis (corrections du 3 nov.) sur l'accueil, la liste des devis, le planning et les chantiers, à 375 px avec l'agent Safari iPhone. Second tour : deux vues à hauteur fixe, le panneau d'une tâche (couvert par la carte : corrigé, le panneau passe au-dessus) et la grille semaine du planning (non couverte). L'audit d'interface, lui, n'affiche jamais la carte (ni agent mobile ni `beforeinstallprompt`) : il ne couvre pas ce cas.
 - `src/lib/pdfHtmlBuilder.js` insère la fiche sans échappement (seulement utilisé par des tests aujourd'hui) : à échapper avant toute réutilisation.
 
 ## Risques
@@ -120,7 +120,7 @@ Session cloud de correction, après la relecture de code et la relecture du juri
 
 ### Juriste — à corriger
 
-1. **Mention de franchise sur les factures Stripe** (`cc0106f`) : partout, « doit figurer sur les factures Stripe (réglage à constater, attente 7) », avec CGI art. 293 E, II. Fichiers : `docs/decisions.md` (D-19, colonnes « Décision » et « Pourquoi »), `.claude/rules/marketing.md` (cette seule phrase), `src/stores/prixAbonnement.js` (en-tête, commentaire de `MENTION_TVA_ABONNEMENT`), `PricingSection.jsx` (l. 10 et 135), `prixPlan.test.jsx` (commentaire), ce rapport (point 1 et résumé). L'attente 7 reste ouverte. Le pied de facture qu'Hugo doit trouver dans Stripe : « TVA non applicable, article 293 B du CGI », son nom suivi de « EI », et son SIREN. À revoir lors de la recodification dans le CIBS (tâche « Mentions CIBS »).
+1. **Mention de franchise sur les factures Stripe** (`cc0106f`) : partout, « doit figurer sur les factures Stripe (réglage à constater, attente 7) », avec CGI art. 293 E, II. Fichiers : `docs/decisions.md` (D-19, colonnes « Décision » et « Pourquoi »), `scripts/parcours/compte.cjs` (commentaire, l. 220 ; contrôle local, `ab57ab7`), `src/components/landing/faq.js` (en-tête, `ab57ab7`), `.claude/rules/marketing.md` (cette seule phrase), `src/stores/prixAbonnement.js` (en-tête, commentaire de `MENTION_TVA_ABONNEMENT`), `PricingSection.jsx` (l. 10 et 135), `prixPlan.test.jsx` (commentaire), ce rapport (point 1 et résumé). L'attente 7 reste ouverte. Le pied de facture qu'Hugo doit trouver dans Stripe : « TVA non applicable, article 293 B du CGI », son nom suivi de « EI », et son SIREN. À revoir lors de la recodification dans le CIBS (tâche « Mentions CIBS »).
 2. **Mention RM → RNE** (`abfb9fd`) : `mentionImmatriculation` imprime « Entreprise du secteur des métiers et de l’artisanat, immatriculée au RNE sous le n° 123 456 789 » (C. conso. R111-2, 3°). Les DEUX générateurs (`devisHtmlBuilder.js`, l'aperçu inline de `DevisPage.jsx`), `pdfHtmlBuilder.js`, la mise en demeure et l'attestation de ramonage passent par ce module. Le département n'est plus ni demandé ni imprimé : une valeur déjà saisie est ignorée, sans migration. Paramètres : libellé « Métiers et artisanat (RNE) », aide et texte du choix recopiés du juriste. Sources réécrites (`immatriculation.js`, `devisHtmlBuilder.js`, `lexique.js`). Puce ajoutée dans `docs/metier-btp.md` § 2. Rien n'est ajouté à la liste « Facture 2026 ». La valeur interne `rcsType: 'RM'` reste en base (jamais imprimée). Tests `immatriculation.test.js` (15) et parcours « légal » et « documents » : ils attendent la nouvelle mention et l'absence de « RM ».
 3. **Lexique** (`abfb9fd`) : titre « le RCS et le RNE », texte et sources du juriste.
 4. **Confirmation « Signé »** (`3742bb7`) : le message et le commentaire sont ceux du juriste (« Gardez votre exemplaire signé… porte sa certification » ; C. civ. 1113 et 1359, C. conso. L221-9, BOFiP § 60 et 110). Le parcours `statuts` vérifie ce texte, et l'absence de « original » et de « attestation ».
@@ -132,9 +132,9 @@ Session cloud de correction, après la relecture de code et la relecture du juri
 | 1 | Résultat de `npm run verifier` recopié ci-dessous | ce rapport |
 | 2 | « doit figurer… attente 7 » partout | `cc0106f` |
 | 3 | Mention RNE selon le juriste, dans les deux générateurs | `abfb9fd` |
-| 4 | **Non fait** : l'arrêté du 20 juil. 2023 ne s'ouvre pas depuis le cloud (Légifrance injoignable, constaté le 3 nov.). Réglage et case gardés ; `docs/metier-btp.md` § 10 porte « à vérifier avant livraison ». C'est à faire en local, par juriste-btp. | `2034b35` |
+| 4 | Fait au second tour : l'arrêté du 20 juil. 2023 a été relu sur Légifrance par la session locale (3 nov.). Textes du juriste appliqués (`RamonageTab.jsx`, `ramonage.js`), lecture sourcée dans `docs/metier-btp.md` § 10. Réglage, case et « imprimés » par défaut gardés. | `2034b35`, `ab57ab7` |
 | 5 | `choisirRegistre` vide `rcsVille` ; le parcours « légal » part d'un ancien département « 33 » et vérifie : rien d'imprimé après « Commerce (RCS) » tant qu'aucune ville n'est choisie. Contre-essai : sans la correction, échec « Sera imprimé : RCS 33 A 123 456 789 ». | `abfb9fd` |
-| 6 | Nouveaux parcours, carte affichée, agent Safari iPhone, 375 px : accueil, devis, planning, chantiers. Le dernier élément du contenu n'est couvert par rien. Contre-essai : sans la marge, les 4 échouent (et les 2 de Ramonage aussi). La phrase du rapport est corrigée : l'audit d'interface n'affiche pas la carte. Il manque encore une page à hauteur fixe : le planning n'en est pas une au sens strict, à confirmer en local. | `eac0b7c`, `b58f4ba` |
+| 6 | Nouveaux parcours, carte affichée, agent Safari iPhone, 375 px : accueil, devis, planning, chantiers. Le dernier élément du contenu n'est couvert par rien. Contre-essai : sans la marge, les 4 échouent (et les 2 de Ramonage aussi). La phrase du rapport est corrigée : l'audit d'interface n'affiche pas la carte. Vues à hauteur fixe (second tour) : le panneau d'une tâche était couvert, corrigé ; la grille semaine du planning ne l'est pas. Voir « Corrections du contrôle local ». | `eac0b7c`, `b58f4ba`, second tour |
 | 7 | Inscrit dans la feuille de route (`immat-fiche-entreprise`) | `2034b35` |
 | 8 | Inscrit dans la feuille de route (`greffes-liste`) | `2034b35` |
 | 9 | `modifierEnBase` rend `ECRITURE_EN_ATTENTE` (`lib/erreursEcriture.js`) pour une écriture mise en file. Hors ligne, `changerStatut` n'affiche plus « Facture émise » ; il affiche « Émission gardée sur cet appareil : la facture sera émise au retour du réseau, si la base l’accepte. » (texte reformulé par juriste-btp). Un changement de statut simple n'ajoute rien à « Pas de connexion ». Parcours `statuts` (réel simulé, étape 2). Contre-essai : sans la correction, échec `["Pas de connexion","Facture émise"]`. | `fbe1437`, `27162d3` |
@@ -143,7 +143,7 @@ Session cloud de correction, après la relecture de code et la relecture du juri
 | 12 | `verifier(html.length > 0, …)` avant le test d'absence des conseils | `c99ac9f` |
 | 13 | Colonne « Décision » de D-19 et commentaire de `MENTION_TVA_ABONNEMENT` réécrits | `cc0106f` |
 | 14 | Gardés, avec la raison écrite dans `exemples.js` : la question sur le document d'exemple est ouverte (décision 3 ci-dessous). Si Hugo confirme le retrait, supprimer les fonctions et leurs tests. Le commentaire périmé de `honnetete.test.js` est corrigé. | `2034b35` |
-| 15 | Contre-essais rejoués dans cette session : point 5 (registre), point 6 (marge, 4 pages) et point 9 (hors ligne) échouent sans la correction. Le point 3 n'a pas été rejoué en retirant le code, mais la version d'avant imprimait « 123 456 789 RM 33 » : les nouveaux tests, qui refusent « RM », échoueraient. Points 4 et 7 de la première session : pas rejoués. critique-produit n'a pas été lancé : aucune fonctionnalité nouvelle dans ces corrections, seulement des corrections dictées par les relectures (budget partagé). | — |
+| 15 | Contre-essais rejoués dans cette session : point 5 (registre), point 6 (marge, 4 pages) et point 9 (hors ligne) échouent sans la correction. Le point 4 (marge) est aussi rejoué : sans la marge, les 2 parcours Ramonage échouent (ligne 6). Les points 3 et 7 sont rejoués au second tour (voir « Corrections du contrôle local »). critique-produit n'a pas été lancé : aucune fonctionnalité nouvelle dans ces corrections, seulement des corrections dictées par les relectures (budget partagé). | — |
 
 ### Relecture juriste-btp de cette session (agent du projet, lecture du code seulement)
 - Les deux générateurs impriment bien la même mention RNE, sans « RM » écrit en dur : OK.
@@ -196,7 +196,6 @@ Le commit suivant n'ajoute que ce résultat au rapport.
 - Les autres textes sont recopiés des corrections du juriste.
 
 ### Ce qui reste
-- Relire l'arrêté du 20 juil. 2023 (conseils de ramonage sur l'attestation) avant de livrer, en local.
 - Constater le pied de facture Stripe (attente 7, Hugo).
 - Suites inscrites dans la feuille de route : `immat-fiche-entreprise`, `greffes-liste`.
 
@@ -211,6 +210,6 @@ Le commit suivant n'ajoute que ce résultat au rapport.
 4. Hors ligne : plus de faux « Facture émise ».
 5. Pastille de statut accessible ; changer de registre vide la ville.
 6. Carte « Installer » constatée sur 4 pages de plus, avec contre-essai.
-7. Non fait : relecture de l'arrêté ramonage (réseau fermé), à faire en local.
+7. Arrêté ramonage relu par la session locale (3 nov.) : appliqué au second tour.
 8. `npm run verifier -- --complet` vert sur `2cd7fc6`.
 9. Six décisions pour Hugo, dont médiateur ou offre réservée aux professionnels, et anciens champs libres « RM ».
