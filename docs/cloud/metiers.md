@@ -195,7 +195,7 @@ Tous recopiés de la correction exacte du juriste (points 3, 15 et 16), sans cha
 11. Vigilance d'un particulier : `macon.md` l. 40 — fait (`71a36af`).
 12. Amiante : `macon.md` l. 52, `plaquiste.md` l. 54 et 83 — fait (`71a36af`).
 13. Isolation lors d'une réfection de toiture : `couvreur.md` l. 47 — fait (`71a36af`).
-14. Chaudières à 10 % restantes : `ouvrages-lot08-plomberie-cvc.js` (PL_02_01_001 et 002 à 20 %), `createCatalogueItem` (taux de l'article, sinon 10 %), `articles-btp-suite.js` (`tva: 20` sur les trois chaudières fossiles), tests du référentiel et de l'import — fait (`8253088`). Les trois sources (bibliothèque, modèles, référentiel/import) sont corrigées ensemble, chacune a son test. L'entreprise en franchise repasse les lignes à 0 % au moment du devis (`sansTva`, inchangé).
+14. Chaudières à 10 % restantes : `ouvrages-lot08-plomberie-cvc.js` (PL_02_01_001 et 002 à 20 %), `articles-btp-suite.js` (`tva: 20` sur les trois chaudières fossiles) — fait (`8253088`). **Corrigé le 4 nov.** : `createCatalogueItem`, cité ici comme le chemin de l'import, n'était appelé par aucun écran (fonction morte, supprimée). Le vrai chemin, le sélecteur du référentiel (`ArticlePicker`), était déjà corrigé sur `main` (`tvaArticleReferentiel`) ; l'import en masse (`importerReferentiel`, `Catalogue.jsx`) ne recopiait aucun taux : corrigé par `620b737`, avec son test. L'entreprise en franchise repasse les lignes à 0 % au moment du devis (`sansTva`, inchangé).
 15. RGE absent de la page de signature : migration 108 (`5f0f4a0`) et aide de `settings-field-rge` nuancée (`b8a34f1`) — fait, migration non appliquée.
 16. Libellé RGE : même correction que le point 3 — fait (`b8a34f1`).
 
@@ -250,10 +250,88 @@ Puis un commit qui ne touche que ce rapport : attributions (`71a36af`, `21c5b6c`
 ### Résumé
 - Documents et code séparés : `cloud/metiers-docs` (documents seuls, à livrer d'abord), `cloud/metiers` (lot 0, attend ta décision n° 3).
 - 16 corrections du juriste appliquées, 5 points introuvables traités, 4 décisions recopiées pour toi.
-- Chaudière gaz ou fioul : 20 % partout (bibliothèque, modèles, référentiel, import), un test chacun.
+- Chaudière gaz ou fioul : 20 % dans la bibliothèque, les modèles, le sélecteur du référentiel et (depuis le 4 nov., `620b737`) l'import en masse, un test chacun.
 - Entretien de chaudière : 10 %, ou 5,5 % si THPE (corrigé dans les fiches et le code).
 - RGE imprimé avec intitulé, organisme, numéro et date, comme l'exige l'Anah ; « Autre » retiré.
 - Migration 108 prête et vérifiée au banc : le RGE sur la page de signature. Non appliquée.
 - Un seul texte nouveau de mon cru (date illisible) à faire relire.
 - Contrôle du 3 nov. au soir : restes des fiches et de la synthèse alignés (`dbb0066`) ; vérification standard de `cloud/metiers-docs` rejouée en local : tout vert.
 - Reste : appliquer la 108, sonde à 375 px, annuaire France Rénov', lignes à 5,5 % douteuses, lignes MaPrimeRénov' à revoir, vérification de `cloud/metiers` et vérification complète des deux branches (session locale).
+
+## Corrections de la relecture du 4 nov.
+
+Session cloud du 4 nov. 2026 (consigne metiers-v3). Branche `cloud/metiers`, poussée sans forcer. Rien sur `main`, aucune pull request, aucun accès à la production.
+
+### Lot 0 (D-32)
+- **Fusion de `origin/main`** : `a4d580a` (merge, pas de rebase). Deux conflits. `docs/cloud/metiers.md` : version de `main` gardée, la vérification complète de `00f0009` y est reportée. `src/lib/pdfHtmlBuilder.js` : les deux imports gardés (`qualifications` et `echapperHtml` de la branche, `mentionImmatriculation` de `main`).
+- **Import du référentiel** : `620b737`. Le sélecteur (`ArticlePicker`) garde `tvaArticleReferentiel` de `main`, déplacée dans `src/lib/data` et toujours exportée par `ArticlePicker`. L'import en masse (`importerReferentiel`) passe par `articlesAImporterDuReferentiel`, qui recopie le taux de chaque article : chaudière gaz ou fioul à 20 %, dépose et chaudière granulés à 10 %, 0 % en franchise.
+
+### Point par point
+1. [important] ArticlePicker et import : `620b737`. `createCatalogueItem` (fonction morte) et son test sont supprimés. Test `tvaChaudiere.test.js` « import en masse du référentiel » (3 cas). Contre-essai : sans la ligne `tva`, 2 tests échouent. Le point 14 et le résumé du 3 nov. sont corrigés dans ce rapport.
+2. [important] Rapport en conflit : `a4d580a`. Phrases périmées corrigées : point 7, ligne « `dbb0066` … n'y sont pas encore » et « Ce qui reste ». Vérification complète du commit de fusion : voir plus bas.
+3. [mineur] Date du document : `c21686f`. Test `pdfHtmlBuilder` : une facture du 1er juin 2025, avec une fin de validité au 31 déc. 2025, garde sa ligne RGE. Contre-essai : la même facture datée du 10 janv. 2026 ne l'a pas. Autre contre-essai : sans `jourDuDocument(doc)` dans `pdfHtmlBuilder.js`, le test échoue. Dans le parcours RGE, un 3e cas met la fin au lendemain de la date du devis ouvert (lue dans l'aperçu), donc déjà passée aujourd'hui : la ligne est imprimée. Contre-essai : sans `jourDuDocument(doc)` dans `DevisPage.jsx`, le parcours échoue (« fin 2026-10-12 : RGE imprimé (aucun) »).
+4. [mineur] Ancien format `labels` : supprimé de `qualifications.js` et de `buildEntrepriseFields` (`df85e76`). Le test vérifie qu'il n'est plus imprimé.
+5. [mineur] Commentaires périmés : `2a99b30`. `modeles/index.js` et `trade-library.js` citent CGI 279-0 bis, 2 bis, c ; 278-0 bis A, III bis ; BOI-TVA-LIQ-30-20-90-20 § 200. « À relire » est retiré.
+6. [mineur] Texte de la date illisible : relu par `juriste-btp`. Sa formulation est appliquée (`4a2ff48`, l'étape `df85e76` est intermédiaire) : « La date de fin de validité enregistrée n’est pas reconnue : ressaisissez-la dans le champ « Fin de validité ». En attendant, le RGE n’est pas imprimé sur vos documents. » Raisons du juriste : le champ date apparaît vide, et le message s'affiche sous l'intitulé, si bien que « ci-dessus » visait le mauvais champ.
+- Gardien-securite (108 et 110) : `0d5ae01`. Avertissement dans l'en-tête de la 108 (commentaire hors du corps de la fonction). Ligne 108 dans `docs/etat-production.md` : « remplacée par 110, ne jamais la rejouer après 110 », avec la requête de contrôle `position('''qualifications''' in prosrc) > 0`.
+- `labels`, `createCatalogueItem` : plus aucune référence dans `src/`.
+
+### Preuves
+- `npm run verifier -- --complet` sur `4a2ff48` (dernier commit de code), arbre propre :
+
+  ```
+  Vérification « complet » de 4a2ff48
+    ✓ Tests (60.7 s) — 1313 passed (1313)
+    ✓ Lint (0 erreur) (8.0 s) — 242 problems (0 errors, 242 warnings)
+    ✓ Smoke (35.4 s)
+    ✓ Build (35.0 s)
+    ✓ Banc de migrations (6.2 s)
+    ✓ Parcours (navigateur) (2447.1 s)
+    ✓ Audit d’interface (391.8 s)
+  ✓ Tout est vert — niveau « complet ».
+  ```
+- L'avertissement de lint en plus (242 contre 241 sur `main`) venait d'un import devenu inutile dans un test. Retiré par `a5c75c8` (test seulement). Puis `0d5ae01` (commentaire SQL et documentation). `npm run verifier` (standard) sur `0d5ae01` :
+
+  ```
+  Vérification « standard » de 0d5ae01
+    ✓ Tests (64.8 s) — 1313 passed (1313)
+    ✓ Lint (0 erreur) (7.8 s) — 241 problems (0 errors, 241 warnings)
+    ✓ Smoke (36.8 s)
+    ✓ Build (34.6 s)
+  ✓ Tout est vert — niveau « standard ».
+  ```
+  Banc sur `0d5ae01` : « Tout est vert (654 vérifications) ».
+- **Limite** : la vérification complète porte sur `4a2ff48`. Les deux commits suivants ne changent pas le code de l'app : un import de test et des commentaires. La complète n'a pas été rejouée sur `0d5ae01`. `/livrer` l'exige sur le commit exact.
+
+### Ce qui reste (session locale)
+- `npm run verifier -- --complet` sur le commit livrable (`0d5ae01` ou plus récent).
+- Sonde de Paramètres à 375 px : bloc RGE et nouvel avertissement.
+- Aller-retour de `rgeValidite` et `rgeDomaine` en mode réel simulé.
+- Vérifier `ORGANISMES_RGE` sur l'annuaire France Rénov'.
+- Après livraison : appliquer la 108 (ou la 110 seule), contrôler le md5 du corps, rétablir l'aide du numéro RGE.
+- Numéro 107 en double (ia-socle, franchise-suite) : en renuméroter un, hors de cette branche.
+- Tâche TVA de la décision 4 : y joindre « Dépose ancienne chaudière fioul/gaz » (RE_03_01_006, à 5,5 %), et les chaudières bois et granulés de l'import, que le nouveau test fige à 10 % (5,5 % peut-être possible, ann. IV art. 30-0 D ter, à vérifier).
+
+### Décisions d'Hugo (recopiées, non appliquées)
+- Lignes à 5,5 % douteuses de la bibliothèque (plancher chauffant, désembouage) : ouvrir une tâche. Recommandé : 10 % par défaut, sauf travaux liés à une opération éligible, après lecture du BOI-TVA-LIQ-30-20-95 § 20.
+- Décennale par devis, sans valeur par défaut : oui, recommandé par le juriste.
+- Chiffres de priorité par métier : garder « indices non officiels », ne rien publier dans l'app ni sur le site (recommandé).
+- Lot 0 et périmètre d'impression : déjà tranchés par D-32, rien à redemander.
+
+### Textes nouveaux soumis au juriste
+- Un seul : l'avertissement de la date illisible (point 6). Relu, sa formulation est appliquée.
+
+### Risques
+- Avant ce correctif, en mode réel, l'import en masse mettait tous les articles à 20 % (base, « ?? 20 »), même ceux à 10 %. Les articles déjà importés gardent leur taux : rien n'est repris en base.
+- Jamais rejouer 108 après 110 : écrit dans la 108 et dans `etat-production.md`.
+
+### Résumé
+- `main` fusionnée (`a4d580a`) : rapport pris sur `main`, deux imports gardés dans `pdfHtmlBuilder.js`.
+- L'import en masse du référentiel garde le taux de chaque article : chaudières gaz et fioul à 20 % (`620b737`).
+- `createCatalogueItem` (fonction morte) et l'ancien format `labels` sont supprimés.
+- La validité RGE est jugée à la date du document : nouveau test sur une facture (pdfHtmlBuilder) et 3e cas dans le parcours, chacun avec son contre-essai.
+- Les commentaires TVA citent le CGI et le BOFiP.
+- Le texte de la date illisible est relu par juriste-btp, sa formulation est appliquée.
+- 108 : « jamais après 110 » est écrit dans la migration et dans `etat-production.md`.
+- Vérification complète verte sur `4a2ff48`. Standard et banc verts sur `0d5ae01`.
+- Reste à la session locale : complète sur le commit livrable, sonde à 375 px, aller-retour en réel simulé, puis la 108.
