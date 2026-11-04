@@ -23,6 +23,7 @@
 import { PROFIL_EXIGE } from './profilLegal';
 import { estEntrepreneurIndividuel, estEirl } from './identiteEntreprise';
 import { estFranchiseTva } from './franchiseTva';
+import { estInscritRm } from './immatriculation';
 
 const rempli = (valeur) => (typeof valeur === 'string' ? valeur.trim() !== '' : Boolean(valeur));
 // Entreprise relue telle quelle depuis la base : clés snake_case
@@ -34,10 +35,15 @@ export function estSociete(entreprise) {
   return rempli(lire(e, 'formeJuridique', 'forme_juridique')) && !estEntrepreneurIndividuel(e) && !estEirl(e);
 }
 
-/** RCS saisi : ville du greffe et numéro (Réglages › Légal, lus par les PDF), ou l'ancien champ libre `rcs`. */
+/**
+ * RCS saisi : ville du greffe et numéro (Réglages › Légal, lus par les PDF), ou l'ancien champ libre `rcs`.
+ * Un numéro saisi pour le RNE en tant qu'entreprise du secteur des métiers et de l'artisanat (`rcsType` 'RM',
+ * lib/immatriculation) n'est pas un RCS.
+ */
 export function rcsRenseigne(entreprise) {
   const e = entreprise || {};
-  return (rempli(lire(e, 'rcsVille', 'rcs_ville')) && rempli(lire(e, 'rcsNumero', 'rcs_numero'))) || rempli(e.rcs);
+  if (rempli(e.rcs)) return true;
+  return !estInscritRm(e) && rempli(lire(e, 'rcsVille', 'rcs_ville')) && rempli(lire(e, 'rcsNumero', 'rcs_numero'));
 }
 
 /**
@@ -50,7 +56,8 @@ export function rcsRenseigne(entreprise) {
 export function rcsConcerne(entreprise) {
   const e = entreprise || {};
   if (rcsRenseigne(e) || estSociete(e)) return true;
-  const commence = rempli(lire(e, 'rcsVille', 'rcs_ville')) || rempli(lire(e, 'rcsNumero', 'rcs_numero'));
+  // Un entrepreneur individuel inscrit au RNE (métiers et artisanat) n'a pas de RCS à compléter
+  const commence = !estInscritRm(e) && (rempli(lire(e, 'rcsVille', 'rcs_ville')) || rempli(lire(e, 'rcsNumero', 'rcs_numero')));
   return commence && (estEirl(e) || (estEntrepreneurIndividuel(e) && !estFranchiseTva(e)));
 }
 
@@ -110,7 +117,9 @@ export function mentionsFacture(entreprise) {
       id: 'rcs',
       libelle: 'RCS et ville du greffe (sociétés et commerçants)',
       onglet: 'legal',
-      champ: rempli(lire(e, 'rcsVille', 'rcs_ville')) ? 'rcsNumero' : 'rcs',
+      // Registre « Métiers et artisanat (RNE) » choisi (`rcsType` 'RM') : le champ RCS n'est pas affiché, et un numéro
+      // RNE n'est pas un RCS → « Compléter » mène au choix du registre (contrôle local du 3 nov. 2026)
+      champ: estInscritRm(e) ? 'registre' : rempli(lire(e, 'rcsVille', 'rcs_ville')) ? 'rcsNumero' : 'rcs',
       rempli: rcsRenseigne(e),
     });
   }

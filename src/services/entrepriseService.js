@@ -57,6 +57,8 @@ export const REGLAGES_SANS_COLONNE = {
   // clients ; grille tarifaire HT (taux horaire, décompte du temps, déplacement, majorations, forfaits) imprimable TTC
   depannageActif: false,
   depannageGrille: {},
+  // Conseils (R. 1331-77) imprimés sur l'attestation par défaut ; décochables à chaque attestation (retour nov. 2026)
+  ramonageConseils: true,
 };
 
 function reglagesDe(row) {
