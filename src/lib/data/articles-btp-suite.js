@@ -258,9 +258,9 @@ export const ARTICLES_BTP_SUITE = {
       chaudieres: {
         nom: 'Chaudières',
         articles: [
-          { id: 'chaud-gaz-mur', nom: 'Chaudière gaz condensation murale', unite: 'u', prixMin: 2500, prixMax: 4500, prixDefaut: 3500 },
-          { id: 'chaud-gaz-sol', nom: 'Chaudière gaz condensation au sol', unite: 'u', prixMin: 3500, prixMax: 6500, prixDefaut: 5000 },
-          { id: 'chaud-fioul', nom: 'Chaudière fioul condensation', unite: 'u', prixMin: 4000, prixMax: 8000, prixDefaut: 6000 },
+          { id: 'chaud-gaz-mur', nom: 'Chaudière gaz condensation murale', unite: 'u', prixMin: 2500, prixMax: 4500, prixDefaut: 3500, tva: 20 },
+          { id: 'chaud-gaz-sol', nom: 'Chaudière gaz condensation au sol', unite: 'u', prixMin: 3500, prixMax: 6500, prixDefaut: 5000, tva: 20 },
+          { id: 'chaud-fioul', nom: 'Chaudière fioul condensation', unite: 'u', prixMin: 4000, prixMax: 8000, prixDefaut: 6000, tva: 20 },
           { id: 'chaud-bois', nom: 'Chaudière bois bûches', unite: 'u', prixMin: 3000, prixMax: 6000, prixDefaut: 4500 },
           { id: 'chaud-granules', nom: 'Chaudière granulés (pellets)', unite: 'u', prixMin: 6000, prixMax: 12000, prixDefaut: 9000 },
           { id: 'depose-chaud', nom: 'Dépose ancienne chaudière', unite: 'u', prixMin: 200, prixMax: 500, prixDefaut: 350 },
