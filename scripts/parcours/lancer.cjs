@@ -37,7 +37,8 @@ const parcours = fichiers.flatMap((f) => require(path.join(__dirname, f)).map((p
     const ctx = {
       ...outils,
       ouvrir: async (o = {}) => {
-        const n = await outils.ouvrir({ ...o, distReel: o.reel ? distReel : undefined });
+        // o.distReel : un parcours qui a son propre build « réel simulé » (ex. la dictée, interrupteur allumé)
+        const n = await outils.ouvrir({ ...o, distReel: o.reel ? (o.distReel || distReel) : undefined });
         navigateurs.push(n);
         return n;
       },

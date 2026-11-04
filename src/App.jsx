@@ -70,6 +70,7 @@ import PortalLoader from './components/portal/PortalLoader';
 const GarantiesDashboard = lazyWithRetry(() => import('./components/chantiers/GarantiesDashboard'), 'Garanties');
 const PlanPage = lazyWithRetry(() => import('./components/profil/PlanPage'), 'Plan');
 const DicteeModal = lazyWithRetry(() => import('./components/voice/DicteeModal'), 'Dictée');
+const AccordIaModal = lazyWithRetry(() => import('./components/voice/AccordIaModal'), 'Accord dictée');
 import CGUAcceptanceModal from './components/CGUAcceptanceModal';
 import { CGU_VERSION, CGU_VERSION_DATE } from './lib/cgu';
 import { useConfirm, useToast } from './context/AppContext';
@@ -86,6 +87,8 @@ import TrialBanner from './components/subscription/TrialBanner';
 import FeatureGuard from './components/subscription/FeatureGuard';
 import { useSubscriptionStore } from './stores/subscriptionStore';
 import { usePermissions } from './hooks/usePermissions';
+import { droitsDictee } from './lib/droitsDictee';
+import { lireAccordIa, donnerAccordIa } from './lib/accordIa';
 import { fetchSubscription, computeLiveUsage } from './services/subscriptionsApi';
 import { Home, FileText, Building2, Users, Package, HardHat, Settings as SettingsIcon, Eye, EyeOff, Menu, Bell, Plus, ChevronRight, HelpCircle, Search, X, CheckCircle, AlertCircle, Info, Wifi, WifiOff, Wallet, ClipboardList, Smartphone, CreditCard, MessageCircle, CalendarCheck, Mic, PenLine, Clock, TrendingUp, Lightbulb, Mail, BookOpen, Hand, Rocket, Palette } from 'lucide-react';
 import { usePWA } from './hooks/usePWA';
@@ -158,6 +161,8 @@ export default function App() {
 
   // RBAC: organization role + permissions
   const { canAccess, canAccessBilling, canViewPrices, canPerform, role: userRole, loading: orgLoading, orgId } = usePermissions();
+  // Dictée : page « ia-devis » et droit de créer un devis (comme reserver_usage_ia, migration 107) ; montants selon canViewPrices.
+  const dictee = droitsDictee({ canAccess, canPerform, canViewPrices });
 
   // PWA install hook
   const { canInstall, install, isInstalled } = usePWA();
@@ -254,6 +259,10 @@ export default function App() {
   const [selectedDevis, setSelectedDevis] = useState(null);
   const [createMode, setCreateMode] = useState({ devis: false, chantier: false, client: false });
   const [showDictee, setShowDictee] = useState(false);
+  // Écran « Avant votre première dictée » (migration 109) : relu en base à chaque « Dicter », pour qu'un retrait fait dans
+  // Paramètres (ou sur un autre appareil) le fasse revenir. En démo, rien n'est envoyé : pas d'écran.
+  const [showAccordIa, setShowAccordIa] = useState(false);
+
   const [editDevisId, setEditDevisId] = useState(null); // devis à ouvrir directement dans l'éditeur (dictée)
   // Multi-entreprise context
   const {
@@ -604,6 +613,14 @@ export default function App() {
     if (aJour) return true;
     return new Promise((resolve) => setDemandeCgu({ resolve, motif, geste }));
   }, []);
+  // « Dicter » : d'abord les CGU en vigueur (la clause de sous-traitance qui autorise Anthropic, RGPD art. 28.2, est dans
+  // celles de l'allumage ; juriste-btp du 4 nov. 2026), puis l'accord avant la première dictée.
+  const ouvrirDictee = useCallback(async () => {
+    if (isDemo) { setShowDictee(true); return; }
+    if (!(await verifierCgu('dictee'))) return;
+    const { accord } = await lireAccordIa(supabase, user?.id);
+    if (accord) setShowDictee(true); else setShowAccordIa(true);
+  }, [user?.id, verifierCgu]);
   useEffect(() => {
     enregistrerGardeCgu?.(verifierCgu);
     return () => enregistrerGardeCgu?.(null);
@@ -1786,10 +1803,10 @@ export default function App() {
 
           {/* RIGHT GROUP: Actions */}
           <div className="flex items-center gap-1 sm:gap-1.5 flex-shrink-0">
-            {FONCTIONS.ia && (<>
+            {FONCTIONS.ia && dictee.peutDicter && (<>
             {/* Dictée vocale — l'atout malin, accessible depuis n'importe quelle page */}
             <button
-              onClick={() => setShowDictee(true)}
+              onClick={ouvrirDictee}
               className="h-11 px-3 sm:px-3.5 rounded-xl flex items-center gap-1.5 font-medium text-sm transition-transform active:scale-95 bg-accent text-sur-accent"
               title="Dictée vocale — créez un client, un chantier ou un devis à la voix"
               aria-label="Dictée vocale"
@@ -2105,8 +2122,25 @@ export default function App() {
       {/* Onboarding Modal for first-time users */}
       {showOnboarding && <OnboardingModal setShowOnboarding={setShowOnboarding} isDark={isDark} couleur={couleur} />}
 
+      {/* Accord avant la première dictée : accepter ouvre la dictée (une fois l'accord écrit), refuser ouvre un devis vierge sans rien envoyer. */}
+      {FONCTIONS.ia && dictee.peutDicter && showAccordIa && (
+        <Suspense fallback={null}>
+          <AccordIaModal
+            isOpen={showAccordIa}
+            onClose={() => setShowAccordIa(false)}
+            onAccepter={async () => {
+              const r = await donnerAccordIa(supabase, user?.id);
+              if (r.ok) { setShowAccordIa(false); setShowDictee(true); }
+              else captureException(r.error instanceof Error ? r.error : new Error(r.error?.message || 'accord IA non enregistré'), { tags: { flux: 'accord-ia' } });
+              return r;
+            }}
+            onRefuser={() => { setShowAccordIa(false); setSelectedDevis(null); setCreateMode((p) => ({ ...p, devis: true })); setPage('devis'); }}
+          />
+        </Suspense>
+      )}
+
       {/* Dictée vocale — client + chantier + devis en une seule prise de parole */}
-      {FONCTIONS.ia && showDictee && (
+      {FONCTIONS.ia && dictee.peutDicter && showDictee && (
         <Suspense fallback={null}>
           <DicteeModal
             isOpen={showDictee}
@@ -2130,6 +2164,11 @@ export default function App() {
             setSelectedDevis={setSelectedDevis}
             setSelectedChantier={setSelectedChantier}
             setEditDevisId={setEditDevisId}
+            orgId={orgId}
+            /* Repli quand l'analyse est indisponible (quota, panne, réseau) : un devis vierge, à la main. */
+            onSaisieManuelle={dictee.peutSaisirAMain ? () => { setSelectedDevis(null); setCreateMode((p) => ({ ...p, devis: true })); setPage('devis'); } : undefined}
+            voitPrix={dictee.voitPrix}
+            onAccordRequis={() => { setShowDictee(false); setShowAccordIa(true); }}
           />
         </Suspense>
       )}
@@ -2480,7 +2519,9 @@ function HelpModal({ setShowHelp, isDark: _isDark }) {
           { q: 'Comment changer mon plan ?', a: 'Dans Mon plan, vous voyez votre plan actuel et pouvez évoluer vers Artisan ou Équipe pour débloquer plus de fonctionnalités.' },
           { q: 'Comment exporter mes données comptables ?', a: 'Dans Finances > Export Comptable, exportez vos écritures au format FEC, CSV ou Excel, à remettre à votre comptable.' },
           { q: 'Comment fonctionne la trésorerie ?', a: 'Dans Finances > Trésorerie, visualisez vos flux de trésorerie en temps réel avec un prévisionnel automatique.' },
-          ...(FONCTIONS.ia ? [{ q: 'Comment utiliser l\'IA Devis ?', a: 'Prenez une photo du chantier ou décrivez les travaux. L\'IA génère automatiquement un devis détaillé. (Inclus dans tous les plans)' }] : []),
+          // Quotas de la dictée (D-35), relus par juriste-btp le 4 nov. Le plafond de 100 par jour compte aussi nos échecs :
+          // texte à revoir selon la décision d'Hugo (question 2 du juriste) ; « pour l'entreprise » : question 3.
+          ...(FONCTIONS.ia ? [{ q: 'Comment fonctionne la dictée ?', a: 'Touchez « Dicter », puis décrivez le client et les travaux, à la voix ou au clavier. Une intelligence artificielle (Claude, d’Anthropic) prépare un brouillon : client, chantier et lignes du devis. Elle peut se tromper : vous relisez et corrigez tout avant de créer. Avant votre première dictée, et de nouveau si vous retirez votre accord, un écran vous explique ce qui est envoyé et vous demande votre accord. Plan Gratuit : 5 dictées par mois ; plan Artisan : 100 dictées par mois ; plan Équipe : dictées sans limite mensuelle (100 par jour et par personne au plus). Une dictée trop longue ou incompréhensible compte quand même ; une panne de notre côté ne compte pas.' }] : []),
           { q: 'Comment relancer un client ?', a: 'Mallettico détecte les devis en attente et vous propose des relances automatiques par email.' },
           { q: 'Comment ajouter un acompte ?', a: 'Lors de la création de la facture d\'acompte, indiquez le pourcentage souhaité. Le solde sera calculé automatiquement.' },
           { q: 'Les données sont-elles sécurisées ?', a: 'Elles sont chiffrées, et la base de données est hébergée à Paris. Vous pouvez les exporter et supprimer votre compte à tout moment, depuis les Réglages.' },

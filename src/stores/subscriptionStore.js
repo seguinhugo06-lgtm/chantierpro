@@ -43,7 +43,8 @@ export const PLANS = {
       catalogue: -1,
       signatures: -1,
       photos: 50,
-      dictees: 10,
+      // Dictées : décision d'Hugo du 4 nov. 2026 ; le serveur fait foi (voice-intent/regles.ts LIMITES, migration 107).
+      dictees: 5,
       storage_mb: 100,
       equipe: 1
     },
@@ -57,6 +58,7 @@ export const PLANS = {
       { name: '10 clients', included: true },
       { name: '2 chantiers', included: true },
       { name: '50 photos de chantier', included: true },
+      { name: '5 dictées par mois', included: true },
       { name: 'Vous + 1 collaborateur', included: true },
       { name: 'Signature en ligne des devis', included: true },
       { name: 'Relances automatiques', included: true },
@@ -85,7 +87,7 @@ export const PLANS = {
       catalogue: -1,
       signatures: -1,
       photos: -1,
-      dictees: -1,
+      dictees: 100,
       storage_mb: 2048,
       equipe: 1
     },
@@ -96,8 +98,11 @@ export const PLANS = {
       'carte_chantiers', 'entretien'
     ],
     featureLabels: [
-      { name: 'Tout le plan Gratuit, sans limite', included: true },
+      // Avec la dictée (100 par mois), « sans limite » ferait croire que toutes les limites du plan Gratuit sautent
+      // (juriste-btp, 4 nov. 2026 : C. conso. L121-2 ; C. civ. 1190) : retiré quand l'IA est allumée.
+      { name: 'Tout le plan Gratuit, sans limite', nomAvecIa: 'Tout le plan Gratuit', included: true },
       { name: 'Devis, clients, chantiers et photos illimités', included: true },
+      { name: '100 dictées par mois', included: true },
       { name: 'Vous + 1 collaborateur', included: true }
     ],
     badge: 'Pour un artisan seul',
@@ -134,12 +139,26 @@ export const PLANS = {
     ],
     featureLabels: [
       { name: 'Tout le plan Artisan', included: true },
-      { name: 'Vous + 10 collaborateurs, chacun avec son rôle', included: true }
+      { name: 'Vous + 10 collaborateurs, chacun avec son rôle', included: true },
+      // « Sans limite » seul serait trompeur (C. conso. L121-2) : le plafond du jour est annoncé (migration 107).
+      { name: 'Dictées sans limite mensuelle (100 par jour et par personne au plus)', included: true }
     ],
     badge: 'Pour une équipe',
     support: 'prioritaire'
   }
 };
+
+// Listes complètes, avant le retrait des lignes masquées : pour les tests seulement (texte des CGV avec la dictée,
+// src/lib/cgv.js), le build livré ne les affiche pas tant que l'interrupteur est éteint.
+// `nomAvecIa` : le libellé quand la dictée est allumée (il remplace `name`).
+export const LIBELLES_COMPLETS = Object.freeze(Object.fromEntries(
+  Object.entries(PLANS).map(([id, plan]) => [id, Object.freeze((plan.featureLabels || []).map(({ nomAvecIa, ...f }) => ({ ...f, name: nomAvecIa ?? f.name })))])
+));
+for (const plan of Object.values(PLANS)) {
+  if (Array.isArray(plan.featureLabels)) {
+    plan.featureLabels = plan.featureLabels.map(({ nomAvecIa, ...f }) => ({ ...f, name: FONCTIONS.ia && nomAvecIa ? nomAvecIa : f.name }));
+  }
+}
 
 // La dictée vocale (IA) est masquée tant que FONCTIONS.ia est éteint : on retire
 // ses lignes des listes affichées (tarifs, plan, FAQ) sans toucher aux limites.
@@ -229,8 +248,11 @@ export const UPGRADE_CONTEXTS = {
     recommendedPlan: 'artisan'
   },
   dictees_limit: {
-    title: 'Vos 10 dictées du mois sont utilisées',
-    subtitle: 'La dictée transforme un appel de chantier en devis chiffré. En illimité, vous ne rentrez plus rien à la main.',
+    // Le nombre exact vient du serveur (message de voice-intent, affiché dans la fenêtre de dictée) : le titre n'en écrit pas.
+    title: 'Vos dictées du mois sont utilisées',
+    // Relecture juriste-btp du 3 nov. 2026 : « vous ne rentrez plus rien à la main » était faux (l'artisan relit et corrige).
+    // Textes de l'offre du 4 nov. 2026 (décision d'Hugo) : pas de « sans limite » sans son plafond (C. conso. L121-2).
+    subtitle: 'La dictée prépare un brouillon de devis à partir de ce que vous dites ; vous le relisez. Plan Artisan : 100 dictées par mois. Plan Équipe : dictées sans limite mensuelle (100 par jour et par personne au plus).',
     highlight: 'dictees',
     recommendedPlan: 'artisan'
   },

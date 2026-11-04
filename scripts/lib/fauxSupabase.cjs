@@ -9,8 +9,11 @@ const json = (corps, status = 200) => ({ status, body: JSON.stringify(corps) });
  * @param {Object} initial  lignes de départ par table ({ clients: [...] })
  * @param {Function} [refuser]  (methode, table, requete) => réponse à renvoyer à la place de l'écriture, ou null
  * @param {string} [role]  rôle de l'utilisateur dans l'organisation (owner par défaut ; chef_chantier, ouvrier, readonly…)
+ * @param {string[]} [filtrer]  tables dont les lectures, modifications et suppressions appliquent les filtres
+ *   `colonne=eq.valeur` et `colonne=is.null` comme PostgREST (colonne absente de la ligne : filtre ignoré). Par défaut,
+ *   aucune : les parcours écrits avant (4 nov. 2026) gardent leur comportement.
  */
-function creerBase(initial = {}, { refuser = null, role = 'owner' } = {}) {
+function creerBase(initial = {}, { refuser = null, role = 'owner', filtrer = [] } = {}) {
   const tables = { ...initial };
   const journal = []; // { m, table, q, corps }
   const reponse = (req, u) => {
@@ -36,15 +39,26 @@ function creerBase(initial = {}, { refuser = null, role = 'owner' } = {}) {
     }
     const rows = tables[table] || (tables[table] = []);
     const idFiltre = (/[?&]id=eq\.([^&]+)/.exec(q) || [])[1];
+    const avecFiltres = filtrer.includes(table);
+    const conditions = avecFiltres
+      ? [...q.replace(/^\?/, '').split('&')].map((x) => /^([a-z_]+)=(eq|is)\.(.*)$/.exec(x)).filter(Boolean)
+        .map(([, col, op, val]) => (ligne) => !(col in ligne) || (op === 'is' ? ligne[col] == null : String(ligne[col]) === val))
+      : [];
+    const garde = (x) => conditions.every((c) => c(x));
+    if (avecFiltres && m === 'PATCH' && !idFiltre) {
+      const touchees = rows.filter(garde);
+      touchees.forEach((x) => Object.assign(x, corps));
+      return unique ? (touchees[0] ? json(touchees[0]) : json({ code: 'PGRST116', message: 'no rows' }, 406)) : json(touchees);
+    }
     if (m === 'GET') {
-      const r = idFiltre ? rows.filter((x) => x.id === idFiltre) : rows;
+      const r = (idFiltre ? rows.filter((x) => x.id === idFiltre) : rows).filter(garde);
       return unique ? (r[0] ? json(r[0]) : json({ code: 'PGRST116', message: 'no rows' }, 406)) : json(r);
     }
     if (m === 'POST') {
       const lot = Array.isArray(corps) ? corps : [corps];
       const sortie = lot.map((x) => {
         const i = rows.findIndex((y) => y.id === x.id);
-        const ligne = { created_at: new Date().toISOString(), ...(i >= 0 ? rows[i] : {}), ...x, organization_id: ORG, user_id: UID };
+        const ligne = { created_at: new Date().toISOString(), ...(avecFiltres && x.id == null ? { id: `l-${rows.length + 1}` } : {}), ...(i >= 0 ? rows[i] : {}), ...x, organization_id: ORG, user_id: UID };
         if (i >= 0) rows[i] = ligne; else rows.push(ligne);
         return ligne;
       });
