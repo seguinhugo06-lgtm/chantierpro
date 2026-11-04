@@ -9,6 +9,8 @@ import { euros, pourcent, blocConditionsPaiement } from './formatDocument';
 import { lignesTotauxHtml, lignesAcompteHtml, libellesColonnesPrix } from './totauxDocument';
 import { echeance } from './paiementsFacture';
 import { dateLue } from './dates';
+import { qualificationsHtml, jourDuDocument } from './qualifications';
+import { echapperHtml } from './echapperHtml';
 import { mentionImmatriculation } from './immatriculation';
 import { estFranchiseTva, tauxTvaDocument } from './franchiseTva';
 import { estSociete } from './mentionsFacture';
@@ -305,6 +307,7 @@ export function buildDocumentHTML(doc, client, chantier, entreprise, options = {
       ${entreprise?.decennaleAssureur && entreprise?.decennaleNumero ? `Assurance décennale: ${entreprise.decennaleAssureur} N°${entreprise.decennaleNumero}${entreprise.decennaleValidite ? ` (Valide jusqu'au ${dateLue(entreprise.decennaleValidite).toLocaleDateString('fr-FR')})` : ''}` : ''}
       ${entreprise?.decennaleAssureur && entreprise?.decennaleNumero && entreprise?.rcProAssureur ? '<br>' : ''}
       ${entreprise?.rcProAssureur ? `RC Pro: ${entreprise.rcProAssureur}${entreprise.rcProNumero ? ` N°${entreprise.rcProNumero}` : ''}${entreprise.rcProValidite ? ` (Valide jusqu'au ${dateLue(entreprise.rcProValidite).toLocaleDateString('fr-FR')})` : ''}` : ''}
+      ${qualificationsHtml(entreprise, echapperHtml, jourDuDocument(doc))}
     </div>
     ${piedDePageHtml({ nature: natureDuDocument(doc), client })}
   </div>

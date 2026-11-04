@@ -31,6 +31,9 @@ export const REGLAGES_SANS_COLONNE = {
   rcsType: '',
   rge: '',
   rgeOrganisme: '',
+  // Fin de validité de la qualification RGE : passée, elle n'est plus imprimée (src/lib/qualifications.js)
+  rgeValidite: '',
+  rgeDomaine: '',
   mediateur: '',
   mediateurContact: '',
   decennaleAssureurAdresse: '',

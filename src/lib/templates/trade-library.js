@@ -873,6 +873,9 @@ chauffage: {
     {
       id: 'chaudiere-condensation',
       nom: 'Chaudière gaz à condensation',
+      // Chaudière à énergie fossile : plus au 5,5 % depuis le 1er janv. 2025, à 20 % depuis le 1er mars 2025, fourniture,
+      // pose et travaux de la même opération (CGI 279-0 bis, 2 bis, c ; CGI 278-0 bis A, III bis ; BOI-TVA-LIQ-30-20-90-20
+      // § 200 ; relu au texte le 3 nov. 2026, D-32).
       resume: 'Remplacement de chaudière murale 24 kW',
       base: { quantite: 1, unite: 'ens.' },
       lignes: [

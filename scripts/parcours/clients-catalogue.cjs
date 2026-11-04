@@ -595,6 +595,79 @@ module.exports = [
     },
   },
   {
+    // Contrôle local du 4 nov. 2026 : l'import en masse du référentiel imposait 10 % à tout article sans taux propre, dont les
+    // 9 « Espaces verts » du paysagisme (20 % selon docs/metiers/paysagiste.md § 5). Avant, ils partaient sans taux et
+    // l'écriture en base posait son défaut (20 %). Seul l'article qui porte un taux le transmet : chaudières gaz et fioul à
+    // 20 %. Le sélecteur suit la même règle (la chaudière gaz y est proposée à 20 %). En franchise en base : 0 % partout.
+    nom: 'référentiel BTP, import en masse : aucun article mis à 10 % (espaces verts au défaut de la base), chaudières gaz et fioul à 20 %, comme au sélecteur ; en franchise 0 % (375 px)',
+    reel: true,
+    async executer({ ouvrir, attendre, verifier, cliquer, saisir, sessionFactice }) {
+      const { CGU_VERSION } = require('../lib/cgu.cjs');
+      const ORG = '0e0e0e0e-0e0e-4e0e-8e0e-0e0e0e0e0e0e';
+      const VERTS = ['Gazon semis', 'Gazon en rouleau', 'Gazon synthétique', 'Plantation arbuste', 'Plantation arbre', 'Plantation haie', 'Massif floral', 'Paillage', 'Géotextile'];
+      const FOSSILES = ['Chaudière gaz condensation murale', 'Chaudière gaz condensation au sol', 'Chaudière fioul condensation'];
+      for (const [forme, franchise] of [['SARL', false], ['Micro-entreprise', true]]) {
+        const ENTREPRISE = { id: 'e0e0e0e0-0000-4000-8000-000000000182', user_id: UID, organization_id: ORG, nom: 'Élec Exemple', forme_juridique: forme, siret: '00000000000000', telephone: '0500000000', email: 'contact@exemple.fr', is_active: true, is_default: true,
+          settings_json: { reglages: {} }, cgu_accepted_at: '2026-01-01T00:00:00Z', cgu_version: CGU_VERSION, created_at: '2026-01-01T00:00:00Z' };
+        const base = creerBase({ clients: [CLIENT], catalogue: [], entreprise: [ENTREPRISE] });
+        const { page } = await ouvrir({ reel: true, largeur: 375, page: 'catalogue', session: sessionFactice(UID), supabase: base.reponse, avantChargement: premierUsageCatalogue });
+        await attendre(2500);
+        // 1. L'import en masse, depuis le catalogue vide : Paysagisme et Chauffage
+        await cliquer(page, 'Importer le référentiel BTP');
+        for (const metier of ['Paysagisme', 'Chauffage / Clim']) {
+          const choisi = await page.evaluate((m) => {
+            const b = [...document.querySelectorAll('#main-content button[aria-pressed]')].find((x) => x.innerText.includes(m));
+            b?.click();
+            return !!b;
+          }, metier);
+          verifier(choisi, `le métier « ${metier} » est proposé`);
+          await attendre(300);
+        }
+        const bouton = await page.evaluate(() => [...document.querySelectorAll('#main-content button')].map((b) => b.innerText.trim()).find((t) => /^Importer \(\d+ articles\)$/.test(t)) || null);
+        verifier(!!bouton, `le bouton annonce le nombre d’articles (« ${bouton} »)`);
+        const total = Number(/\d+/.exec(bouton)[0]);
+        await cliquer(page, bouton);
+        for (let i = 0; i < 80 && base.tables.catalogue.length < total; i++) await attendre(250);
+        const importes = base.tables.catalogue;
+        verifier(importes.length === total, `les ${total} articles sont enregistrés en base (${importes.length})`);
+        const taux = (nom) => Number(importes.find((a) => a.designation === nom)?.tva_rate);
+        const lus = (noms) => noms.map((n) => `${n} ${taux(n)}`).join(', ');
+        if (franchise) {
+          verifier(importes.every((a) => Number(a.tva_rate) === 0), `franchise : tout article importé est à 0 % (${lus([...VERTS, ...FOSSILES])})`);
+        } else {
+          verifier(VERTS.every((n) => taux(n) === 20), `espaces verts : pas 10 %, le défaut de la base (20 %) (${lus(VERTS)})`);
+          verifier(!importes.some((a) => Number(a.tva_rate) === 10), `aucun article importé n’est mis à 10 % (${importes.filter((a) => Number(a.tva_rate) === 10).map((a) => a.designation).slice(0, 5).join(', ')})`);
+          verifier(FOSSILES.every((n) => taux(n) === 20), `chaudières gaz et fioul à 20 % (${lus(FOSSILES)})`);
+        }
+        // 2. Le sélecteur du référentiel : la chaudière gaz y est proposée et enregistrée à son taux (0 % en franchise)
+        await attendre(2500); // l'écran de fin d'import laisse place à la liste
+        await cliquer(page, "Plus d'actions");
+        await cliquer(page, 'Ajouter depuis le référentiel BTP', { dans: '[role="dialog"]' });
+        await attendre(600);
+        await saisir(page, '[role="dialog"] input[aria-label="Rechercher un article"]', 'Chaudière gaz condensation murale');
+        await attendre(500);
+        const trouve = await page.evaluate(() => {
+          const b = [...document.querySelectorAll('[role="dialog"] [data-ui="LigneListe"] > button')].find((x) => x.innerText.includes('Chaudière gaz condensation murale'));
+          b?.click();
+          return !!b;
+        });
+        verifier(trouve, 'la recherche du sélecteur trouve « Chaudière gaz condensation murale »');
+        await attendre(600);
+        const tvaPicker = await page.evaluate(() => ({
+          taux: document.querySelector('#picker-tva')?.value ?? null,
+          mention: document.querySelector('#picker-franchise')?.innerText.trim() || null,
+        }));
+        if (franchise) verifier(tvaPicker.taux === null && tvaPicker.mention === 'Pas de TVA : franchise en base', `franchise : aucun taux proposé (« ${tvaPicker.mention} », taux ${tvaPicker.taux})`);
+        else verifier(tvaPicker.taux === '20', `le sélecteur propose 20 % pour la chaudière gaz (« ${tvaPicker.taux} »)`);
+        await cliquer(page, 'Ajouter au catalogue', { dans: '[role="dialog"]' });
+        await attendre(1500);
+        const choisie = importes.filter((a) => a.designation === 'Chaudière gaz condensation murale');
+        verifier(choisie.length === 2, `la chaudière choisie au sélecteur est enregistrée en base (${choisie.length} lignes de ce nom)`);
+        verifier(Number(choisie[1]?.tva_rate) === (franchise ? 0 : 20), `${franchise ? 'franchise : enregistrée à 0 %' : 'enregistrée à 20 %'} (tva_rate ${choisie[1]?.tva_rate})`);
+      }
+    },
+  },
+  {
     // Relecture 1 : le premier usage et le scanner offraient la création à qui n'a pas le droit de créer un article.
     nom: 'catalogue vide, sans le droit de créer : un état vide sans action ni promesse de tarifs ; avec le droit, les actions sont là (375 px)',
     reel: true,

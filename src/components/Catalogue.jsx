@@ -6,7 +6,7 @@ import { useConfirm, useToast } from '../context/AppContext';
 import { generateId } from '../lib/utils';
 import { useDebounce } from '../hooks/useDebounce';
 import useStockageLocal from '../hooks/useStockageLocal';
-import { ALL_ARTICLES_BTP, CATEGORIES_METIERS } from '../lib/data';
+import { articlesAImporterDuReferentiel } from '../lib/data';
 import { usePermissions } from '../hooks/usePermissions';
 import { EnTetePage } from './ui/EnTete';
 import { Onglets } from './ui/Onglets';
@@ -268,21 +268,8 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
   const importerReferentiel = useCallback(async (metierIds) => {
     setEtapeDemarrage('importing');
     setProgression(0);
-    const aImporter = [];
-    metierIds.forEach((catId) => {
-      const cat = ALL_ARTICLES_BTP[catId];
-      if (!cat) return;
-      const meta = CATEGORIES_METIERS.find((c) => c.id === catId);
-      Object.values(cat.sousCategories).forEach((sousCat) => {
-        sousCat.articles.forEach((article) => {
-          aImporter.push({
-            nom: article.nom, prix: article.prixDefaut, prixAchat: null, // le référentiel ne connaît pas votre prix d'achat : inconnu, pas déduit du prix de vente
-            unite: article.unite, categorie: meta?.nom || 'Autre', favori: false,
-            reference: `REF-${article.id.toUpperCase().slice(0, 10)}`,
-          });
-        });
-      });
-    });
+    // Seul l'article qui porte un taux le transmet (chaudière gaz ou fioul : 20 %) ; les autres, aucun : la base pose son défaut
+    const aImporter = articlesAImporterDuReferentiel(metierIds, franchiseTva);
     let importes = 0;
     for (let i = 0; i < aImporter.length; i++) {
       if (!(await creerArticle(aImporter[i]))) break; // refus : DataContext l'a dit, on s'arrête
