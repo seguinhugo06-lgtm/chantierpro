@@ -119,3 +119,103 @@ Les libellés corrigés après la relecture n'ont pas été relus une seconde fo
 - Juriste : la fourniture de climatisation passe à 20 % (bloquant corrigé, ligne existante comprise).
 - Vérification complète verte (banc 670, tous les parcours, audit sans défaut) ; contre-essais faits.
 - À décider : SAP, climatisation, prix indicatifs, réseau pour relire au texte.
+
+## Corrections de la relecture du 4 nov.
+
+Session cloud de correction (consigne « metier-qualifications-v3 »), le 4 nov. au soir. Branche reprise sur `acd1f2a` ; `origin/main` n'avait pas avancé (aucune fusion). Commits de code : `b5daf76`, `22c2466`, `71ad6e0`, `f9a7dcc` (import inutilisé retiré d'un test). Rien sur `main`, aucune pull request, aucun accès à la production, aucune migration appliquée.
+
+### Défauts de la relecture
+
+1. **Vérification finale** : `npm run verifier -- --complet` **vert sur `f9a7dcc`** (dernier commit de code), arbre propre ; audit d'interface à 0 défaut (80 pages × largeurs). Sortie recopiée plus bas. Le commit qui suit ne change que ce rapport.
+2. **SAP « Seulement si une ligne contient… »** (`b5daf76`) : le choix est gardé à part des mots (champ `ou` : `tous`, `si`, `non`). « Seulement si » reste coché sans mot, le champ des mots est montré tout de suite, et rien n'est imprimé tant qu'il est vide (ni sans document connu). Une fiche d'avant `ou` est lue comme avant. Même chose pour « Autre ». Tests : `qualificationsListe.test.js` (+2, échouent sur l'ancien code) ; parcours « services à la personne » (écran) et « IRVE et RGE » (rien d'imprimé sur un devis), tous deux rouges sur l'ancien code. La migration 110 transmet `ou` et ne sort pas `ou = non`.
+3. **Avis du juriste du 4 nov.** : versé dans `docs/metiers/avis-juriste-2026-11-04-lot1.md`, tel que transmis par la consigne (la session cloud n'a pas pu rouvrir le BOFiP ni Légifrance). Ses trois corrections sont faites (tringle et étagère à 20 %, textes SAP, textes Qualiopi). Le fichier dit ce que l'avis ne couvre pas (libellé « Autre », fluide, petites fournitures, modèles). Une relecture juriste-btp de cette session (sans BOFiP, d'après extraits) est résumée plus bas.
+4. **Modèles de climatisation** (`22c2466`, `71ad6e0`) : `prepareModeleLignes` lit un taux par ligne. Modèles PAC air/air mono, multisplit 2-3 et 4-5, gainable : chaque « F&P » devient « Fourniture … » à 20 % et « Pose … » au taux de l'entreprise, liaisons frigorifiques comprises, totaux inchangés. Gainable : réseau de gaines et bouches de soufflage aussi séparés (fourniture à 20 %, juriste de cette session : « réseau aéraulique » = pièce constitutive). Test `tvaClimatisationModeles.test.js` qui balaie tous les modèles de climatisation (2 tests rouges sur les anciens modèles). Suit le conseil du juriste ; si Hugo choisit « tout à 20 % », il suffit de mettre `tva: 20` sur les lignes de pose.
+5. **Repli de `createEntreprise`** (`71ad6e0`) : test unitaire (PGRST204, puis insertion sans la colonne, métiers dans `settings_json.reglages`, autres réglages gardés) et contre-essai (autre erreur : pas rejouée, lève). Sans le repli, le test échoue. Parcours réel « compte neuf SANS fiche, avant la migration 110 » : bienvenue, deux métiers, 1re insertion refusée, fiche créée sans la colonne, choix relu dans Paramètres › Mon métier. Ce parcours passe aussi sur l'ancien code : le repli existait, il n'était pas prouvé.
+6. **Lots alternés** (`71ad6e0`) : `lotsAlternes` (`src/lib/metiers.js`) prend un lot de chaque métier à tour de rôle. Test unitaire ; le parcours de l'éditeur exige au moins un lot d'électricité et un de plomberie (rouge sur l'ancien code : 4 lots d'électricité).
+7. **Second appareil** (`71ad6e0`) : la bienvenue n'est montée qu'après le chargement de la fiche et des droits (`entrepriseLoading`, `orgLoading`) ; puces préremplies. Parcours « second appareil » (rouge sur l'ancien code).
+8. **Membre invité** (`71ad6e0`) : la question n'est posée qu'à qui peut modifier la fiche (`hasFull('settings')` : propriétaire, administrateur). Un refus de la base dit la vraie raison (« votre compte n'a pas le droit de modifier la fiche de l'entreprise »). Parcours « membre invité non gérant » (rouge sur l'ancien code). Le choix de poser ou non la question aux membres reste une décision d'Hugo (ci-dessous) : ce qui est fait est le comportement sûr.
+9. **« Passer » et fermeture** (`71ad6e0`) : les puces cochées sont enregistrées avant de fermer ; en cas d'échec, la fenêtre reste ouverte avec le message. Parcours dédié (rouge sur l'ancien code).
+10. **Bouton de 44 px** (`71ad6e0`) : `min-h-[44px]` ; mesuré dans le parcours de l'éditeur.
+11. **« 17 métiers »** : `scripts/site-captures.cjs` clique sur « Parcourir les 20 métiers chiffrés » (`71ad6e0`). **Non fait**, accord d'Hugo attendu : `.claude/rules/marketing.md` l. 12 et les textes des réseaux du Pilote (`scripts/pilote/page/reseaux-donnees.js` l. 168, 169, 202, 280 et la tâche hebdomadaire l. 1222).
+12. **Qualifications « seulement si » sur la page de signature** : acceptées et écrites dans l'en-tête de la 110 (elles sortent, ne s'impriment pas). Décision d'Hugo ci-dessous. Le gardien juge le risque faible (données que l'artisan affiche, pour qui a le lien).
+13. **« Enregistré » visible** (`b5daf76`) : `EtatEnregistrement` près du titre de Mon métier (clé `metiers`), à côté de « Où l'imprimer », et sous « Ajouter » (clé `qualifications`, pour Ajouter et Retirer).
+14. **Repli signalé** (`71ad6e0`) : `captureException` au premier repli, une fois par session (testé). Coût réel du repli : création, 2 insertions ; modification, 2 ou 3 requêtes (le rapport disait 2).
+15. **Chiffres et traces** : la 110 avait 16 vérifications au banc (14 + application et rejeu), pas 19 ; elle en a maintenant 23 (21 + 2), banc à 677. Ligne 108 ajoutée dans `docs/etat-production.md` (« remplacée par 110, ne jamais la rejouer après ») ; ligne 110 mise à jour. `docs/cloud/metiers.md` : la trace de la vérification complète du lot 0 (verte sur `00f0009`, commit `ddb4699`) est rétablie.
+
+### Juriste-btp au texte (avis du 4 nov.)
+1. Tringle et étagère (Multiservice) à 20 % : fait (`22c2466`), test qui balaie toute la bibliothèque. La même règle a fait passer à 20 % « Fourniture et pose d'étagères mélaminées 19 mm sur crémaillères » (Menuiserie), sur l'avis du juriste de cette session (`71ad6e0`).
+2. SAP : ligne « Services à la personne : déclaration enregistrée sous le n° {n} le {date} », raison, libellé, aide et avertissement mot pour mot (`b5daf76`). Le choix par défaut (« Ne pas l'imprimer ») n'est pas changé : décision d'Hugo.
+3. Qualiopi : les deux textes mot pour mot (`b5daf76`).
+
+### Gardien-securite
+1. **Prix d'achat sur la page de signature** (`b5daf76`, `71ad6e0`) : fonction interne `lignes_pour_le_client` dans la 110 (corps de la correction, plus : un objet au lieu d'une liste ne sort pas, demande du gardien de cette session). Appliquée à `d.lignes` et `d.sections`. Banc : réponse sans `prixAchat`, `prix_achat` ni `marge`, en tableau et en texte JSON ; quantités et prix de vente intacts ; fonction non exécutable par un visiteur ; texte illisible et objet → liste vide. Contre-essai : sans le filtre, 2 vérifications rouges. **Pas fait ici** : la 114 (`get_facture_for_payment`, branche `cloud/franchise-suite`) doit reprendre la même fonction ; la page de paiement renvoie toujours `prixAchat` en production (106).
+2. **108 après 110** : écrit dans `docs/etat-production.md` (ligne 108 et ligne 110), avec le contrôle `position('''qualifications''' in prosrc) > 0` ; l'en-tête de la 110 ajoute le contrôle `sans_prix_achat`.
+Relecture gardien-securite de cette session (migration 110) : rien de bloquant ; l'appel depuis la fonction SECURITY DEFINER marche malgré le REVOKE ; aucune autre clé interne trouvée dans les lignes écrites par l'app.
+
+### Relecture juriste-btp de cette session (sans BOFiP, d'après extraits)
+- Unités et liaisons de climatisation des modèles : fourniture 20 %, pose au taux de l'entreprise : OK.
+- Gaines et bouches du gainable : à séparer (fait). Répartition des prix entre fourniture et pose : proposée, à valider par Hugo.
+- Mise sous vide et charge : prestation, défendable au taux de l'entreprise. Complément de fluide (10 %) : non tranché, commentaire « à vérifier » gardé.
+- Textes nouveaux (SAP, Qualiopi, « Ajoutez les mots cherchés… », message de refus de la bienvenue) : OK.
+
+### Textes nouveaux soumis au juriste
+- « Ajoutez les mots cherchés dans les lignes : tant qu'il n'y en a aucun, rien n'est imprimé. »
+- « Votre métier n'a pas été enregistré : votre compte n'a pas le droit de modifier la fiche de l'entreprise. Le gérant peut le choisir dans Paramètres › Mon métier. »
+- « Votre métier n'a pas été enregistré. Vérifiez votre connexion, ou décochez vos choix pour passer cette question. »
+- Lignes de modèles : « Fourniture … » / « Pose … » (unités, liaisons, gaines, bouches).
+
+### Ce qui reste (session locale)
+- Relire au texte, BOFiP ouvert : réseau aéraulique (gaines, bouches), complément de fluide, libellé « Autre », SAP D7233-1 ; ann. IV art. 30-00 A.
+- 114 (franchise-suite) : même filtre des prix d'achat pour la page de paiement, avec son test au banc ; comparer les md5 après application.
+- Mise en production : 108 puis 110 (jamais 108 après 110), requête de l'en-tête, md5 du corps ; puis « et sur la page de signature » dans Mes qualifications.
+- Lot 0 : commentaire au-dessus de `ORGANISMES_RGE` (point 37 de l'avis du 3 nov. au soir) : non touché ici (hors consigne de cette session).
+
+### Décisions d'Hugo (relevées, non appliquées)
+1. Services à la personne : « ne pas imprimer » par défaut, ou « Seulement si une ligne contient… » avec des mots de services à la personne (conseil du juriste), ou partout (déconseillé) ? Les mots par défaut seraient à fixer avec lui.
+2. Climatisation : fourniture 20 % et pose 10 % (fait, conseillé), ou tout à 20 % ? Même choix pour les modèles (maintenant séparés) ; répartition des prix fourniture / pose des modèles à valider.
+3. Prix des trois nouveaux métiers (Ramonage, Froid et climatisation, Multiservice) : indicatifs, sans source.
+4. Q-bienvenue : si la fenêtre de bienvenue est retirée, où poser « Quels travaux faites-vous ? » ?
+5. Membres invités : leur poser la question ? (aujourd'hui : non, ils ne peuvent pas modifier la fiche).
+6. « 17 métiers » → « 20 » dans `.claude/rules/marketing.md` et les textes des réseaux du Pilote.
+7. Page de signature : laisser sortir les qualifications « seulement si » qui ne visent pas ce devis (accepté et écrit), ou les filtrer aussi en SQL ?
+8. Réseau de la prochaine session : `bofip.impots.gouv.fr` et `legifrance.gouv.fr`.
+9. D-36 : confirmer les détails retenus (choix multiple et passable, TVA proposée sans jamais bloquer).
+
+### Risques
+- Le repli de la colonne `metiers` est prouvé sur une fausse base qui renvoie l'erreur réelle de PostgREST, pas sur la vraie base.
+- La bienvenue attend le chargement de la fiche et des droits : si ce chargement ne finit jamais, elle ne s'affiche pas (l'app reste utilisable).
+- Une qualification « Seulement si » enregistrée sans mot ne s'imprime plus nulle part (voulu) ; l'écran le dit.
+- Modèles de climatisation : plus de lignes (6 à 10) ; prix de fourniture et de pose répartis par la session, sans source.
+- Conflits attendus à la fusion avec les autres branches (rapport de la relecture) : `entrepriseService.js`, `chauffage.js`, `App.jsx`, `DevisComposer.jsx`.
+
+### Vérification de cette session
+- `npm ci` : fait. Tests ciblés et contre-essais : ci-dessus.
+- `npm run banc:migrations` : vert, 677 vérifications (23 pour la 110).
+- Parcours « métiers » et « qualifications » (11) : verts sur le nouveau code ; contre-essai (ancien code reconstruit) : 6 rouges.
+- Premier passage complet sur `71ad6e0` : 2 parcours en échec, non identifiés (le résumé ne garde que les 25 dernières lignes). Rejoués aussitôt sur le même commit (`npm run parcours`, sortie complète) : **199 parcours verts**. Échecs intermittents, cause non trouvée : à surveiller par la session locale. Ce passage comptait aussi un avertissement de lint de trop (import inutilisé, retiré par `f9a7dcc`).
+- `npm run verifier -- --complet` sur `f9a7dcc`, arbre propre :
+  ```
+  Vérification « complet » de f9a7dcc
+    ✓ Tests (57.6 s) — 1350 passed (1350)
+    ✓ Lint (0 erreur) (7.2 s) — 241 problems (0 errors, 241 warnings)
+    ✓ Smoke (33.4 s)
+    ✓ Build (32.3 s)
+    ✓ Banc de migrations (6.4 s)
+    ✓ Parcours (navigateur) (2451.9 s)
+    ✓ Audit d’interface (388.2 s)
+  ✓ Tout est vert — niveau « complet ».
+  ```
+  Audit d'interface (`audit-ui/rapport.md`, 04/11/2026 20:24) : 0 défaut sur toutes les lignes.
+
+### Résumé
+- Toutes les corrections de la relecture sont faites, sauf le texte de la règle marketing et du Pilote (« 20 métiers » : accord d'Hugo).
+- « Seulement si une ligne contient… » ne s'imprime jamais sans mot ; services à la personne et « Autre » compris.
+- Textes du juriste appliqués mot pour mot (SAP, Qualiopi) ; tringle, étagères, gaines et bouches de clim à 20 %.
+- Modèles de climatisation : fourniture 20 %, pose au taux de l'entreprise, test qui balaie tous les modèles.
+- Page de signature : plus aucun prix d'achat (migration 110, banc 677 dont 23 pour la 110). La page de paiement reste à corriger (114).
+- Bienvenue : attend la fiche, ne questionne que le gérant, garde les puces cochées ; lots alternés ; bouton de 44 px.
+- Repli avant la 110 prouvé (test et parcours d'un compte neuf), signalé une fois à Sentry.
+- Avis du juriste versé ; ligne 108 ajoutée ; trace du lot 0 rétablie.
+- Vérification complète verte sur `f9a7dcc`, audit à 0 défaut ; contre-essais faits (6 parcours rouges sur l'ancien code).
+- À décider par Hugo : 9 points ci-dessus (SAP par défaut, climatisation, prix, bienvenue, membres, « 20 métiers », page de signature, réseau, D-36).
+
