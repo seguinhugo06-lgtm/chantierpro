@@ -11,7 +11,7 @@ import { logger } from '../lib/logger';
 import { queueMutation } from '../lib/offline/sync';
 import { toast } from '../stores/toastStore';
 import { useSubscriptionStore, PLANS } from '../stores/subscriptionStore';
-import { celebrateMilestone } from '../lib/celebrate';
+import { celebrateMilestone, jalonACelebrer } from '../lib/celebrate';
 import { captureException } from '../lib/sentry';
 import { ECRITURE_EN_ATTENTE, estEcritureDifferable, estSessionExpiree, messageEcritureRefusee } from '../lib/erreursEcriture';
 import { numeroRamonageDemo } from '../lib/ramonage';
@@ -500,7 +500,8 @@ export function DataProvider({ children, initialData = {} }) {
   // ============ ÉCRITURES EN BASE ============
   // Chaque écriture rend un résultat, pour que l'écran n'annonce un succès qu'une fois la base d'accord :
   // une création rend l'élément (enregistré, ou en attente de réseau) ou null si la base l'a refusé ;
-  // une modification ou une suppression rend true (faite, ou en attente de réseau) ou false (refusée).
+  // une modification rend true (faite), ECRITURE_EN_ATTENTE (mise en file : une valeur vraie, mais la base n'a
+  // encore rien accepté) ou false (refusée) ; une suppression rend true (faite, ou en attente de réseau) ou false.
   // Avant (recette du 9 oct. 2026) : tout échec partait en file « hors ligne », y compris les refus
   // de la base qui ne passeraient jamais, et l'écran disait « enregistré ».
   const echecEcriture = useCallback(async (error, { action, table, data, annuler }) => {
@@ -720,17 +721,10 @@ export function DataProvider({ children, initialData = {} }) {
     const ok = await modifierEnBase('devis', id, oldDevis, data, setDevis,
       (ligne) => (ligne.statut === 'vu' ? { ...ligne, statut: 'envoye' } : ligne));
 
-    // Délice : célébrer les moments qui rapportent (devis signé / facture payée), une fois la base d'accord.
-    if (ok && oldDevis && data.statut && data.statut !== oldDevis.statut) {
-      const isDevisSigned = oldDevis.type !== 'facture'
-        && (data.statut === 'accepte' || data.statut === 'signe')
-        && !['accepte', 'signe'].includes(oldDevis.statut);
-      const isFacturePaid = oldDevis.type === 'facture'
-        && data.statut === 'payee'
-        && oldDevis.statut !== 'payee';
-      if (isDevisSigned) celebrateMilestone('devis_signe', toast);
-      else if (isFacturePaid) celebrateMilestone('facture_payee', toast);
-    }
+    // Délice : célébrer les moments qui rapportent (devis signé / facture payée), une fois la base d'accord
+    // (`ok === true` : pas pour une écriture mise en file hors ligne, `ECRITURE_EN_ATTENTE`).
+    const jalon = jalonACelebrer(ok, oldDevis, data);
+    if (jalon) celebrateMilestone(jalon, toast);
     return ok;
   }, [userId, devis, orgId, userName, modifierEnBase]);
 
