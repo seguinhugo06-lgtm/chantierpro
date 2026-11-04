@@ -8,6 +8,8 @@
 -- Effet : la fonction renvoie aussi entreprise.forme_juridique (information déjà imprimée sur la facture remise au
 --   client, et déjà renvoyée par get_devis_for_signature). Rien d'autre ne change : même corps que 106, mêmes droits
 --   (CREATE OR REPLACE garde les droits d'exécution).
+-- Attention : toute migration qui réécrit à nouveau get_facture_for_payment repart du corps de 107 (sinon la forme
+--   juridique disparaît ; relecture gardien-securite du 4 nov. 2026).
 --
 -- ─── Vérification après application (éditeur SQL) ───────────────────────────
 --   SELECT position('forme_juridique' in prosrc) > 0 AS forme_renvoyee FROM pg_proc WHERE proname = 'get_facture_for_payment';

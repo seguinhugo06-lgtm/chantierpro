@@ -30,6 +30,12 @@ export async function verifier({ db, q, commeAnonyme, verifier }) {
   await q(`UPDATE entreprise SET forme_juridique = 'SARL' WHERE id = $1`, [fiche]);
   verifier((await paiement('pay-107-micro')).entreprise?.forme_juridique === 'SARL', '107 : contre-essai, une SARL est renvoyée telle quelle');
 
+  const droits = (await q(`SELECT has_function_privilege('anon', 'public.get_facture_for_payment(text)', 'execute') AS anon,
+    has_function_privilege('authenticated', 'public.get_facture_for_payment(text)', 'execute') AS connecte,
+    p.prosecdef AS definer, array_to_string(p.proconfig, ',') AS config FROM pg_proc p WHERE p.proname = 'get_facture_for_payment'`)).rows[0];
+  verifier(droits.anon && droits.connecte && droits.definer && /search_path=public, ?pg_temp/.test(droits.config || ''),
+    `107 : droits et attributs inchangés après rejeu (visiteur ${droits.anon}, connecté ${droits.connecte}, ${droits.config})`);
+
   const inconnu = await paiement('pay-107-inconnu');
   verifier(!inconnu.entreprise && !inconnu.facture, '107 : un jeton inconnu ne renvoie ni facture ni entreprise');
 
