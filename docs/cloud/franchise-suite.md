@@ -100,7 +100,7 @@ Session cloud de correction du 4 nov. 2026. Branche `cloud/franchise-suite`. `or
 
 - `62d8fd5` (dernier commit de code) : `npm run banc:migrations` vert, 662 vérifications.
 - `e89b2cf` : `npm run verifier` (standard) vert. 1318 tests sur 123 fichiers, lint 0 erreur (241 avertissements), smoke, build.
-- `npm run verifier -- --complet` sur `62d8fd5` : en cours au moment de ce commit (résultat ajouté dans le commit suivant)
+- `npm run verifier -- --complet` sur `62d8fd5` : **tout vert**. Tests 1318, lint 0 erreur, smoke, build, banc, parcours navigateur (2399 s), audit d’interface (386 s). Les commits suivants ne touchent que ce rapport.
 
 ### Relectures
 
@@ -133,6 +133,6 @@ Session cloud de correction du 4 nov. 2026. Branche `cloud/franchise-suite`. `or
 - Deux parcours navigateur : lettre de mise en demeure, page de paiement ; micro et SARL ; contre-essais qui échouent.
 - Export, portail et import testés par leur vrai code, sans recopier la règle.
 - « Prix d’achat » se réimporte ; aller-retour testé.
-- Standard verte sur `e89b2cf` (1318 tests) ; banc vert (662) sur `62d8fd5` ; complète : voir plus haut.
+- Complète verte sur `62d8fd5`, dernier commit de code : 1318 tests, banc 662, parcours et audit d’interface.
 - Sécurité : 114 applicable. À faire ailleurs : le même filtre dans 110 (page de signature).
 - Deux décisions d'Hugo inchangées ; une proposition du gardien à trancher.
