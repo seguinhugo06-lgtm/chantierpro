@@ -6,6 +6,9 @@
 const fs = require('fs');
 const path = require('path');
 
+const { creerBase, UID } = require('../lib/fauxSupabase.cjs');
+const { CGU_VERSION } = require('../lib/cgu.cjs');
+
 const sansInstallation = () => { try { localStorage.setItem('pwa-install-dismissed', String(Date.now())); } catch { /* */ } };
 const documentsEnregistres = (page) => page.evaluate(() => JSON.parse(localStorage.getItem('mallettico_demo_data') || '{}'));
 
@@ -61,8 +64,9 @@ module.exports = [
       await attendre(800);
       const aide = await page.evaluate((z) => document.querySelector(z)?.innerText || '', zone);
       verifier(/66(,00)?\s€ TTC à 10 %/.test(aide) && /72(,00)?\s€ TTC à 20 %/.test(aide), 'le taux horaire est montré TTC aux deux taux');
-      verifier(aide.includes('Taux horaires TTC, décompte du temps, frais de déplacement et forfaits s\'affichent') && aide.includes('Arrêté du 24 janvier 2017, article 3'),
-        'l’obligation d’affichage est citée avec sa source');
+      verifier(aide.includes('Ce que demande l’arrêté du 24 janvier 2017') && aide.includes('Arrêté du 24 janvier 2017, articles 2 et 3'),
+        'l’obligation d’affichage est résumée avec sa source');
+      verifier(!aide.includes('docs/') && !aide.includes('« Taux horaires'), 'ni chemin du dépôt, ni guillemets autour du résumé');
       await page.screenshot({ path: path.join(sortie, 'depannage-1-grille.png'), fullPage: true });
 
       // 2. Imprimer la grille : un PDF est remis
@@ -126,13 +130,29 @@ module.exports = [
       const apercu = await page.evaluate(() => document.querySelector('iframe[title="Aperçu du document"]')?.getAttribute('srcdoc') || '');
       await page.keyboard.press('Escape');
       await attendre(500);
-      verifier(apercu.includes('Devis gratuit.') && apercu.includes('Souhaitez-vous conserver les pièces') && /✕<\/span>Oui/.test(apercu),
-        'l’aperçu porte « Devis gratuit » et le choix « Oui » pour les pièces');
+      verifier(apercu.includes('Devis gratuit.') && apercu.includes('Souhaitez-vous conserver les pièces') && /OUI<span[^>]*>✕<\/span>/.test(apercu),
+        'l’aperçu porte « Devis gratuit » et le choix « OUI » pour les pièces (modèle de l’annexe 2)');
+      verifier(apercu.includes('mention manuscrite « Lu et approuvé »'), 'l’aperçu porte la ligne « Lu et approuvé » de l’annexe 2');
+      verifier(apercu.includes('Lieu d’intervention : '), 'le lieu d’intervention est imprimé (adresse du client par défaut)');
       verifier(apercu.includes('Pièces remplacées') && apercu.includes('Siphon PVC'), 'l’aperçu liste les pièces remplacées');
       verifier(apercu.includes('Dépannage urgent : vous avez expressément demandé'), 'l’aperçu porte l’exception d’urgence de la rétractation');
 
-      // 5. Signature sur place depuis le brouillon : la phrase d'urgence est signée
+      // 5. Signature sur place depuis le brouillon : le devis est d'abord remis (PDF, L221-8), puis la phrase d'urgence
+      // est signée. Contre-essai : sans confirmer la remise, la signature ne s'ouvre pas
+      const boutonDialogue = (texte) => page.evaluate((t) => { const b = [...document.querySelectorAll('[role="dialog"] button, [role="alertdialog"] button')].find((x) => (x.innerText || '').trim() === t); if (b) b.click(); return !!b; }, texte);
       await cliquer(page, 'Faire signer');
+      await attendre(500);
+      verifier(await boutonDialogue('Annuler'), 'avant la signature, l’app demande de remettre le devis');
+      await attendre(500);
+      verifier(!(await page.evaluate(() => document.body.innerText.includes('Passer a la signature'))), 'sans remise, la signature ne s’ouvre pas');
+      await capturerPdf(page);
+      await cliquer(page, 'Faire signer');
+      await attendre(500);
+      verifier(await boutonDialogue('Ouvrir le PDF'), 'le PDF du devis est proposé');
+      await page.waitForFunction(() => window.__pdf, { timeout: 30000 }).catch(() => null);
+      verifier(!!(await page.evaluate(() => window.__pdf)), 'le PDF du devis est remis avant la signature');
+      await attendre(500);
+      verifier(await boutonDialogue('Faire signer'), 'l’artisan confirme que le client a reçu le devis');
       await attendre(800);
       const pad = await page.evaluate(() => document.body.innerText);
       verifier(pad.includes('À ma demande, ces travaux de dépannage sont réalisés en urgence à mon domicile.'), 'la phrase d’urgence est sous la signature');
@@ -172,6 +192,76 @@ module.exports = [
       const pieces = (facture?.lignes || []).find((l) => l.depannage === 'piece');
       verifier(pieces && pieces.description === 'Siphon PVC', 'la facture reprend la pièce remplacée');
       await page.screenshot({ path: path.join(sortie, 'depannage-3-facture.png'), fullPage: false });
+    },
+  },
+  {
+    nom: 'dépannage express (base) : grille rangée dans settings_json.reglages, forfait à moitié saisi gardé, devis enregistré avec ses catégories',
+    reel: true,
+    async executer({ ouvrir, cliquer, attendre, verifier, sessionFactice }) {
+      const ORG = '0e0e0e0e-0e0e-4e0e-8e0e-0e0e0e0e0e0e';
+      const CLIENT = { id: 'c0c0c0c0-0000-4000-8000-000000000301', nom: 'Exemple', prenom: 'Lucie', categorie: 'Particulier', telephone: '0600000004', email: 'lucie@exemple.fr',
+        adresse: '9 impasse Imaginaire, 33000 Exempleville', created_at: '2026-10-01T08:00:00Z' };
+      const ENTREPRISE = { id: 'e0e0e0e0-0000-4000-8000-000000000301', user_id: UID, organization_id: ORG, nom: 'Dépannage Exemple', forme_juridique: 'Micro-entreprise',
+        siret: '00000000000000', telephone: '0500000000', email: 'contact@exemple.fr', adresse: '1 rue Imaginaire, 33000 Exempleville', is_active: true, is_default: true,
+        settings_json: { reglages: { depannageActif: true, nomEntrepreneur: 'Jean Exemple', depannageGrille: { tauxHoraire: 60, decompte: 'quart', deplacement: 39 } } },
+        cgu_accepted_at: '2026-01-01T00:00:00Z', cgu_version: CGU_VERSION, created_at: '2026-01-01T00:00:00Z' };
+      const base = creerBase({ clients: [CLIENT], entreprise: [ENTREPRISE] });
+      const { page } = await ouvrir({ reel: true, largeur: 375, page: 'settings', session: sessionFactice(UID), supabase: base.reponse, avantChargement: sansInstallation });
+      await attendre(1500);
+      await page.evaluate(() => [...document.querySelectorAll('button')].find((b) => b.innerText.trim() === 'Documents')?.click());
+      await attendre(300);
+      await page.evaluate(() => [...document.querySelectorAll('button')].find((b) => b.innerText.trim() === 'Dépannage')?.click());
+      await attendre(600);
+      const zone = '[data-testid="reglages-depannage"]';
+      verifier(!!(await page.$(zone)), 'Paramètres › Dépannage est ouvert');
+      // Un forfait à moitié saisi (intitulé sans prix), puis un autre champ s'enregistre : le forfait reste
+      await cliquer(page, 'Ajouter un forfait', { dans: zone });
+      await attendre(200);
+      await saisir(page, 'Intitulé', 'Ouverture de porte', zone);
+      await attendre(300);
+      await saisir(page, 'Taux horaire', '65', zone);
+      await attendre(1500);
+      const intitule = await page.evaluate((z) => { const l = [...document.querySelectorAll(`${z} label`)].find((x) => x.innerText.trim().startsWith('Intitulé')); return l ? document.getElementById(l.htmlFor)?.value : null; }, zone);
+      verifier(intitule === 'Ouverture de porte', `le forfait à moitié saisi est gardé (${intitule})`);
+      const ecritures = base.journal.filter((j) => (j.m === 'PATCH' || j.m === 'POST') && j.table === 'entreprise');
+      const grille = ecritures.map((j) => j.corps?.settings_json?.reglages?.depannageGrille).filter(Boolean).pop();
+      verifier(grille && grille.tauxHoraire === 65 && grille.deplacement === 39, `la grille est rangée dans settings_json.reglages (${JSON.stringify(grille)})`);
+
+      // Devis express enregistré en base, avec ses lignes et leurs catégories
+      await page.evaluate(() => localStorage.setItem('cp_current_page', 'devis'));
+      await page.reload({ waitUntil: 'networkidle0' });
+      await attendre(1800);
+      // Aucun devis encore : le bouton « Dépannage express » de l'état vide
+      await page.evaluate(() => [...document.querySelectorAll('button')].find((b) => b.innerText.trim().startsWith('Dépannage express'))?.click());
+      await attendre(1200);
+      const D = '[data-testid="devis-express"]';
+      const client = await champ(page, 'Client', D);
+      await client.select(CLIENT.id);
+      await attendre(200);
+      const lieu = await page.evaluate((d) => { const l = [...document.querySelectorAll(`${d} label`)].find((x) => x.innerText.trim().startsWith('Lieu')); return l ? document.getElementById(l.htmlFor)?.value : null; }, D);
+      verifier(lieu === CLIENT.adresse, `le lieu d’intervention est pré-rempli avec l’adresse du client (${lieu})`);
+      await saisir(page, 'Intervention', 'Robinet qui fuit', D);
+      await cliquer(page, 'Ajouter une pièce', { dans: D });
+      await attendre(200);
+      await saisir(page, 'Pièce', 'Cartouche', D);
+      await saisir(page, '€ HT', '15', D);
+      // Aucune réponse par défaut sur les pièces : la création la demande
+      await cliquer(page, 'Créer le devis', { dans: D });
+      await attendre(500);
+      const alerte = await page.evaluate((d) => document.querySelector(`${d} [role="alert"]`)?.innerText || '', D);
+      verifier(/conserver les pièces/.test(alerte), `sans réponse sur les pièces, le devis n’est pas créé (${alerte})`);
+      await page.evaluate((d) => [...document.querySelectorAll(`${d} label`)].find((l) => l.innerText.trim() === 'Non')?.querySelector('input')?.click(), D);
+      await attendre(200);
+      await cliquer(page, 'Créer le devis', { dans: D });
+      await attendre(2500);
+      const post = base.journal.filter((j) => j.m === 'POST' && j.table === 'devis').pop();
+      const corps = Array.isArray(post?.corps) ? post.corps[0] : post?.corps;
+      let lignes = corps?.lignes;
+      if (typeof lignes === 'string') { try { lignes = JSON.parse(lignes); } catch { lignes = []; } }
+      const cats = (lignes || []).filter((l) => !l._isSection).map((l) => l.depannage);
+      verifier(JSON.stringify(cats) === JSON.stringify(['deplacement', 'main_oeuvre', 'piece']), `devis enregistré en base avec ses catégories (${cats.join(', ')})`);
+      verifier((lignes || []).find((l) => l.depannage === 'piece')?.conservee === false, 'la réponse « Non » est enregistrée sur la pièce');
+      verifier(String(corps?.notes || '').includes(`Lieu d’intervention : ${CLIENT.adresse}`), 'le lieu d’intervention est enregistré');
     },
   },
 ];

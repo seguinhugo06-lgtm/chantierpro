@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Wrench, Printer, Plus, Trash2, AlertTriangle } from 'lucide-react';
 import Carte from '../ui/Carte';
 import Champ from '../ui/Champ';
@@ -34,11 +34,22 @@ export default function DepannageTab({ entreprise, setEntreprise }) {
   const [impression, setImpression] = useState('');
   const [erreurImpression, setErreurImpression] = useState('');
   const grilleEnregistree = JSON.stringify(normaliserGrille(entreprise?.depannageGrille));
-  useEffect(() => { setChamps(versChamps(JSON.parse(grilleEnregistree))); }, [grilleEnregistree]);
+  // Les champs ne se relisent que sur un changement venu d'ailleurs (autre appareil, synchronisation) : relire la
+  // grille qu'on vient d'enregistrer effacerait un forfait à moitié saisi, que normaliserGrille retire
+  const dernierEnvoi = useRef(grilleEnregistree);
+  useEffect(() => {
+    if (grilleEnregistree === dernierEnvoi.current) return;
+    dernierEnvoi.current = grilleEnregistree;
+    setChamps(versChamps(JSON.parse(grilleEnregistree)));
+  }, [grilleEnregistree]);
 
   const enregistrer = (suivants = champs) => {
     const g = normaliserGrille(suivants);
-    if (JSON.stringify(g) !== grilleEnregistree) setEntreprise((p) => ({ ...p, depannageGrille: g }));
+    const texteGrille = JSON.stringify(g);
+    if (texteGrille !== grilleEnregistree) {
+      dernierEnvoi.current = texteGrille;
+      setEntreprise((p) => ({ ...p, depannageGrille: g }));
+    }
   };
   const changer = (cle) => (e) => setChamps((p) => ({ ...p, [cle]: e.target.value }));
   const changerForfait = (i, cle) => (e) => setChamps((p) => ({ ...p, forfaits: p.forfaits.map((f, j) => (j === i ? { ...f, [cle]: e.target.value } : f)) }));
@@ -124,12 +135,15 @@ export default function DepannageTab({ entreprise, setEntreprise }) {
 
           <Carte>
             <h3 className="text-lg font-semibold text-encre mb-1">Afficher vos tarifs</h3>
-            <ul className="text-sm text-encre-2 mb-3 space-y-2">
+            {/* Résumé, pas citation : pas de guillemets (relecture du 4 nov. 2026) */}
+            <p className="text-sm text-encre-2 mb-2">Ce que demande l’arrêté du 24 janvier 2017 :</p>
+            <ul className="text-sm text-encre-2 mb-3 space-y-2 list-disc pl-5">
               {OBLIGATIONS.map((o) => (
-                <li key={o.source}>« {majuscule(o.texte)} ». <span className="text-encre-3">{o.source}.</span></li>
+                <li key={o.source}>{majuscule(o.texte)}. <span className="text-encre-3">{o.source}.</span></li>
               ))}
             </ul>
-            <p className="text-sm text-encre-2 mb-3">Imprimez la grille pour vos locaux et votre véhicule, et mettez-la sur votre site.</p>
+            {/* Rédaction juriste-btp du 4 nov. 2026 (arrêté du 24 janv. 2017, art. 3 ; docs/metiers/avis-juriste-2026-11-04-depannage.md) */}
+            <p className="text-sm text-encre-2 mb-3">Affichez la grille dans vos locaux, remettez-la au client avant le devis quand vous intervenez chez lui (arrêté du 24 janvier 2017, art. 3), et mettez-la sur votre site.</p>
             {g.tauxHoraire === null ? (
               <p role="alert" className="flex gap-2 text-sm text-alerte-texte mb-3">
                 <AlertTriangle size={16} className="flex-shrink-0 mt-0.5" aria-hidden="true" />

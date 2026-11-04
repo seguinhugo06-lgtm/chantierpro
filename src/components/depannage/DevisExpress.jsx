@@ -28,13 +28,16 @@ export default function DevisExpress({ isOpen, onClose, onCreer, clients = [], a
   const franchise = estFranchiseTva(entreprise);
   const [clientId, setClientId] = useState(clientInitial || '');
   const [nature, setNature] = useState('');
-  const [lieu, setLieu] = useState('');
+  // Lieu d'exécution (arrêté du 24 janv. 2017, art. 4) : pré-rempli avec l'adresse du client, modifiable
+  const adresseDe = (id) => String(clients.find((c) => c.id === id)?.adresse || '').trim();
+  const [lieu, setLieu] = useState(() => adresseDe(clientInitial));
   const [urgence, setUrgence] = useState(false); // jamais pré-cochée (juriste-btp, 3 nov. 2026)
   const [avecDeplacement, setAvecDeplacement] = useState(true);
   const [heures, setHeures] = useState('1');
   const [majoration, setMajoration] = useState('');
   const [forfaits, setForfaits] = useState([]);
   const [pieces, setPieces] = useState([]);
+  // Aucune réponse par défaut : signé sur le téléphone, un devis aux cases vides perdrait la réponse (art. 4, III)
   const [conserver, setConserver] = useState(null);
   const [tva, setTva] = useState(() => tauxTvaParDefaut(entreprise) || 10);
   const [erreur, setErreur] = useState('');
@@ -58,7 +61,9 @@ export default function DevisExpress({ isOpen, onClose, onCreer, clients = [], a
   const creer = async () => {
     if (!clientId) { setErreur('Choisissez le client, ou créez-le.'); return; }
     if (!nature.trim()) { setErreur('Décrivez l’intervention.'); return; }
+    if (!lieu.trim() && !adresseDe(clientId)) { setErreur('Indiquez le lieu d’intervention.'); return; }
     if (resultat.erreur) { setErreur(resultat.erreur); return; }
+    if (questionPieces && conserver === null) { setErreur('Demandez au client s’il souhaite conserver les pièces remplacées.'); return; }
     setErreur('');
     setEnCours(true);
     try {
@@ -73,7 +78,7 @@ export default function DevisExpress({ isOpen, onClose, onCreer, clients = [], a
         lignes: resultat.lignes,
         sections: resultat.sections,
         remise: 0,
-        notes: lieu.trim() ? `Lieu d’intervention : ${lieu.trim()}` : '',
+        notes: (lieu.trim() || adresseDe(clientId)) ? `Lieu d’intervention : ${lieu.trim() || adresseDe(clientId)}` : '',
         travaux_urgents: urgence,
         total_ht: totaux.totalHT,
         tva: totaux.totalTVA,
@@ -93,10 +98,18 @@ export default function DevisExpress({ isOpen, onClose, onCreer, clients = [], a
 
   const majPiece = (i, cle) => (e) => setPieces((p) => p.map((x, j) => (j === i ? { ...x, [cle]: e.target.value } : x)));
   const particulier = estClientParticulier(client);
+  const questionPieces = pieces.length > 0 && particulier;
+  // Changer de client reprend son adresse, sauf si le lieu a été saisi à la main
+  const choisirClient = (id) => {
+    const ancienne = adresseDe(clientId);
+    setClientId(id);
+    setLieu((l) => (!l.trim() || l.trim() === ancienne ? adresseDe(id) : l));
+  };
 
   return createPortal(
     <div role="dialog" aria-modal="true" aria-label="Dépannage express" className="fixed inset-0 z-[1000] flex flex-col bg-fond" data-testid="devis-express">
-      <header className="flex items-center gap-2 px-2 sm:px-5 h-14 border-b border-bord bg-surface flex-shrink-0" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
+      {/* Encoche : la hauteur s'ajoute à la marge (viewport-fit=cover, barre d'état translucide), comme SaisieRamonage.jsx */}
+      <header className="flex items-center gap-2 px-2 sm:px-5 min-h-14 border-b border-bord bg-surface flex-shrink-0" style={{ paddingTop: 'env(safe-area-inset-top)', minHeight: 'calc(3.5rem + env(safe-area-inset-top))' }}>
         <button type="button" onClick={onClose} aria-label="Fermer" className="w-11 h-11 flex items-center justify-center rounded-xl text-encre-2 hover:bg-surface-2">
           <ArrowLeft size={20} aria-hidden="true" />
         </button>
@@ -114,15 +127,15 @@ export default function DevisExpress({ isOpen, onClose, onCreer, clients = [], a
 
           <section className="space-y-3">
             <div className="flex items-end gap-2">
-              <Champ className="flex-1 min-w-0" as="select" libelle="Client" value={clientId} onChange={(e) => setClientId(e.target.value)}>
+              <Champ className="flex-1 min-w-0" as="select" libelle="Client" value={clientId} onChange={(e) => choisirClient(e.target.value)}>
                 <option value="">Choisir…</option>
                 {tries.map((c) => <option key={c.id} value={c.id}>{formatClientName(c, 'Sans nom')}</option>)}
               </Champ>
               <Bouton variante="secondaire" icone={UserPlus} className="h-12" onClick={() => setNouveauClient(true)}>Nouveau</Bouton>
             </div>
             <Champ libelle="Intervention" type="text" value={nature} onChange={(e) => setNature(e.target.value)} placeholder="Porte claquée, fuite sous l’évier…" />
-            <Champ libelle="Lieu d’intervention" facultatif type="text" value={lieu} onChange={(e) => setLieu(e.target.value)}
-              aide={client?.adresse ? `Sinon : l’adresse du client (${client.adresse}).` : undefined} />
+            <Champ libelle="Lieu d’intervention" type="text" value={lieu} onChange={(e) => setLieu(e.target.value)}
+              aide={client?.adresse ? 'L’adresse du client ; changez-la si vous intervenez ailleurs.' : 'Adresse où vous intervenez.'} />
           </section>
 
           <section className="space-y-3">
@@ -189,11 +202,11 @@ export default function DevisExpress({ isOpen, onClose, onCreer, clients = [], a
               </div>
             ))}
             <Bouton variante="discret" icone={Plus} onClick={() => setPieces((p) => [...p, { libelle: '', quantite: '1', prix: '' }])}>Ajouter une pièce</Bouton>
-            {pieces.length > 0 && particulier ? (
+            {questionPieces ? (
               <fieldset>
                 <legend className="text-sm font-medium text-encre mb-1">{QUESTION_PIECES}</legend>
                 <div className="flex gap-4">
-                  {[[true, 'Oui'], [false, 'Non'], [null, 'Le client répondra sur le devis']].map(([v, l]) => (
+                  {[[true, 'Oui'], [false, 'Non']].map(([v, l]) => (
                     <label key={l} className="flex items-center gap-2 cursor-pointer min-h-11 text-sm text-encre">
                       <input type="radio" name="conserver-pieces" checked={conserver === v} onChange={() => setConserver(v)} className="w-5 h-5" />
                       {l}
@@ -227,8 +240,11 @@ export default function DevisExpress({ isOpen, onClose, onCreer, clients = [], a
             setNouveauClient(false);
             try {
               const c = await addClient?.(data);
-              if (c?.id) setClientId(c.id);
-              else setErreur('Client créé mais non choisi : choisissez-le dans la liste.');
+              // addClient renvoie null quand la création est refusée (limite du plan, échec d'écriture)
+              if (c?.id) {
+                setClientId(c.id);
+                setLieu((l) => (l.trim() ? l : String(c.adresse || '').trim()));
+              } else setErreur('Client non enregistré. Réessayez.');
             } catch (e) {
               captureException(e, { context: 'devis express, nouveau client' });
               setErreur('Client non enregistré. Réessayez.');

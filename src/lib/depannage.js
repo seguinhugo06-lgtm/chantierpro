@@ -5,8 +5,9 @@
  *
  * Droit (arrêté du 24 janvier 2017, relu au texte et résumé dans docs/metier-btp.md § 2) : devis détaillé avant
  * toute prestation de dépannage, réparation ou entretien chez un particulier, sans seuil ; le devis dit s'il est
- * gratuit ou payant (art. 2) et que le client peut conserver les pièces remplacées (art. 4 III) ; taux horaires TTC,
- * décompte du temps, frais de déplacement et forfaits affichés dans les locaux et sur tout espace en ligne (art. 3).
+ * gratuit ou payant (art. 4, I) et que le client peut conserver les pièces remplacées (art. 4, III, annexe 2) ; taux
+ * horaires TTC, décompte du temps, frais de déplacement et forfaits affichés dans les locaux, communiqués avant un
+ * contrat conclu chez le client et accessibles sur tout espace en ligne (art. 2 et 3).
  *
  * Choix (relectures critique-produit et juriste-btp du 4 nov. 2026) :
  * - la case « urgence demandée par le client » ne change jamais le prix : elle sert au droit (L221-10, 4° ;
@@ -17,7 +18,9 @@
  *   d'un dépannage (10 % : logement achevé depuis plus de deux ans ; 20 % : sinon), car l'art. 3 exige des prix
  *   TTC et un seul taux rendrait faux les prix d'un logement récent (juriste-btp) ;
  * - le choix du client de conserver les pièces remplacées est demandé sur le devis (case Oui / Non), enregistré
- *   sur les lignes « pièce » quand il est connu (juriste-btp, art. 4 III, à relire au texte).
+ *   sur les lignes « pièce » quand il est connu (art. 4, III, annexe 2) ;
+ * - les libellés des lignes ne portent aucun montant : le prix unitaire est sur la ligne, et un TTC figé dans le texte
+ *   serait faux si la TVA change ensuite dans l'éditeur.
  */
 import { echapperHtml as h } from './echapperHtml';
 import { euros } from './formatDocument';
@@ -25,19 +28,23 @@ import { nomImprime, formeImprimee } from './identiteEntreprise';
 import { estClientParticulier } from './retractation';
 import { arrondi } from './totauxDocument';
 
-/** Obligations, recopiées mot pour mot de docs/metier-btp.md § 2 (source : arrêté du 24 janvier 2017). */
+/**
+ * Obligations, résumées (pas citées) : textes recopiés à l'identique de docs/metier-btp.md § 2 (le test les compare),
+ * rédaction juriste-btp au texte de l'arrêté du 24 janvier 2017, art. 2 à 5 (Légifrance, version du 01/04/2017,
+ * consulté le 04/11/2026). La source affichée ne nomme pas le fichier du dépôt.
+ */
 export const OBLIGATIONS = [
   {
-    texte: 'Taux horaires TTC, décompte du temps, frais de déplacement et forfaits s\'affichent dans les locaux et sur tout espace en ligne (art. 3)',
-    source: 'Arrêté du 24 janvier 2017, article 3 (docs/metier-btp.md § 2)',
+    texte: 'Taux horaires TTC, décompte du temps, frais de déplacement, prix TTC des forfaits et caractère gratuit ou payant du devis : affichés dans les locaux, communiqués avant un contrat conclu chez le client et accessibles sur tout espace en ligne (art. 2 et 3)',
+    source: 'Arrêté du 24 janvier 2017, articles 2 et 3',
   },
   {
-    texte: 'Le devis dit s\'il est gratuit ou payant (art. 2) et que le client peut conserver les pièces remplacées (art. 4 III)',
-    source: 'Arrêté du 24 janvier 2017, articles 2 et 4 (docs/metier-btp.md § 2)',
+    texte: 'Un devis détaillé est remis avant toute intervention ; conclu dans vos locaux, il dit s’il est gratuit ou payant (art. 4, I) ; il informe le client qu’il peut conserver les pièces remplacées, selon le modèle de l’annexe 2 (art. 4, III)',
+    source: 'Arrêté du 24 janvier 2017, article 4',
   },
   {
-    texte: 'la facture se remet dès la fin de l\'intervention, avant le paiement (art. 5)',
-    source: 'Arrêté du 24 janvier 2017, article 5 (docs/metier-btp.md § 2)',
+    texte: 'une note (la facture en tient lieu) est remise gratuitement sur un support durable dès la fin de l’intervention, avant le paiement (art. 5)',
+    source: 'Arrêté du 24 janvier 2017, article 5',
   },
 ];
 
@@ -138,9 +145,7 @@ const fmtNombre = (n) => String(n).replace('.', ',');
 export function lignesDevisExpress({ grille, avecDeplacement = true, heures = 0, majoration = '', forfaits = [], pieces = [], conserverPieces = null, tva = 10, franchise = false } = {}) {
   const g = normaliserGrille(grille);
   const taux = franchise ? 0 : Number(tva) || 0;
-  const suffixe = franchise ? '' : ' TTC';
   let n = 0;
-  const ttc = (ht) => `${euros(ttcDe(ht, taux))}${suffixe}`;
   const ligne = (categorie, description, quantite, unite, prixUnitaire) => {
     n += 1;
     return {
@@ -159,12 +164,12 @@ export function lignesDevisExpress({ grille, avecDeplacement = true, heures = 0,
 
   const intervention = [];
   if (avecDeplacement && g.deplacement !== null) {
-    intervention.push(ligne('deplacement', `Frais de déplacement (${ttc(g.deplacement)})`, 1, 'forfait', g.deplacement));
+    intervention.push(ligne('deplacement', 'Frais de déplacement', 1, 'forfait', g.deplacement));
   }
   const duree = dureeDecomptee(heures, g);
   if (duree > 0) {
     if (g.tauxHoraire === null) return { sections: [], lignes: [], erreur: 'Indiquez votre taux horaire dans Paramètres › Dépannage.' };
-    intervention.push(ligne('main_oeuvre', `Main-d’œuvre, taux horaire ${ttc(g.tauxHoraire)}`, duree, 'h', g.tauxHoraire));
+    intervention.push(ligne('main_oeuvre', 'Main-d’œuvre, au taux horaire', duree, 'h', g.tauxHoraire));
     const pct = majoration === 'nuit' ? g.majorationNuit : majoration === 'dimanche' ? g.majorationDimanche : null;
     if (majoration && pct === null) return { sections: [], lignes: [], erreur: 'Cette majoration n’est pas dans votre grille tarifaire.' };
     if (pct !== null) {
@@ -230,7 +235,11 @@ export function marquerLignesDepannage(lignes, actif) {
 
 /** Mentions du devis de dépannage d'un client particulier (arrêté du 24 janv. 2017, art. 2 et 4 III). */
 export const MENTION_DEVIS_GRATUIT = 'Devis gratuit.';
-/** Question de l'art. 4 III (rédaction juriste-btp du 4 nov. 2026, à relire au texte de l'arrêté). */
+/**
+ * Question de l'art. 4, III, posée selon le modèle-type de l'annexe 2 de l'arrêté du 24 janvier 2017 (Légifrance,
+ * version du 01/04/2017, consulté le 04/11/2026 par juriste-btp) : « OUI □ NON □ », puis la signature du consommateur
+ * précédée de la mention manuscrite « Lu et approuvé ». Avis : docs/metiers/avis-juriste-2026-11-04-depannage.md.
+ */
 export const QUESTION_PIECES = 'Souhaitez-vous conserver les pièces, éléments ou appareils remplacés ?';
 
 /** Réponse du client enregistrée sur les lignes « pièce » : true, false, ou null (pas encore donnée). */
@@ -252,7 +261,9 @@ export function mentionsDepannageHtml({ doc, client } = {}) {
   const caseHtml = (cochee) => `<span style="display:inline-block;width:9px;height:9px;border:1px solid #334155;margin:0 3px 0 8px;vertical-align:-1px;text-align:center;line-height:8px;font-size:8pt">${cochee ? '✕' : ''}</span>`;
   return `<div class="depannage-mentions" style="margin-top:8px;font-size:8pt;color:#334155">`
     + `<p style="margin:0 0 3px">${m.gratuit}</p>`
-    + `<p style="margin:0">${m.question}${caseHtml(m.conserver === true)}Oui${caseHtml(m.conserver === false)}Non</p>`
+    + `<p style="margin:0">${m.question} OUI${caseHtml(m.conserver === true)} NON${caseHtml(m.conserver === false)}</p>`
+    + '<p style="margin:4px 0 0">Signature du consommateur précédée de la mention manuscrite « Lu et approuvé » :</p>'
+    + '<div style="height:32px;border-bottom:1px solid #94a3b8;width:60%"></div>'
     + '</div>';
 }
 
@@ -285,7 +296,7 @@ export function grilleImprimableHtml({ entreprise, grille, franchise = false, da
     ...g.forfaits.map((f) => ligne(`Forfait : ${h(f.libelle)}`, prix(f.prix))),
   ].join('');
   const jour = date.toLocaleDateString('fr-FR', { timeZone: 'Europe/Paris' });
-  // Rédaction juriste-btp du 4 nov. 2026 (point 4)
+  // Rédaction juriste-btp du 4 nov. 2026, confirmée au texte (avis-juriste-2026-11-04-depannage.md)
   const mentionTva = franchise
     ? 'TVA non applicable, article 293 B du CGI'
     : 'Prix toutes taxes comprises. TVA de 10 % pour un logement achevé depuis plus de deux ans ; sinon, TVA de 20 %. Le prix toutes taxes comprises de votre intervention est indiqué sur le devis.';
@@ -314,5 +325,9 @@ export function grilleImprimableHtml({ entreprise, grille, franchise = false, da
 </body></html>`;
 }
 
-/** Avertissement à l'artisan quand la case urgence est cochée (rédaction juriste-btp du 4 nov. 2026, point 6). */
-export const AVERTISSEMENT_URGENCE = 'Urgence : seuls les pièces et travaux strictement nécessaires pour faire cesser l\'urgence peuvent être payés sur place et échappent à la rétractation (articles L221-10 et L221-28 du Code de la consommation). Mettez tout le reste (amélioration, confort, remplacement non urgent) sur un devis séparé : il ne peut être payé qu\'après sept jours.';
+/**
+ * Avertissement à l'artisan quand la case urgence est cochée. Rédaction juriste-btp au texte (C. conso. L221-10, 4°,
+ * version du 01/07/2016 : « strictement nécessaires pour répondre à l'urgence » ; L221-28, 8°, version du 28/05/2022 ;
+ * Légifrance, consultés le 04/11/2026) ; les sept jours ne valent que pour un contrat signé chez le client.
+ */
+export const AVERTISSEMENT_URGENCE = 'Urgence : seuls les pièces de rechange et travaux strictement nécessaires pour répondre à l’urgence peuvent être payés sur place et échappent à la rétractation (articles L221-10, 4° et L221-28, 8° du Code de la consommation). Mettez tout le reste (amélioration, confort, remplacement non urgent) sur un devis séparé : signé chez le client, il ne permet de recevoir aucun paiement avant l’expiration d’un délai de sept jours (article L221-10).';

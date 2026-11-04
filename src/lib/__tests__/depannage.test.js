@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   normaliserGrille, ttcDe, dureeDecomptee, lignesDevisExpress, estDevisDepannage, mentionsDepannage, marquerLignesDepannage,
-  mentionsDepannageHtml, grilleImprimableHtml, grilleIncomplete, choixConserverPieces, MENTION_DEVIS_GRATUIT, QUESTION_PIECES, OBLIGATIONS,
+  mentionsDepannageHtml, grilleImprimableHtml, grilleIncomplete, choixConserverPieces, MENTION_DEVIS_GRATUIT, QUESTION_PIECES, OBLIGATIONS, AVERTISSEMENT_URGENCE,
 } from '../depannage';
 import { calculerTotaux } from '../totauxDocument';
 import { delaiSeptJours, echeanceApresSeptJours } from '../retractation';
@@ -55,20 +55,24 @@ describe('lignes du devis express', () => {
     expect(r.sections.map((s) => s.titre)).toEqual(['Intervention', 'Pièces remplacées']);
     expect(r.lignes.map((l) => l.depannage)).toEqual(['deplacement', 'main_oeuvre', 'majoration', 'forfait', 'piece']);
     expect(r.lignes.map((l) => l.prixUnitaire)).toEqual([39, 60, 30, 89, 75]);
-    expect(r.lignes[1].description).toMatch(/^Main-d’œuvre, taux horaire 66,00\s€ TTC$/);
-    expect(r.lignes[0].description).toMatch(/^Frais de déplacement \(42,90\s€ TTC\)$/);
+    // Aucun montant dans les libellés : le prix unitaire est sur la ligne (relecture du 4 nov. 2026)
+    expect(r.lignes[1].description).toBe('Main-d’œuvre, au taux horaire');
+    expect(r.lignes[0].description).toBe('Frais de déplacement');
+    expect(r.lignes.some((l) => /€|TTC/.test(l.description))).toBe(false);
     expect(r.lignes[2].description).toContain('+ 50 % du taux horaire');
     // Le total HT est la somme des prix de la grille, au centime
     expect(calculerTotaux(r.lignes, { tauxDefaut: 10 }).totalHT).toBe(39 + 60 + 30 + 89 + 75);
   });
-  it('au taux de 20 % : le TTC du libellé suit le taux du devis', () => {
-    const r = lignesDevisExpress({ grille: GRILLE, heures: 1, tva: 20 });
-    expect(r.lignes[1].description).toMatch(/72,00\s€ TTC$/);
+  it('au taux de 20 % : même libellé qu’à 10 %, seul le taux de la ligne change (changer la TVA ensuite ne fausse rien)', () => {
+    const a = lignesDevisExpress({ grille: GRILLE, heures: 1, tva: 10 });
+    const b = lignesDevisExpress({ grille: GRILLE, heures: 1, tva: 20 });
+    expect(b.lignes.map((l) => l.description)).toEqual(a.lignes.map((l) => l.description));
+    expect(b.lignes[1].tva).toBe(20);
   });
   it('en franchise : sans TVA ni suffixe TTC', () => {
     const r = lignesDevisExpress({ grille: GRILLE, heures: 1.5, pieces: [{ libelle: 'Joint', quantite: 2, prix: 3.5 }], franchise: true });
     expect(calculerTotaux(r.lignes, { franchise: true }).totalTTC).toBe(39 + 90 + 7);
-    expect(r.lignes[1].description).toMatch(/^Main-d’œuvre, taux horaire 60,00\s€$/);
+    expect(r.lignes[1].description).toBe('Main-d’œuvre, au taux horaire');
     expect(r.lignes.every((l) => l.tva === 0)).toBe(true);
   });
   it('la réponse du client sur les pièces est posée sur les lignes « pièce » seulement', () => {
@@ -109,9 +113,16 @@ describe('mentions du devis de dépannage (arrêté du 24 janv. 2017, art. 2 et 
     expect(html).toContain(QUESTION_PIECES);
     expect(html).not.toContain('✕');
   });
-  it('réponse « Oui » enregistrée : la case Oui est cochée', () => {
+  it('réponse « Oui » enregistrée : la case OUI est cochée, selon le modèle de l’annexe 2', () => {
     const doc = { type: 'devis', lignes: lignesDevisExpress({ grille: GRILLE, pieces: [{ libelle: 'C', quantite: 1, prix: 4 }], conserverPieces: true }).lignes };
-    expect(mentionsDepannageHtml({ doc, client: PARTICULIER })).toMatch(/✕<\/span>Oui/);
+    const html = mentionsDepannageHtml({ doc, client: PARTICULIER });
+    expect(html).toMatch(/OUI<span[^>]*>✕<\/span> NON<span[^>]*><\/span>/);
+  });
+  it('modèle de l’annexe 2 : « OUI □ NON □ » après la question, puis la ligne « Lu et approuvé »', () => {
+    const html = mentionsDepannageHtml({ doc: express, client: PARTICULIER });
+    expect(html.indexOf(QUESTION_PIECES)).toBeLessThan(html.indexOf('OUI<span'));
+    expect(html.indexOf('OUI<span')).toBeLessThan(html.indexOf(' NON<span'));
+    expect(html).toContain('Signature du consommateur précédée de la mention manuscrite « Lu et approuvé » :');
   });
   it('lignes relues de la base (JSON) : reconnues aussi', () => {
     expect(estDevisDepannage({ type: 'devis', lignes: JSON.stringify(express.lignes) })).toBe(true);
@@ -174,6 +185,17 @@ describe('obligations affichées : recopiées mot pour mot de docs/metier-btp.md
   it.each(OBLIGATIONS.map((o) => [o.texte]))('%s', (texte) => {
     expect(doc).toContain(texte);
   });
+  it('les sources affichées ne nomment aucun fichier du dépôt', () => {
+    for (const o of OBLIGATIONS) expect(o.source).not.toMatch(/docs\/|\.md|§/);
+  });
+});
+
+describe('avertissement d’urgence : rédaction au texte (L221-10, 4° ; L221-28, 8°)', () => {
+  it('« pour répondre à l’urgence », pièces de rechange, sept jours limités au contrat signé chez le client', () => {
+    expect(AVERTISSEMENT_URGENCE).toContain('pièces de rechange et travaux strictement nécessaires pour répondre à l’urgence');
+    expect(AVERTISSEMENT_URGENCE).not.toContain('faire cesser');
+    expect(AVERTISSEMENT_URGENCE).toContain('signé chez le client, il ne permet de recevoir aucun paiement avant l’expiration d’un délai de sept jours');
+  });
 });
 
 describe('les générateurs de PDF impriment les mentions du dépannage', async () => {
@@ -189,7 +211,7 @@ describe('les générateurs de PDF impriment les mentions du dépannage', async 
     const html = produire();
     expect(html).toContain(MENTION_DEVIS_GRATUIT);
     expect(html).toContain(QUESTION_PIECES);
-    expect(html).toMatch(/✕<\/span>Non/);
+    expect(html).toMatch(/NON<span[^>]*>✕<\/span>/);
     expect(html).toContain('Siphon PVC');
   });
   it('contre-essai : devis ordinaire, aucun générateur ne les imprime', () => {

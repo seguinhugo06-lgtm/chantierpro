@@ -675,17 +675,13 @@ export default function DevisPage({ clients, addClient, devis, setDevis, chantie
 
   // Dupliquer un devis/facture
   const duplicateDocument = async (doc) => {
-    const newLignes = (doc.lignes || []).map(l => ({
-      ...l,
-      id: generateId()
-    }));
+    // La réponse du client sur les pièces remplacées (dépannage, art. 4 III) appartient au devis copié : pas à la copie
+    const copieLigne = ({ conservee: _reponse, ...l }) => ({ ...l, id: generateId() });
+    const newLignes = (doc.lignes || []).map(copieLigne);
     const newSections = doc.sections ? doc.sections.map(s => ({
       ...s,
       id: generateId(),
-      lignes: s.lignes.map(l => ({
-        ...l,
-        id: generateId()
-      }))
+      lignes: (s.lignes || []).map(copieLigne)
     })) : [{ id: '1', titre: '', lignes: newLignes }];
 
     const newDoc = {
@@ -1912,6 +1908,25 @@ export default function DevisPage({ clients, addClient, devis, setDevis, chantie
   /**
    * trySend — validates, shows issues if any, or proceeds with send function
    */
+  // Dépannage signé sur place depuis le brouillon : hors établissement, le client reçoit d'abord le devis sur papier ou
+  // support durable (C. conso. L221-8). Le PDF est remis (impression ou partage), puis l'artisan confirme la remise
+  // avant d'ouvrir la signature (relecture du 4 nov. 2026, en attendant l'avis de juriste-btp et la décision d'Hugo).
+  const remettrePuisFaireSigner = async (doc) => {
+    const pret = await confirm({
+      title: 'Remettez d’abord le devis',
+      message: 'Avant de signer, le client doit recevoir le devis sur papier, ou sur un autre support durable (e-mail) s’il est d’accord (article L221-8 du Code de la consommation). Le montrer à l’écran ne suffit pas. Le PDF va s’ouvrir : imprimez-le ou envoyez-le-lui.',
+      confirmText: 'Ouvrir le PDF',
+    });
+    if (!pret) return;
+    await printPDF(doc);
+    const recu = await confirm({
+      title: 'Le client a-t-il reçu le devis ?',
+      message: 'Imprimé, ou envoyé avec son accord : il peut maintenant le signer.',
+      confirmText: 'Faire signer',
+    });
+    if (recu) setShowSignaturePad(true);
+  };
+
   const trySend = (doc, sendFn) => {
     const issues = validateDevisForSend(doc);
     if (issues.length > 0) {
@@ -2946,7 +2961,7 @@ export default function DevisPage({ clients, addClient, devis, setDevis, chantie
             if (st === 'brouillon' && peutEnvoyer && ttc > 0 && estDevisDepannage(selected) && !isExpired(selected)) {
               // Dépannage (lot 3) : le devis se signe sur place, devant le client, sans passer par l'envoi ; les mêmes
               // contrôles que l'envoi (mentions obligatoires, client) passent avant la signature
-              principal = { libelle: 'Faire signer', icone: PenTool, onClick: () => trySend(selected, () => setShowSignaturePad(true)) };
+              principal = { libelle: 'Faire signer', icone: PenTool, onClick: () => trySend(selected, remettrePuisFaireSigner) };
               secondaire = { libelle: 'Envoyer', icone: Send, onClick: () => trySend(selected, sendEmail) };
             } else if (st === 'brouillon' && peutEnvoyer) {
               principal = ttc > 0
