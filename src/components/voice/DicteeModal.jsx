@@ -574,7 +574,7 @@ export default function DicteeModal({
                 l'analyse est locale, sans IA ni envoi (voiceIntent.js) : on le dit, au lieu d'annoncer Claude (contrôle local du 4 nov.). */}
             <p className={`text-xs ${textMuted}`}>
               {isDemo
-                ? 'Mode démonstration : analyse simplifiée, sans IA ; rien n’est envoyé à Mallettico ni à une IA.'
+                ? 'Mode démonstration : analyse simplifiée, faite sur votre appareil, sans IA. Votre texte n’est pas envoyé à Mallettico.'
                 : 'Analyse par une intelligence artificielle (Claude, d’Anthropic) : elle peut se tromper, vous relisez tout.'}
             </p>
           </div>
@@ -654,7 +654,7 @@ export default function DicteeModal({
                     {/* Relecture juriste-btp du 3 nov. 2026 : « transcrite puis oubliée » était invérifiable (sur
                         Chrome, le son part aux serveurs de Google) ; seul est sûr que Mallettico ne reçoit pas le son. */}
                     Votre navigateur va demander l’accès au micro. Mallettico ne reçoit pas le son : votre navigateur
-                    le transforme en texte (sur Chrome, par les serveurs de Google).
+                    le transforme en texte, parfois sur les serveurs de son éditeur (sur Chrome, ceux de Google).
                     {!isDemo && ' Ce texte nous est envoyé, avec les noms de vos clients et les libellés de votre catalogue, puis analysé par une intelligence artificielle (Claude, d’Anthropic).'}
                   </p>
                 )}

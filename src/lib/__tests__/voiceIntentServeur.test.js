@@ -164,7 +164,12 @@ describe('voice-intent : API en panne ou crédits épuisés', () => {
       expect([r.status, r.corps.code]).toEqual([status, code]);
       expect(r.corps.error).toMatch(/à la main/);
       expect(dep.terminer).toHaveBeenCalledWith(42, expect.objectContaining({ statut: 'echec', motif }));
+      // Une réponse coupée décompte (107) : son message le dit et n'invite pas à refaire la même dictée (juriste, 4 nov.)
+      if (motif === 'coupee') expect(r.corps.error).toBe(MESSAGES.coupee);
+      else expect(r.corps.error).not.toBe(MESSAGES.coupee);
     }
+    expect(MESSAGES.coupee).toMatch(/compte dans vos dictées du mois/);
+    expect(MESSAGES.coupee).not.toMatch(/Réessayez/);
   });
 
   it('succès : usage clos « réussi » avec les jetons et la durée ; le bloc thinking en tête est ignoré', async () => {

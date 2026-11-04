@@ -4,7 +4,7 @@ import LegalPages from '../../LegalPages';
 import { PLANS, PLAN_ORDER, LIBELLES_COMPLETS } from '../../../stores/subscriptionStore';
 import { FONCTIONS } from '../../../lib/fonctions';
 import { MENTION_TVA_ABONNEMENT, prixAbonnement } from '../../../stores/prixAbonnement';
-import { CGV_VERSION, CGV_ARTICLE_4_PLANS, CGV_ARTICLE_4_TVA, CGV_ARTICLE_4_SELON_IA, libelleVersionCgv } from '../../../lib/cgv';
+import { CGV_VERSION, CGV_ARTICLE_4_PLANS, CGV_ARTICLE_4_TVA, CGV_ARTICLE_4_SELON_IA, CGV_ARTICLE_4_DICTEES, libelleVersionCgv } from '../../../lib/cgv';
 
 /**
  * CGV versionnées (relecture juridique du 20 oct. 2026) : l'article 4 se recalculait depuis `PLANS`, si bien qu'un
@@ -116,6 +116,9 @@ describe('CGV : version et page', () => {
       expect(texte).toContain(lu(`${plan} ${prix} ${description}`));
     }
     expect(texte).toContain(CGV_ARTICLE_4_TVA);
+    // Ce qui compte comme une dictée : seulement avec la dictée (version de l'allumage), jamais avant
+    if (FONCTIONS.ia) expect(texte).toContain(lu(CGV_ARTICLE_4_DICTEES));
+    else expect(texte).not.toMatch(/une dictée compte/);
   });
 });
 

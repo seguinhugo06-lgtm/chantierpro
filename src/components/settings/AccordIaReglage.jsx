@@ -25,7 +25,7 @@ export default function AccordIaReglage({ userId, showToast }) {
       const r = await retirerAccordIa(supabase, userId);
       if (!r.ok) {
         captureException(new Error(r.error?.message || 'retrait de l’accord IA impossible'), { context: 'accord IA' });
-        showToast?.('Le retrait de votre accord n’a pas pu être enregistré. Réessayez.', 'error');
+        showToast?.('Le retrait de votre accord n’a pas pu être enregistré : votre accord reste en cours. Réessayez.', 'error');
         return;
       }
       await relire();

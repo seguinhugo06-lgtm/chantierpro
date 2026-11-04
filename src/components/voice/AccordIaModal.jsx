@@ -25,7 +25,7 @@ export default function AccordIaModal({ isOpen, onClose, onAccepter, onRefuser }
     setErreur(null);
     try {
       const r = await onAccepter?.();
-      if (!r?.ok) setErreur('Votre accord n’a pas pu être enregistré. Vérifiez votre connexion et réessayez, ou saisissez votre devis à la main.');
+      if (!r?.ok) setErreur('Votre accord n’a pas pu être enregistré, et rien n’a été envoyé. Réessayez dans un moment, ou saisissez votre devis à la main.');
     } finally {
       setEnvoi(false);
     }

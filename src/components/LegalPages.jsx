@@ -1,5 +1,5 @@
 import { ArrowLeft, Shield, FileText, Scale, Lock, Trash2 } from 'lucide-react';
-import { CGV_ARTICLE_4_PLANS, CGV_ARTICLE_4_TVA, libelleVersionCgv } from '../lib/cgv';
+import { CGV_ARTICLE_4_PLANS, CGV_ARTICLE_4_TVA, CGV_ARTICLE_4_DICTEES, libelleVersionCgv } from '../lib/cgv';
 import { COMPANY, ADRESSE } from '../lib/editeur';
 import TexteCgu from './legal/TexteCgu';
 import { FONCTIONS } from '../lib/fonctions';
@@ -125,6 +125,7 @@ export default function LegalPages({ page, couleur: _couleur, setPage }) {
             </tbody>
           </table>
         </div>
+        {FONCTIONS.ia && <P>{CGV_ARTICLE_4_DICTEES}</P>}
         <P>{CGV_ARTICLE_4_TVA}</P>
         {/* D-19 : la sortie de franchise doit être écrite dans les CGV (relecture juriste du 20 oct. 2026) */}
         <P>

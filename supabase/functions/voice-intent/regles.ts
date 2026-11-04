@@ -18,7 +18,7 @@ import { identifierAppelant, type Utilisateur } from '../_shared/appelant.ts';
 import { MODELE, requeteDictee } from './consignes.ts';
 
 /**
- * Nombre d'usages par mois et par organisation, selon le plan (-1 : sans limite mensuelle). Recopie de
+ * Nombre d'usages par mois (par organisation, et par abonnement aux plans payants), selon le plan (-1 : sans limite mensuelle). Recopie de
  * `PLANS[plan].limits.dictees` (src/stores/subscriptionStore.js), seule source de vérité : un test vérifie que les deux
  * disent la même chose. Décision d'Hugo du 4 nov. 2026 : 5 au plan Gratuit, 100 au plan Artisan, sans limite mensuelle
  * au plan Équipe, avec 100 par jour et par personne au plus (plafond du jour, migration 107).
@@ -55,10 +55,12 @@ export const MESSAGES = {
   // dictées » pouvait être faux (C. conso. L121-2).
   plafondJour: (parJour: number) =>
     `Vous avez atteint le maximum de ${parJour} analyses par jour et par personne. Saisissez votre devis à la main, ou réessayez demain.`,
-  accordRequis: 'Avant votre première dictée, il faut accepter l’analyse par l’intelligence artificielle. Touchez « Dicter » pour lire l’écran d’accord.',
+  accordRequis: 'Votre accord pour l’analyse par l’intelligence artificielle n’est pas enregistré : il a été retiré, ou le texte de l’écran d’accord a changé. Rien n’a été transmis à Anthropic. Relisez l’écran d’accord, ou saisissez votre devis à la main.',
   indisponible: 'Dictée indisponible pour le moment. Saisissez votre devis à la main.',
   nonTraitee: 'Cette dictée n’a pas pu être analysée. Saisissez votre devis à la main.',
   illisible: 'L’analyse a échoué. Réessayez, ou saisissez votre devis à la main.',
+  // Réponse coupée par le plafond de jetons : elle décompte (107), ne pas inviter à refaire la même dictée (juriste, 4 nov.).
+  coupee: 'Votre dictée est trop longue pour être analysée en une fois. Elle compte dans vos dictées du mois. Coupez-la en deux, ou saisissez votre devis à la main.',
 } as const;
 
 export type Reservation =
@@ -239,7 +241,7 @@ async function traiter(req: Request, dep: Dependances): Promise<Response> {
   if (message.stop_reason === 'max_tokens') {
     journal('erreur', 'réponse coupée par max_tokens');
     await terminer({ statut: 'echec', motif: 'coupee', ...jetons });
-    return erreur('ILLISIBLE', MESSAGES.illisible, 502);
+    return erreur('ILLISIBLE', MESSAGES.coupee, 502);
   }
   // La réponse peut commencer par un bloc `thinking` (réflexion adaptative) : on lit le bloc `text`.
   const bloc = message.content?.find((b) => b.type === 'text');

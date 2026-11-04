@@ -58,7 +58,7 @@ Déjà retirées sur le socle et constatées ici : la FAQ « Prenez une photo…
 - **TVA en franchise** : `src/lib/brouillonDictee.js` (fonction pure) ; en franchise, chaque ligne à 0 % (catalogue compris), TVA 0, total = HT ; relecture sans « HT », « TTC » ni choix de taux, avec « Total » et « TVA non applicable, art. 293 B du CGI ». Test vitest avec `buildDevisHtml` (brouillon et devis signé) et contre-essai ; parcours « dictée en franchise » jusqu'à l'aperçu imprimé du générateur de `DevisPage`.
 - **Clavier** : `texteAffiche` (`useDictation.js`) ne recolle plus le texte tapé. Test « devis pour  » ; contre-essai avec l'ancienne ligne : 2 tests échouent. Parcours : frappe touche par touche.
 - **`IA_DICTEE`** : `ouvertePour()` ignore casse et espaces (« Tous », « tous  »), testé.
-- **Démo** : la fenêtre ne dit plus « analyse par Claude » ni « envoyé » ; elle dit « Mode démonstration : analyse simplifiée, sans IA ; rien n’est envoyé. »
+- **Démo** : la fenêtre ne dit plus « analyse par Claude » ni « envoyé » ; elle dit « Mode démonstration : analyse simplifiée, faite sur votre appareil, sans IA. Votre texte n’est pas envoyé à Mallettico. » (texte du juriste, 4 nov.)
 - **Chef de chantier** : parcours (ni bouton ni fenêtre), avec le gérant en contre-essai.
 - **`dictee.cjs`** : « CGU : version inchangée, sans clause de sous-traitance », et la phrase de la base légale vérifiée dans les deux builds.
 - **Docs** : étape 0 (Hugo lit les noms des secrets **maintenant**), `etat-production.md` (action 8, lignes 107, 109, `voice-intent`), rapport du socle (clavier, Juriste 9, vérification non concluante).

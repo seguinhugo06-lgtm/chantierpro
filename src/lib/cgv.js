@@ -78,6 +78,10 @@ const ARTICLE_4_AVEC_IA = Object.freeze([
   }),
 ]);
 
+/** Phrase de l'article 4 (avec la dictée) qui dit ce qui compte comme une dictée (juriste-btp, 4 nov. 2026, C.1).
+ *  À revoir si Hugo décide de décompter le délai dépassé (aujourd'hui non décompté, migration 107). */
+export const CGV_ARTICLE_4_DICTEES = 'Dictées : une dictée compte dès qu’elle est analysée, y compris quand l’analyse échoue à cause de la dictée elle-même (trop longue, incompréhensible ou refusée par l’intelligence artificielle). Une panne de Mallettico ou de son prestataire ne compte pas. Le compteur repart à zéro le 1er de chaque mois, heure de Paris.';
+
 /** Article 4 de la version en vigueur. */
 export const CGV_ARTICLE_4_PLANS = FONCTIONS.ia ? ARTICLE_4_AVEC_IA : ARTICLE_4_SANS_IA;
 /** Les deux textes, pour les tests (le build livré n'en montre qu'un). */

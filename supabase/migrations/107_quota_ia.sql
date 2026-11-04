@@ -87,7 +87,7 @@ CREATE TABLE IF NOT EXISTS public.usage_ia_log (
   termine_le TIMESTAMPTZ
 );
 COMMENT ON TABLE public.usage_ia_log IS
-  'Appels à l''IA (migration 107) : quota mensuel par organisation et fonction, jetons et durée. Aucun texte dicté stocké. Accès : service_role seulement.';
+  'Appels à l''IA (migration 107) : quota mensuel par organisation (et par abonnement aux plans payants) et fonction, jetons et durée. Aucun texte dicté stocké. Accès : service_role seulement.';
 -- Table déjà créée par une version antérieure de ce fichier (banc, préproduction) : la colonne est ajoutée.
 ALTER TABLE public.usage_ia_log ADD COLUMN IF NOT EXISTS payeur UUID;
 CREATE INDEX IF NOT EXISTS idx_usage_ia_payeur ON public.usage_ia_log (payeur, fonction, mois) WHERE payeur IS NOT NULL;
