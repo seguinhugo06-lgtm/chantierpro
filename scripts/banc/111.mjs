@@ -149,6 +149,10 @@ export async function verifier({ db, q, en, commeAnonyme, verifier }) {
   await q(`INSERT INTO auth.users VALUES ($1, 'ro111@x.fr')`, [lecteur]);
   await q(`INSERT INTO organization_members (organization_id, user_id, role) VALUES ($1, $2, 'readonly')`, [ORG_PATRON, lecteur]);
   const roCree = await refus(() => creer({ par: lecteur, org: ORG_PATRON, chantier: chantierPatron, client: clientPatron }));
+  // Sans organisation envoyée : renseigner_organisation la remplit AVANT le WITH CHECK (gardien-securite, 4 nov. au soir)
+  const roNull = await refus(() => en(lecteur, () => q(`INSERT INTO comptes_rendus_electricite (user_id, realise_le, intervenant_nom, client_nom,
+    adresse_intervention, nature, travaux) VALUES ($1, now(), 'I', 'C', 'A', 'autre', 'T')`, [lecteur])));
+  verifier(!!roNull, `111 : un « readonly » sans organisation envoyée est refusé (organisation remplie avant le contrôle) (${roNull})`);
   const roVoit = (await en(lecteur, () => q('SELECT count(*)::int AS n FROM comptes_rendus_electricite WHERE id = $1', [p.id]))).rows[0].n;
   const roAnnule = await en(lecteur, () => q(`UPDATE comptes_rendus_electricite SET annulee_le = now(), annulation_motif = 'x' WHERE id = $1 RETURNING id`, [p.id]))
     .then((r) => r.rows.length, (e) => String(e.message || e));

@@ -1130,7 +1130,6 @@ export const FIELD_MAPPINGS = {
       reserves: row.reserves || '',
       observations: row.observations || '',
       prix_ht: row.prix_ht === null || row.prix_ht === undefined ? null : Number(row.prix_ht),
-      signature: row.signature || null,
       annulee_le: row.annulee_le || null,
       annulation_motif: row.annulation_motif || '',
       created_at: row.created_at,
