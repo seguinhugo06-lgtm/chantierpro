@@ -46,6 +46,13 @@ export function montantDuDevis(lot) {
   return totauxDuDevis(lot).totalTTC;
 }
 
+/*
+ * Document d'exemple (parametresDuDocument, htmlDuDocument, texteDuDocument, mentionsDuDocument) : plus affiché sur le
+ * site depuis le retrait de l'onglet « Le document que reçoit votre client » (retour d'Hugo du 26 oct. 2026). Gardé,
+ * avec ses tests, tant qu'Hugo n'a pas confirmé la répétition qu'il visait (question ouverte du 3 nov. 2026, rapport
+ * docs/cloud/retours.md) : s'il confirme le retrait, supprimer ces fonctions et leurs tests (honnetete, exemples).
+ */
+
 /**
  * Ce que reçoit `buildDevisHtml` pour le devis d'exemple : DEV-2026-00012 d'Élec Exemple pour M. Martin, le lot en
  * une section titrée, daté du jour (`maintenant`), en mode « client » (la vue de la page de signature).
@@ -76,7 +83,7 @@ export function parametresDuDocument(lot, maintenant = new Date()) {
 /**
  * Le HTML du document montré par l'exemple : `buildDevisHtml` (le générateur de devis, passé en paramètre parce que la
  * page le charge à la demande) sur le lot « tableau » de la bibliothèque Électricité. Appelée telle quelle par la page
- * (`ExempleDocument.jsx`) et par le test d'honnêteté du site : le texte contrôlé est celui que le visiteur lit.
+ * (`ExempleDocument.jsx`, retiré le 3 nov. 2026) et par le test d’honnêteté du site.
  */
 export function htmlDuDocument(buildDevisHtml, bibliotheque, maintenant = new Date()) {
   return buildDevisHtml(parametresDuDocument(lotDemonstration(bibliotheque), maintenant));
