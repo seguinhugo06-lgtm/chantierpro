@@ -3,7 +3,8 @@
  * Sans import distant : testé sous vitest (src/lib/__tests__/voiceIntentServeur.test.js). index.ts ne fait que
  * brancher ces règles sur Supabase et sur l'API d'Anthropic.
  *
- * Ordre d'un appel : jeton vérifié → dictée ouverte à ce compte (secret IA_DICTEE) → dictée valide → clé API présente → usage RÉSERVÉ (atomique, côté base, migration
+ * Ordre d'un appel : jeton vérifié → dictée ouverte à ce compte (secret IA_DICTEE) → dictée valide → accord de l'artisan
+ * enregistré à la version attendue (migration 109, sinon 403 ACCORD_REQUIS) → clé API présente → usage RÉSERVÉ (atomique, côté base, migration
  * 107) → appel du modèle → usage TERMINÉ (jetons, durée, réussite ou échec). Une panne de notre côté (API, crédits, clé,
  * délai, réseau) est close en « échec » et ne décompte pas ; un refus du modèle ou une réponse illisible, provoqués par
  * la dictée, sont clos en « échec » mais décomptent (motifs `refus`, `illisible`, comptés par la base). Une réponse
@@ -16,12 +17,27 @@ import { identifierAppelant, type Utilisateur } from '../_shared/appelant.ts';
 import { MODELE, requeteDictee } from './consignes.ts';
 
 /**
- * Nombre d'usages par mois et par organisation, selon le plan (-1 : illimité). Recopie de `PLANS[plan].limits.dictees`
- * (src/stores/subscriptionStore.js), seule source de vérité : un test vérifie que les deux disent la même chose.
+ * Nombre d'usages par mois et par organisation, selon le plan (-1 : sans limite mensuelle). Recopie de
+ * `PLANS[plan].limits.dictees` (src/stores/subscriptionStore.js), seule source de vérité : un test vérifie que les deux
+ * disent la même chose. Décision d'Hugo du 4 nov. 2026 : 5 au plan Gratuit, 100 au plan Artisan, sans limite mensuelle
+ * au plan Équipe, avec 100 par jour et par personne au plus (plafond du jour, migration 107).
  * La fonction `assistant` n'a pas encore de quota décidé : tant qu'elle n'est pas listée ici, elle est refusée.
  */
 export const LIMITES: Record<string, Record<string, number>> = {
-  dictee: { gratuit: 10, artisan: -1, equipe: -1 },
+  dictee: { gratuit: 5, artisan: 100, equipe: -1 },
+};
+
+/**
+ * Version du texte de l'écran « Avant votre première dictée » que l'artisan doit avoir accepté. Recopie de
+ * `ACCORD_IA_VERSION` (src/lib/accordIa.js) : un test vérifie que les deux sont identiques. Changer le texte de l'écran
+ * oblige à changer la version des deux côtés : l'accord est alors redemandé à chacun.
+ */
+export const ACCORD_IA_VERSION = '2026-11-03';
+
+/** Offre proposée quand le quota du mois est atteint (textes de l'offre, décision d'Hugo du 4 nov. 2026). */
+const SUITE_QUOTA: Record<string, string> = {
+  gratuit: 'passez au plan Artisan : 100 dictées par mois.',
+  artisan: 'passez au plan Équipe : dictées sans limite mensuelle (100 par jour et par personne au plus).',
 };
 
 export const MESSAGES = {
@@ -30,9 +46,15 @@ export const MESSAGES = {
   tropLongue: 'Dictée trop longue (5000 caractères maximum). Coupez-la en deux.',
   horsOrganisation: 'Cette entreprise n’est pas la vôtre. Saisissez votre devis à la main.',
   sansDroit: 'Votre rôle ne permet pas de créer un devis.',
-  quota: (limite: number) =>
-    `Vos ${limite} dictées du mois sont utilisées. Saisissez votre devis à la main, ou passez au plan Artisan : dictées sans limite.`,
+  quota: (limite: number, plan = 'gratuit') => SUITE_QUOTA[plan]
+    ? `Vos ${limite} dictées du mois sont utilisées. Saisissez votre devis à la main, ou ${SUITE_QUOTA[plan]}`
+    : `Vos ${limite} dictées du mois sont utilisées. Saisissez votre devis à la main.`,
   plafond: 'Trop de dictées en peu de temps. Réessayez un peu plus tard, ou saisissez votre devis à la main.',
+  // Texte de juriste-btp (4 nov. 2026) : le plafond compte tous les appels, nos pannes comprises ; « vous avez fait 100
+  // dictées » pouvait être faux (C. conso. L121-2).
+  plafondJour: (parJour: number) =>
+    `Vous avez atteint le maximum de ${parJour} analyses par jour et par personne. Saisissez votre devis à la main, ou réessayez demain.`,
+  accordRequis: 'Avant votre première dictée, il faut accepter l’analyse par l’intelligence artificielle. Touchez « Dicter » pour lire l’écran d’accord.',
   indisponible: 'Dictée indisponible pour le moment. Saisissez votre devis à la main.',
   nonTraitee: 'Cette dictée n’a pas pu être analysée. Saisissez votre devis à la main.',
   illisible: 'L’analyse a échoué. Réessayez, ou saisissez votre devis à la main.',
@@ -40,7 +62,7 @@ export const MESSAGES = {
 
 export type Reservation =
   | { autorise: true; id: number; limite: number | null; utilise: number; plan: string }
-  | { autorise: false; limite: number | null; utilise: number | null; plan: string; motif?: 'quota' | 'plafond' | 'global' }
+  | { autorise: false; limite: number | null; utilise: number | null; plan: string; motif?: 'quota' | 'plafond' | 'plafond_jour' | 'global'; parJour?: number | null }
   | { indisponible: true }
   | { horsOrganisation: true }
   | { sansDroit: true };
@@ -65,6 +87,8 @@ export type Dependances = {
   cleApi?: string;
   /** Dictée ouverte à ce compte côté serveur (secret IA_DICTEE : liste d'identifiants, ou « tous »). Absente : fermée. */
   ouverte?: (userId: string) => boolean;
+  /** Accord en cours de l'artisan à la version donnée (table accords_ia, migration 109). Absente : refus (fermé). */
+  accord?: (userId: string, version: string) => Promise<'ok' | 'absent' | 'indisponible'>;
   utilisateur: (jeton: string) => Promise<Utilisateur | null>;
   reserver: (demande: { userId: string; organisation: string | null; fonction: string; limites: Record<string, number> }) => Promise<Reservation>;
   terminer: (id: number, fin: Fin) => Promise<void>;
@@ -72,6 +96,18 @@ export type Dependances = {
   maintenant?: () => number;
   journal?: (niveau: 'info' | 'erreur', message: string) => void;
 };
+
+/**
+ * La dictée est-elle ouverte à ce compte (secret IA_DICTEE : « tous », ou identifiants séparés par des virgules) ?
+ * Casse et espaces ignorés partout : « Tous » ou « tous  » ouvrent aussi (contrôle local du 4 nov. 2026 : la valeur
+ * était comparée telle quelle, et « Tous » aurait laissé la dictée fermée pour tout le monde le jour de l'allumage).
+ */
+export function ouvertePour(secret: string | null | undefined, userId: string): boolean {
+  const valeur = String(secret ?? '').trim().toLowerCase();
+  if (!valeur || !userId) return false;
+  if (valeur === 'tous') return true;
+  return valeur.split(',').map((x) => x.trim()).filter(Boolean).includes(userId.trim().toLowerCase());
+}
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -133,6 +169,16 @@ async function traiter(req: Request, dep: Dependances): Promise<Response> {
   if (transcript.length > 5000) return erreur('DICTEE_TROP_LONGUE', MESSAGES.tropLongue, 400);
   const organisation = typeof corps.organisation === 'string' && UUID.test(corps.organisation) ? corps.organisation : null;
 
+  // Accord de l'artisan avant sa première dictée (Apple 5.1.2(i) ; migration 109) : sans lui, rien n'est réservé ni envoyé.
+  let accord: 'ok' | 'absent' | 'indisponible' = 'indisponible';
+  try { accord = dep.accord ? await dep.accord(appelant.utilisateur.id, ACCORD_IA_VERSION) : 'indisponible'; }
+  catch (e) { journal('erreur', `accord illisible : ${(e as Error).message}`); accord = 'indisponible'; }
+  if (accord === 'indisponible') {
+    journal('erreur', 'accord de l’artisan illisible (migration 109 non appliquée ?) : dictée refusée');
+    return erreur('IA_INDISPONIBLE', MESSAGES.indisponible, 503);
+  }
+  if (accord !== 'ok') return erreur('ACCORD_REQUIS', MESSAGES.accordRequis, 403);
+
   if (!dep.cleApi) {
     journal('erreur', 'ANTHROPIC_API_KEY absente des secrets de la fonction');
     return erreur('IA_INDISPONIBLE', MESSAGES.indisponible, 503);
@@ -157,8 +203,12 @@ async function traiter(req: Request, dep: Dependances): Promise<Response> {
     return erreur('IA_INDISPONIBLE', MESSAGES.indisponible, 503);
   }
   if (!reservation.autorise && reservation.motif === 'plafond') return erreur('PLAFOND', MESSAGES.plafond, 429);
+  if (!reservation.autorise && reservation.motif === 'plafond_jour') {
+    // Au plan gratuit, le plafond du jour (20) compte aussi les échecs non décomptés : « 20 dictées » serait faux.
+    return erreur('PLAFOND_JOUR', reservation.plan === 'gratuit' ? MESSAGES.plafond : MESSAGES.plafondJour(reservation.parJour ?? 100), 429);
+  }
   if (!reservation.autorise) {
-    return erreur('QUOTA_ATTEINT', MESSAGES.quota(reservation.limite ?? 0), 429,
+    return erreur('QUOTA_ATTEINT', MESSAGES.quota(reservation.limite ?? 0, reservation.plan), 429,
       { quota: { limite: reservation.limite, utilise: reservation.utilise, plan: reservation.plan } });
   }
 

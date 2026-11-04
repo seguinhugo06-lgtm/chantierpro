@@ -12,12 +12,14 @@
  */
 import { FONCTIONS } from './fonctions';
 
-// 3 nov. 2026 : quand FONCTIONS.ia est allumé, l'article 7 porte une puce sur la dictée vocale et l'article 11 la
-// clause de sous-traitance (textes de juriste-btp, docs/cloud/ia-socle.md) : la version change d'elle-même, et
-// l'acceptation est redemandée. LE JOUR DE L'ALLUMAGE, remplacer « 2026-11-03 » et « 3 novembre 2026 » par la date
-// réelle (avis du juriste : on n'accepte pas en janvier une « version du 3 novembre ») ; un test le rappelle.
-// 3 nov. 2026 (commit efb633e) : correction de forme de l'article 11, sans changer la version (art. 10 des CGU, avis de
-// juriste-btp) : « consent au traitement de ses données » devient la base légale du contrat (RGPD, art. 6.1.b).
+// 3-4 nov. 2026 : quand FONCTIONS.ia est allumé, l'article 7 porte une puce sur la dictée vocale et l'article 11 la
+// clause de sous-traitance et la base légale du contrat (RGPD, art. 6.1.b, au lieu de « consent au traitement ») — textes
+// de juriste-btp, docs/cloud/ia-socle.md : la version change d'elle-même, et l'acceptation est redemandée. Aucune de ces
+// phrases n'est visible tant que l'interrupteur est éteint (contrôle local du 4 nov. 2026 : la phrase de la base légale
+// était visible sans nouvelle version ; elle part maintenant avec la version de l'allumage).
+// « 2026-11-03 » est une VALEUR D'ATTENTE : LE JOUR DE LA LIVRAISON, la remplacer, avec « 3 novembre 2026 », par la date
+// réelle (avis du juriste : on n'accepte pas en janvier une « version du 3 novembre »), la même que CGV_VERSION
+// (src/lib/cgv.js) ; cguIa.test.js échoue tant que ce n'est pas fait.
 export const CGU_VERSION = FONCTIONS.ia ? '2026-11-03' : '2026-10-28';
 
 /** La date de cette version, telle que l'affichent la case de l'inscription et la fenêtre (« version du … »). */

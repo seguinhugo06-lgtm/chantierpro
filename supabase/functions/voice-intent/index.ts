@@ -13,6 +13,7 @@
  * Chaque réponse, erreurs comprises, porte corsHeaders (posés par regles.ts).
  * QUOTA ET COÛTS — table `usage_ia_log` et fonctions `reserver_usage_ia` / `terminer_usage_ia` (migration 107), appelées
  * avec la clé de service APRÈS vérification du jeton de l'utilisateur.
+ * ACCORD — table `accords_ia` (migration 109) : sans accord en cours à la version `ACCORD_IA_VERSION`, 403 ACCORD_REQUIS.
  *
  * Secrets : ANTHROPIC_API_KEY (réglé par Hugo) ; IA_DICTEE : comptes autorisés à dicter (identifiants séparés par des
  * virgules, ou « tous »). Sans IA_DICTEE, la dictée est fermée côté serveur (503), quel que soit FONCTIONS.ia. Sans clé, sans crédits ou API en panne : 503 « Dictée indisponible
@@ -24,9 +25,9 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import Anthropic from 'https://esm.sh/@anthropic-ai/sdk@0.68.0';
 import { admin, CLE_SERVEUR, journaliser, utilisateurDuJeton } from '../_shared/branchements.ts';
-import { traiterDictee, type Reservation } from './regles.ts';
+import { ouvertePour, traiterDictee, type Reservation } from './regles.ts';
 
-// Compteur absent (migration 107 pas appliquée) : fonction ou table introuvable.
+// Compteur ou table des accords absents (migration 107 ou 109 pas appliquée) : fonction ou table introuvable.
 const COMPTEUR_ABSENT = /PGRST202|PGRST205|42883|42P01/;
 
 const ouverture = Deno.env.get('IA_DICTEE') ?? '';
@@ -38,9 +39,19 @@ const anthropic = cleApi ? new Anthropic({ apiKey: cleApi, maxRetries: 1, timeou
 serve((req) => traiterDictee(req, {
   cleServeur: CLE_SERVEUR || undefined,
   cleApi,
-  ouverte: (id) => ouverture === 'tous' || ouverture.split(',').map((s) => s.trim().toLowerCase()).includes(id.toLowerCase()),
+  ouverte: (id) => ouvertePour(ouverture, id),
   utilisateur: utilisateurDuJeton,
   journal: journaliser('voice-intent'),
+
+  async accord(userId, version) {
+    const { data, error } = await admin.from('accords_ia').select('id')
+      .eq('user_id', userId).eq('fonction', 'dictee').eq('version', version).is('revoque_le', null).limit(1);
+    if (error) {
+      if (COMPTEUR_ABSENT.test(`${error.code} ${error.message}`)) return 'indisponible';
+      throw new Error(error.message);
+    }
+    return Array.isArray(data) && data.length > 0 ? 'ok' : 'absent';
+  },
 
   async reserver({ userId, organisation, fonction, limites }): Promise<Reservation> {
     const { data, error } = await admin.rpc('reserver_usage_ia', {
@@ -52,13 +63,14 @@ serve((req) => traiterDictee(req, {
       if (/SANS_DROIT/.test(error.message || '')) return { sansDroit: true };
       throw new Error(error.message);
     }
-    const r = (data || {}) as { autorise?: boolean; id?: number; limite?: number | null; utilise?: number | null; plan?: string; motif?: string };
+    const r = (data || {}) as { autorise?: boolean; id?: number; limite?: number | null; utilise?: number | null; plan?: string; motif?: string; par_jour?: number | null };
     if (r.autorise === true && r.id != null) {
       return { autorise: true, id: Number(r.id), limite: r.limite ?? null, utilise: Number(r.utilise ?? 0), plan: r.plan || 'gratuit' };
     }
     if (r.autorise === false) {
       return { autorise: false, limite: r.limite ?? null, utilise: r.utilise == null ? null : Number(r.utilise), plan: r.plan || 'gratuit',
-        motif: r.motif === 'plafond' ? 'plafond' : r.motif === 'global' ? 'global' : 'quota' };
+        motif: r.motif === 'plafond' ? 'plafond' : r.motif === 'plafond_jour' ? 'plafond_jour' : r.motif === 'global' ? 'global' : 'quota',
+        parJour: r.par_jour ?? null };
     }
     throw new Error('réponse inattendue de reserver_usage_ia');
   },

@@ -5,7 +5,7 @@ L'interrupteur `FONCTIONS.ia` reste **éteint**. Rien n'est appliqué en product
 
 Où en sont les trois conditions de la décision D-07 :
 - quota côté serveur : fait ;
-- saisie au clavier : corrigée ;
+- saisie au clavier : **restait ouverte** (contrôle local du 4 nov. 2026 : taper collait les mots) ; corrigée sur `cloud/ia-allumage` (`texteAffiche`, `useDictation.js`) ;
 - sous-traitant déclaré : les textes sont prêts, mais **l'écran d'accord avant la première dictée (Apple 5.1.2(i)) reste à construire**. Il fait partie de cette condition et **bloque l'allumage**.
 
 Restent des vérifications et des décisions d'Hugo (voir plus bas) avant d'allumer.
@@ -189,7 +189,7 @@ Tous ces textes ne s'affichent **que si `FONCTIONS.ia` est allumé**. Aujourd'hu
 
 **Situation de départ, constatée le 3 nov. par la session locale (lecture seule)** : la version de `voice-intent` en production est la **v11 de juillet**. Elle n'a aucun quota côté serveur, tourne sur Haiku 4.5 avec `max_tokens` 4096, et répond à **tout compte connecté si la clé `ANTHROPIC_API_KEY` est posée**. Poser la clé avant d'avoir déployé la nouvelle version rallumerait donc ce trou.
 
-0. **Constater si la clé est posée** (connecteur Supabase : la liste des secrets, **son nom seulement**, jamais sa valeur).
+0. **Constater si la clé est posée — tout de suite, sans attendre la livraison.** C'est **Hugo** qui lit les noms des secrets dans Supabase › Edge Functions › Secrets (aucun outil du connecteur ne liste les secrets ; correction du contrôle local du 4 nov. 2026), **les noms seulement**, jamais les valeurs. Indice possible pour la session locale : les journaux de `voice-intent` ; des réponses 200 récentes prouveraient que la clé est posée et utilisée.
    - Si elle est posée : Hugo la retire, **ou** l'on déploie tout de suite la nouvelle fonction (point 2). Sans la migration 107, la nouvelle version répond 503 « indisponible » avant tout appel à l'API ; sans le secret `IA_DICTEE`, aussi.
 1. **Appliquer la migration 107.**
    - Elle garde son numéro : la `108` de `cloud/metiers` est indépendante (elle ne touche que `get_devis_for_signature`).
@@ -285,7 +285,7 @@ SELECT jobname, schedule FROM cron.job WHERE jobname = 'purger-journal-ia';
 3. Banc vert : 687 vérifications, dont 38 pour 107 (quota atteint, autre entreprise, visiteur, contournement).
 4. Crédits épuisés ou API en panne : « Dictée indisponible pour le moment. Saisissez votre devis à la main. » Un bouton ouvre alors un devis.
 5. L'app affiche enfin le vrai message du serveur, et non plus « non-2xx ».
-6. Saisie au clavier : taper coupe le micro, plus d'analyse au milieu de la frappe ni de texte en double.
+6. Saisie au clavier : taper coupe le micro, plus d'analyse au milieu de la frappe ni de texte en double. *(Contrôle local du 4 nov. : taper collait encore les mots ; corrigé sur `cloud/ia-allumage`.)*
 7. Les textes d'Anthropic sous-traitant sont prêts (version du juriste), affichés seulement quand l'IA sera allumée.
 8. Rien n'est appliqué ni déployé. Ordre : constater la clé (la retirer si posée), puis 107, puis `voice-intent`, puis la clé et sa limite de dépense, puis le constat avec un compte de test.
 9. Avant d'allumer : vérifier le DPA d'Anthropic, l'écran d'accord, le plafond de 100 par jour, la date des CGU.
@@ -300,7 +300,7 @@ Session cloud de correction, après deux relectures locales (code, sécurité) e
 - `npx vitest run src/lib/__tests__/voiceIntentServeur.test.js` : 30 tests verts (4 nouveaux : interrupteur fermé, SANS_DROIT, coupe-circuit, exception imprévue avec CORS ; motif `coupee`).
 - `npx vitest run src/lib/__tests__/droitsDictee.test.js` : 6 tests verts. **Contre-essai** : avec l'ancien `DicteeModal.jsx`, 2 tests sur 6 échouent (TVA par défaut, montants sans droit).
 - `npm run verifier` (standard) sur `231bfc8` : **tout vert** (1 246 tests, lint 0 erreur, smoke, build).
-- `npm run verifier -- --complet` sur `2ebf760` : tests, lint, smoke, build et banc verts ; **parcours : « 5 parcours en échec »**, après 2 125 s, puis la passe a été arrêtée par la limite de temps de la session (l'audit d'interface n'a pas tourné). Le lanceur n'a pas affiché le nom des 5 échecs. J'ai donc rejoué un à un les parcours qui touchent ce que j'ai changé : `dictee` (6), `coque` (15), `equipe` (27), `ramonage` (8), `clients-catalogue` (19), `chantiers` (29), `documents` (16) : **120 parcours, tous verts**. Les 5 échecs restent **non identifiés** : la session locale doit relancer `npm run verifier -- --complet` avant de livrer.
+- *(Contrôle local du 4 nov. 2026 : cette vérification n'est **pas concluante** ; voir `docs/cloud/ia-allumage.md`.)* `npm run verifier -- --complet` sur `2ebf760` : tests, lint, smoke, build et banc verts ; **parcours : « 5 parcours en échec »**, après 2 125 s, puis la passe a été arrêtée par la limite de temps de la session (l'audit d'interface n'a pas tourné). Le lanceur n'a pas affiché le nom des 5 échecs. J'ai donc rejoué un à un les parcours qui touchent ce que j'ai changé : `dictee` (6), `coque` (15), `equipe` (27), `ramonage` (8), `clients-catalogue` (19), `chantiers` (29), `documents` (16) : **120 parcours, tous verts**. Les 5 échecs restent **non identifiés** : la session locale doit relancer `npm run verifier -- --complet` avant de livrer.
 
 ### Point par point
 
@@ -342,7 +342,7 @@ Session cloud de correction, après deux relectures locales (code, sécurité) e
 - 5 (mention IA, art. 50) — fait : phrase sous le titre de la fenêtre, et phrase du micro remplacée. `efb633e`.
 - 6, 7, 10, 12, 13 — fichiers de `cloud/ia-direction` : hors branche, non touchés.
 - 8 (promesses fausses) — fait (Changelog, OngletTaches, FAQ). `efb633e`.
-- 9 (TVA en franchise) — fait : `tauxTvaParDefaut(entreprise)` (0 en franchise). Test : le taux par défaut et son usage dans la fenêtre. **Pas fait** : le constat que les deux PDF impriment la mention 293 B pour un brouillon dicté à 0 % (pas d'outil de rendu de composant dans le dépôt) ; à faire par le parcours `documents` ou `/sonde` à la livraison.
+- 9 (TVA en franchise) — **à moitié fait ici** : `tauxTvaParDefaut(entreprise)` (0 en franchise) ; mais une ligne reprise du catalogue gardait son taux (contrôle local du 4 nov. 2026), et le test demandé (brouillon à 0 % et mention 293 B dans les deux PDF) n'existait pas. **Fait sur `cloud/ia-allumage`** : `brouillonDictee` (test vitest avec `buildDevisHtml`) et le parcours « dictée en franchise » (aperçu imprimé de DevisPage).
 - 11 (`assistant: false` dans fonctions.js) — non fait ici : il concerne `App.jsx` de `cloud/ia-direction` ; l'ajouter dans cette branche créerait un conflit sans effet.
 - Introuvable 1 (DPF, sous-traitants d'Anthropic) — rien écrit sur le DPF ; Hugo ouvre les deux pages (action 8 d'`etat-production.md`).
 - Introuvable 2 (voix sur Chrome) — formulation prudente gardée.

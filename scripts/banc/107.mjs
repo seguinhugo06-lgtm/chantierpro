@@ -10,7 +10,9 @@ const MIGRATION = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..
 const RESERVER = 'SELECT reserver_usage_ia($1, $2, $3, $4::jsonb) AS r';
 const TERMINER = 'SELECT terminer_usage_ia($1, $2, $3, $4, $5, $6, $7) AS ok';
 // La recopie de PLANS[plan].limits.dictees que passe la fonction Edge (supabase/functions/voice-intent/regles.ts)
-const LIMITES = JSON.stringify({ gratuit: 10, artisan: -1, equipe: -1 });
+const LIMITES = JSON.stringify({ gratuit: 5, artisan: 100, equipe: -1 });
+// Aujourd'hui (jour de Paris, celui du plafond du jour), au moins une minute plus tôt : hors plafond par minute.
+const AUJOURDHUI = `GREATEST(now() - interval '2 minutes', date_trunc('day', now() AT TIME ZONE 'Europe/Paris') AT TIME ZONE 'Europe/Paris')`;
 const ORG_PAYEUR = '10700000-0000-4000-8000-0000000000a1';
 const TESTEUR = '10700000-0000-4000-8000-000000000001';
 const ORG_TESTEUR = '10700000-0000-4000-8000-0000000000a2';
@@ -50,14 +52,14 @@ export async function verifier({ db, q, en, commeAnonyme, compte, verifier }) {
   // créer un devis). Le refus d'un ouvrier est vérifié plus bas.
   await q(`UPDATE organization_members SET role = 'comptable' WHERE organization_id = $1 AND user_id = $2`, [ORG_PATRON, SALARIE]);
 
-  // ── Plan gratuit : 10 dictées par mois pour l'organisation ──
+  // ── Plan gratuit : 5 dictées par mois pour l'organisation (décision d'Hugo du 4 nov. 2026) ──
   const premieres = [];
-  for (let i = 0; i < 10; i++) premieres.push(await reserver(SOLO, ORG_SOLO));
-  verifier(premieres.every((r) => r.autorise === true && r.id != null && r.plan === 'gratuit' && r.limite === 10),
-    `107 : dix dictées acceptées au plan gratuit (${premieres.map((r) => r.utilise).join(',')})`);
-  const onzieme = await reserver(SOLO, ORG_SOLO);
-  verifier(onzieme.autorise === false && onzieme.utilise === 10 && onzieme.limite === 10 && (await lignes(ORG_SOLO)) === 10,
-    `107 : la 11e est refusée, rien n'est compté en plus (${JSON.stringify(onzieme)})`);
+  for (let i = 0; i < 5; i++) premieres.push(await reserver(SOLO, ORG_SOLO));
+  verifier(premieres.every((r) => r.autorise === true && r.id != null && r.plan === 'gratuit' && r.limite === 5),
+    `107 : cinq dictées acceptées au plan gratuit (${premieres.map((r) => r.utilise).join(',')})`);
+  const sixieme = await reserver(SOLO, ORG_SOLO);
+  verifier(sixieme.autorise === false && sixieme.motif === 'quota' && sixieme.utilise === 5 && sixieme.limite === 5 && (await lignes(ORG_SOLO)) === 5,
+    `107 : la 6e est refusée (quota), rien n'est compté en plus (${JSON.stringify(sixieme)})`);
 
   // Un échec (API en panne) rend la dictée ; clore deux fois est sans effet ; un usage réussi reste compté
   verifier(await terminer(premieres[0].id, 'echec', 'credits') === true, '107 : le serveur clôt un usage en échec');
@@ -67,7 +69,7 @@ export async function verifier({ db, q, en, commeAnonyme, compte, verifier }) {
   verifier(ligne.statut === 'echec' && ligne.modele === 'claude-haiku-5-5' && ligne.jetons_entree === 1200 && ligne.jetons_sortie === 400
     && ligne.duree_ms === 1800 && ligne.motif === 'credits', `107 : modèle, jetons, durée et motif journalisés (${JSON.stringify(ligne)})`);
   const apresEchec = await reserver(SOLO, ORG_SOLO);
-  verifier(apresEchec.autorise === true && apresEchec.utilise === 10, '107 : une dictée en échec ne décompte pas : une place se libère');
+  verifier(apresEchec.autorise === true && apresEchec.utilise === 5, '107 : une dictée en échec ne décompte pas : une place se libère');
   verifier((await reserver(SOLO, ORG_SOLO)).autorise === false, '107 : puis le quota est de nouveau atteint');
 
   // Les fonctions sont comptées à part ; une fonction sans quota décidé est refusée
@@ -95,11 +97,11 @@ export async function verifier({ db, q, en, commeAnonyme, compte, verifier }) {
   verifier(salarie.autorise === true && salarie.plan === 'equipe' && salarie.limite === null,
     `107 : un salarié dicte au plan de l'entreprise (${salarie.plan}, limite ${salarie.limite})`);
   const payeur = await reserver(PAYEUR, null);
-  verifier(payeur.autorise === true && payeur.plan === 'artisan' && payeur.limite === null
+  verifier(payeur.autorise === true && payeur.plan === 'artisan' && payeur.limite === 100
     && (await compte('SELECT count(*) AS n FROM usage_ia_log WHERE id = $1 AND organization_id = $2', [payeur.id, ORG_PAYEUR])) === 1,
-  '107 : sans organisation demandée, la sienne ; plan Artisan illimité');
+  '107 : sans organisation demandée, la sienne ; plan Artisan : 100 par mois');
   const testeur = await reserver(TESTEUR, ORG_TESTEUR);
-  verifier(testeur.plan === 'gratuit' && testeur.limite === 10, `107 : une offre testeur échue vaut le plan gratuit (${testeur.plan})`);
+  verifier(testeur.plan === 'gratuit' && testeur.limite === 5, `107 : une offre testeur échue vaut le plan gratuit (${testeur.plan})`);
 
   // ── Tri du plan : une ligne gratuite au statut NULL ne masque pas l'abonnement Équipe du propriétaire ──
   await q(`DELETE FROM subscriptions WHERE user_id = $1`, [SALARIE]);
@@ -123,7 +125,7 @@ export async function verifier({ db, q, en, commeAnonyme, compte, verifier }) {
   await q(`UPDATE usage_ia_log SET mois = (date_trunc('month', now() AT TIME ZONE 'Europe/Paris'))::date WHERE organization_id = $1`, [ORG_SOLO]);
   const pleinSolo = await reserver(SOLO, ORG_SOLO);
   const neuve = await reserver(SOLO, ORG_NEUVE);
-  verifier(pleinSolo.autorise === false && neuve.autorise === false && neuve.utilise >= 10,
+  verifier(pleinSolo.autorise === false && neuve.autorise === false && neuve.utilise >= 5,
     `107 : au plan gratuit, créer une autre organisation ne rouvre pas de dictées (${JSON.stringify(neuve)})`);
 
   // Ce qu'un salarié dicte dans l'entreprise payante de son patron n'entame pas son quota gratuit personnel
@@ -144,10 +146,62 @@ export async function verifier({ db, q, en, commeAnonyme, compte, verifier }) {
   await q(`UPDATE usage_ia_log SET created_at = now() - interval '2 hours' WHERE user_id = $1`, [PAYEUR]);
   verifier((await reserverBrut(PAYEUR, ORG_PAYEUR)).autorise === true, '107 : une minute plus tard, le compte peut de nouveau dicter');
   await q(`INSERT INTO usage_ia_log (organization_id, user_id, fonction, mois, statut, created_at)
-    SELECT $1, $2, 'dictee', (now() AT TIME ZONE 'Europe/Paris')::date, 'reussi', now() - interval '3 hours' FROM generate_series(1, 100)`, [ORG_PAYEUR, PAYEUR]);
+    SELECT $1, $2, 'dictee', (now() AT TIME ZONE 'Europe/Paris')::date, 'reussi', ${AUJOURDHUI} FROM generate_series(1, 100)`, [ORG_PAYEUR, PAYEUR]);
   const jour = await reserverBrut(PAYEUR, ORG_PAYEUR);
-  verifier(jour.autorise === false && jour.motif === 'plafond', '107 : au-delà de 100 analyses dans la journée, refus (plafond)');
+  verifier(jour.autorise === false && jour.motif === 'plafond_jour' && jour.par_jour === 100,
+    `107 : au-delà de 100 analyses dans la journée, refus (plafond_jour) (${JSON.stringify(jour)})`);
   await q(`DELETE FROM usage_ia_log WHERE user_id = $1`, [PAYEUR]);
+
+  // ── Le plafond du jour suit le jour de Paris : la veille à 23 h 59 ne compte pas, minuit passé compte (gardien, B2) ──
+  const MINUIT = `(date_trunc('day', now() AT TIME ZONE 'Europe/Paris') AT TIME ZONE 'Europe/Paris')`;
+  await q(`INSERT INTO usage_ia_log (organization_id, user_id, fonction, mois, statut, created_at)
+    SELECT $1, $2, 'dictee', (now() AT TIME ZONE 'Europe/Paris')::date, 'reussi', ${MINUIT} - interval '1 second' FROM generate_series(1, 100)`, [ORG_PAYEUR, PAYEUR]);
+  const veille = await reserverBrut(PAYEUR, ORG_PAYEUR);
+  await q(`DELETE FROM usage_ia_log WHERE user_id = $1`, [PAYEUR]);
+  await q(`INSERT INTO usage_ia_log (organization_id, user_id, fonction, mois, statut, created_at)
+    SELECT $1, $2, 'dictee', (now() AT TIME ZONE 'Europe/Paris')::date, 'reussi', LEAST(${MINUIT} + interval '1 second', now() - interval '2 minutes') FROM generate_series(1, 100)`, [ORG_PAYEUR, PAYEUR]);
+  const lendemain = await reserverBrut(PAYEUR, ORG_PAYEUR);
+  verifier(veille.autorise === true && lendemain.autorise === false && lendemain.motif === 'plafond_jour',
+    `107 : 100 analyses la veille à 23 h 59 (Paris) ne comptent pas ; 100 depuis minuit, si (${veille.autorise}, ${lendemain.motif})`);
+  await q(`DELETE FROM usage_ia_log WHERE user_id = $1`, [PAYEUR]);
+
+  // ── Le serveur (service_role) ne fait que lire le journal : seules les fonctions écrivent (gardien, B1) ──
+  const journalEcrit = (await q(`SELECT has_table_privilege('service_role', 'public.usage_ia_log', 'INSERT') OR has_table_privilege('service_role', 'public.usage_ia_log', 'UPDATE')
+      OR has_table_privilege('service_role', 'public.usage_ia_log', 'DELETE') AS ecrit`)).rows[0].ecrit;
+  verifier(journalEcrit === false, '107 : service_role ne peut ni écrire ni effacer le journal directement');
+
+  // ── Plan Artisan : 100 dictées par mois pour l'organisation (décision d'Hugo du 4 nov. 2026) ──
+  // 99 dictées déjà faites ce mois-ci, datées d'avant-hier (hors plafond du jour) : la 100e passe, la 101e est refusée.
+  await q(`INSERT INTO usage_ia_log (organization_id, user_id, fonction, mois, statut, created_at)
+    SELECT $1, $2, 'dictee', date_trunc('month', now() AT TIME ZONE 'Europe/Paris')::date, 'reussi', now() - interval '2 days'
+      FROM generate_series(1, 99)`, [ORG_PAYEUR, PAYEUR]);
+  const centieme = await reserver(PAYEUR, ORG_PAYEUR);
+  const centUnieme = await reserver(PAYEUR, ORG_PAYEUR);
+  verifier(centieme.autorise === true && centieme.utilise === 100 && centieme.limite === 100
+    && centUnieme.autorise === false && centUnieme.motif === 'quota' && centUnieme.limite === 100 && centUnieme.utilise === 100,
+  `107 : au plan Artisan, la 100e dictée du mois passe et la 101e est refusée (${JSON.stringify(centUnieme)})`);
+  await q(`DELETE FROM usage_ia_log WHERE user_id = $1`, [PAYEUR]);
+
+  // ── Plan Équipe : sans limite mensuelle, 100 par jour ET PAR PERSONNE (décision d'Hugo du 4 nov. 2026) ──
+  // 500 dictées de l'entreprise ce mois-ci (avant-hier) ne bloquent rien ; un salarié à 99 aujourd'hui fait sa 100e,
+  // pas sa 101e ; le patron, dans la même entreprise, dicte encore.
+  await q(`INSERT INTO usage_ia_log (organization_id, user_id, fonction, mois, statut, created_at)
+    SELECT $1, $2, 'dictee', date_trunc('month', now() AT TIME ZONE 'Europe/Paris')::date, 'reussi', now() - interval '2 days'
+      FROM generate_series(1, 500)`, [ORG_PATRON, PATRON]);
+  await q(`INSERT INTO usage_ia_log (organization_id, user_id, fonction, mois, statut, created_at)
+    SELECT $1, $2, 'dictee', date_trunc('month', now() AT TIME ZONE 'Europe/Paris')::date, 'reussi', ${AUJOURDHUI}
+      FROM generate_series(1, 99)`, [ORG_PATRON, SALARIE]);
+  const sal100 = await reserverBrut(SALARIE, ORG_PATRON);
+  await q(`UPDATE usage_ia_log SET created_at = ${AUJOURDHUI} WHERE user_id = $1 AND created_at > now() - interval '1 minute'`, [SALARIE]);
+  const sal101 = await reserverBrut(SALARIE, ORG_PATRON);
+  const patronMemeJour = await reserverBrut(PATRON, ORG_PATRON);
+  verifier(sal100.autorise === true && sal100.plan === 'equipe' && sal100.limite === null && sal100.utilise > 500,
+    `107 : au plan Équipe, aucune limite mensuelle, la 100e dictée du jour d'une personne passe (${JSON.stringify(sal100)})`);
+  verifier(sal101.autorise === false && sal101.motif === 'plafond_jour' && sal101.par_jour === 100,
+    `107 : au plan Équipe, la 101e dictée du jour d'une même personne est refusée (${JSON.stringify(sal101)})`);
+  verifier(patronMemeJour.autorise === true,
+    '107 : au plan Équipe, le plafond est par personne : un autre membre de l\'entreprise dicte encore');
+  await q(`DELETE FROM usage_ia_log WHERE user_id IN ($1, $2) AND created_at > now() - interval '3 days' AND id <> $3`, [PATRON, SALARIE, salarie.id]);
 
   // Au plan gratuit, le plafond du jour est 20 (délais non décomptés du quota mensuel)
   const ORG_GRATUIT_JOUR = '10700000-0000-4000-8000-0000000000a6';
@@ -156,11 +210,11 @@ export async function verifier({ db, q, en, commeAnonyme, compte, verifier }) {
   await q(`INSERT INTO organizations (id, name, slug, owner_id) VALUES ($1, 'Jour 107', 'jour-107', $2)`, [ORG_GRATUIT_JOUR, GRATUIT_JOUR]);
   await q(`INSERT INTO organization_members (organization_id, user_id, role) VALUES ($1, $2, 'owner')`, [ORG_GRATUIT_JOUR, GRATUIT_JOUR]);
   await q(`INSERT INTO usage_ia_log (organization_id, user_id, fonction, mois, statut, motif, created_at)
-    SELECT $1, $2, 'dictee', (now() AT TIME ZONE 'Europe/Paris')::date, 'echec', 'delai', now() - interval '3 hours' FROM generate_series(1, 19)`, [ORG_GRATUIT_JOUR, GRATUIT_JOUR]);
+    SELECT $1, $2, 'dictee', (now() AT TIME ZONE 'Europe/Paris')::date, 'echec', 'delai', ${AUJOURDHUI} FROM generate_series(1, 19)`, [ORG_GRATUIT_JOUR, GRATUIT_JOUR]);
   const vingtieme = await reserverBrut(GRATUIT_JOUR, ORG_GRATUIT_JOUR);
-  await q(`UPDATE usage_ia_log SET created_at = now() - interval '3 hours' WHERE user_id = $1`, [GRATUIT_JOUR]);
+  await q(`UPDATE usage_ia_log SET created_at = ${AUJOURDHUI} WHERE user_id = $1`, [GRATUIT_JOUR]);
   const vingtEtUnieme = await reserverBrut(GRATUIT_JOUR, ORG_GRATUIT_JOUR);
-  verifier(vingtieme.autorise === true && vingtEtUnieme.autorise === false && vingtEtUnieme.motif === 'plafond',
+  verifier(vingtieme.autorise === true && vingtEtUnieme.autorise === false && vingtEtUnieme.motif === 'plafond_jour',
     `107 : au plan gratuit, la 21e analyse du jour est refusée (${vingtieme.autorise},${vingtEtUnieme.motif})`);
   await q(`DELETE FROM usage_ia_log WHERE user_id = $1`, [GRATUIT_JOUR]);
 

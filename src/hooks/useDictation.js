@@ -45,6 +45,16 @@ function recoller(segments) {
     .trim();
 }
 
+/**
+ * Ce que l'artisan voit dans le champ : le texte figé, plus ce que le micro entend en ce moment.
+ * Sans résultat en cours, le texte figé est rendu TEL QUEL : c'est peut-être ce que l'artisan tape au clavier, et le
+ * « recoller » retirait l'espace de fin à chaque frappe (« devis pour » + « M » → « devis pourM » ; contrôle local du
+ * 4 nov. 2026, 3e condition de D-07). Le texte venu du micro est déjà recollé à sa réception (onresult).
+ */
+export function texteAffiche(transcript, interim) {
+  return interim ? recoller([transcript, interim]) : (transcript || '');
+}
+
 export function useDictation({ lang = 'fr-FR', continuous = true } = {}) {
   const [listening, setListening] = useState(false);
   const [transcript, setTranscript] = useState('');   // texte figé (résultats finaux)
@@ -260,7 +270,7 @@ export function useDictation({ lang = 'fr-FR', continuous = true } = {}) {
     }
   }, []);
 
-  const texte = recoller([transcript, interim]);
+  const texte = texteAffiche(transcript, interim);
 
   return {
     supported,

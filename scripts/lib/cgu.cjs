@@ -24,4 +24,6 @@ const date = lire('CGU_VERSION_DATE');
 module.exports = {
   CGU_VERSION: iaAllumee ? version.avecIa : version.sansIa, CGU_VERSION_DATE: iaAllumee ? date.avecIa : date.sansIa,
   CGU_VERSION_IA: version.avecIa, CGU_VERSION_DATE_IA: date.avecIa,
+  // L'interrupteur du build livré : un parcours qui vérifie « IA éteinte » s'adapte le jour de l'allumage.
+  IA_ALLUMEE: iaAllumee,
 };

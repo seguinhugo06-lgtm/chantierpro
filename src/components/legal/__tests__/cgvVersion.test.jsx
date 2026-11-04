@@ -1,9 +1,10 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import LegalPages from '../../LegalPages';
-import { PLANS, PLAN_ORDER } from '../../../stores/subscriptionStore';
+import { PLANS, PLAN_ORDER, LIBELLES_COMPLETS } from '../../../stores/subscriptionStore';
+import { FONCTIONS } from '../../../lib/fonctions';
 import { MENTION_TVA_ABONNEMENT, prixAbonnement } from '../../../stores/prixAbonnement';
-import { CGV_VERSION, CGV_ARTICLE_4_PLANS, CGV_ARTICLE_4_TVA, libelleVersionCgv } from '../../../lib/cgv';
+import { CGV_VERSION, CGV_ARTICLE_4_PLANS, CGV_ARTICLE_4_TVA, CGV_ARTICLE_4_SELON_IA, libelleVersionCgv } from '../../../lib/cgv';
 
 /**
  * CGV versionnées (relecture juridique du 20 oct. 2026) : l'article 4 se recalculait depuis `PLANS`, si bien qu'un
@@ -48,6 +49,29 @@ describe('CGV : l\'article 4 figé suit PLANS (garde-fou)', () => {
     const retiree = copie((p) => { p.artisan.featureLabels[0].included = false; return p; });
     expect(articleQuatreDepuisPlans(retiree)).not.toEqual(CGV_ARTICLE_4_PLANS);
     expect(lu(articleQuatreDepuisPlans(retiree)[1].description)).not.toContain(PLANS.artisan.featureLabels[0].name);
+  });
+});
+
+describe('CGV : la dictée (FONCTIONS.ia) dans l\'article 4', () => {
+  // Les plans avec leurs lignes de dictée (masquées tant que l'IA est éteinte) donnent le texte « avec IA » de l'article 4.
+  const plansAvecIa = Object.fromEntries(PLAN_ORDER.map((id) => [id, { ...PLANS[id], featureLabels: LIBELLES_COMPLETS[id] }]));
+
+  it('le texte « avec IA » de l\'article 4 est celui que donnent PLANS avec les lignes de dictée', () => {
+    expect(articleQuatreDepuisPlans(plansAvecIa), 'mettre à jour ARTICLE_4_AVEC_IA (src/lib/cgv.js)').toEqual(CGV_ARTICLE_4_SELON_IA.avecIa);
+  });
+
+  it('les textes de l\'offre sont exacts : 5, 100, et pas de « sans limite » sans son plafond (C. conso. L121-2)', () => {
+    const [gratuit, artisan, equipe] = CGV_ARTICLE_4_SELON_IA.avecIa.map((l) => l.description);
+    expect(gratuit).toContain('5 dictées par mois');
+    expect(artisan).toContain('100 dictées par mois');
+    expect(equipe).toContain('Dictées sans limite mensuelle (100 par jour et par personne au plus)');
+    expect(CGV_ARTICLE_4_SELON_IA.sansIa.map((l) => l.description).join(' ')).not.toMatch(/dictée/i);
+  });
+
+  it('IA allumée : la version des CGV change, et sa date d\'attente (3 nov.) a été remplacée par celle de la livraison', () => {
+    if (!FONCTIONS.ia) { expect(CGV_VERSION).toBe('2026-10-24'); return; }
+    expect(CGV_VERSION).not.toBe('2026-10-24');
+    expect(CGV_VERSION, 'Relevez CGV_VERSION (src/lib/cgv.js) au jour de la livraison, comme CGU_VERSION').not.toBe('2026-11-03');
   });
 });
 

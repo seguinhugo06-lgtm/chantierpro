@@ -192,12 +192,21 @@ export default function TexteCgu({ compact = false, versConfidentialite }) {
             </a>
           )}, qui fait partie intégrante des présentes CGU.
         </p>
-        <p className={p}>
-          {/* juriste-btp, 3 nov. 2026 : la base légale est le contrat (RGPD art. 6.1.b), pas le consentement (art. 7.4). */}
-          En utilisant Mallettico, l'utilisateur reconnaît avoir pris connaissance de cette politique. Ses données sont
-          traitées conformément au RGPD (Règlement UE 2016/679), principalement pour exécuter le contrat qui le lie à
-          Mallettico (art. 6.1.b).
-        </p>
+        {/* juriste-btp, 3 nov. 2026 : la base légale est le contrat (RGPD art. 6.1.b), pas le consentement (art. 7.4).
+            Contrôle local du 4 nov. 2026 : la nouvelle phrase part avec la nouvelle CGU_VERSION de l'allumage (même
+            enveloppe que la clause de sous-traitance), pour que rien ne change à l'écran sans nouvelle version. */}
+        {FONCTIONS.ia ? (
+          <p className={p}>
+            En utilisant Mallettico, l'utilisateur reconnaît avoir pris connaissance de cette politique. Ses données sont
+            traitées conformément au RGPD (Règlement UE 2016/679), principalement pour exécuter le contrat qui le lie à
+            Mallettico (art. 6.1.b).
+          </p>
+        ) : (
+          <p className={p}>
+            En utilisant Mallettico, l'utilisateur reconnaît avoir pris connaissance de cette politique
+            et consent au traitement de ses données conformément au RGPD (Règlement UE 2016/679).
+          </p>
+        )}
         {/* Sous-traitance (RGPD art. 28) et sous-traitants ultérieurs : texte de juriste-btp du 3 nov. 2026, affiché au
             plus tard avec la dictée (Anthropic). Hugo peut décider de le publier plus tôt, sans condition (le défaut existe
             déjà : docs/cloud/ia-socle.md) ; il faudra alors relever CGU_VERSION. */}

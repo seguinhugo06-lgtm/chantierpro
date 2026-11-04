@@ -19,6 +19,7 @@
  * que cette règle classerait de travers fait échouer le test, il ne disparaît pas du tableau en silence.
  */
 import { fine } from './site/typographie';
+import { LIMITES_IA, valeurLimiteIa } from '../../lib/limitesDictees';
 
 /** Ressources limitées : clé de `limits`, ligne du tableau, mot qui la désigne dans les libellés. */
 export const LIMITES_AFFICHEES = [
@@ -27,6 +28,8 @@ export const LIMITES_AFFICHEES = [
   { cle: 'chantiers', libelle: 'Chantiers', mot: /chantiers?/i },
   { cle: 'photos', libelle: 'Photos de chantier', mot: /photos?/i },
   { cle: 'equipe', libelle: 'Collaborateurs', mot: /collaborateurs?/i },
+  // Lignes de l'interrupteur des fonctions (src/lib/limitesDictees.js, décision D-32 du 4 nov. 2026)
+  ...LIMITES_IA,
 ];
 
 const HERITE_DU_PRECEDENT = /^tout le plan\b/i;
@@ -50,6 +53,8 @@ export function libelleAffiche(nom) {
 
 /** « 5 par mois », « 10 », « Vous + 1 », « Illimité » : la valeur de `limits` telle qu'on la lit. */
 export function valeurDeLimite(cle, valeur) {
+  const speciale = valeurLimiteIa(cle, valeur);
+  if (speciale) return speciale;
   if (valeur < 0) return 'Illimité';
   if (cle === 'equipe') return `Vous + ${valeur}`;
   if (cle === 'devis') return `${valeur} par mois`;

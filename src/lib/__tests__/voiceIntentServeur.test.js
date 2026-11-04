@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { PLANS } from '../../stores/subscriptionStore';
-import { traiterDictee, classerErreurApi, LIMITES, MESSAGES } from '../../../supabase/functions/voice-intent/regles.ts';
+import { traiterDictee, classerErreurApi, ouvertePour, LIMITES, MESSAGES, ACCORD_IA_VERSION } from '../../../supabase/functions/voice-intent/regles.ts';
 import { requeteDictee, MODELE, EFFORT } from '../../../supabase/functions/voice-intent/consignes.ts';
 
 const ORG = '11111111-2222-4333-8444-555555555555';
@@ -27,6 +27,7 @@ function dependances(surcharges = {}) {
     cleServeur: 'cle-serveur',
     cleApi: 'sk-ant-test',
     ouverte: () => true,
+    accord: vi.fn(async () => 'ok'),
     utilisateur: vi.fn(async (jeton) => (jeton === 'jeton-utilisateur' ? UTILISATEUR : null)),
     reserver: vi.fn(async () => ({ autorise: true, id: 42, limite: 10, utilise: 3, plan: 'gratuit' })),
     terminer: vi.fn(async () => {}),
@@ -64,7 +65,7 @@ describe('voice-intent : quota par plan', () => {
     const { status, corps, cors } = await lire(await traiterDictee(demande(), dep));
     expect(status).toBe(429);
     expect(corps.code).toBe('QUOTA_ATTEINT');
-    expect(corps.error).toBe(MESSAGES.quota(10));
+    expect(corps.error).toBe(MESSAGES.quota(10, 'gratuit'));
     expect(corps.error).toMatch(/à la main/);
     expect(cors).toBe('*');
     expect(dep.appeler).not.toHaveBeenCalled();
@@ -255,5 +256,72 @@ describe('voice-intent : corrections du 3 nov.', () => {
     expect(r.status).toBe(503);
     expect(r.corps.code).toBe('IA_INDISPONIBLE');
     expect(r.cors).toBe('*');
+  });
+});
+
+describe('voice-intent : allumage (4 nov. 2026)', () => {
+  it('quotas de l’offre : 5 au plan Gratuit, 100 au plan Artisan, sans limite mensuelle au plan Équipe', () => {
+    expect(LIMITES.dictee).toEqual({ gratuit: 5, artisan: 100, equipe: -1 });
+  });
+
+  it('messages exacts du quota atteint : l’offre suivante, avec son plafond (pas de « sans limite » seul)', () => {
+    expect(MESSAGES.quota(5, 'gratuit')).toBe('Vos 5 dictées du mois sont utilisées. Saisissez votre devis à la main, ou passez au plan Artisan : 100 dictées par mois.');
+    expect(MESSAGES.quota(100, 'artisan')).toBe('Vos 100 dictées du mois sont utilisées. Saisissez votre devis à la main, ou passez au plan Équipe : dictées sans limite mensuelle (100 par jour et par personne au plus).');
+    expect(MESSAGES.quota(3, 'inconnu')).toBe('Vos 3 dictées du mois sont utilisées. Saisissez votre devis à la main.');
+    for (const plan of ['gratuit', 'artisan']) expect(MESSAGES.quota(1, plan)).not.toMatch(/sans limite(?! mensuelle \(100 par jour)/);
+  });
+
+  it('quota du plan Artisan : 429 avec le message de l’offre Équipe, et le quota rendu à l’app', async () => {
+    const dep = dependances({ reserver: vi.fn(async () => ({ autorise: false, motif: 'quota', limite: 100, utilise: 100, plan: 'artisan' })) });
+    const r = await lire(await traiterDictee(demande(), dep));
+    expect([r.status, r.corps.code, r.corps.error]).toEqual([429, 'QUOTA_ATTEINT', MESSAGES.quota(100, 'artisan')]);
+    expect(r.corps.quota).toEqual({ limite: 100, utilise: 100, plan: 'artisan' });
+    expect(dep.appeler).not.toHaveBeenCalled();
+  });
+
+  it('plafond du jour (100 par jour et par personne) : 429 PLAFOND_JOUR, « réessayez demain », sans appel à l’API', async () => {
+    const dep = dependances({ reserver: vi.fn(async () => ({ autorise: false, motif: 'plafond_jour', parJour: 100, limite: null, utilise: null, plan: 'equipe' })) });
+    const r = await lire(await traiterDictee(demande(), dep));
+    expect([r.status, r.corps.code]).toEqual([429, 'PLAFOND_JOUR']);
+    expect(r.corps.error).toBe('Vous avez atteint le maximum de 100 analyses par jour et par personne. Saisissez votre devis à la main, ou réessayez demain.');
+    expect(dep.appeler).not.toHaveBeenCalled();
+  });
+
+  it('sans accord de l’artisan : 403 ACCORD_REQUIS, rien de réservé ni envoyé ; l’accord est lu à la version attendue', async () => {
+    const dep = dependances({ accord: vi.fn(async () => 'absent') });
+    const r = await lire(await traiterDictee(demande(), dep));
+    expect([r.status, r.corps.code, r.corps.error]).toEqual([403, 'ACCORD_REQUIS', MESSAGES.accordRequis]);
+    expect(r.cors).toBe('*');
+    expect(dep.accord).toHaveBeenCalledWith('u-1', ACCORD_IA_VERSION);
+    expect(dep.reserver).not.toHaveBeenCalled();
+    expect(dep.appeler).not.toHaveBeenCalled();
+  });
+
+  it('accord illisible (table absente, base en panne) ou vérification absente : 503 fermé, rien de réservé', async () => {
+    for (const accord of [vi.fn(async () => 'indisponible'), vi.fn(async () => { throw new Error('panne'); }), undefined]) {
+      const dep = dependances({ accord });
+      const r = await lire(await traiterDictee(demande(), dep));
+      expect([r.status, r.corps.code]).toEqual([503, 'IA_INDISPONIBLE']);
+      expect(dep.reserver).not.toHaveBeenCalled();
+      expect(dep.appeler).not.toHaveBeenCalled();
+    }
+  });
+
+  it('avec l’accord : la dictée passe (l’accord est vérifié avant la réservation)', async () => {
+    const ordre = [];
+    const dep = dependances({
+      accord: vi.fn(async () => { ordre.push('accord'); return 'ok'; }),
+      reserver: vi.fn(async () => { ordre.push('reserver'); return { autorise: true, id: 1, limite: 5, utilise: 1, plan: 'gratuit' }; }),
+    });
+    const r = await lire(await traiterDictee(demande(), dep));
+    expect(r.status).toBe(200);
+    expect(ordre).toEqual(['accord', 'reserver']);
+  });
+
+  it('IA_DICTEE : « tous » sans tenir compte de la casse ni des espaces ; liste d’identifiants ; vide = fermé', () => {
+    for (const v of ['tous', 'Tous', ' TOUS  ', 'tous\n']) expect(ouvertePour(v, 'abc'), JSON.stringify(v)).toBe(true);
+    expect(ouvertePour('id-1, ID-2 ', 'id-2')).toBe(true);
+    expect(ouvertePour('id-1,id-2', 'id-3')).toBe(false);
+    for (const v of ['', '   ', null, undefined, 'tou', 'tous,']) expect(ouvertePour(v, 'abc'), JSON.stringify(v)).toBe(false);
   });
 });

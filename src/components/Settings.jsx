@@ -22,6 +22,8 @@ import { compressImage } from '../lib/image-utils';
 import { useOrg } from '../context/OrgContext';
 import TemplateManager from './settings/TemplateManager';
 import SuppressionCompte from './settings/SuppressionCompte';
+import AccordIaReglage from './settings/AccordIaReglage';
+import { isDemo } from '../supabaseClient';
 import PostChantierSettings from './settings/PostChantierSettings';
 import AssistantProfil from './settings/AssistantProfil';
 import EtatProfil from './settings/EtatProfil';
@@ -1411,6 +1413,13 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               </div>
             </div>
           </Bloc>
+
+          {/* Dictée (IA) : l'accord donné avant la première dictée, révocable (migration 109). Rien à montrer en démo (rien n'est envoyé). */}
+          {FONCTIONS.ia && !isDemo && (
+            <Bloc titre="Dictée par intelligence artificielle" sousTitre="Votre accord à l’analyse de vos dictées par Claude, d’Anthropic.">
+              <AccordIaReglage userId={user?.id} showToast={showToast} />
+            </Bloc>
+          )}
 
           {/* RGPD — Export données personnelles */}
           <Bloc titre="Vos droits RGPD" sousTitre="Conformément au RGPD, vous pouvez exporter ou supprimer vos données personnelles à tout moment.">

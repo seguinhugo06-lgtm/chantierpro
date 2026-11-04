@@ -27,7 +27,8 @@ import {
 } from '../../lib/voiceIntent';
 import { jourLocal } from '../../lib/dates';
 import { isDemo } from '../../supabaseClient';
-import { tauxTvaParDefaut } from '../../lib/franchiseTva';
+import { tauxTvaParDefaut, estFranchiseTva } from '../../lib/franchiseTva';
+import { brouillonDictee } from '../../lib/brouillonDictee';
 
 const UNITES = ['u', 'm²', 'm³', 'ml', 'h', 'j', 'forfait', 'pièce', 'sac', 'pot', 'kg', 'lot'];
 
@@ -157,6 +158,8 @@ export default function DicteeModal({
   setEditDevisId,
   orgId = null,
   onSaisieManuelle,
+  // Le serveur a refusé faute d'accord (403 ACCORD_REQUIS : retiré sur un autre appareil) : rouvrir l'écran d'accord.
+  onAccordRequis,
   // Montants de la relecture : seulement avec canViewPrices (liste blanche ; absent = caché).
   voitPrix = false,
 }) {
@@ -215,6 +218,9 @@ export default function DicteeModal({
   useEffect(() => {
     if (!isOpen) return undefined;
     const onKey = (e) => {
+      // Une autre fenêtre est ouverte au-dessus (acceptation des CGU) : elle garde le clavier, Échap et Tab compris.
+      const autre = document.activeElement?.closest?.('[role="dialog"]');
+      if (autre && panneauRef.current && !panneauRef.current.contains(autre) && !autre.contains(panneauRef.current)) return;
       if (e.key === 'Escape' && !creation) { onClose?.(); return; }
       if (e.key !== 'Tab') return;
       const cibles = panneauRef.current?.querySelectorAll(
@@ -343,20 +349,16 @@ export default function DicteeModal({
   const tvaDefaut = tauxTvaParDefaut(entreprise);
   const [tvaDoc, setTvaDoc] = useState(tvaDefaut);
   useEffect(() => { setTvaDoc(tvaDefaut); }, [tvaDefaut]);
-
-  /** Taux applicable à une ligne : celui du catalogue s'il existe, sinon celui du document. */
-  const tauxLigne = useCallback((l) => Number(l.tva ?? tvaDoc), [tvaDoc]);
+  // Franchise en base (art. 293 B) : toutes les lignes à 0 %, même reprises du catalogue ; ni « HT » ni « TTC » ni choix
+  // de taux à l'écran (contrôle local du 4 nov. 2026 ; même règle que DevisExpressModal et DevisPage).
+  const franchise = estFranchiseTva(entreprise);
 
   // ── Totaux ─────────────────────────────────────────────────────────────────
+  // Ceux qui seront enregistrés (brouillonDictee, règle commune calculerTotaux).
   const totaux = useMemo(() => {
-    const lignes = doc?.lignes || [];
-    const ht = lignes.reduce((s, l) => s + (Number(l.quantite) || 0) * (Number(l.prixUnitaire) || 0), 0);
-    const tva = lignes.reduce(
-      (s, l) => s + ((Number(l.quantite) || 0) * (Number(l.prixUnitaire) || 0) * (tauxLigne(l) / 100)),
-      0
-    );
-    return { ht, tva, ttc: ht + tva };
-  }, [doc, tauxLigne]);
+    const b = brouillonDictee(doc?.lignes || [], { tvaDoc, franchise });
+    return { ht: b.total_ht, tva: b.tva, ttc: b.total_ttc };
+  }, [doc, tvaDoc, franchise]);
 
   const lignesSansPrix = (doc?.lignes || []).filter((l) => !l.prixUnitaire).length;
   const chantiersActifs = listeChantiers.filter((c) => c.actif);
@@ -458,29 +460,22 @@ export default function DicteeModal({
         if (!clientId) {
           throw new Error("Un devis a besoin d'un client. Activez la fiche client ou choisissez-en un existant.");
         }
-        const lignes = doc.lignes.map((l, i) => ({
-          id: `${Date.now()}-${i}`,
-          description: l.description,
-          quantite: Number(l.quantite) || 0,
-          unite: l.unite || 'u',
-          prixUnitaire: Number(l.prixUnitaire) || 0,
-          prixAchat: l.prixAchat,
-          tva: tauxLigne(l), // sans ce champ, l'éditeur et le PDF retomberaient sur le défaut
-          montant: (Number(l.quantite) || 0) * (Number(l.prixUnitaire) || 0),
-        }));
+        // Lignes, taux et totaux enregistrés : fonction pure testée (brouillonDictee.test.js), 0 % partout en franchise.
+        const brouillon = brouillonDictee(doc.lignes, { tvaDoc, franchise });
+        const { lignes } = brouillon;
         devisCree = await addDevis({
           type: doc.type === 'facture' ? 'facture' : 'devis',
           client_id: clientId,
           chantier_id: idsChantiers[docChantierIdx] || undefined,
           date: jourLocal(),
           statut: 'brouillon',
-          tvaRate: tvaDoc,
+          tvaRate: brouillon.tvaRate,
           lignes,
           sections: [{ id: '1', titre: '', lignes }],
           notes: doc.notes || '',
-          total_ht: Math.round(totaux.ht * 100) / 100,
-          tva: Math.round(totaux.tva * 100) / 100,
-          total_ttc: Math.round(totaux.ttc * 100) / 100,
+          total_ht: brouillon.total_ht,
+          tva: brouillon.tva,
+          total_ttc: brouillon.total_ttc,
         });
         if (devisCree) {
           cree.devis = devisCree;
@@ -554,7 +549,10 @@ export default function DicteeModal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm"
+      // z-[1040] : sous les fenêtres communes (Modal.jsx, z-[1050]) et les messages (z-[1080]). À z-[9999], la demande
+      // d'acceptation des CGU (ouverte par addDevis à la première création après une nouvelle version) restait cachée
+      // derrière la dictée : « Création… » sans fin (constaté par le parcours dictee du 4 nov. 2026).
+      className="fixed inset-0 z-[1040] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
       aria-label="Dictée vocale"
@@ -572,8 +570,13 @@ export default function DicteeModal({
             <p className={`text-xs ${textMuted}`}>
               {etape === 'relecture' ? 'Relisez, corrigez, validez' : 'Parlez, la mallette remplit'}
             </p>
-            {/* Règlement (UE) 2024/1689, art. 50 § 1 : dire qu'on interagit avec une IA (juriste-btp, 3 nov. 2026). */}
-            <p className={`text-xs ${textMuted}`}>Analyse par une intelligence artificielle (Claude, d’Anthropic) : elle peut se tromper, vous relisez tout.</p>
+            {/* Règlement (UE) 2024/1689, art. 50 § 1 : dire qu'on interagit avec une IA (juriste-btp, 3 nov. 2026). En démo,
+                l'analyse est locale, sans IA ni envoi (voiceIntent.js) : on le dit, au lieu d'annoncer Claude (contrôle local du 4 nov.). */}
+            <p className={`text-xs ${textMuted}`}>
+              {isDemo
+                ? 'Mode démonstration : analyse simplifiée, sans IA ; rien n’est envoyé.'
+                : 'Analyse par une intelligence artificielle (Claude, d’Anthropic) : elle peut se tromper, vous relisez tout.'}
+            </p>
           </div>
           <button
             onClick={onClose}
@@ -651,7 +654,8 @@ export default function DicteeModal({
                     {/* Relecture juriste-btp du 3 nov. 2026 : « transcrite puis oubliée » était invérifiable (sur
                         Chrome, le son part aux serveurs de Google) ; seul est sûr que Mallettico ne reçoit pas le son. */}
                     Votre navigateur va demander l’accès au micro. Mallettico ne reçoit pas le son : votre navigateur
-                    le transforme en texte (sur Chrome, par les serveurs de Google). Seul ce texte nous est envoyé, puis analysé par une intelligence artificielle (Claude, d’Anthropic).
+                    le transforme en texte (sur Chrome, par les serveurs de Google).
+                    {!isDemo && ' Seul ce texte nous est envoyé, puis analysé par une intelligence artificielle (Claude, d’Anthropic).'}
                   </p>
                 )}
 
@@ -718,6 +722,15 @@ export default function DicteeModal({
                       className="min-h-[44px] px-4 py-2.5 rounded-xl text-sm font-semibold border border-bord-fort text-encre bg-surface"
                     >
                       Saisir mon devis à la main
+                    </button>
+                  )}
+                  {codeErreur === 'ACCORD_REQUIS' && onAccordRequis && (
+                    <button
+                      type="button"
+                      onClick={() => { dictation.stop(); onClose?.(); onAccordRequis(); }}
+                      className="min-h-[44px] px-4 py-2.5 rounded-xl text-sm font-medium text-accent-texte"
+                    >
+                      Lire l’écran d’accord
                     </button>
                   )}
                   {codeErreur === 'QUOTA_ATTEINT' && (
@@ -872,7 +885,7 @@ export default function DicteeModal({
                   titre={doc.type === 'facture' ? 'Facture' : 'Devis'}
                   sousTitre={
                     doc.lignes.length
-                      ? `${doc.lignes.length} ligne${doc.lignes.length > 1 ? 's' : ''}${voitPrix ? ` · ${prix(totaux.ttc)} TTC` : ''}`
+                      ? `${doc.lignes.length} ligne${doc.lignes.length > 1 ? 's' : ''}${voitPrix ? ` · ${prix(totaux.ttc)}${franchise ? '' : ' TTC'}` : ''}`
                       : 'Aucun prix dicté — à chiffrer ensuite'
                   }
                   badge={lignesSansPrix ? `${lignesSansPrix} prix à compléter` : null}
@@ -948,7 +961,7 @@ export default function DicteeModal({
                           </>)}
                         </div>
                         {l._source && (
-                          <div className={`text-[11px] mt-1.5 ${textMuted}`}>
+                          <div className={`text-xs mt-1.5 ${textMuted}`}>
                             Prix repris du catalogue : {l._source}
                           </div>
                         )}
@@ -969,7 +982,17 @@ export default function DicteeModal({
                       <Plus size={15} /> Ajouter une ligne
                     </button>
 
-                    {voitPrix && doc.lignes.length > 0 && (
+                    {/* Franchise (art. 293 B) : un seul total, la mention de l'article, ni « HT » ni « TTC » ni taux. */}
+                    {voitPrix && doc.lignes.length > 0 && franchise && (
+                      <div className={`pt-2 space-y-1 text-sm ${textPrimary}`} data-totaux="franchise">
+                        <div className="flex justify-between font-semibold">
+                          <span>Total</span>
+                          <span>{prix(totaux.ttc)}</span>
+                        </div>
+                        <p className={`text-xs ${textMuted}`}>TVA non applicable, art. 293 B du CGI</p>
+                      </div>
+                    )}
+                    {voitPrix && doc.lignes.length > 0 && !franchise && (
                       <div className={`pt-2 space-y-1 text-sm ${textPrimary}`}>
                         <div className={`flex justify-between ${textMuted}`}>
                           <span>Total HT</span>
@@ -996,7 +1019,7 @@ export default function DicteeModal({
                           <span>{prix(totaux.ttc)}</span>
                         </div>
                         {doc.lignes.some((l) => l.tva !== undefined && Number(l.tva) !== tvaDoc) && (
-                          <p className={`text-[11px] ${textMuted}`}>
+                          <p className={`text-xs ${textMuted}`}>
                             Certaines lignes gardent le taux de votre catalogue.
                           </p>
                         )}

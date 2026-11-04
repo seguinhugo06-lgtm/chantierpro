@@ -15,7 +15,7 @@
 -- - Générique : une ligne par appel, avec la fonction (`dictee`, plus tard `assistant`…). Le quota se compte par
 --   organisation, par mois et par fonction ; le journal sert aussi au suivi des coûts.
 -- - Le quota par plan vient de PLANS[plan].limits (src/stores/subscriptionStore.js) : la fonction Edge le passe
---   (`p_limites`, ex. {"gratuit":10,"artisan":-1,"equipe":-1}, -1 = illimité), recopié dans
+--   (`p_limites`, {"gratuit":5,"artisan":100,"equipe":-1}, -1 = illimité ; décision d'Hugo du 4 nov. 2026), recopié dans
 --   supabase/functions/voice-intent/regles.ts et comparé à PLANS par un test. Un plan absent de p_limites vaut 0.
 -- - Le plan est lu en base, comme l'app le choisit (fetchSubscription → choisirAbonnement + appliquerFinOffre) :
 --   parmi la ligne de l'utilisateur, celle de l'organisation et celle de son propriétaire, le plan le plus haut des
@@ -29,10 +29,12 @@
 --   demandée, sa première organisation. Il doit pouvoir créer un devis : rôle owner, admin ou comptable, comme la page
 --   « ia-devis » (src/lib/permissions.js) ; sinon SANS_DROIT, sans rien compter (relecture gardien du 3 nov., 2).
 -- - Au plan gratuit, le quota se compte aussi PAR COMPTE (relecture gardien-securite du 3 nov., H1) : un compte peut
---   créer des organisations à lui ; sans cela, chaque nouvelle organisation rouvrait 10 dictées.
--- - Plafond anti-abus quel que soit le plan (H2) : 5 analyses par minute et, par jour et par compte, 20 au plan gratuit
---   (un délai dépassé ne décompte pas du quota mensuel : sans cela, 100 appels par jour au lieu de 10 par mois) et 100
---   aux plans payants. Au-delà, refus avec motif « plafond ». Plafonds à confirmer par Hugo (docs/cloud/ia-socle.md).
+--   créer des organisations à lui ; sans cela, chaque nouvelle organisation rouvrait 5 dictées.
+-- - Plafond anti-abus quel que soit le plan (H2) : 5 analyses par minute (motif « plafond ») et, par JOUR DE PARIS
+--   (de minuit à minuit) et par compte, 20 au plan gratuit (un délai dépassé ne décompte pas du quota mensuel : sans
+--   cela, une suite d'échecs coûterait des centaines d'appels) et 100 aux plans payants (motif « plafond_jour »). Au plan
+--   Équipe, sans limite mensuelle, c'est la limite annoncée dans l'offre : « 100 par jour et par personne au plus »
+--   (décision d'Hugo du 4 nov. 2026). Le jour est calendaire pour que « réessayez demain » soit exact.
 -- - Coupe-circuit global : 3 000 analyses par jour et par fonction, tous comptes confondus → motif « global » (503 côté
 --   fonction Edge). Valeur à fixer par Hugo.
 -- - Verrous transactionnels par compte puis par organisation (toujours dans cet ordre) : deux appels simultanés ne
@@ -55,6 +57,7 @@
 --          has_table_privilege('anon', 'public.usage_ia_log', 'SELECT,INSERT,UPDATE,DELETE') AS visiteur,
 --          has_table_privilege('authenticated', 'public.usage_ia_log', 'SELECT,INSERT,UPDATE,DELETE') AS connecte;
 --     → 0, f, f
+--   SELECT has_table_privilege('service_role', 'public.usage_ia_log', 'INSERT,UPDATE,DELETE') AS serveur_ecrit;   → f
 --   SELECT jobname, schedule FROM cron.job WHERE jobname = 'purger-journal-ia';   → 1 ligne, 17 3 * * *
 --   Après le déploiement de voice-intent et une dictée :
 --   SELECT fonction, statut, modele, jetons_entree, jetons_sortie, duree_ms FROM public.usage_ia_log ORDER BY id DESC LIMIT 5;
@@ -85,7 +88,9 @@ CREATE INDEX IF NOT EXISTS idx_usage_ia_jour ON public.usage_ia_log (fonction, c
 
 ALTER TABLE public.usage_ia_log ENABLE ROW LEVEL SECURITY;
 -- Aucune policy : anon et authenticated n'y voient rien, même si un droit leur était rendu.
-REVOKE ALL ON TABLE public.usage_ia_log FROM PUBLIC, anon, authenticated;
+-- service_role aussi (droits par défaut de Supabase) : il lit ; seules les fonctions SECURITY DEFINER écrivent (relecture
+-- gardien-securite du 4 nov. 2026, B1).
+REVOKE ALL ON TABLE public.usage_ia_log FROM PUBLIC, anon, authenticated, service_role;
 GRANT SELECT ON TABLE public.usage_ia_log TO service_role;
 
 -- Plan en vigueur pour un utilisateur dans une organisation, selon la règle de l'app. Interne.
@@ -133,7 +138,7 @@ $$;
 REVOKE ALL ON FUNCTION public.plan_pour_usage_ia(UUID, UUID) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.plan_pour_usage_ia(UUID, UUID) TO service_role;
 
--- Réserve un usage. Rend {autorise, id?, plan, limite (null = illimité), utilise}.
+-- Réserve un usage. Rend {autorise, id?, plan, limite (null = illimité), utilise, motif? (quota, plafond, plafond_jour, global), par_jour?}.
 CREATE OR REPLACE FUNCTION public.reserver_usage_ia(p_user_id UUID, p_org UUID, p_fonction TEXT, p_limites JSONB)
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -148,6 +153,7 @@ DECLARE
   v_utilise INTEGER;
   v_id BIGINT;
   v_role TEXT;
+  v_par_jour INTEGER;
 BEGIN
   IF p_user_id IS NULL THEN
     RAISE EXCEPTION 'reserver_usage_ia : utilisateur manquant';
@@ -190,12 +196,16 @@ BEGIN
      LIMIT 1000 FOR UPDATE SKIP LOCKED);
 
   -- Plafond anti-abus, quel que soit le plan : chaque appel compte, même en échec (il a coûté un appel à l'API).
+  v_par_jour := CASE WHEN v_plan = 'gratuit' THEN 20 ELSE 100 END;
   IF (SELECT count(*) FROM public.usage_ia_log
-       WHERE user_id = p_user_id AND fonction = p_fonction AND created_at > now() - interval '1 minute') >= 5
-     OR (SELECT count(*) FROM public.usage_ia_log
-       WHERE user_id = p_user_id AND fonction = p_fonction AND created_at > now() - interval '1 day')
-       >= (CASE WHEN v_plan = 'gratuit' THEN 20 ELSE 100 END) THEN
+       WHERE user_id = p_user_id AND fonction = p_fonction AND created_at > now() - interval '1 minute') >= 5 THEN
     RETURN jsonb_build_object('autorise', false, 'motif', 'plafond', 'plan', v_plan, 'limite', v_limite, 'utilise', NULL);
+  END IF;
+  IF (SELECT count(*) FROM public.usage_ia_log
+       WHERE user_id = p_user_id AND fonction = p_fonction
+         AND created_at >= (date_trunc('day', now() AT TIME ZONE 'Europe/Paris') AT TIME ZONE 'Europe/Paris')) >= v_par_jour THEN
+    RETURN jsonb_build_object('autorise', false, 'motif', 'plafond_jour', 'plan', v_plan, 'limite', v_limite,
+      'utilise', NULL, 'par_jour', v_par_jour);
   END IF;
 
   -- Coupe-circuit global (tous comptes) : borne le coût d'une série de comptes ou d'entreprises (valeur à fixer par Hugo).

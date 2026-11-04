@@ -22,7 +22,7 @@ import TexteCgu from './legal/TexteCgu';
  * @param {(version: string) => Promise<true|string>} onAccept  enregistre l'acceptation ; sinon, le message qui dit pourquoi
  * @param {() => void} onAnnuler  l'artisan renonce au geste (le document n'est pas créé)
  * @param {'premier'|'version'} [motif]  compte d'avant la case de l'inscription, ou nouvelle version des conditions
- * @param {'document'|'envois'} [geste]  ce qui demande les conditions : un document (devis, facture, attestation) ou
+ * @param {'document'|'envois'|'dictee'} [geste]  ce qui demande les conditions : un document (devis, facture, attestation) ou
  *   l'activation des envois automatiques (rappels de ramonage, relances) — la fenêtre dit la bonne raison
  */
 export default function CGUAcceptanceModal({ onAccept, onAnnuler, motif = 'premier', geste = 'document' }) {
@@ -66,10 +66,12 @@ export default function CGUAcceptanceModal({ onAccept, onAnnuler, motif = 'premi
         <ModalTitle>Conditions générales d'utilisation</ModalTitle>
         <ModalDescription>
           {motif === 'version'
-            ? `Les conditions d'utilisation ont changé (version du ${CGU_VERSION_DATE}). Lisez-les et acceptez-les pour ${geste === 'envois' ? 'activer les envois automatiques' : 'continuer à créer des documents'}. Vos données et vos documents restent accessibles et exportables, que vous acceptiez ou non.`
+            ? `Les conditions d'utilisation ont changé (version du ${CGU_VERSION_DATE}). Lisez-les et acceptez-les pour ${geste === 'envois' ? 'activer les envois automatiques' : geste === 'dictee' ? 'utiliser la dictée' : 'continuer à créer des documents'}. Vos données et vos documents restent accessibles et exportables, que vous acceptiez ou non.`
             : geste === 'envois'
               ? 'Avant d’activer les envois automatiques, lisez et acceptez les conditions d’utilisation de Mallettico.'
-              : 'Avant votre premier document, lisez et acceptez les conditions d’utilisation de Mallettico.'}
+              : geste === 'dictee'
+                ? 'Avant votre première dictée, lisez et acceptez les conditions d’utilisation de Mallettico.'
+                : 'Avant votre premier document, lisez et acceptez les conditions d’utilisation de Mallettico.'}
         </ModalDescription>
       </ModalHeader>
 
