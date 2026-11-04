@@ -301,3 +301,30 @@ Ils reprennent les tests de `qualifications.test.js` sans importer `qualificatio
 - `npm run verifier` (standard) sur `a6649dd`, dernier commit de code avant la fusion : Tests ✓ 1238 réussis, Lint ✓ 0 erreur, Smoke ✓, Build ✓, « Tout est vert ».
 - Parcours `administratif` sur le build de `a6649dd` : 3 parcours réussis (15, 8 et 4 vérifications).
 - Fusion de `origin/main` (`6b34c8e`) sans conflit. Résultat de `npm run verifier -- --complet` sur ce commit : ci-dessous.
+
+`npm run verifier -- --complet` sur `6ac90bd` (la fusion `6b34c8e` plus ce rapport ; aucun code après), sortie recopiée :
+
+```
+Vérification « complet » de 6ac90bd
+  ✓ Tests (52.0 s) — 1241 passed (1241)
+  ✓ Lint (0 erreur) (6.3 s) — 241 problems (0 errors, 241 warnings)
+  ✓ Smoke (29.9 s)
+  ✓ Build (28.9 s)
+  ✓ Banc de migrations (5.6 s)
+  ✓ Parcours (navigateur) (2156.8 s)
+  ✓ Audit d’interface (385.8 s)
+✓ Tout est vert — niveau « complet ».
+```
+
+Un premier lancement sur `6b34c8e` a échoué : `dist/index.html` était absent pendant les parcours. La cause vient de moi : un `git push` lancé pendant la vérification a déclenché le hook de pre-push, qui refait le build. Je l'ai relancé sans rien faire en parallèle, et c'est la sortie ci-dessus. Le commit qui suit ne touche que ce rapport.
+
+### Résumé
+
+- Chaudière gaz ou fioul : 20 % aussi dans le modèle Devis Express, le lot 08, les articles du catalogue et le sélecteur du référentiel (`2e0a11a`, lignes identiques à `cloud/metiers`, 6 tests, contre-essai).
+- L'entretien de chaudière garde le taux réduit (§ 230).
+- Administratif : la ligne « Régime de TVA : celui réglé dans la Trésorerie (…) », avec « Ouvrir la Trésorerie ». Le bouton n'annonce plus « TVA » dans ce cas (`a6649dd`).
+- Parcours franchise / mensuel et test de `compteARebours`, chacun avec son contre-essai.
+- Le rapport ancien est mis à jour, et le texte du juriste est dans « Risques ».
+- À la fusion de `cloud/metiers` : `docs/metier-btp.md` l. 70 (texte ci-dessus), et le commentaire de `chauffage.js` corrigé par le juriste.
+- Pour Hugo : revoir les devis et factures de chaudière fossile émis à 5,5 % ou 10 % ; dire si le découpage de la dépose (20 % dans le modèle, 10 % seule) est voulu.
+- `npm run verifier -- --complet` : tout vert sur `6ac90bd`.
