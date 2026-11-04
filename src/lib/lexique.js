@@ -22,8 +22,9 @@ export const LEXIQUE = {
     texte: 'Entrepreneur individuel : vous exercez en votre nom, sans société. Sur vos devis et factures, votre nom doit être précédé ou suivi immédiatement de « EI » ou de « entrepreneur individuel » (de « EIRL » si vous êtes en EIRL).',
   },
   rcs: {
-    mot: 'le RCS et le RM',
-    texte: 'Le RCS (registre du commerce et des sociétés) inscrit les sociétés et les commerçants ; il se cite avec la ville du greffe et le numéro. Le répertoire des métiers (RM) des artisans est remplacé depuis 2023 par le registre national des entreprises (RNE).',
+    mot: 'le RCS et le RNE',
+    // Sources : C. com. L123-1 et R123-237 (RCS + ville du greffe) ; ordonnance n° 2021-1189, art. 47 (RNE au 1er janv. 2023) ; INPI (attestation gratuite) — vérifié le 3 nov. 2026 (juriste-btp).
+    texte: 'Le RCS (registre du commerce et des sociétés) inscrit les commerçants et les sociétés ; il se cite avec le numéro et la ville du greffe. Depuis le 1er janvier 2023, les artisans sont immatriculés au registre national des entreprises (RNE), qui a remplacé le répertoire des métiers. Votre attestation d’immatriculation au RNE est gratuite sur data.inpi.fr.',
   },
   decennale: {
     mot: 'la décennale',
