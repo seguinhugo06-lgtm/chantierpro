@@ -213,3 +213,65 @@ Le commit suivant n'ajoute que ce résultat au rapport.
 7. Arrêté ramonage relu par la session locale (3 nov.) : appliqué au second tour.
 8. `npm run verifier -- --complet` vert sur `2cd7fc6`.
 9. Six décisions pour Hugo, dont médiateur ou offre réservée aux professionnels, et anciens champs libres « RM ».
+
+## Corrections du contrôle local (3 nov. au soir)
+
+Session cloud du 4 nov. 2026, branche `cloud/retours`. Rien sur `main`, aucune migration, aucun déploiement, aucun accès à la production. `origin/main` (`7dbe75c`) fusionné sans conflit (`3e939f6`).
+
+### Consigne, point par point
+
+| # | Point | Fait | Commit |
+|---|---|---|---|
+| 1 | Conseils de ramonage | Textes exacts du juriste : `RamonageTab.jsx` (« …ce qui en garde une trace écrite », gardé, plus la phrase sur l'attestation d'entretien, annexe 2), `ramonage.js` (commentaire de `conseilsImprimes`), `docs/metier-btp.md` § 10 (lecture sourcée, plus de « à vérifier avant livraison »). Réglage, case et « imprimés » par défaut gardés. `SaisieRamonage.jsx` inchangé (phrase jugée exacte). | `ab57ab7`, `d36b6fe` |
+| 2 | Franchise « doit figurer sur les factures Stripe (attente 7) » | `scripts/parcours/compte.cjs:220` (texte du vérificateur) et en-tête de `src/components/landing/faq.js` (la mention n'est donnée que dans la réponse sur la facturation). `git grep "CGV, FAQ, factures"` : plus rien. | `ab57ab7` |
+| 3 | Faux succès hors ligne | `jalonACelebrer` (`src/lib/celebrate.js`) ne rend un jalon que si `ok === true` ; `DataContext.updateDevis` l'utilise. Commentaire des écritures en base mis à jour. Test `celebrate.test.js` (3 tests). **Contre-essai** : avec l'ancienne condition (`ok` vrai), échec « expected 'devis_signe' to be null » sur `ECRITURE_EN_ATTENTE`. | `291e633` |
+| 4 | Message hors ligne | « Émission gardée sur cet appareil : la facture sera émise dès que l’envoi aura réussi, si la base l’accepte. » Le parcours `statuts` vérifie ce texte et l'absence de « au retour du réseau ». | `c75e27d` |
+| 5 | « Compléter » en mode RNE | `mentionsFacture` vise `registre` quand `rcsType` vaut 'RM' ; le bloc du choix porte `id="settings-field-registre"` (focalisable). Le test « chaque Compléter vise un champ qui existe » couvre ce cas. **Contre-essai** : sans la correction, 2 tests échouent (`champ: 'rcs'` au lieu de `'registre'`). | `4f103fa` |
+| 6 | Pastille sans `aria-label` | Le parcours `statuts` vérifie `getAttribute('aria-label') === null`. | `c75e27d` |
+| 7 | Feuille de route | « 4 nonies » et « 4 decies » de cette branche deviennent « 4 septdecies » (`immat-fiche-entreprise`) et « 4 octodecies » (`greffes-liste`), rangées après les autres « 4 », avant « 5 ». | `64f9668` |
+| 8 | Vues à hauteur fixe | Deux parcours dans `ramonage.cjs` (375 px, agent Safari iPhone, carte affichée). **Panneau d'une tâche** : couvert (« le dernier élément « Non assigné » … couvert par DIV « Mallettico… » »). Corrigé : le panneau passe en `z-[70]`, comme les autres vues plein écran (`SaisieRamonage.jsx`). Après : vert. **Grille semaine du planning** (cadre `min(500px, 55vh)` au téléphone) : défilée jusqu'à la dernière heure, la page peut poser son bas au-dessus de la carte, rien ne la couvre : vert, rien à corriger. **Contre-essai** : sans la marge du bas de page, échec « manque 12 px » (astuces du planning fermées, le cas le plus serré ; avec les astuces affichées, le parcours passe même sans la marge, d'où cette fermeture). Les 15 parcours de `ramonage.cjs` sont verts. | `8746ab2` |
+| 9 | Contre-essais des points 3 et 7 de la première session | Voir ci-dessous. | — |
+| 10 | Ancien champ libre « RM » | **Non touché** : il s'imprime encore tel quel (« 123 456 789 RM 69 »). C'est la décision 5 d'Hugo, en attente. | — |
+| 11 | Fusion de `origin/main` | Faite, sans conflit. | `3e939f6` |
+
+### Contre-essais de la première session (copie jetable, `git worktree`, supprimée ensuite)
+- **Point 3 (registre)**, a) choix « Votre registre » retiré de `Settings.jsx`, puis `npm run parcours -- légal` : 1 échec sur 2, « légal : un artisan voit le RNE (métiers et artisanat)… — micro-entreprise : le RNE (métiers et artisanat) d’abord ({"registre":"","choisi":"",…}) ». L'autre parcours du filtre (taux de pénalités) ne touche pas au registre.
+- **Point 3**, b) ancienne `mentionImmatriculation` (« 123 456 789 RM 33 »), puis `npx vitest run src/lib/__tests__/immatriculation.test.js` : 4 échecs sur 15, dont « expected '123 456 789 RM 33' to be 'Entreprise du secteur des métiers et …' » et les deux générateurs (`devisHtmlBuilder`, `pdfHtmlBuilder`).
+- **Point 7 (statut direct)** : facture envoyée sans statut proposé (l'ancien `FACTURE_TRANSITIONS.envoye: []`) et bouton « Statut » des cartes retiré, puis les parcours `statuts.cjs` : 3 échecs sur 4 (« bouton « Statut » sur la carte du devis », « … de la facture », « … du brouillon »). Le 4e passe : il ouvre le volet par la pastille de la fiche, que ce contre-essai n'a pas retirée.
+- Point 4 (marge) : déjà rejoué au premier tour (ligne 6 du tableau « Relecture de code »).
+
+### Relectures de cette session
+- **juriste-btp** (lecture du code) : RamonageTab et commentaires de franchise OK. Trois propositions de rédaction, **non appliquées** car la consigne fixe ces textes ; à trancher en local :
+  - `ramonage.js` : « …l'arrêté du 20 juillet 2023, pris sur R. 1331-78, ne vise que l'attestation d'entretien : il y joint les conseils (annexe 2) et en fixe le contenu (annexe 3, point 1)) » (le texte actuel dit « ne fixe que le contenu », alors que l'annexe 2 fixe aussi le contenu des conseils).
+  - `DevisPage.jsx:2392`, jugé **risqué** : « si la base l'accepte » est du jargon, et le message ne dit pas que la facture n'a pas encore de numéro (CGI ann. II art. 242 nonies A, I-2°). Proposition : « Émission gardée sur cet appareil : la facture n'a pas encore de numéro. Elle sera émise dès que la connexion au serveur reviendra, s'il l'accepte. Ne l'envoyez pas au client avant. » Le juriste demande de l'appliquer avant de livrer. Attention : « dès que la connexion au serveur reviendra » reprend en partie le défaut 4 du contrôle (serveur présent mais en erreur, session expirée).
+  - `metier-btp.md` : « Dans Mallettico, les conseils sont facultatifs… » (le droit n'a pas changé le 3 nov.) : **appliqué**, simple précision (`d36b6fe`).
+- **critique-produit** : réglage des conseils, **garder tel quel**. Statut direct, **simplifier** : retirer l'entrée « Changer le statut » du menu « ⋯ » de la fiche (doublon de la pastille) et « Refusé » sur un brouillon de devis (un client ne refuse pas ce qu'il n'a pas reçu). Non appliqué (hors consigne) : à décider par Hugo.
+
+### Vérifications
+`npm run verifier -- --complet` en cours sur `2459bd4` (dernier commit de code, fusion de `main` comprise) : résultat recopié ici à la fin.
+
+### Ce qui reste
+- Décision 5 d'Hugo (ancien champ libre « RM »), inchangée.
+- Texte du message hors ligne : proposition du juriste à trancher (ci-dessus).
+- Simplifications du critique-produit : à décider.
+- Constater le pied de facture Stripe (attente 7, Hugo).
+
+### Décisions pour Hugo
+1. Ancien champ libre « RM » (décision 5 du premier tour) : ne plus l'imprimer et inviter à saisir le SIREN ?
+2. Message hors ligne d'une facture : garder celui de la consigne ou prendre celui du juriste de cette session ?
+3. Statut direct : retirer l'entrée du menu « ⋯ » et « Refusé » sur un brouillon de devis ?
+
+### Risques
+- Le panneau de tâche passe au-dessus de la carte « Installer » et de tout ce qui est en `z-50` (menus, messages en `z-50`). Les messages (`toast`) et les modales de `ui/Modal.jsx` (`z-[1050]`) restent au-dessus.
+- `jalonACelebrer` : une écriture mise en file ne fête plus rien, même quand elle passera ensuite. Le premier devis signé hors ligne n'aura pas de confettis.
+
+### Résumé
+1. Ramonage : lecture de l'arrêté appliquée (textes du juriste, sources dans `metier-btp.md`), réglage et case gardés.
+2. Franchise : les deux derniers restes corrigés (`compte.cjs`, `faq.js`).
+3. Hors ligne : plus de confettis ni de « premier devis signé » pour une écriture en attente (test, contre-essai).
+4. Message hors ligne : « dès que l'envoi aura réussi ». Le juriste propose mieux : à trancher.
+5. « Compléter » en mode RNE mène au choix du registre ; pastille sans `aria-label` vérifiée.
+6. Panneau d'une tâche couvert par la carte « Installer » : corrigé. Grille semaine : rien à corriger.
+7. Contre-essais rejoués : registre (1 parcours, 4 tests), statut direct (3 parcours sur 4).
+8. Ancien champ « RM » non touché (décision 5).
+9. Vérification complète : en cours au moment de ce commit.
