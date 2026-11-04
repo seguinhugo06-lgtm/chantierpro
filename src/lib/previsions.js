@@ -64,3 +64,18 @@ export function moisProjetePrevision(prevision, maintenant) {
   const retenu = d >= premier ? d : premier;
   return { month: retenu.getMonth(), year: retenu.getFullYear() };
 }
+
+/**
+ * Première échéance d'une charge récurrente ajoutée depuis les charges types du BTP (le 5 du mois) : le 5 de ce mois
+ * s'il n'est pas passé, sinon le 5 du mois prochain. Datée au 5 déjà passé, elle était une prévision « en retard » que
+ * la projection compte au premier mois, en plus de l'échéance générée pour ce mois-là : la charge de ce mois, déjà
+ * payée et donc dans le solde de départ, était comptée une seconde fois.
+ *
+ * @param {Date} maintenant
+ * @param {number} [jour=5]
+ * @returns {Date}
+ */
+export function premiereEcheanceCharge(maintenant, jour = 5) {
+  const ceMois = new Date(maintenant.getFullYear(), maintenant.getMonth(), jour);
+  return maintenant.getDate() <= jour ? ceMois : new Date(maintenant.getFullYear(), maintenant.getMonth() + 1, jour);
+}

@@ -3,13 +3,12 @@
  * action », `id="fonctionnalites"`, entre l'explorateur des métiers et le cycle ; le lien « Fonctionnalités » de la
  * barre y mène).
  *
- * Cinq onglets, chacun un exemple qu'on essaie, sur des données fictives : le document que reçoit le client (le vrai
- * générateur de devis), la signature en ligne, le métré express (le calcul de l'éditeur), le scénario de relances de
+ * Quatre onglets, chacun un exemple qu'on essaie, sur des données fictives : la signature en ligne, le métré express (le calcul de l'éditeur), le scénario de relances de
  * l'app, les encaissements d'une facture. Ils sont dans `exemples/OngletsExemples.jsx`.
  *
  * Chargement : ce fichier ne porte que le titre, le texte et la place réservée ; les onglets et les exemples arrivent à
- * la demande (`import()`), quand la section approche de l'écran (600 px avant). L'exemple du document charge à son
- * tour le générateur de devis et la bibliothèque des métiers : le premier écran du site ne grossit pas.
+ * la demande (`import()`), quand la section approche de l'écran (600 px avant) : le premier écran du site ne grossit
+ * pas. (L'onglet du document, qui répétait le devis vivant du premier écran, est retiré depuis le 3 nov. 2026.)
  * Introuvables (déploiement remplacé, réseau coupé) : un message à la place, pas une attente sans fin.
  */
 import { useEffect, useRef, useState } from 'react';
@@ -27,18 +26,20 @@ function Attente({ echec }) {
   return (
     <div data-fonctionnalites-attente="" className="lg:grid lg:grid-cols-[minmax(0,19rem)_minmax(0,1fr)] lg:items-start lg:gap-8">
       <div aria-hidden="true" className="flex gap-2 overflow-hidden py-1 lg:flex-col lg:gap-1.5">
-        {[0, 1, 2, 3, 4].map((i) => (
+        {[0, 1, 2, 3].map((i) => (
           <span key={i} className="h-11 w-40 shrink-0 rounded-full border border-dashed border-marque-acier/70 lg:h-[4.75rem] lg:w-full lg:rounded-2xl" />
         ))}
       </div>
       <div className="mt-5 overflow-hidden rounded-[22px] border border-marque-acier/70 bg-white lg:mt-0">
         <div aria-hidden="true" className="h-11 border-b border-marque-acier/60 bg-marque-glacier-1" />
         {echec ? (
-          <p data-fonctionnalites-echec="" className="flex min-h-[46rem] items-center justify-center px-6 text-center text-base text-marque-ardoise lg:min-h-[40rem]">
+          <p data-fonctionnalites-echec="" className="flex min-h-[39.75rem] items-center justify-center px-6 text-center text-base text-marque-ardoise sm:min-h-[34.375rem] lg:min-h-[40rem]">
             Les exemples n’ont pas pu être chargés. Rechargez la page pour les essayer.
           </p>
         ) : (
-          <div aria-hidden="true" className="min-h-[46rem] lg:min-h-[40rem]" />
+          // Hauteur du premier exemple chargé (la signature : 636 px à 375 px, 550 px à 768 px, 640 px au bureau,
+          // mesurées le 3 nov. 2026) : l'arrivée des onglets ne décale pas la page (une ancre suivie reste juste).
+          <div aria-hidden="true" className="min-h-[39.75rem] sm:min-h-[34.375rem] lg:min-h-[40rem]" />
         )}
       </div>
     </div>
@@ -86,8 +87,8 @@ export default function FonctionnalitesSection() {
   return (
     <SectionSite id="fonctionnalites" fond="glacier" decor={<PlanArchitecte ton="glacier" />}>
       <EnTeteSection titre="Essayez, c’est l’application.">
-        Des exemples à manipuler, sur des données fictives. Le document, le métré et les relances sortent du code même
-        de l’application.
+        Des exemples à manipuler, sur des données fictives. Le métré et les relances sortent du code même de
+        l’application.
       </EnTeteSection>
       <div ref={zone} className="mt-10">
         {Onglets ? <Onglets /> : <Attente echec={echec} />}

@@ -229,6 +229,44 @@ export function createSituationsData(devisSourceId, retenuePct = DEFAULT_RETENUE
   };
 }
 
+/**
+ * La situation qu'imprime une facture de situation déjà enregistrée (bouton « PDF » de la facture, DevisPage).
+ * Elle est relue dans `chantier.situations_data` ; introuvable (chantier supprimé, situations vidées), elle est refaite
+ * à partir des lignes de la facture.
+ *
+ * Son statut décide de la TVA imprimée en franchise (buildSituationFactureHtml ; décision d'Hugo du 3 nov. 2026, D-31, 2) :
+ * celui de la situation retrouvée, sinon celui de la facture. Une facture émise compte comme une situation facturée :
+ * enregistrée avec de la TVA, elle se réimprime telle qu'elle a été émise (CGI art. 289, I-4 et V ; art. 283, 3) ; seule
+ * une facture en brouillon s'imprime sans TVA. Avant (contrôle du 3 nov. 2026) : sans situation, le statut manquait, la
+ * facture passait pour un brouillon et se réimprimait sans sa TVA, « NET À PAYER » égal au montant hors taxes.
+ *
+ * @param {Object} doc - La facture de situation (situation_numero, statut, date, lignes)
+ * @param {Object|null} chantier - Son chantier, s'il existe encore (situations_data)
+ * @param {{ montantLigne: (l: Object) => number, tauxDefaut: number }} o - montant d'une ligne de la facture ; taux de
+ *   TVA d'une ligne qui n'en porte pas
+ * @returns {Object} La situation à passer à buildSituationFactureHtml
+ */
+export function situationDeFacture(doc, chantier, { montantLigne, tauxDefaut }) {
+  const sitData = chantier?.situations_data;
+  const sit = sitData?.situations?.find((s) => s.numero === doc.situation_numero) || null;
+  return {
+    ...(sit || {}),
+    numero: doc.situation_numero || sit?.numero || 1,
+    date: doc.date,
+    statut: sit?.statut || (doc.statut === 'brouillon' ? 'brouillon' : 'facturee'),
+    lignes: sit?.lignes || doc.lignes?.map((l) => ({
+      description: l.description,
+      quantite: 1,
+      prixUnitaire: montantLigne(l),
+      unite: l.unite || 'ens',
+      tva: l.tva !== undefined ? l.tva : tauxDefaut,
+      cumulActuel: 100,
+      cumulPrecedent: 0,
+    })) || [],
+    retenueGarantiePct: sit?.isDGD ? 0 : (sitData?.retenue_garantie_pct || 5),
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------

@@ -2,7 +2,7 @@
 
 > Recherche du 3 nov. 2026 (session cloud « metiers »). Livrée par la branche `cloud/metiers-docs`, qui ne contient **aucun code**. Le code du lot 0 (RGE imprimé, Qualiopi retiré, TVA des chaudières, modèles : commits `3b0d6f1`, `9a2eed5`, `4526173` et les corrections du 3 nov.) est resté sur la branche `cloud/metiers`, en attente de la décision n° 3 d'Hugo (§ 5).
 > Base : 15 fiches métier, `commun.md` (règles communes), `chiffres.md` (priorité chiffrée), et le code au commit `adbf08d`.
-> **Limite à lire d'abord** : le réseau de la session bloquait Légifrance, le BOFiP, service-public et l'INSEE. Toutes les sources ont été lues par **résumé de moteur de recherche** ([résumé]), aucun texte officiel n'a été ouvert. Rien ne doit devenir une règle bloquante sans relecture au texte. Relecture `juriste-btp` : voir la fin.
+> **Limite à lire d'abord** : le réseau de la session bloquait Légifrance, le BOFiP, service-public et l'INSEE. Toutes les sources de la recherche ont été lues par **résumé de moteur de recherche** ([résumé]), aucun texte officiel n'a été ouvert par la session cloud. Seule exception : les corrections de `juriste-btp` du 3 nov. au soir (`71a36af`), relues au texte (Légifrance, BOFiP, service-public ; quelques textes lus par extrait ; avis : `avis-juriste-2026-11-03-soir.md`). Les alignements faits ensuite (`dbb0066`) reprennent son texte sans nouvelle relecture. Rien d'autre ne doit devenir une règle bloquante sans relecture au texte. Relecture `juriste-btp` : voir la fin.
 
 ## 1. Ce qui est commun à tous les métiers, et ce qui ne l'est pas
 
@@ -65,7 +65,8 @@ Principe : **un métier ne crée pas une autre app**. Il règle des valeurs par 
 
 ### 3.2 Catalogue et modèles
 - Ouvrir `TRADE_LIBRARY` et le référentiel sur les métiers choisis ; ajouter les métiers manquants (ramonage, frigoriste, multiservice).
-- **Purger les promesses d'aides périmées** des modèles (fenêtres, isolation : MaPrimeRénov' par geste) et les taux de TVA périmés (chaudière gaz à 20 % depuis mars 2025 [résumé]).
+- **Mentions d'aides des modèles** (recherche du 3 nov. 2026 dans `src/lib/data/modeles/` et `src/lib/templates/`, code de `a9b2e86`) : aucune ligne du code utilisé par l'app n'annonce un montant d'aide ni une éligibilité pour des fenêtres ou de l'isolation. Lignes qui citent MaPrimeRénov' : `src/lib/data/modeles/renovation-energetique.js:111` (« Estimation aides financières (MaPrimeRénov) », modèle « Audit énergétique réglementaire ») ; `src/lib/templates/trade-library.js:1060` (« Étude thermique et accompagnement au dossier MaPrimeRénov' », métier isolation, alors que le parcours par geste ne finance plus l'isolation selon `commun.md` § 4, à vérifier au décret ; reste la rénovation d'ampleur) ; tâches de chantier « Dossier MaPrimeRénov' » et « Dossier CEE/MaPrimeRénov' » (`src/lib/templates/task-templates-v2.js:1126` et `:1180`). `src/lib/templates/maprimerenov-templates.js` écrit « Travaux éligibles à MaPrimeRénov' sous réserve d'acceptation du dossier par l'ANAH » (l. 13) et une « Aide MaPrimeRénov' estimée » (l. 169), en calculant l'aide avec les montants de `TRAVAUX_ELIGIBLES` (`src/lib/compliance/renovation-compliance.js`, isolation et fenêtres) ; aucun fichier n'importe `maprimerenov-templates.js`, et `renovation-compliance.js` n'est importé que par lui : ce code ne sert pas dans l'app. Ces lignes sont à revoir ; le lot 0 de `cloud/metiers` n'en touche aucune.
+- **Purger les taux de TVA périmés** des modèles (chaudière gaz à 20 % depuis mars 2025 [résumé]).
 - Lignes structurées par métier : menuiserie (dimensions, Uw, Sw, remplacement), isolation (R, surface, isolant), PAC (classe, fluide, n° d'agrément), borne (puissance).
 
 ### 3.3 Documents propres au métier (modèle : attestation de ramonage)
@@ -106,7 +107,7 @@ Effort : S (moins d'une session), M (une session), L (plusieurs). Risque juridiq
 
 | # | Lot | Métiers servis | Valeur | Effort | Risque juridique |
 |---|---|---|---|---|---|
-| 0 | **Corrections** : RGE imprimé, Qualiopi retiré, TVA chaudière gaz à 20 % dans les modèles, la bibliothèque et le référentiel — **code prêt sur la branche `cloud/metiers`, non livré, en attente de la décision n° 3** (`docs/cloud/metiers.md`). Aucune promesse MaPrimeRénov' trouvée dans les modèles de devis | tous | Forte : mentions fausses aujourd'hui | S | Faible (on retire du faux) |
+| 0 | **Corrections** : RGE imprimé, Qualiopi retiré, TVA chaudière gaz à 20 % dans les modèles, la bibliothèque et le référentiel — **code prêt sur la branche `cloud/metiers`, non livré, en attente de la décision n° 3** (`docs/cloud/metiers.md`). Lignes qui citent MaPrimeRénov' (`renovation-energetique.js:111`, `trade-library.js:1060` ; détail au § 3.2) : non touchées par ce code | tous | Forte : mentions fausses aujourd'hui | S | Faible (on retire du faux) |
 | 1 | **« Mes qualifications »** + choix du métier (inscription et Paramètres) + catalogue trié | tous | Forte | M | Faible |
 | 2 | **Attestation d'entretien chaudière / PAC / poêle + rappel** (réutilise le ramonage) | chauffagiste, plombier-chauffagiste, ramoneur, frigoriste | Très forte : revenu récurrent, modèle déjà prouvé | M-L | Moyen : annexes des arrêtés à lire au texte |
 | 3 | **Dépannage express** : grille tarifaire affichable, devis en un écran, urgence, facture immédiate | serrurier, plombier, électricien, couvreur | Forte | M | Moyen : arrêté 2017 (déjà vérifié) |
@@ -127,7 +128,7 @@ Chaque lot passe par `/tache` et le `critique-produit` avant le code, comme le d
 
 1. **Choix du métier à l'inscription** : multiple et passable (recommandé), ou unique, ou seulement dans Paramètres ?
 2. **Premier métier après le ramonage** : l'attestation d'entretien chaudière / PAC / poêle (recommandé : réutilise le ramonage, sert trois métiers) ou l'électricien (votre métier, vos testeurs) ?
-3. **Lot 0 maintenant** (RGE imprimé, Qualiopi retiré, modèles purgés) : à faire tout de suite, indépendamment du reste (recommandé). Le code est prêt sur `cloud/metiers`, non livré.
+3. **Lot 0 maintenant** (RGE imprimé, Qualiopi retiré, TVA des chaudières à 20 % dans les modèles, la bibliothèque et le référentiel) : à faire tout de suite, indépendamment du reste (recommandé). Le code est prêt sur `cloud/metiers`, non livré. Il ne touche pas les lignes qui citent MaPrimeRénov' (§ 3.2).
 4. **Un testeur par métier** : comme les amis ramoneurs. Qui, dans votre entourage, chauffagiste ou plombier ? Sans testeur, ne pas construire le lot (mesure du cadrage ramonage : attestations créées en 4 semaines).
 5. **Avance immédiate Urssaf** (multiservice) : demande un compte éditeur et une habilitation. À écarter pour l'instant (recommandé) ?
 6. **TVA : suggestion ou blocage ?** Recommandé : suggestion seulement, tant qu'aucune règle n'est relue au texte.
@@ -140,7 +141,7 @@ Chaque lot passe par `/tache` et le `critique-produit` avant le code, comme le d
 
 ## Relecture juriste-btp (3 nov. 2026)
 
-Avis complet : `avis-juriste-2026-11-03.md`. Comme la recherche, il n'a pu ouvrir aucun texte : il s'appuie sur `docs/metier-btp.md` et sur la connaissance du droit du relecteur. Corrections appliquées dans les fiches. Ce qui change dans cette synthèse :
+Avis complet : `avis-juriste-2026-11-03.md`. Comme la recherche, cette première relecture n'a pu ouvrir aucun texte : elle s'appuie sur `docs/metier-btp.md` et sur la connaissance du droit du relecteur. Les corrections de `juriste-btp` du 3 nov. au soir (`71a36af`) ont, elles, été relues au texte (Légifrance, BOFiP, service-public ; quelques textes lus par extrait ; avis : `avis-juriste-2026-11-03-soir.md`). Les alignements faits ensuite (`dbb0066`) reprennent son texte sans nouvelle relecture. Corrections appliquées dans les fiches. Ce qui change dans cette synthèse :
 
 - **TVA des bornes** (bloquant) : 5,5 % sur la pose, l'installation et l'entretien d'une borne dans un local à usage d'habitation, destinée aux résidents (CGI 278-0 bis, N, relu au texte le 3 nov. 2026) ; configuration de l'ann. IV art. 30-0 H (type 2, ou prise de type E « renforcée » d'au moins 14 A, admise) ; sans condition d'ancienneté ; qualification de l'installateur exigée (décret n° 2017-26, art. 22) ; **le critère est le local d'habitation, pas la qualité du client**. Le lot 4 ne doit pas réserver le 5,5 % aux particuliers.
 - **Isolation des rampants et des combles** (bloquant si imprimé) : plus aidée par MaPrimeRénov' par geste depuis le 1er sept. 2026 ; couvreur et charpentier le disaient encore.
@@ -160,5 +161,5 @@ Avis complet : `avis-juriste-2026-11-03.md`. Comme la recherche, il n'a pu ouvri
 6. Attestations d'entretien : arrêté du 15 sept. 2009, C. env. R224-41-4 et s. ; arrêté du 24 juil. 2020.
 7. Arrêté du 23 févr. 2018 : modèles de certificat gaz.
 8. Services à la personne : C. trav. D7233-1, -4, -5 ; CGI 199 sexdecies après la loi de finances 2026.
-9. TVA d'une extension : BOI-TVA-LIQ-30-20-90-20.
-10. D8222-4 et -5 (vigilance), arrêté du 16 juil. 2019 (amiante, 1er juil. 1997), CSP L1334-8 (plomb), CERFA 15497*04.
+9. TVA d'une extension : relu le 3 nov. 2026 (toujours 20 %, BOI-TVA-LIQ-30-20-90-30 § 380 ; règle des 10 % de surface, CGI 279-0 bis, 2 ; voir plus haut, « Extension »).
+10. D8222-4 et -5 (vigilance d'un particulier) et arrêté du 16 juil. 2019 (amiante : repérage dans tout immeuble bâti) : relus le 3 nov. 2026 (`macon.md` § 3) ; restent CSP L1334-8 (plomb) et le CERFA 15497*04.

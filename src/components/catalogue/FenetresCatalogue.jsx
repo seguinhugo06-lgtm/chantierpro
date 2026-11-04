@@ -235,7 +235,8 @@ export function FenetreScanner({ peutCreer = true, catalogue, onFermer, onVoirFi
 }
 
 /** « Ajouter au devis » : un article, une quantité, dans un devis en brouillon (jamais dans un devis envoyé ou signé). */
-export function FenetreAjoutDevis({ article, brouillons, clients, quantite, setQuantite, devisChoisi, setDevisChoisi, onFermer, onAjouter, onCreerDevis, enCours }) {
+// franchiseTva (estFranchiseTva) : sous-total sans « HT » en franchise en base de TVA (décision du 24 oct. 2026)
+export function FenetreAjoutDevis({ article, brouillons, clients, quantite, setQuantite, devisChoisi, setDevisChoisi, onFermer, onAjouter, onCreerDevis, enCours, franchiseTva = false }) {
   return (
     <Modal isOpen={!!article} onClose={onFermer} size="sm" closeOnBackdrop={!enCours} closeOnEscape={!enCours}>
       <ModalHeader>
@@ -263,7 +264,7 @@ export function FenetreAjoutDevis({ article, brouillons, clients, quantite, setQ
             </Champ>
             <Champ id="ajout-devis-quantite" libelle="Quantité" type="number" inputMode="decimal" min="1" value={quantite} onChange={(e) => setQuantite(Math.max(1, parseInt(e.target.value, 10) || 1))} />
             <div className="p-3 rounded-xl bg-surface-2 flex items-center justify-between">
-              <span className="text-sm text-encre-2">Sous-total HT</span>
+              <span className="text-sm text-encre-2">{franchiseTva ? 'Sous-total' : 'Sous-total HT'}</span>
               <span className="text-lg font-bold tabular-nums text-encre">{formatMoney((parseFloat(article?.prix) || 0) * quantite, 2)}</span>
             </div>
           </ModalBody>

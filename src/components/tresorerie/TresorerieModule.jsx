@@ -31,7 +31,7 @@ import { useTVA } from '../../hooks/useTVA';
 import { useExportComptable } from '../../hooks/useExportComptable';
 import useKeepInViewport from '../../hooks/useKeepInViewport';
 import { formatClientName } from '../../lib/formatters';
-import { statutPrevision, estPrevisionMiroir, seuilAlerteRegle, moisProjetePrevision } from '../../lib/previsions';
+import { statutPrevision, estPrevisionMiroir, seuilAlerteRegle, moisProjetePrevision, premiereEcheanceCharge } from '../../lib/previsions';
 import { SEUIL_PAR_DEFAUT } from '../../lib/tresorerieReglages';
 import TuileChiffre from '../ui/TuileChiffre';
 import Modal from '../ui/Modal';
@@ -983,8 +983,8 @@ export default function TresorerieModule({
 
   // Add BTP charge as prevision
   const handleAddBTPCharge = useCallback(async (charge) => {
-    const now = new Date();
-    const date = new Date(now.getFullYear(), now.getMonth(), 5);
+    // Le 5 de ce mois s'il n'est pas passé, sinon le 5 du mois prochain (jamais une charge « en retard » à sa création)
+    const date = premiereEcheanceCharge(new Date());
     await addPrevision({
       id: genId(),
       type: 'sortie',
@@ -2365,9 +2365,10 @@ export default function TresorerieModule({
               <Info size={20} aria-hidden="true" className="flex-shrink-0 text-encre-3" />
               <div>
                 <p className="text-sm font-semibold text-encre">Franchise en base de TVA</p>
+                {/* La mention de la facture, mot pour mot comme sur les PDF : CGI art. 293 E, II (contrôle du 3 nov. 2026) */}
                 <p className="text-sm mt-0.5 text-encre-2">
                   En franchise en base de TVA, vous n’avez pas de TVA à collecter ni à déduire.
-                  Mention obligatoire sur vos factures : « TVA non applicable, art. 293 B du CGI ».
+                  Mention obligatoire sur vos factures : « TVA non applicable, article 293 B du CGI ».
                 </p>
                 {/* Une facture émise par erreur avec de la TVA la rend due (relecture juriste-btp du 17 oct. 2026) */}
                 {(() => {

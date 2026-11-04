@@ -279,9 +279,8 @@ describe('encaissements : une facture de 4 136,00 €', () => {
 });
 
 describe('les onglets', () => {
-  it('cinq onglets aux titres de la spec, dans l’ordre', () => {
+  it('quatre onglets aux titres de la spec, dans l’ordre ; plus de second devis (retour du 26 oct. 2026)', () => {
     expect(ONGLETS.map((o) => o.titre)).toEqual([
-      'Le document que reçoit votre client',
       'Signature en ligne',
       'Métré express',
       'Relances',
@@ -294,11 +293,11 @@ describe('les onglets', () => {
     const ids = ONGLETS.map((o) => o.id);
     expect(ongletVoisin(ids, ids[0], 'ArrowRight')).toBe(ids[1]);
     expect(ongletVoisin(ids, ids[0], 'ArrowDown')).toBe(ids[1]);
-    expect(ongletVoisin(ids, ids[0], 'ArrowLeft')).toBe(ids[4]);
+    expect(ongletVoisin(ids, ids[0], 'ArrowLeft')).toBe(ids[3]);
     expect(ongletVoisin(ids, ids[2], 'ArrowUp')).toBe(ids[1]);
-    expect(ongletVoisin(ids, ids[4], 'ArrowRight')).toBe(ids[0]);
+    expect(ongletVoisin(ids, ids[3], 'ArrowRight')).toBe(ids[0]);
     expect(ongletVoisin(ids, ids[2], 'Home')).toBe(ids[0]);
-    expect(ongletVoisin(ids, ids[2], 'End')).toBe(ids[4]);
+    expect(ongletVoisin(ids, ids[2], 'End')).toBe(ids[3]);
     expect(ongletVoisin(ids, ids[2], 'Enter')).toBe(null);
     expect(ongletVoisin(ids, 'inconnu', 'ArrowRight')).toBe(null);
   });

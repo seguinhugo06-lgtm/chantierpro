@@ -12,7 +12,7 @@ import {
   Zap, Hammer, ExternalLink, Clock,
 } from 'lucide-react';
 import { useSubscriptionStore, PLANS, PLAN_ORDER } from '../../stores/subscriptionStore';
-import { MENTION_TVA_ABONNEMENT, prixAbonnement, prixAbonne, periodeAbonne, economieAnnuelle, moisOffertsCommuns } from '../../stores/prixAbonnement';
+import { prixAbonnement, prixAbonne, periodeAbonne, economieAnnuelle, moisOffertsCommuns } from '../../stores/prixAbonnement';
 import { usePermissions } from '../../hooks/usePermissions';
 import { createCheckoutSession, createPortalSession, utiliserCodeTesteur } from '../../services/subscriptionsApi';
 import { toast } from '../../stores/toastStore';
@@ -241,7 +241,7 @@ export default function PlanPage({ isDark: _isDark, couleur: _couleur, setPage }
                   {offreTesteur
                     ? `Offert jusqu'au ${nextBilling} — aucun prélèvement`
                     : isPaid
-                    ? `${prixAbonne(plan, sub)}, ${MENTION_TVA_ABONNEMENT}${plan.offreLancement ? ` · ${plan.offreLancement}` : ''}`
+                    ? `${prixAbonne(plan, sub)}${plan.offreLancement ? ` · ${plan.offreLancement}` : ''}`
                     : 'Gratuit'
                   }
                 </p>
@@ -333,7 +333,6 @@ export default function PlanPage({ isDark: _isDark, couleur: _couleur, setPage }
                       {price}
                     </span>
                     <span className="text-sm text-encre-3"> par mois</span>
-                    {p.priceMonthly > 0 && <p className="text-sm mt-0.5 text-encre-3">{MENTION_TVA_ABONNEMENT}</p>}
                     {p.offreLancement && (
                       <p className="text-sm mt-1 font-medium text-encre-2">
                         {p.offreLancement} : prix gardé tant que vous restez abonné

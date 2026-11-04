@@ -128,7 +128,7 @@ Propositions :
 | Indispensable | **Retenue de garantie** : champ % (5 % max) sur le devis, déduite des situations, **rappel automatique à 1 an** de la réception pour la réclamer | S | Faible si le plafond 5 % et le délai d'un an sont relus au texte |
 | Utile | Case « Repérage amiante fourni ? » et « Étude G2 fournie ? » sur le devis, avec une phrase neutre si non | S | Faible : information, pas une affirmation de conformité |
 | Utile | Coffre de pièces de l'entreprise (attestation de vigilance, Kbis/RNE, décennale) avec date d'expiration et **rappel à 6 mois**, envoi en un geste au donneur d'ordre | M | Faible ; ne jamais générer l'attestation, seulement la stocker |
-| Utile | Devis « extension » : TVA 20 % pour la partie extension, 10 % pour la partie existante, avec explication. Toute extension à 20 % (BOI-TVA-LIQ-30-20-90-30 § 380) ; la règle des 10 % de surface s'ajoute pour les travaux sur l'existant (CGI 279-0 bis, 2) | S | Moyen : explication à faire relire par juriste-btp |
+| Utile | Devis « extension » : TVA 20 % pour la partie extension, 10 % pour la partie existante, avec explication. Toute extension à 20 % (BOI-TVA-LIQ-30-20-90-30 § 380) ; la règle des 10 % de surface s'ajoute pour les travaux sur l'existant (CGI 279-0 bis, 2) | S | Moyen : explication à faire relire par juriste-btp ; la notion d'immeuble neuf reste à relire au BOFiP (l. 94) |
 | Plus tard | Sous-traitance : fiche du sous-traitant, demande d'acceptation au maître d'ouvrage, rappel de la caution art. 14 | L | Élevé : loi 75-1334 d'ordre public, à relire au texte |
 | Plus tard | Alerte « risque CCMI » si un même devis contient gros œuvre + charpente + couverture + menuiseries extérieures d'une maison neuve | S | Moyen : alerte seulement, jamais une qualification juridique |
 | Plus tard | Journal météo du chantier (jours d'arrêt) imprimable pour justifier un report | S | Faible |
@@ -157,8 +157,8 @@ Propositions :
 ## Relecture juriste-btp
 
 Relue par juriste-btp le 03/11/2026, sans texte officiel ouvert (avis : `avis-juriste-2026-11-03.md`). Corrections appliquées. Restent à vérifier au texte :
-- TVA d'une extension : addition de construction ou seuil de 10 % (BOI-TVA-LIQ-30-20-90-20), puis aligner MB § 4 ;
-- arrêté du 16 juil. 2019 (permis avant le 1er juillet 1997) ;
-- C. trav. D8222-4 et D8222-5 (particulier, seuil, cumul) ;
+- TVA d'une extension : relue au texte le 3 nov. 2026 (BOI-TVA-LIQ-30-20-90-30 § 380 ; CGI 279-0 bis, 2 ; voir l. 93 et 96) ; MB § 4 aligné ; reste la notion d'immeuble neuf (l. 94) ;
+- champ du repérage amiante avant travaux : relu au texte le 3 nov. 2026 (tout immeuble bâti : C. trav. R4412-97 ; arrêté du 16 juil. 2019, art. 3 ; voir l. 52) ;
+- C. trav. D8222-4 et D8222-5 : relus au texte le 3 nov. 2026 pour le particulier (voir l. 40) ; restent le seuil et le cumul (l. 42) ;
 - exception pénale de L243-3 ;
 - CCH L132-4 et s. (G2) ; sanctions du CCMI ; carte BTP du chef d'entreprise sans salarié.

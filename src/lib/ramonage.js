@@ -65,6 +65,21 @@ export const estCombustibleSolide = (combustible) => SOLIDES.includes(combustibl
 /** Les conseils sont dus au ramonage d'un foyer ouvert ou fermé à combustible solide, hors chaudière (R. 1331-77). */
 export const conseilsExiges = (r) => estCombustibleSolide(r?.combustible) && r?.appareil_type !== 'chaudiere';
 
+/**
+ * Conseils imprimés sur l'attestation (retour des ramoneurs, nov. 2026 : « conseils à mettre en facultatif »). R. 1331-77
+ * oblige à conseiller l'usager, pas à l'écrire sur l'attestation (R. 1331-75 cite « notamment » les conduits ramonés et
+ * la vacuité ; l'arrêté du 20 juillet 2023, pris sur R. 1331-78, ne fixe que le contenu de l'attestation d'entretien,
+ * annexe 3, à laquelle les conseils sont joints, annexe 2). Le choix est enregistré DANS l'attestation (`conseils.imprimes`, colonne JSON figée à l'insertion) : une
+ * réimpression donne le même document. Attestations d'avant ce choix (clé absente) : imprimés, comme avant.
+ */
+export const conseilsImprimes = (r) => r?.conseils?.imprimes !== false;
+
+/** Ce qui part en base : des conseils non imprimés ne sont pas gardés (rien d'invisible dans une pièce figée). */
+export function conseilsAEnregistrer(r) {
+  if (conseilsImprimes(r)) return { choix: r?.conseils?.choix || [], texte: r?.conseils?.texte || '', imprimes: true };
+  return { choix: [], texte: '', imprimes: false };
+}
+
 /** Foyer fermé à combustible solide (insert, poêle) : l'attestation dit qu'elle ne vaut pas attestation d'entretien. */
 export const estFoyerFermeSolide = (r) => estCombustibleSolide(r?.combustible) && ['insert', 'poele_bois', 'poele_granules'].includes(r?.appareil_type);
 
@@ -191,7 +206,7 @@ export function descriptionAppareil(r) {
 
 /**
  * Ce qui manque avant d'enregistrer : la vacuité (et sa précision si elle n'est pas assurée), les conseils pour un
- * combustible solide, l'identité et le lieu, l'appareil, la méthode, le prochain ramonage. Liste vide = enregistrable.
+ * combustible solide (s'ils sont imprimés), l'identité et le lieu, l'appareil, la méthode, le prochain ramonage. Liste vide = enregistrable.
  */
 export function manquants(r) {
   const m = [];
@@ -208,7 +223,7 @@ export function manquants(r) {
   if (vide(r?.methode)) m.push({ champ: 'methode', message: 'La méthode' });
   if (!['assuree', 'non_assuree'].includes(r?.vacuite)) m.push({ champ: 'vacuite', message: 'La vacuité du conduit' });
   if (r?.vacuite === 'non_assuree' && vide(r?.vacuite_precision)) m.push({ champ: 'vacuite_precision', message: 'Pourquoi la vacuité n’a pas pu être assurée' });
-  if (conseilsExiges(r) && !(r?.conseils?.choix?.length || String(r?.conseils?.texte || '').trim())) {
+  if (conseilsExiges(r) && conseilsImprimes(r) && !(r?.conseils?.choix?.length || String(r?.conseils?.texte || '').trim())) {
     m.push({ champ: 'conseils', message: 'Les conseils donnés (combustible solide)' });
   }
   if (vide(r?.prochain_avant)) m.push({ champ: 'prochain_avant', message: 'La date du prochain ramonage' });
@@ -253,7 +268,8 @@ export function nouveauBrouillon({ client, precedent = null, entreprise = null, 
     vacuite_precision: '',
     constats: {},
     observations: '',
-    conseils: { choix: [], texte: '' },
+    // Réglage de l'entreprise (Paramètres › Ramonage), modifiable à chaque attestation ; par défaut imprimés
+    conseils: { choix: [], texte: '', imprimes: entreprise?.ramonageConseils !== false },
     prochain_avant: prochainParDefaut(realiseLe),
     prix_ht: precedent?.prix_ht ?? tarifPour(entreprise, appareilType) ?? null,
     signature: null,

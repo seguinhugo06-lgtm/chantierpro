@@ -252,35 +252,49 @@ module.exports = [
   {
     // Audit P1 et décision du contrôleur : pas de seuil d'alerte tant que l'artisan ne l'a pas réglé (5 000 €, valeur
     // par défaut enregistrée, compte comme « non réglé ») ; un seul bandeau au plus.
-    // Jour fixé : avec 3 000 € de départ, la projection à 6 mois de la démo dépend de la place des prévisions dans le
-    // mois. Le 3 du mois, le règlement attendu le 26 était oublié par la projection (corrigé le 3 nov. 2026 :
-    // moisProjetePrevision) ; ce jour-là le garde.
+    // Plusieurs jours fixés : avec 3 000 € de départ, la projection à 6 mois de la démo dépend de la place des
+    // prévisions dans le mois. Le 3 nov. 2026, le règlement attendu le 26 était oublié par la projection (corrigé :
+    // moisProjetePrevision) ; un seul jour figé ne couvrirait que ce cas, d'où début, milieu, fin de mois et d'année.
     nom: 'trésorerie : pas de seuil d’alerte tant qu’il n’est pas réglé, un bandeau au plus (390 px)',
     async executer({ ouvrir, attendre, verifier }) {
-      const { page } = await ouvrir({ page: 'finances', largeur: 390, jour: '2026-11-03' });
-      const regler = async (soldeInitial, seuilAlerte) => {
-        await page.evaluate((s, a) => {
-          localStorage.setItem('cp_tresorerie_settings', JSON.stringify({ seuilAlerte: a, soldeInitial: s, soldeDate: '2026-01-01' }));
-          localStorage.removeItem('cp_treso_alert_dismissed');
-        }, soldeInitial, seuilAlerte);
-        await page.reload({ waitUntil: 'networkidle0' }).catch(() => {});
-        await attendre(1500);
-        return page.evaluate(() => ({
-          solde: (/Solde estimé\s*\n\s*([^\n]+)/.exec(document.body.innerText) || [])[1] || '',
-          bandeaux: [...document.querySelectorAll('[data-bandeau-tresorerie]')].map((b) => b.dataset.bandeauTresorerie),
-        }));
-      };
-      const enEuros = (t) => Number(String(t).replace(/−/g, '-').replace(/[^\d,-]/g, '').replace(',', '.'));
-      // Sans solde de départ, la démo est sous zéro : un bandeau (le solde négatif prévu), pas deux
-      const zero = await regler(0, 5000);
-      verifier(zero.bandeaux.length <= 1, `un bandeau au plus (${JSON.stringify(zero.bandeaux)})`);
-      // Solde de départ choisi pour un solde estimé de 3 000 € : positif, sous 5 000 €
-      const depart = 3000 - enEuros(zero.solde);
-      const parDefaut = await regler(depart, 5000);
-      verifier(enEuros(parDefaut.solde) === 3000, `solde estimé de 3 000 € (« ${parDefaut.solde} »)`);
-      verifier(parDefaut.bandeaux.length === 0, `seuil de 5 000 € par défaut : aucun bandeau (${JSON.stringify(parDefaut.bandeaux)})`);
-      const regle = await regler(depart, 8000);
-      verifier(JSON.stringify(regle.bandeaux) === '["seuil"]', `seuil réglé à 8 000 € : le bandeau du seuil (${JSON.stringify(regle.bandeaux)})`);
+      for (const jour of ['2026-11-01', '2026-11-03', '2026-11-15', '2026-11-30', '2026-12-31']) {
+        const { browser, page } = await ouvrir({ page: 'finances', largeur: 390, jour });
+        const regler = async (soldeInitial, seuilAlerte) => {
+          await page.evaluate((s, a) => {
+            localStorage.setItem('cp_tresorerie_settings', JSON.stringify({ seuilAlerte: a, soldeInitial: s, soldeDate: '2026-01-01' }));
+            localStorage.removeItem('cp_treso_alert_dismissed');
+          }, soldeInitial, seuilAlerte);
+          await page.reload({ waitUntil: 'networkidle0' }).catch(() => {});
+          await attendre(1500);
+          return page.evaluate(() => ({
+            solde: (/Solde estimé\s*\n\s*([^\n]+)/.exec(document.body.innerText) || [])[1] || '',
+            bandeaux: [...document.querySelectorAll('[data-bandeau-tresorerie]')].map((b) => b.dataset.bandeauTresorerie),
+            // « décembre : -4 809 € » : le premier mois projeté sous zéro
+            negatif: ((/:\s*([−-]?[\d\s\u202f\u00a0]+)\s*€/.exec(document.querySelector('[data-bandeau-tresorerie="negatif"]')?.innerText || '') || [])[1]) || null,
+          }));
+        };
+        const enEuros = (t) => Number(String(t).replace(/−/g, '-').replace(/[^\d,-]/g, '').replace(',', '.'));
+        // Sans solde de départ, la démo est sous zéro : un bandeau (le solde négatif prévu), pas deux
+        const zero = await regler(0, 5000);
+        verifier(zero.bandeaux.length <= 1, `${jour} : un bandeau au plus (${JSON.stringify(zero.bandeaux)})`);
+        // Solde de départ choisi pour que la projection reste positive et passe sous 5 000 € : solde estimé de 3 000 €,
+        // relevé tant qu'un mois projeté est sous zéro (selon le jour, la démo a un mois de charges sans entrée prévue :
+        // le bandeau « négatif » y est juste), jusqu'à ce que ce mois-là soit à 3 000 €
+        let depart = 3000 - enEuros(zero.solde);
+        let parDefaut = await regler(depart, 5000);
+        let releves = 0;
+        for (; releves < 4 && parDefaut.negatif; releves++) {
+          depart += 3000 - enEuros(parDefaut.negatif);
+          parDefaut = await regler(depart, 5000);
+        }
+        // La régression du 3 nov. 2026 : ce jour-là, sans le règlement de 15 400 € attendu le 26, un mois tombait sous zéro
+        if (jour === '2026-11-03') verifier(releves === 0, `${jour} : avec 3 000 €, aucun mois projeté sous zéro (le règlement attendu le 26 est compté)`);
+        verifier(enEuros(parDefaut.solde) === enEuros(zero.solde) + depart, `${jour} : le solde de départ compte dans le solde estimé (« ${parDefaut.solde} »)`);
+        verifier(parDefaut.bandeaux.length === 0, `${jour} : seuil de 5 000 € par défaut : aucun bandeau (${JSON.stringify(parDefaut.bandeaux)})`);
+        const regle = await regler(depart, 8000);
+        verifier(JSON.stringify(regle.bandeaux) === '["seuil"]', `${jour} : seuil réglé à 8 000 € : le bandeau du seuil (${JSON.stringify(regle.bandeaux)})`);
+        await browser.close();
+      }
     },
   },
   {
@@ -385,7 +399,8 @@ module.exports = [
           };
         });
         verifier(tva.etape, 'étape « Documents » de l’assistant');
-        verifier(/Pas de TVA : franchise en base/.test(tva.franchise) && /TVA non applicable, art\. 293 B du CGI/.test(tva.franchise)
+        // La mention de la facture, citée mot pour mot comme sur les PDF (CGI art. 293 E, II ; contrôle du 3 nov. 2026)
+        verifier(/Pas de TVA : franchise en base/.test(tva.franchise) && /TVA non applicable, article 293 B du CGI/.test(tva.franchise)
           && /Mallettico suppose que vous êtes en franchise en base de TVA/.test(tva.franchise) && /choisissez le statut « Entreprise individuelle \(EI\) »/.test(tva.franchise),
           `franchise présumée, mention 293 B et sortie par le statut EI (R1, R2) à ${largeur} px (« ${tva.franchise.slice(0, 160)} »)`);
         verifier(!tva.choisi.some((t) => /10 %/.test(t)), `10 % n’est pas proposé ni choisi (${JSON.stringify(tva.choisi)})`);
@@ -531,17 +546,23 @@ module.exports = [
   {
     // Audit P2 : deux rangées d'onglets ; « 0 h ce mois » alors que des pointages attendaient.
     nom: 'équipe : une seule rangée d’onglets, et les heures à valider dites sur la carte de chacun (375 px)',
+    // Aujourd'hui, et un 1er du mois qui tombe un dimanche : les deux jours où ce parcours a déjà échoué (week-end ;
+    // pointages démo tombés le mois précédent pendant la première semaine du mois, corrigé le 3 nov. 2026).
     async executer({ ouvrir, verifier }) {
-      const { page } = await ouvrir({ page: 'equipe', largeur: 375 });
-      const etat = await page.evaluate(() => ({
-        rangees: [...document.querySelectorAll('main [role="tablist"]')].filter((t) => t.getBoundingClientRect().height > 0).length,
-        heures: [...document.querySelectorAll('[data-equipe="heures-mois"]')].map((e) => e.innerText.replace(/\s+/g, ' ').trim()),
-        debordement: document.documentElement.scrollWidth - innerWidth,
-      }));
-      verifier(etat.rangees === 1, `une seule rangée d’onglets (${etat.rangees})`);
-      verifier(etat.heures.length > 0 && etat.heures.every((t) => /validées ce mois/.test(t)), `chaque carte dit les heures validées (${JSON.stringify(etat.heures.slice(0, 3))})`);
-      verifier(etat.heures.some((t) => /à valider/.test(t)), `les heures en attente sont dites « à valider » (${JSON.stringify(etat.heures.slice(0, 3))})`);
-      verifier(etat.debordement <= 0, `rien ne déborde (${etat.debordement} px)`);
+      for (const jour of [undefined, '2026-11-01']) {
+        const quand = jour || 'aujourd’hui';
+        const { browser, page } = await ouvrir({ page: 'equipe', largeur: 375, jour });
+        const etat = await page.evaluate(() => ({
+          rangees: [...document.querySelectorAll('main [role="tablist"]')].filter((t) => t.getBoundingClientRect().height > 0).length,
+          heures: [...document.querySelectorAll('[data-equipe="heures-mois"]')].map((e) => e.innerText.replace(/\s+/g, ' ').trim()),
+          debordement: document.documentElement.scrollWidth - innerWidth,
+        }));
+        verifier(etat.rangees === 1, `${quand} : une seule rangée d’onglets (${etat.rangees})`);
+        verifier(etat.heures.length > 0 && etat.heures.every((t) => /validées ce mois/.test(t)), `${quand} : chaque carte dit les heures validées (${JSON.stringify(etat.heures.slice(0, 3))})`);
+        verifier(etat.heures.some((t) => /à valider/.test(t)), `${quand} : les heures en attente sont dites « à valider » (${JSON.stringify(etat.heures.slice(0, 3))})`);
+        verifier(etat.debordement <= 0, `${quand} : rien ne déborde (${etat.debordement} px)`);
+        await browser.close();
+      }
     },
   },
   {
@@ -596,6 +617,116 @@ module.exports = [
       verifier(d.atteintes.length > 0 && d.atteintes.every((t) => /Limite atteinte : \d+ \S+/.test(t)) && !/\d+ \/ \d+/.test(d.texte),
         `une limite dépassée se dit « Limite atteinte », jamais « 10 / 2 » (${JSON.stringify(d.atteintes)})`);
       await accueil.browser.close();
+    },
+  },
+  {
+    // Retour d'Hugo (3 nov. 2026) : « "Renouveler" assurance ne marche pas ». Le bouton ne faisait qu'ouvrir la rubrique
+    // Assurances : dans la rubrique, rien ; ailleurs, la rubrique en haut, sans dire quoi changer. Il mène maintenant à
+    // la date de validité de l'assurance expirée, et la nouvelle date saisie s'enregistre en base.
+    nom: 'assurances : « Renouveler » mène à la date de validité de l’assurance expirée, la nouvelle date s’enregistre (réel, 1440 et 375 px)',
+    reel: true,
+    async executer({ ouvrir, sessionFactice, cliquer, attendre, verifier }) {
+      const EXPIREE = { ...ENTREPRISE, decennale_assureur: 'Assureur Exemple', decennale_numero: 'DEC-1', decennale_validite: '2026-01-15' };
+      const champ = (page) => page.evaluate(() => {
+        const el = document.getElementById('settings-field-decennaleValidite');
+        const r = el?.getBoundingClientRect();
+        return { focus: document.activeElement?.id || '', visible: !!r && r.top >= 0 && r.bottom <= innerHeight, valeur: el?.value || '' };
+      });
+      const boutons = (page) => page.evaluate(() => [...document.querySelectorAll('button')].filter((b) => { const r = b.getBoundingClientRect(); return r.width > 0 && r.height > 0 && b.innerText.trim() === 'Renouveler'; }).map((b) => Math.round(b.getBoundingClientRect().height)));
+
+      // Bureau : dans la rubrique Assurances, un seul « Renouveler », qui amène sur la date
+      const base = creerBase({ entreprise: [{ ...EXPIREE }] });
+      const bureau = await ouvrir({ reel: true, largeur: 1440, page: 'settings', session: sessionFactice(UID), supabase: (req, u) => base.reponse(req, u) });
+      await attendre(1500);
+      await rubrique(bureau.page, { cliquer }, 'Assurances');
+      await bureau.page.evaluate(() => window.scrollTo(0, 0));
+      const b1 = await boutons(bureau.page);
+      verifier(b1.length === 1, `un seul « Renouveler » dans la rubrique (${b1.length})`);
+      await cliquer(bureau.page, 'Renouveler');
+      await attendre(600);
+      const c1 = await champ(bureau.page);
+      verifier(c1.focus === 'settings-field-decennaleValidite' && c1.visible, `« Renouveler » amène sur la date de validité de la décennale (${JSON.stringify(c1)})`);
+      await bureau.page.evaluate(() => {
+        const el = document.getElementById('settings-field-decennaleValidite');
+        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(el, '2027-01-15');
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+      });
+      await attendre(2500);
+      verifier(ecrituresEntreprise(base).some((c) => c.decennale_validite === '2027-01-15'), 'la nouvelle date est écrite en base');
+      const reste = await bureau.page.evaluate(() => /Décennale expirée/.test(document.body.innerText));
+      verifier(!reste, 'l’alerte « Décennale expirée » disparaît');
+      await bureau.browser.close();
+
+      // Téléphone : depuis la liste des rubriques, le bandeau « Renouveler » mène aussi à la date
+      const base2 = creerBase({ entreprise: [{ ...EXPIREE }] });
+      const tel = await ouvrir({ reel: true, largeur: 375, page: 'settings', session: sessionFactice(UID), supabase: (req, u) => base2.reponse(req, u) });
+      await attendre(1500);
+      const b2 = await boutons(tel.page);
+      verifier(b2.length === 1 && b2[0] >= 44, `« Renouveler » sur la liste des rubriques, cible de 44 px (${JSON.stringify(b2)})`);
+      await cliquer(tel.page, 'Renouveler');
+      await attendre(600);
+      const c2 = await champ(tel.page);
+      verifier(c2.focus === 'settings-field-decennaleValidite' && c2.visible, `au téléphone aussi, sur la date de la décennale (${JSON.stringify(c2)})`);
+      await tel.browser.close();
+    },
+  },
+  {
+    // Retour d'Hugo (3 nov. 2026) : « Registre métier ou commerce — Type à revoir car pas commerçant ». Le bloc ne
+    // proposait que le RCS (« A : commerçant »…). Choix guidé : RNE (métiers et artisanat) pour un artisan, RCS sinon.
+    // Relecture juriste-btp du 3 nov. 2026 : aucune mention « RM » depuis le 1er janv. 2023, plus de département.
+    nom: 'légal : un artisan voit le RNE (métiers et artisanat), une société le RCS ; la mention imprimée suit (réel, 375 px)',
+    reel: true,
+    async executer({ ouvrir, sessionFactice, cliquer, attendre, verifier, saisir }) {
+      const lire = (page) => page.evaluate(() => {
+        const bloc = document.querySelector('[data-registre]');
+        const segments = [...(bloc?.querySelectorAll('[data-ui="Segmente"] button') || [])];
+        return {
+          registre: bloc?.dataset.registre || '',
+          choisi: segments.find((b) => b.getAttribute('aria-pressed') === 'true')?.innerText.trim() || '',
+          hauteurs: segments.map((b) => Math.round(b.getBoundingClientRect().height)),
+          lieu: document.querySelector('label[for="settings-field-rcs"], #settings-field-rcs-libelle')?.innerText.trim() || '',
+          champLieu: !!document.getElementById('settings-field-rcs'),
+          type: !!document.getElementById('settings-field-rcsType'),
+          imprime: [...document.querySelectorAll('p')].find((p) => /^Sera imprimé/.test(p.innerText.trim()))?.innerText.trim() || '',
+          debordement: document.documentElement.scrollWidth - innerWidth,
+        };
+      });
+
+      // Un département saisi avant la relecture (« 33 », rcs_ville) : ignoré à l'impression, vidé au changement de registre
+      const base = creerBase({ entreprise: [{ ...MICRO, rcs_ville: '33', settings_json: { reglages: { ...MICRO.settings_json.reglages, rcsType: 'RM' } } }] });
+      const { page, browser } = await ouvrir({ reel: true, largeur: 375, page: 'settings', session: sessionFactice(UID), supabase: (req, u) => base.reponse(req, u) });
+      await attendre(1500);
+      await rubrique(page, { cliquer }, 'Légal');
+      const a = await lire(page);
+      verifier(a.registre === 'RM' && a.choisi === 'Métiers et artisanat (RNE)', `micro-entreprise : le RNE (métiers et artisanat) d’abord (${JSON.stringify(a)})`);
+      verifier(!a.lieu && !a.champLieu && !a.type, `ni département ni « Type » de RCS demandés (« ${a.lieu} »)`);
+      verifier(a.hauteurs.length === 2 && a.hauteurs.every((h) => h >= 36) && a.debordement <= 0, `choix lisible à 375 px, rien ne déborde (${JSON.stringify(a.hauteurs)}, ${a.debordement} px)`);
+      await saisir(page, '#settings-field-rcsNumero', '123 456 789');
+      await attendre(2500);
+      const b = await lire(page);
+      verifier(/Entreprise du secteur des métiers et de l’artisanat, immatriculée au RNE sous le n° 123 456 789/.test(b.imprime) && !/\bRM\b/.test(b.imprime),
+        `« Sera imprimé : Entreprise du secteur des métiers et de l’artisanat, immatriculée au RNE sous le n° 123 456 789 » (« ${b.imprime} »)`);
+      const ecrites = ecrituresEntreprise(base);
+      verifier(ecrites.some((c) => c.settings_json?.reglages?.rcsNumero === '123 456 789' && c.settings_json?.reglages?.rcsType === 'RM'),
+        'numéro et registre écrits dans les mêmes champs qu’avant (reglages.rcsNumero, reglages.rcsType)');
+      await cliquer(page, 'Commerce (RCS)');
+      await attendre(1500);
+      const c = await lire(page);
+      verifier(c.registre === 'RCS' && /Ville du greffe/.test(c.lieu) && c.type, `« Commerce (RCS) » : ville du greffe et type (${JSON.stringify(c)})`);
+      // Relecture du 3 nov. : changer de registre vide la ville ; sans ville choisie, rien ne s'imprime (ni « RCS 33 A … »)
+      verifier(c.imprime === '', `« Commerce (RCS) » sans ville choisie : aucune mention imprimée (« ${c.imprime} »)`);
+      verifier(ecrituresEntreprise(base).some((e) => 'rcs_ville' in e && !e.rcs_ville), 'l’ancien département est vidé au changement de registre');
+      verifier(ecrituresEntreprise(base).some((e) => e.settings_json?.reglages?.rcsType === 'A'), 'le choix est enregistré (type A pour un entrepreneur individuel)');
+      await browser.close();
+
+      // Données d'avant : une SARL avec ville et numéro, sans type, reste au RCS et imprime la même mention
+      const base2 = creerBase({ entreprise: [{ ...ENTREPRISE, rcs_ville: 'Bordeaux', settings_json: { reglages: { rcsNumero: '987 654 321' } } }] });
+      const s = await ouvrir({ reel: true, largeur: 375, page: 'settings', session: sessionFactice(UID), supabase: (req, u) => base2.reponse(req, u) });
+      await attendre(1500);
+      await rubrique(s.page, { cliquer }, 'Légal');
+      const d = await lire(s.page);
+      verifier(d.registre === 'RCS' && /RCS Bordeaux B 987 654 321/.test(d.imprime), `société, données anciennes : RCS inchangé (« ${d.imprime} »)`);
+      await s.browser.close();
     },
   },
 ];

@@ -90,6 +90,20 @@ export function confetti({ particleCount = 110, duration = 2400, colors } = {}) 
 }
 
 /**
+ * Le jalon à célébrer après l'écriture d'un devis ou d'une facture, ou null. Seulement si la base a accepté
+ * l'écriture (`ok === true`) : une écriture mise en file hors ligne rend `ECRITURE_EN_ATTENTE` (une valeur vraie,
+ * lib/erreursEcriture) et ne doit pas fêter un « premier devis signé » que la base refusera peut-être
+ * (contrôle local du 3 nov. 2026).
+ * @returns {'devis_signe'|'facture_payee'|null}
+ */
+export function jalonACelebrer(ok, avant, data) {
+  if (ok !== true || !avant || !data?.statut || data.statut === avant.statut) return null;
+  if (avant.type !== 'facture' && ['accepte', 'signe'].includes(data.statut) && !['accepte', 'signe'].includes(avant.statut)) return 'devis_signe';
+  if (avant.type === 'facture' && data.statut === 'payee' && avant.statut !== 'payee') return 'facture_payee';
+  return null;
+}
+
+/**
  * Célèbre un jalon métier : confettis + (au 1er) toast spécial.
  * @param {'devis_signe'|'facture_payee'} kind
  * @param {Object} [toast] store toast ({ success })

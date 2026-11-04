@@ -105,12 +105,16 @@ module.exports = [
   {
     // Avis juriste du 26 oct. 2026 (M4, R10) : une société imprime son capital (C. com. R123-238) ; un entrepreneur
     // individuel n'en a pas, et un capital resté sur sa fiche ne s'imprime pas. Aperçu réel : le générateur de DevisPage.
-    nom: 'aperçu du devis : le capital d’une SARL s’imprime, celui d’une EI avec un capital rempli, non',
+    nom: 'aperçu du devis : le capital d’une SARL s’imprime, celui d’une EI avec un capital rempli, non ; RNE pour l’EI, RCS pour la SARL',
     async executer({ ouvrir, attendre, verifier }) {
       for (const [forme, imprime] of [['EI', false], ['SARL', true]]) {
         const id = `ent-capital-${forme.toLowerCase()}`;
-        const ligne = { ...FICHE_CAPITAL, id, forme_juridique: forme, settings_json: { reglages: forme === 'EI' ? { nomEntrepreneur: 'Julien Exemple' } : {} } };
-        const app = { ...FICHE_CAPITAL_APP, id, formeJuridique: forme, ...(forme === 'EI' ? { nomEntrepreneur: 'Julien Exemple' } : {}) };
+        // Immatriculation (retour d'Hugo du 3 nov. 2026, lib/immatriculation) : l'EI au RNE (métiers et artisanat), la SARL au
+        // RCS. Un département saisi avant la relecture du 3 nov. (« 75 ») est ignoré : aucune mention « RM » (juriste-btp)
+        const immat = forme === 'EI' ? { rcsType: 'RM', rcsNumero: '123 456 789' } : { rcsType: 'B', rcsNumero: '123 456 789' };
+        const lieu = forme === 'EI' ? '75' : 'Paris';
+        const ligne = { ...FICHE_CAPITAL, id, forme_juridique: forme, rcs_ville: lieu, settings_json: { reglages: { ...immat, ...(forme === 'EI' ? { nomEntrepreneur: 'Julien Exemple' } : {}) } } };
+        const app = { ...FICHE_CAPITAL_APP, id, formeJuridique: forme, rcsVille: lieu, ...immat, ...(forme === 'EI' ? { nomEntrepreneur: 'Julien Exemple' } : {}) };
         const { page, browser } = await ouvrir({ page: 'devis', largeur: 1440, avantChargement: poserEntreprise(`parcours-capital-${forme}`, ligne, app) });
         await attendre(800);
         const ouvert = await page.evaluate(() => {
@@ -125,6 +129,8 @@ module.exports = [
         const html = await page.evaluate(() => [...document.querySelectorAll('iframe')].map((f) => f.getAttribute('srcdoc') || '').find((x) => x.length > 100) || '');
         verifier(html.length > 100, `aperçu affiché (${forme})`);
         verifier(/Capital: 10000 €/.test(html) === imprime, `${forme} : capital ${imprime ? 'imprimé' : 'absent'} (${(html.match(/.{0,40}Capital.{0,20}/) || ['aucun'])[0]})`);
+        const attendu = forme === 'EI' ? 'Entreprise du secteur des métiers et de l’artisanat, immatriculée au RNE sous le n° 123 456 789' : 'RCS Paris B 123 456 789';
+        verifier(html.includes(attendu) && (forme !== 'EI' || (!/RCS/.test(html) && !/\bRM\b/.test(html))), `${forme} : « ${attendu} » imprimé par l’aperçu (${(html.match(/.{0,30}(RCS|RNE|\bRM\b).{0,30}/) || ['aucun'])[0]})`);
         await browser.close();
       }
     },
@@ -679,6 +685,67 @@ module.exports = [
           verifier(!ht, `${forme} : ni « PU HT » ni « Total HT » sur la fiche (${ht ? ht[0] : ''})`);
         } else {
           verifier(/PU HT/.test(fiche) && /Total HT/.test(fiche), `${forme} : « PU HT » et « Total HT » restent hors franchise`);
+        }
+      }
+    },
+  },
+  {
+    // Relevé du 3 nov. 2026 : l'aperçu imprimé (générateur de DevisPage) écrivait « PU HT » et « Total HT » sous la
+    // mention 293 B. En franchise : ni « HT » ni « TTC », la mention reste ; hors franchise, rien ne change.
+    nom: 'devis (aperçu imprimé) : en franchise ni « HT » ni « TTC », mention 293 B ; hors franchise « PU HT » et « Total TTC » (1440 px)',
+    reel: true,
+    async executer({ ouvrir, sessionFactice, attendre, verifier }) {
+      const { creerBase, UID } = require('../lib/fauxSupabase.cjs');
+      const ORG = '0e0e0e0e-0e0e-4e0e-8e0e-0e0e0e0e0e0e';
+      const CLIENT = { id: 'c0c0c0c0-0000-4000-8000-000000000603', nom: 'Exemple', prenom: 'Lou', telephone: '0600000004', email: 'lou@exemple.fr', adresse: '9 rue Imaginaire, 24000 Exempleville', created_at: '2026-10-01T08:00:00Z' };
+      // Des notes : le bloc NOTES est imprimé, avec son commentaire HTML (contrôle du 3 nov. 2026, voir plus bas)
+      const devis = (franchise) => ({ id: 'd0d0d0d0-0000-4000-8000-000000000603', client_id: CLIENT.id, type: 'devis', statut: 'brouillon', numero: 'DEV-2026-0603', objet: 'Prises du salon', notes: 'Accès par le garage',
+        date: '2026-10-20', date_validite: '2099-11-20', total_ht: 100, total_tva: franchise ? 0 : 20, total_ttc: franchise ? 100 : 120, tva_rate: franchise ? 0 : 20, created_at: '2026-10-20T08:00:00Z',
+        lignes: [{ id: 'l1', description: 'Pose prise 2P+T', quantite: 1, unite: 'u', prixUnitaire: 100, tva: franchise ? 0 : 20 }] });
+      const entreprise = (forme) => ({ id: 'e0e0e0e0-0000-4000-8000-000000000603', user_id: UID, organization_id: ORG, nom: 'Élec Exemple', forme_juridique: forme,
+        siret: '00000000000000', telephone: '0500000000', email: 'contact@exemple.fr', adresse: '1 rue Imaginaire', code_postal: '24000', ville: 'Exempleville',
+        is_active: true, is_default: true, settings_json: { reglages: { nomEntrepreneur: 'Jean Exemple' } }, created_at: '2026-01-01T00:00:00Z' });
+      for (const forme of ['Micro-entreprise', 'SARL']) {
+        const franchise = forme === 'Micro-entreprise';
+        const base = creerBase({ clients: [CLIENT], devis: [devis(franchise)], entreprise: [entreprise(forme)] });
+        const { page } = await ouvrir({
+          reel: true, largeur: 1440, page: 'devis', session: sessionFactice(UID), supabase: base.reponse,
+          avantChargement: () => { try { localStorage.setItem('pwa-install-dismissed', String(Date.now())); } catch { /* */ } },
+        });
+        await attendre(2500);
+        const ouvert = await page.evaluate(() => {
+          const ligne = [...document.querySelectorAll('button, [role="button"], tr, a')].find((x) => /DEV-2026-0*603/.test(x.innerText || ''));
+          ligne?.click();
+          return !!ligne;
+        });
+        verifier(ouvert, `${forme} : le devis DEV-2026-0603 est dans la liste`);
+        await attendre(1500);
+        const apercu = await actionFiche(page, attendre, ['Aperçu', 'Aperçu du document']);
+        verifier(apercu, `${forme} : l'aperçu s'ouvre`);
+        await attendre(1200);
+        const { imprime, notesInternes } = await page.evaluate(() => {
+          const f = [...document.querySelectorAll('iframe')].find((x) => (x.getAttribute('srcdoc') || '').length > 100);
+          const source = f?.getAttribute('srcdoc') || '';
+          const lu = new DOMParser().parseFromString(source, 'text/html');
+          lu.querySelectorAll('style, script').forEach((x) => x.remove());
+          // Contrôle du 3 nov. 2026 : des commentaires HTML internes (« décision d'Hugo… », « recette du 9 oct. », chemin
+          // d'un fichier source) partaient dans le document du client
+          const notes = (source.match(/<!--[\s\S]*?-->/g) || []).filter((c) => /Hugo|décision|recette|relecture|src\//i.test(c));
+          return { imprime: (lu.body?.textContent || '').replace(/\s+/g, ' '), notesInternes: notes };
+        });
+        verifier(/Pose prise 2P\+T/.test(imprime), `${forme} : l'aperçu montre le devis (${imprime.slice(0, 120)})`);
+        verifier(/Accès par le garage/.test(imprime), `${forme} : les notes du devis sont imprimées`);
+        verifier(!notesInternes.length, `${forme} : aucun commentaire interne dans le HTML imprimé (${notesInternes.join(' ').slice(0, 160)})`);
+        if (franchise) {
+          const ht = imprime.match(/.{0,30}(?<![A-Za-zÀ-ÿ])(HT|TTC)(?![A-Za-zÀ-ÿ]).{0,30}/);
+          verifier(!ht, `${forme} : ni « HT » ni « TTC » dans l'aperçu imprimé (${ht ? ht[0] : ''})`);
+          verifier(/Prix unitaire/.test(imprime), `${forme} : colonne « Prix unitaire »`);
+          verifier(/TVA non applicable, article 293 B du CGI/.test(imprime), `${forme} : la mention 293 B reste`);
+          // Décisions d'Hugo du 3 nov. 2026 : formule littérale des arrêtés de 1983 et 2017, colonne « TVA » retirée
+          verifier(/Total \(hors taxes et toutes taxes comprises\)/.test(imprime), `${forme} : « Total (hors taxes et toutes taxes comprises) »`);
+          verifier(/Prix unitaire Total/.test(imprime), `${forme} : pas de colonne « TVA » entre « Prix unitaire » et « Total »`);
+        } else {
+          verifier(/PU HT/.test(imprime) && /Total TTC/.test(imprime), `${forme} : « PU HT » et « Total TTC » restent hors franchise`);
         }
       }
     },

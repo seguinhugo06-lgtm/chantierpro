@@ -70,7 +70,7 @@ Score = **fréquence × besoin documentaire propre**, chacun noté de 1 à 3.
 |---|---|---|---|---|---|
 | 1 | Électricien (dont IRVE) | 3 ? | 3 | 9 | Consuel, IRVE, qualification d'exercice (MB § 7) ; métier d'Hugo et des testeurs |
 | 2 | Plombier / plombier-chauffagiste | 3 | 2 * | 6 | Dépannage sous l'arrêté de 2017, urgence hors établissement ; gaz à confirmer |
-| 3 | Chauffagiste | 2 | 3 * | 6 | PAC = presque seul geste restant de MaPrimeRénov' par geste, n° d'agrément PAC sur la facture (CEE), entretien annuel à confirmer ; à traiter avec le plombier (même famille, 73 299 établissements) |
+| 3 | Chauffagiste | 2 | 3 * | 6 | PAC = presque seul geste restant de MaPrimeRénov' par geste, n° d'agrément du modèle de PAC sur la preuve de réalisation (CEE, arrêté du 29 mai 2026, art. 2, relu le 3 nov. 2026 ; en principe la facture, à confirmer : voir `commun.md` § 4), entretien annuel à confirmer ; à traiter avec le plombier (même famille, 73 299 établissements) |
 | 4 | Menuisier-poseur de fenêtres | 3 | 2 | 6 | Fenêtres sorties de MaPrimeRénov' par geste au 1er sept. 2026, CEE, 5,5 % |
 | 5 | Couvreur-zingueur | 2 | 2 | 4 | Toiture refaite et décennale (jurisprudence 2024), isolation des combles sortie de MaPrimeRénov' par geste |
 | 6 | Plaquiste-plâtrier | 2 | 2 | 4 | Isolation : 5,5 %, CEE, rénovation d'ampleur |

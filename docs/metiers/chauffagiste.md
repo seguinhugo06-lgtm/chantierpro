@@ -102,7 +102,7 @@ Propositions :
 |---|---|---|---|
 | Indispensable | **Attestation d'entretien numérotée et figée** sur le modèle de l'attestation de ramonage, en trois variantes (chaudière, PAC, poêle/insert) : champs de l'annexe correspondante, mesure du CO (ppm), rendement, conseils ; PDF remis au client ; facture tirée de l'attestation | L | Moyen : le contenu doit suivre l'annexe à la lettre ; relire les annexes au texte avant de figer les champs |
 | Indispensable | **Rappel du prochain entretien** calculé selon l'appareil (12 mois chaudière ; 24 mois PAC ; poêle selon relecture) ; mêmes règles de prospection que le ramonage. Citer l'obligation pour une chaudière (« entretien annuel obligatoire, C. env. R224-41-4 ») : décision d'Hugo ; d'ici là, jamais « obligatoire » (MB § 10) | M | Faible si les règles de `metier-btp.md` § 10 sont reprises |
-| Indispensable | Modèles de devis à jour de la TVA : chaudière gaz/fioul 20 % ; entretien de chaudière jamais à 5,5 % ; PAC air/air 5,5 % seulement si classe et fluide saisis, même taux pour fourniture et pose (à vérifier) ; date du devis contrôlée | M | Moyen : base légale à relire au BOFiP |
+| Indispensable | Modèles de devis à jour de la TVA : chaudière gaz/fioul 20 % ; entretien de chaudière : 10 %, ou 5,5 % si la chaudière est THPE (ann. IV art. 30-0 D nonies ; voir § 5) ; PAC air/air 5,5 % seulement si classe et fluide saisis, même taux pour fourniture et pose (à vérifier) ; date du devis contrôlée | M | Moyen : base légale à relire au BOFiP |
 | Utile | **Contrat d'entretien** : prix forfaitaire annuel, appareils couverts, visites incluses, reconduction ; génère l'attestation à chaque visite et la facture annuelle. Rappel d'information avant reconduction tacite : C. conso. L215-1 : le professionnel informe le consommateur par écrit, au plus tôt trois mois et au plus tard un mois avant le terme, de la possibilité de ne pas reconduire ; à défaut, le consommateur peut résilier à tout moment. | L | Moyen : clauses de reconduction et hors établissement à relire par juriste-btp |
 | Utile | Fiche « appareil » attachée au client (type, marque, puissance, fluide, date de pose) pour pré-remplir attestation et rappel | M | Nul |
 | Utile | Champ « attestation de capacité fluides » (n°, catégorie, validité) dans les paramètres, imprimé sur les attestations PAC | S | Faible |
@@ -146,7 +146,7 @@ Propositions :
 Relue par juriste-btp le 03/11/2026, sans texte officiel ouvert (avis : `avis-juriste-2026-11-03.md`). Corrections appliquées. Restent à vérifier au texte :
 - annexe 5 de l'arrêté du 15 sept. 2009 et C. env. R224-41-4 et s. (15 jours, 2 ans) ;
 - annexe 3 de l'arrêté du 24 juil. 2020 et articles PAC (délai, conservation, qui) ;
-- catégories de fluides : arrêté du 30 juin 2008 ou arrêté du 21 nov. 2025 (statut, date d'effet) ;
-- TVA de l'entretien de chaudière (10 %, CGI 279-0 bis issu de la loi de finances 2025) ;
+- catégories de fluides : relues au texte le 3 nov. 2026 (arrêté du 21 nov. 2025, art. 9 et annexe I ; voir § 2) ;
+- TVA de l'entretien de chaudière : relue au texte le 3 nov. 2026 (10 %, ou 5,5 % si THPE ; BOI-TVA-LIQ-30-20-90-20 § 230 ; BOI-TVA-LIQ-30-20-95 § 35 ; voir § 5) ;
 - PAC air/air : même taux pour fourniture et pose (arrêtés du 13 juil. et du 14 août 2026) ;
 - fréquence de l'entretien des poêles (R. 1331-68).

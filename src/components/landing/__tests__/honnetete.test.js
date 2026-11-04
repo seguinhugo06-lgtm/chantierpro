@@ -179,8 +179,7 @@ describe('honnêteté du site public', () => {
  * (`metiersDeLaBibliotheque`) et, pour chacun, le nom, le résumé et les premières lignes de ses premiers lots
  * (`lotsMontres`) ; le devis vivant montre le nom et
  * toutes les lignes de son lot (`lotDemonstration`) ; « Les fonctionnalités en action » montrent la ligne de carrelage
- * du métré (`ligneDuMetre`) et le lot du document et de la signature (`lotDemonstration`, rendu par le générateur de
- * devis). `ou` situe le texte : métier ou exemple, lot, champ.
+ * du métré (`ligneDuMetre`) et le lot de la signature (`lotDemonstration`). `ou` situe le texte : métier ou exemple, lot, champ.
  */
 function textesDeLaBibliothequeAffiches(bibliotheque) {
   const textes = [];
@@ -256,7 +255,8 @@ describe('honnêteté des textes de la bibliothèque affichés par le site', () 
 });
 
 /**
- * Le document montré par l'exemple « Le document que reçoit votre client » (« Les fonctionnalités en action ») : le
+ * Le document de l'ancien exemple « Le document que reçoit votre client » (retiré du site le 3 nov. 2026, gardé en
+ * attendant la réponse d'Hugo, voir exemples.js) : le
  * HTML du vrai générateur de devis (src/lib/devisHtmlBuilder.js, que le site ne modifie pas), produit par la fonction
  * même de la page (`htmlDuDocument`). Son texte passe sous les mots interdits ; son HTML, en plus, sous les liens de
  * paiement en ligne (`/pay/`, fonction éteinte : `FONCTIONS.paiementEnLigne`).

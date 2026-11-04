@@ -37,9 +37,9 @@ describe('franchise en base (art. 293 B CGI) : aucune TVA facturée', () => {
     const html = lignesTotauxHtml(facture, { isMicro: true });
     expect(html).not.toMatch(/TVA/);
     expect(html).not.toMatch(/TTC/);
-    expect(html).toMatch(/Net à payer/);
-    expect(lignesTotauxHtml({ ...facture, type: 'devis' }, { isMicro: true })).toMatch(/<span>Total<\/span>/);
-    expect(lignesTotauxHtml({ ...facture, facture_type: 'avoir', total_ht: -100, total_ttc: -100 }, { isMicro: true })).toMatch(/Total de l’avoir/);
+    expect(html).toMatch(/<span>Net à payer \(hors taxes et toutes taxes comprises\)<\/span>/);
+    expect(lignesTotauxHtml({ ...facture, type: 'devis' }, { isMicro: true })).toMatch(/<span>Total \(hors taxes et toutes taxes comprises\)<\/span>/);
+    expect(lignesTotauxHtml({ ...facture, facture_type: 'avoir', total_ht: -100, total_ttc: -100 }, { isMicro: true })).toMatch(/<span>Total de l’avoir<\/span>/);
   });
 
   it('document ÉMIS enregistré avec TVA : réimprimé tel qu’émis, à régulariser par avoir (CGI art. 283, 3 ; 289)', () => {
