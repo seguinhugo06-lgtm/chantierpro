@@ -252,35 +252,49 @@ module.exports = [
   {
     // Audit P1 et décision du contrôleur : pas de seuil d'alerte tant que l'artisan ne l'a pas réglé (5 000 €, valeur
     // par défaut enregistrée, compte comme « non réglé ») ; un seul bandeau au plus.
-    // Jour fixé : avec 3 000 € de départ, la projection à 6 mois de la démo dépend de la place des prévisions dans le
-    // mois. Le 3 du mois, le règlement attendu le 26 était oublié par la projection (corrigé le 3 nov. 2026 :
-    // moisProjetePrevision) ; ce jour-là le garde.
+    // Plusieurs jours fixés : avec 3 000 € de départ, la projection à 6 mois de la démo dépend de la place des
+    // prévisions dans le mois. Le 3 nov. 2026, le règlement attendu le 26 était oublié par la projection (corrigé :
+    // moisProjetePrevision) ; un seul jour figé ne couvrirait que ce cas, d'où début, milieu, fin de mois et d'année.
     nom: 'trésorerie : pas de seuil d’alerte tant qu’il n’est pas réglé, un bandeau au plus (390 px)',
     async executer({ ouvrir, attendre, verifier }) {
-      const { page } = await ouvrir({ page: 'finances', largeur: 390, jour: '2026-11-03' });
-      const regler = async (soldeInitial, seuilAlerte) => {
-        await page.evaluate((s, a) => {
-          localStorage.setItem('cp_tresorerie_settings', JSON.stringify({ seuilAlerte: a, soldeInitial: s, soldeDate: '2026-01-01' }));
-          localStorage.removeItem('cp_treso_alert_dismissed');
-        }, soldeInitial, seuilAlerte);
-        await page.reload({ waitUntil: 'networkidle0' }).catch(() => {});
-        await attendre(1500);
-        return page.evaluate(() => ({
-          solde: (/Solde estimé\s*\n\s*([^\n]+)/.exec(document.body.innerText) || [])[1] || '',
-          bandeaux: [...document.querySelectorAll('[data-bandeau-tresorerie]')].map((b) => b.dataset.bandeauTresorerie),
-        }));
-      };
-      const enEuros = (t) => Number(String(t).replace(/−/g, '-').replace(/[^\d,-]/g, '').replace(',', '.'));
-      // Sans solde de départ, la démo est sous zéro : un bandeau (le solde négatif prévu), pas deux
-      const zero = await regler(0, 5000);
-      verifier(zero.bandeaux.length <= 1, `un bandeau au plus (${JSON.stringify(zero.bandeaux)})`);
-      // Solde de départ choisi pour un solde estimé de 3 000 € : positif, sous 5 000 €
-      const depart = 3000 - enEuros(zero.solde);
-      const parDefaut = await regler(depart, 5000);
-      verifier(enEuros(parDefaut.solde) === 3000, `solde estimé de 3 000 € (« ${parDefaut.solde} »)`);
-      verifier(parDefaut.bandeaux.length === 0, `seuil de 5 000 € par défaut : aucun bandeau (${JSON.stringify(parDefaut.bandeaux)})`);
-      const regle = await regler(depart, 8000);
-      verifier(JSON.stringify(regle.bandeaux) === '["seuil"]', `seuil réglé à 8 000 € : le bandeau du seuil (${JSON.stringify(regle.bandeaux)})`);
+      for (const jour of ['2026-11-01', '2026-11-03', '2026-11-15', '2026-11-30', '2026-12-31']) {
+        const { browser, page } = await ouvrir({ page: 'finances', largeur: 390, jour });
+        const regler = async (soldeInitial, seuilAlerte) => {
+          await page.evaluate((s, a) => {
+            localStorage.setItem('cp_tresorerie_settings', JSON.stringify({ seuilAlerte: a, soldeInitial: s, soldeDate: '2026-01-01' }));
+            localStorage.removeItem('cp_treso_alert_dismissed');
+          }, soldeInitial, seuilAlerte);
+          await page.reload({ waitUntil: 'networkidle0' }).catch(() => {});
+          await attendre(1500);
+          return page.evaluate(() => ({
+            solde: (/Solde estimé\s*\n\s*([^\n]+)/.exec(document.body.innerText) || [])[1] || '',
+            bandeaux: [...document.querySelectorAll('[data-bandeau-tresorerie]')].map((b) => b.dataset.bandeauTresorerie),
+            // « décembre : -4 809 € » : le premier mois projeté sous zéro
+            negatif: ((/:\s*([−-]?[\d\s\u202f\u00a0]+)\s*€/.exec(document.querySelector('[data-bandeau-tresorerie="negatif"]')?.innerText || '') || [])[1]) || null,
+          }));
+        };
+        const enEuros = (t) => Number(String(t).replace(/−/g, '-').replace(/[^\d,-]/g, '').replace(',', '.'));
+        // Sans solde de départ, la démo est sous zéro : un bandeau (le solde négatif prévu), pas deux
+        const zero = await regler(0, 5000);
+        verifier(zero.bandeaux.length <= 1, `${jour} : un bandeau au plus (${JSON.stringify(zero.bandeaux)})`);
+        // Solde de départ choisi pour que la projection reste positive et passe sous 5 000 € : solde estimé de 3 000 €,
+        // relevé tant qu'un mois projeté est sous zéro (selon le jour, la démo a un mois de charges sans entrée prévue :
+        // le bandeau « négatif » y est juste), jusqu'à ce que ce mois-là soit à 3 000 €
+        let depart = 3000 - enEuros(zero.solde);
+        let parDefaut = await regler(depart, 5000);
+        let releves = 0;
+        for (; releves < 4 && parDefaut.negatif; releves++) {
+          depart += 3000 - enEuros(parDefaut.negatif);
+          parDefaut = await regler(depart, 5000);
+        }
+        // La régression du 3 nov. 2026 : ce jour-là, sans le règlement de 15 400 € attendu le 26, un mois tombait sous zéro
+        if (jour === '2026-11-03') verifier(releves === 0, `${jour} : avec 3 000 €, aucun mois projeté sous zéro (le règlement attendu le 26 est compté)`);
+        verifier(enEuros(parDefaut.solde) === enEuros(zero.solde) + depart, `${jour} : le solde de départ compte dans le solde estimé (« ${parDefaut.solde} »)`);
+        verifier(parDefaut.bandeaux.length === 0, `${jour} : seuil de 5 000 € par défaut : aucun bandeau (${JSON.stringify(parDefaut.bandeaux)})`);
+        const regle = await regler(depart, 8000);
+        verifier(JSON.stringify(regle.bandeaux) === '["seuil"]', `${jour} : seuil réglé à 8 000 € : le bandeau du seuil (${JSON.stringify(regle.bandeaux)})`);
+        await browser.close();
+      }
     },
   },
   {
@@ -385,7 +399,8 @@ module.exports = [
           };
         });
         verifier(tva.etape, 'étape « Documents » de l’assistant');
-        verifier(/Pas de TVA : franchise en base/.test(tva.franchise) && /TVA non applicable, art\. 293 B du CGI/.test(tva.franchise)
+        // La mention de la facture, citée mot pour mot comme sur les PDF (CGI art. 293 E, II ; contrôle du 3 nov. 2026)
+        verifier(/Pas de TVA : franchise en base/.test(tva.franchise) && /TVA non applicable, article 293 B du CGI/.test(tva.franchise)
           && /Mallettico suppose que vous êtes en franchise en base de TVA/.test(tva.franchise) && /choisissez le statut « Entreprise individuelle \(EI\) »/.test(tva.franchise),
           `franchise présumée, mention 293 B et sortie par le statut EI (R1, R2) à ${largeur} px (« ${tva.franchise.slice(0, 160)} »)`);
         verifier(!tva.choisi.some((t) => /10 %/.test(t)), `10 % n’est pas proposé ni choisi (${JSON.stringify(tva.choisi)})`);
@@ -531,17 +546,23 @@ module.exports = [
   {
     // Audit P2 : deux rangées d'onglets ; « 0 h ce mois » alors que des pointages attendaient.
     nom: 'équipe : une seule rangée d’onglets, et les heures à valider dites sur la carte de chacun (375 px)',
+    // Aujourd'hui, et un 1er du mois qui tombe un dimanche : les deux jours où ce parcours a déjà échoué (week-end ;
+    // pointages démo tombés le mois précédent pendant la première semaine du mois, corrigé le 3 nov. 2026).
     async executer({ ouvrir, verifier }) {
-      const { page } = await ouvrir({ page: 'equipe', largeur: 375 });
-      const etat = await page.evaluate(() => ({
-        rangees: [...document.querySelectorAll('main [role="tablist"]')].filter((t) => t.getBoundingClientRect().height > 0).length,
-        heures: [...document.querySelectorAll('[data-equipe="heures-mois"]')].map((e) => e.innerText.replace(/\s+/g, ' ').trim()),
-        debordement: document.documentElement.scrollWidth - innerWidth,
-      }));
-      verifier(etat.rangees === 1, `une seule rangée d’onglets (${etat.rangees})`);
-      verifier(etat.heures.length > 0 && etat.heures.every((t) => /validées ce mois/.test(t)), `chaque carte dit les heures validées (${JSON.stringify(etat.heures.slice(0, 3))})`);
-      verifier(etat.heures.some((t) => /à valider/.test(t)), `les heures en attente sont dites « à valider » (${JSON.stringify(etat.heures.slice(0, 3))})`);
-      verifier(etat.debordement <= 0, `rien ne déborde (${etat.debordement} px)`);
+      for (const jour of [undefined, '2026-11-01']) {
+        const quand = jour || 'aujourd’hui';
+        const { browser, page } = await ouvrir({ page: 'equipe', largeur: 375, jour });
+        const etat = await page.evaluate(() => ({
+          rangees: [...document.querySelectorAll('main [role="tablist"]')].filter((t) => t.getBoundingClientRect().height > 0).length,
+          heures: [...document.querySelectorAll('[data-equipe="heures-mois"]')].map((e) => e.innerText.replace(/\s+/g, ' ').trim()),
+          debordement: document.documentElement.scrollWidth - innerWidth,
+        }));
+        verifier(etat.rangees === 1, `${quand} : une seule rangée d’onglets (${etat.rangees})`);
+        verifier(etat.heures.length > 0 && etat.heures.every((t) => /validées ce mois/.test(t)), `${quand} : chaque carte dit les heures validées (${JSON.stringify(etat.heures.slice(0, 3))})`);
+        verifier(etat.heures.some((t) => /à valider/.test(t)), `${quand} : les heures en attente sont dites « à valider » (${JSON.stringify(etat.heures.slice(0, 3))})`);
+        verifier(etat.debordement <= 0, `${quand} : rien ne déborde (${etat.debordement} px)`);
+        await browser.close();
+      }
     },
   },
   {

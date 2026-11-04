@@ -4,6 +4,7 @@ import { FileText, Check, RotateCcw, Pen, Calendar, Info, CheckCircle, AlertCirc
 import { supabase } from '../../supabaseClient';
 import { buildDevisHtml } from '../../lib/devisHtmlBuilder';
 import { dateLue } from '../../lib/dates';
+import { franchiseAppliquee } from '../../lib/franchiseTva';
 import { captureException } from '../../lib/sentry';
 import BandeauDonneesFictives from '../ui/BandeauDonneesFictives';
 import { estDonneesFictives } from '../../lib/donneesFictives';
@@ -37,6 +38,9 @@ export default function DevisSignaturePage({ signatureToken }) {
   const sigPad = useRef(null);
 
   const couleur = devisData?.entreprise?.couleur || '#f97316';
+  // Franchise en base de TVA (art. 293 B du CGI) : le client lit « Montant », jamais « TTC » (décision du 24 oct. 2026) ;
+  // un devis signé avec de la TVA garde « Montant TTC » (franchiseAppliquee, src/lib/franchiseTva.js).
+  const libelleMontant = franchiseAppliquee(devisData?.devis, devisData?.entreprise) ? 'Montant' : 'Montant TTC';
   const formatMoney = (n) => (n || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2 }) + ' €';
   const today = new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
 
@@ -311,7 +315,7 @@ export default function DevisSignaturePage({ signatureToken }) {
               <span className="font-medium text-slate-900">{devis.numero}</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-slate-500">Montant TTC</span>
+              <span className="text-slate-500">{libelleMontant}</span>
               <span className="font-bold" style={{ color: couleur }}>{formatMoney(devis.total_ttc)}</span>
             </div>
             <div className="flex justify-between text-sm">
@@ -510,7 +514,7 @@ export default function DevisSignaturePage({ signatureToken }) {
                 </div>
                 <div className="pt-3 border-t border-slate-200">
                   <div className="flex justify-between items-center">
-                    <span className="text-slate-600">Montant TTC</span>
+                    <span className="text-slate-600">{libelleMontant}</span>
                     <span className="text-xl font-bold" style={{ color: couleur }}>
                       {formatMoney(devis.total_ttc)}
                     </span>

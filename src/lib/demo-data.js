@@ -504,8 +504,13 @@ export const DEMO_ENTREPRISE = {
 // On décale TOUTES les dates du delta ancre→aujourd'hui pour que la démo reste
 // éternellement fraîche — sans jamais réécrire les 100+ dates à la main.
 
-const DEMO_ANCHOR = new Date('2026-02-25T12:00:00Z');
-const DEMO_OFFSET_MS = Math.round((Date.now() - DEMO_ANCHOR.getTime()) / 86400000) * 86400000;
+// Écart en jours entiers entre l'ancre et le jour LOCAL d'aujourd'hui : l'ancre tombe toujours aujourd'hui. (Un arrondi
+// depuis 12 h UTC donnait « hier » entre minuit et 1 h, 2 h en été, heure de Paris.)
+const DEMO_ANCHOR_UTC = Date.UTC(2026, 1, 25);
+const DEMO_OFFSET_MS = (() => {
+  const t = new Date();
+  return Date.UTC(t.getFullYear(), t.getMonth(), t.getDate()) - DEMO_ANCHOR_UTC;
+})();
 
 const shiftIsoDate = (s) => {
   // Ne décale que les chaînes date pures (YYYY-MM-DD, option heure) —

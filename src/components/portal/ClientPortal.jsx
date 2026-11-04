@@ -14,6 +14,8 @@ import supabase from '../../supabaseClient';
 import { getPortalData } from '../../services/portalService';
 import { urlPublique } from '../../lib/urlPublique';
 import { dateLue } from '../../lib/dates';
+import { franchiseAppliquee } from '../../lib/franchiseTva';
+import { libellesColonnesPrix, totauxDocument } from '../../lib/totauxDocument';
 
 // ─── Demo data ──────────────────────────────────────────────────────
 const DEMO_DATA = {
@@ -439,6 +441,10 @@ export default function ClientPortal({
     if (!doc) return;
 
     const isFacture = doc.type === 'facture';
+    // Franchise en base de TVA (art. 293 B du CGI), même règle que les autres pièces : ni « HT » ni « TTC », pas de
+    // ligne de TVA, et la mention obligatoire (CGI art. 293 E, II). Un document émis avec TVA garde ses libellés.
+    const isMicro = franchiseAppliquee(doc, entreprise);
+    const colonnes = libellesColonnesPrix(isMicro);
 
     const lignesHTML = (doc.lignes || []).map(l => `
       <tr>
@@ -513,8 +519,8 @@ export default function ClientPortal({
         <th scope="col">Description</th>
         <th scope="col">Qte</th>
         <th scope="col">Unite</th>
-        <th scope="col">P.U. HT</th>
-        <th scope="col">Total HT</th>
+        <th scope="col">${isMicro ? colonnes.pu : 'P.U. HT'}</th>
+        <th scope="col">${colonnes.total}</th>
       </tr>
     </thead>
     <tbody>
@@ -523,10 +529,11 @@ export default function ClientPortal({
   </table>` : ''}
 
   <div class="totals">
-    <div class="row sub"><span>Total HT</span><span>${(doc.total_ht || 0).toFixed(2)} \u20ac</span></div>
-    <div class="row sub"><span>TVA (${doc.tva_rate || 20}%)</span><span>${(doc.tva || 0).toFixed(2)} \u20ac</span></div>
-    <div class="row total"><span>Total TTC</span><span>${(doc.total_ttc || 0).toFixed(2)} \u20ac</span></div>
+    ${isMicro ? '' : `<div class="row sub"><span>Total HT</span><span>${(doc.total_ht || 0).toFixed(2)} \u20ac</span></div>
+    <div class="row sub"><span>TVA (${doc.tva_rate || 20}%)</span><span>${(doc.tva || 0).toFixed(2)} \u20ac</span></div>`}
+    <div class="row total"><span>${!isMicro ? 'Total TTC' : doc.facture_type === 'avoir' ? 'Total de l’avoir' : isFacture ? 'Net à payer' : 'Total'}</span><span>${(isMicro ? totauxDocument(doc, { isMicro }).totalTTC : (doc.total_ttc || 0)).toFixed(2)} \u20ac</span></div>
   </div>
+  ${isMicro ? '<p style="margin-top:10px;font-size:8pt;color:#475569">TVA non applicable, article 293 B du CGI</p>' : ''}
 
   <div class="footer">
     <strong>${entreprise.nom || ''}</strong>

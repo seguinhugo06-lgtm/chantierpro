@@ -1,0 +1,27 @@
+# Avis juriste du 3 novembre 2026 : branche `cloud/franchise` (ni « HT » ni « TTC » en franchise)
+
+Résumé des consignes de correction transmises à la session cloud le 3 nov. 2026, et non une copie : une partie des citations et des sources des points à décider manque (contrôle du 3 nov. 2026). Le juriste a lu les textes officiels (Légifrance, BOFiP, service-public), consultés le 3 nov. 2026. La session cloud n'a pas pu ouvrir ces sites : les citations qui figurent ici sont reprises telles qu'elles ont été transmises.
+
+Une première relecture du même jour avait conclu « OK sur les 7 points », avec trois retouches (statut de la situation, total du portail, message de l'éditeur sans « HT ») : appliquées dans `ab4faef` (voir `docs/cloud/franchise.md`, § 5). Le texte de cette première relecture n'a pas été transmis à la session cloud.
+
+## À corriger (au texte)
+
+1. **Citation de l'art. 289 I-1** (`devisHtmlBuilder.js`, `franchiseTva.js`) : le I-1 dit seulement qui doit veiller à l'émission d'une facture. Les bons textes sont le I-4 (conserver le double), le I-5 (un document qui modifie la facture vaut facture), le V (intégrité du contenu dès l'émission) et l'art. 283, 3 (TVA due du seul fait de la facture). Sources : CGI art. 289, en vigueur depuis le 31 déc. 2023, abrogé au 1er janv. 2027 par l'ordonnance n° 2025-1247 (https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000048827413) ; CGI art. 283, 3, en vigueur depuis le 14 mars 2026 (https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000051214570). Citation : V : « L'authenticité de l'origine, l'intégrité du contenu et la lisibilité de la facture doivent être assurées à compter de son émission ».
+2. **La mention imprimée** : le même document l'imprimait sous deux formes (« art. 293 B du CGI » en en-tête, « article 293 B du Code Général des Impôts » sous les totaux). La loi n'en donne qu'une : 293 E, II : la facture « doit comporter la mention correspondant à la base légale de la franchise : TVA non applicable, article 293 B du CGI ». Sources : CGI art. 293 E, II, en vigueur depuis le 1er janv. 2025 (https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000048826675) ; BOI-TVA-DECLA-40-10-20-20260701 § 50. L'art. 293 E est abrogé au 1er janv. 2027, mais son II reste en vigueur jusqu'à sa reprise réglementaire. `docs/metier-btp.md` se contredisait (§ 3 : 1er sept. 2026 et 31 déc. 2027 ; § 4 : 1er janv. 2027 et 30 juin 2028) : le § 4 concorde avec Légifrance.
+3. **Retenue de garantie** (facture de situation) : « Libérable 1 an après la réception des travaux sauf réserves » est inexact. La retenue est libérée un an après la réception « faite avec ou sans réserve », sauf « opposition motivée par l'inexécution des obligations de l'entrepreneur » (loi n° 71-584 du 16 juil. 1971, art. 2, https://www.legifrance.gouv.fr/loda/article_lc/LEGIARTI000006474230) ; « une retenue égale au plus à 5 p. 100 de leur montant » (art. 1er, en vigueur depuis le 1er janv. 2020, https://www.legifrance.gouv.fr/loda/article_lc/LEGIARTI000039280616). Texte retenu : « Retenue de garantie : {X} % (loi n° 71-584 du 16 juillet 1971 : 5 % au plus). Libérée un an après la réception des travaux, avec ou sans réserves, sauf opposition motivée du maître de l'ouvrage notifiée par lettre recommandée. » Signaler à la saisie tout taux supérieur à 5 %.
+4. **Tableau des mouvements de la trésorerie** en franchise : colonnes « HT », « TVA », « TTC » et un taux de 20 % par défaut. Écran interne, il ne rend aucune TVA due (l'art. 283, 3 ne vise que la facture), mais ce sont des valeurs inventées (D-02). Correction : une seule colonne « Montant », sans montant ni taux de TVA par ligne ; à la saisie, « Montant (€) ». À traiter avec la saisie (tâche `mouvements-tva`). Sources : CGI art. 293 E, I et II ; BOI-TVA-DECLA-40-10-20-20260701 § 53.
+5. **Descriptions des 308 modèles intégrés** (« € HT ») : défaut confirmé, pas juridique (écrans réservés à l'artisan, description non recopiée dans le devis ; aucun texte ne régit un écran interne). Correction par règle du projet (avis du 24 oct. 2026, Q1) : sans « HT » en franchise. Remarque hors droit, à vérifier : « ~55% marge » se calcule sur des prix d'achat ; en franchise la TVA des achats ne se déduit pas (293 E, I) ; si ces prix sont hors taxes, la marge affichée est surestimée pour une micro-entreprise.
+
+## Introuvable (hors champ juridique)
+
+- Suppression de la branche `claude/vat-franchise-labels-u9bstz` après livraison : point technique, pour la session principale.
+- Ce que la relecture a rejoué (tests, lint, build, parcours) : point technique.
+
+## À décider par Hugo
+
+Repris dans `docs/cloud/franchise.md`, section « Décisions pour Hugo », avec l'option recommandée ; tranchés par Hugo le 3 nov. 2026 (D-31, `docs/decisions.md`) :
+
+1. « Total HT » disparu en franchise : arrêté n° 83-50/A du 3 oct. 1983, art. 3 (« La somme totale à payer hors taxes et toutes taxes comprises ») et arrêté du 24 janv. 2017, art. 4, I. Recommandé : la formule littérale sur les PDF seulement.
+2. Une situation « validée » traitée comme émise. Recommandé : « brouillon » tant qu'elle n'est pas facturée.
+3. Colonne « TVA » avec « - » en franchise (BOI-TVA-DECLA-30-20-20-10 § 460). Les deux choix sont licites ; recommandé : le retrait.
+4. Factures de travaux en franchise : part des livraisons de biens et des services à faire apparaître (BOI-TVA-DECLA-40-10-20-20260701 § 300). L'obligation n'est pas à décider ; sa forme et sa date le sont.

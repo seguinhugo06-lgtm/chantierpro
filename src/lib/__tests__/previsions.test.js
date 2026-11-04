@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { statutPrevision, normaliserPrevision, estPrevisionMiroir, seuilAlerteRegle, moisProjetePrevision } from '../previsions';
+import { statutPrevision, normaliserPrevision, estPrevisionMiroir, seuilAlerteRegle, moisProjetePrevision, premiereEcheanceCharge } from '../previsions';
 
 describe('estPrevisionMiroir', () => {
   it('reconnaît les copies automatiques liées à un document', () => {
@@ -78,5 +78,21 @@ describe('moisProjetePrevision', () => {
   it('sans date lisible : null', () => {
     expect(moisProjetePrevision({}, le3nov)).toBeNull();
     expect(moisProjetePrevision({ date: 'n’importe quoi' }, le3nov)).toBeNull();
+  });
+});
+
+describe('premiereEcheanceCharge', () => {
+  const jour = (d) => `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+  it('avant ou le 5 : le 5 de ce mois', () => {
+    expect(jour(premiereEcheanceCharge(new Date(2026, 10, 3)))).toBe('2026-11-5');
+    expect(jour(premiereEcheanceCharge(new Date(2026, 10, 5, 23)))).toBe('2026-11-5');
+  });
+  it('après le 5 : le 5 du mois prochain, jamais une charge en retard (sinon comptée deux fois au premier mois projeté)', () => {
+    const d = premiereEcheanceCharge(new Date(2026, 10, 20));
+    expect(jour(d)).toBe('2026-12-5');
+    expect(moisProjetePrevision({ date: '2026-12-05' }, new Date(2026, 10, 20))).toEqual({ month: 11, year: 2026 });
+  });
+  it('après le 5 décembre : le 5 janvier', () => {
+    expect(jour(premiereEcheanceCharge(new Date(2026, 11, 31)))).toBe('2027-1-5');
   });
 });

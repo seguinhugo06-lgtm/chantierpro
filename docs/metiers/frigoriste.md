@@ -143,7 +143,7 @@ Aucun retour de frigoriste n'est écrit dans le dépôt. Problèmes déduits des
 ## Relecture juriste-btp
 
 Relue par juriste-btp le 03/11/2026, sans texte officiel ouvert (avis : `avis-juriste-2026-11-03.md`). Corrections appliquées. Restent à vérifier au texte :
-- catégories de fluides : arrêté du 30 juin 2008 ou arrêté du 21 nov. 2025 (statut, date d'effet) ; validité de 5 ans de l'attestation de capacité ;
+- catégories de fluides : relues au texte le 3 nov. 2026 (arrêté du 21 nov. 2025, art. 9 et annexe I ; voir l. 26) ; reste la validité de 5 ans de l'attestation de capacité (l. 28) ;
 - PAC 4-70 kW : délai de remise, conservation et « qui » (arrêté du 24 juil. 2020, annexe 3) ;
 - tranches au-delà de 50 t et exemption des équipements hermétiquement scellés de moins de 10 t éq. CO2 (règl. 2024/573) ;
 - TVA 5,5 % PAC air-air (arrêtés des 13 juil. et 14 août 2026, pose comprise) ;

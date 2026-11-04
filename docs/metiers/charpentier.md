@@ -104,7 +104,7 @@ Propositions :
 |---|---|---|---|
 | Indispensable | **Échéancier** acompte à la commande / situation à la livraison du bois / solde, qui respecte le délai de 7 jours hors établissement (déjà géré par `delaiSeptJours`) | S | Moyen : ne jamais exiger un paiement pendant le délai (L221-10, déjà relu) |
 | Indispensable | **Avenant** au devis signé (bois attaqués, renfort) avec photos, signé par le client avant les travaux supplémentaires | M | Moyen : modèle à relire (C. civ. 1193) |
-| Indispensable | Modèles de devis : « charpente traditionnelle », « fermettes », « ossature bois extension » (TVA 20 % proposée), « traitement curatif » (TVA 10 %) | S | Moyen : TVA de l'extension à trancher au BOI-TVA-LIQ-30-20-90-20 avant de coder (toute extension à 20 %, ou agrandissement > 10 % de surface selon MB § 4) |
+| Indispensable | Modèles de devis : « charpente traditionnelle », « fermettes », « ossature bois extension » (TVA 20 % proposée), « traitement curatif » (TVA 10 %) | S | Moyen : TVA de l'extension relue au texte le 3 nov. 2026 (toute extension à 20 %, BOI-TVA-LIQ-30-20-90-30 § 380 ; voir l. 71) ; explication à faire relire par juriste-btp |
 | Utile | **Rapport de traitement des bois** (zones, produit, n° Certibiocide, date, photos) généré depuis la facture, comme l'attestation de ramonage | M | Moyen : ne pas l'appeler « état parasitaire » (document du diagnostiqueur) |
 | Utile | Paramètres : n° Certibiocide avec date de fin, activités décennales séparées (charpente / ossature / traitement) ; alerte si un devis d'ossature bois est émis sans l'activité correspondante | S | Faible si c'est une alerte |
 | Utile | Case « commune en zone termites » (saisie par l'artisan) et ligne « traitement des bois contaminés avant transport » proposée au devis de dépose | S | Faible |
@@ -130,7 +130,7 @@ Propositions :
 ## Relecture juriste-btp
 
 Relue par juriste-btp le 03/11/2026, sans texte officiel ouvert (avis : `avis-juriste-2026-11-03.md`). Corrections appliquées. Restent à vérifier au texte :
-- TVA d'une extension : addition de construction ou seuil de 10 % (BOI-TVA-LIQ-30-20-90-20), puis aligner MB § 4 ;
+- TVA d'une extension : relue au texte le 3 nov. 2026 (BOI-TVA-LIQ-30-20-90-30 § 380 ; CGI 279-0 bis, 2 ; voir l. 71) ; MB § 4 aligné ;
 - place de la charpente dans le gros œuvre fiscal (CGI ann. II 245 A) ;
 - CCH R271-5 (et non D271-5) ;
 - décret n° 2026-822 (rampants hors du parcours par geste) ;

@@ -109,6 +109,7 @@ import { jourLocal, dateLue } from './lib/dates';
 import { joursAvantFin, chantierEnRetard } from './lib/echeanceChantier';
 import { budgetChantier } from './lib/budgetChantier';
 import { mentionsFacture } from './lib/mentionsFacture';
+import { estFranchiseTva } from './lib/franchiseTva';
 import PortailIndisponible from './components/portal/PortailIndisponible';
 
 // Safe string renderer — prevents "Objects are not valid as React child" (#310)
@@ -2088,6 +2089,7 @@ export default function App() {
             clients={clients}
             devis={devis}
             voitPrix={canViewPrices}
+            franchiseTva={estFranchiseTva(entreprise)}
             isDark={isDark}
             couleur={couleur}
           />

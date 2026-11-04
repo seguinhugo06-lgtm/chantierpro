@@ -80,7 +80,7 @@ Pour un particulier, il n'existe pas d'équivalent du ramonage annuel en électr
 ## 6. Mentions particulières sur le devis et la facture
 
 - Dépannage : devis préalable et affichage des prix (arrêté du 24 janv. 2017) : voir `commun.md`. La DGCCRF relève dans ce secteur la mise en avant de qualifications ou de labels que le professionnel n'a pas [23] : n'imprimer que des qualifications saisies avec un numéro.
-- Borne : numéro et organisme de la qualification IRVE ; puissance de la borne (kW) ; type (borne ou prise renforcée), car le taux de TVA et l'obligation de qualification en dépendent [14], [15].
+- Borne : numéro et organisme de la qualification IRVE ; puissance de la borne (kW) ; type de point de charge (socle ou connecteur de type 2, ou prise de type E « renforcée » d'au moins 14 A), car l'obligation de qualification dépend de la puissance et le 5,5 % de la configuration (ann. IV art. 30-0 H ; prise renforcée admise, relu au texte le 3 nov. 2026 : voir l. 75) [14], [15].
 - Consuel : ligne distincte « attestation Consuel (frais de visa) » quand elle est due, avec la couleur.
 - Photovoltaïque : puissance crête (kWc), qualification QualiPV, mention de l'attestation sur l'honneur à cosigner [19].
 - Jamais « installation conforme NF C 15-100 » comme promesse invérifiable ; préférer « réalisée selon la norme NF C 15-100 » (engagement de l'artisan) : acceptable selon juriste-btp ; décision d'Hugo.
@@ -96,7 +96,7 @@ Pour un particulier, il n'existe pas d'équivalent du ramonage annuel en électr
 Problèmes réels :
 - Le Consuel oublié ou envoyé trop tard bloque la mise en service et donc le paiement du solde.
 - Le client confond attestation Consuel, diagnostic électricité et « certificat de conformité » ; il demande un « papier » à l'électricien après coup.
-- Le taux de TVA d'une borne dépend de trois conditions (logement, qualification, facture unique) : erreur facile.
+- Le taux de TVA d'une borne dépend de plusieurs conditions (local d'habitation destiné aux résidents, configuration de l'ann. IV art. 30-0 H, qualification de l'installateur ; part « fourniture » à confirmer au BOFiP : voir l. 75) : erreur facile.
 - Des devis 2026 affichent encore le crédit d'impôt borne.
 - Le Pilote d'Hugo n'est pas consulté ici ; aucune donnée d'usage citée.
 
@@ -142,7 +142,7 @@ Propositions :
 ## Relecture juriste-btp
 
 Relue par juriste-btp le 03/11/2026, sans texte officiel ouvert (avis : `avis-juriste-2026-11-03.md`). Corrections appliquées. Restent à vérifier au texte :
-- borne : CGI 278-0 bis N ou 278-0 bis A, ancienneté du logement, qualification IRVE, prise renforcée (Légifrance, BOFiP) ;
+- borne : relue au texte le 3 nov. 2026 (CGI 278-0 bis, N ; ann. IV art. 30-0 H, prise renforcée admise ; aucune condition d'ancienneté ; qualification de l'installateur, décret n° 2017-26, art. 22 ; voir l. 75) ; reste le taux de la part « fourniture » (BOFiP) ;
 - photovoltaïque : 5,5 % pour 9 kWc au plus depuis le 1er oct. 2025 ; seuil QualiPV de l'obligation d'achat ;
 - définitions des attestations Consuel bleue et violette (SC 170) ;
 - fin du crédit d'impôt borne (loi de finances 2026) ; correspondance P1/P2/P3 avec le décret 2017-26.
