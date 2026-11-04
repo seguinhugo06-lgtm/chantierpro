@@ -64,7 +64,7 @@ Pour le serrurier, le plombier, l'électricien et le couvreur (`docs/metiers/syn
   - facturer en facture complète (122,10 €, sans report du paiement, la pièce reprise).
 
   Captures : `audit-ui/depannage-1-grille.png`, `-2-devis-express.png`, `-3-facture.png` (dossier ignoré par git).
-- `npm run verifier -- --complet` : résultat dans la section « Vérification complète » ci-dessous.
+- `npm run verifier -- --complet` sur le commit `9f7679a` : **vert** (détail ci-dessous).
 
 ## Relectures
 
@@ -118,7 +118,16 @@ Pour le serrurier, le plombier, l'électricien et le couvreur (`docs/metiers/syn
 
 ## Vérification complète
 
-(à compléter)
+`npm run verifier -- --complet`, commit `9f7679a`, arbre propre :
+- tests 1263/1263 ;
+- lint 0 erreur ;
+- smoke ;
+- build ;
+- banc de migrations ;
+- **tous les parcours navigateur**, dont celui du dépannage ;
+- **audit d'interface sans défaut**.
+
+Un premier passage avait échoué pour une cause extérieure au code : un `git push` lancé pendant la vérification a déclenché le hook de pré-push, qui a reconstruit `dist/` au milieu des parcours. Le second passage, sans interférence, est entièrement vert.
 
 ## Résumé
 
@@ -127,7 +136,7 @@ Pour le serrurier, le plombier, l'électricien et le couvreur (`docs/metiers/syn
 - Les trois générateurs impriment « Devis gratuit » et la question « conserver les pièces ? Oui / Non » sur un devis de dépannage d'un particulier.
 - Un brouillon de dépannage se fait signer sur place tout de suite, puis se facture (paiement immédiat seulement en urgence).
 - Aucune migration : les réglages vont dans `settings_json`.
-- Preuves : 33 tests avec contre-essais, `verifier` standard vert, parcours à 375 px vert (20 vérifications).
+- Preuves : 33 tests avec contre-essais, `verifier --complet` vert (parcours, audit d'interface sans défaut), parcours du dépannage à 375 px vert (20 vérifications).
 - Juriste : corrections appliquées, mais l'arrêté n'a pas pu être relu au texte (Légifrance bloqué).
 - Abus de faiblesse : non codé, c'est une décision d'Hugo, avec un avis RGPD préalable.
 - À décider : le devis payant, et la case dépannage obligatoire ou non.
