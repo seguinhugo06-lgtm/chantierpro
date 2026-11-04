@@ -216,7 +216,7 @@ Le commit suivant n'ajoute que ce résultat au rapport.
 
 ## Corrections du contrôle local (3 nov. au soir)
 
-Session cloud du 4 nov. 2026, branche `cloud/retours`. Rien sur `main`, aucune migration, aucun déploiement, aucun accès à la production. `origin/main` (`7dbe75c`) fusionné sans conflit (`3e939f6`).
+Session cloud du 4 nov. 2026, branche `cloud/retours`. Rien sur `main`, aucune migration, aucun déploiement, aucun accès à la production. `origin/main` fusionné deux fois, sans conflit : `7dbe75c` (`3e939f6`), puis, `main` ayant avancé de 32 commits pendant la vérification complète, `8799d18`.
 
 ### Consigne, point par point
 
@@ -232,7 +232,7 @@ Session cloud du 4 nov. 2026, branche `cloud/retours`. Rien sur `main`, aucune m
 | 8 | Vues à hauteur fixe | Deux parcours dans `ramonage.cjs` (375 px, agent Safari iPhone, carte affichée). **Panneau d'une tâche** : couvert (« le dernier élément « Non assigné » … couvert par DIV « Mallettico… » »). Corrigé : le panneau passe en `z-[70]`, comme les autres vues plein écran (`SaisieRamonage.jsx`). Après : vert. **Grille semaine du planning** (cadre `min(500px, 55vh)` au téléphone) : défilée jusqu'à la dernière heure, la page peut poser son bas au-dessus de la carte, rien ne la couvre : vert, rien à corriger. **Contre-essai** : sans la marge du bas de page, échec « manque 12 px » (astuces du planning fermées, le cas le plus serré ; avec les astuces affichées, le parcours passe même sans la marge, d'où cette fermeture). Les 15 parcours de `ramonage.cjs` sont verts. | `8746ab2` |
 | 9 | Contre-essais des points 3 et 7 de la première session | Voir ci-dessous. | — |
 | 10 | Ancien champ libre « RM » | **Non touché** : il s'imprime encore tel quel (« 123 456 789 RM 69 »). C'est la décision 5 d'Hugo, en attente. | — |
-| 11 | Fusion de `origin/main` | Faite, sans conflit. | `3e939f6` |
+| 11 | Fusion de `origin/main` | Faite deux fois, sans conflit. Après la seconde, un test venu de `main` (`libellesFranchiseEcrans.test.jsx`) refusait le commentaire de `PricingSection.jsx` qui citait « TVA non applicable, art. 293 B du CGI » entre guillemets : commentaire reformulé (« la mention de franchise de TVA (`MENTION_TVA_ABONNEMENT`, art. 293 B du CGI) »), rien d'affiché ne change. | `3e939f6`, `8799d18`, `3b9ab34` |
 
 ### Contre-essais de la première session (copie jetable, `git worktree`, supprimée ensuite)
 - **Point 3 (registre)**, a) choix « Votre registre » retiré de `Settings.jsx`, puis `npm run parcours -- légal` : 1 échec sur 2, « légal : un artisan voit le RNE (métiers et artisanat)… — micro-entreprise : le RNE (métiers et artisanat) d’abord ({"registre":"","choisi":"",…}) ». L'autre parcours du filtre (taux de pénalités) ne touche pas au registre.
@@ -264,6 +264,21 @@ Vérification « complet » de 2459bd4
 
 ✓ Tout est vert — niveau « complet ».
 ```
+- Après la seconde fusion de `main` et la reformulation du commentaire, `npm run verifier` (standard) sur `3b9ab34`, mot pour mot :
+
+```
+Vérification « standard » de 3b9ab34
+
+  ✓ Tests (49.7 s) — 1260 passed (1260)
+  ✓ Lint (0 erreur) (6.2 s) — 241 problems (0 errors, 241 warnings)
+  ✓ Smoke (33.2 s)
+  ✓ Build (30.6 s)
+
+✓ Tout est vert — niveau « standard ».
+```
+- Sur ce même code, parcours rejoués : `statuts.cjs` (4 réussis), `ramonage.cjs` (15 réussis), `légal` (2 réussis).
+- **Le niveau complet n'est pas rejoué sur `3b9ab34`** (environ 45 min ; budget partagé) : la session locale le rejoue avant de livrer.
+
 
 ### Ce qui reste
 - Décision 5 d'Hugo (ancien champ libre « RM »), inchangée.
@@ -289,4 +304,4 @@ Vérification « complet » de 2459bd4
 6. Panneau d'une tâche couvert par la carte « Installer » : corrigé. Grille semaine : rien à corriger.
 7. Contre-essais rejoués : registre (1 parcours, 4 tests), statut direct (3 parcours sur 4).
 8. Ancien champ « RM » non touché (décision 5).
-9. `npm run verifier -- --complet` vert sur `2459bd4` (tout le code, fusion de `main` comprise).
+9. Complet vert sur `2459bd4` ; après la seconde fusion de `main`, standard vert sur `3b9ab34` et parcours ciblés verts, complet à rejouer en local.
