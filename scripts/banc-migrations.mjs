@@ -34,6 +34,11 @@ console.log('Socle Supabase simulé prêt (production avant 071).');
 const migrations = fs.readdirSync(DEPOT)
   .filter((f) => /^\d{3}_.+\.sql$/.test(f) && Number(f.slice(0, 3)) >= PREMIERE)
   .sort();
+// Le banc associe une migration à ses vérifications par ses trois premiers chiffres : deux migrations du même numéro
+// partageraient un seul fichier de vérifications, l'autre passerait sans contrôle (relecture gardien-securite du 4 nov.).
+const numeros = migrations.map((f) => f.slice(0, 3));
+const doublons = [...new Set(numeros.filter((n, i) => numeros.indexOf(n) !== i))];
+if (doublons.length) t.ko(`numéros de migration en double : ${doublons.join(', ')}`);
 
 for (const passage of ['appliquée', 'rejouée sans erreur']) {
   for (const f of migrations) {

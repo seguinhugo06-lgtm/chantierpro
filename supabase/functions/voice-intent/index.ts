@@ -32,9 +32,10 @@ const COMPTEUR_ABSENT = /PGRST202|PGRST205|42883|42P01/;
 
 const ouverture = Deno.env.get('IA_DICTEE') ?? '';
 const cleApi = Deno.env.get('ANTHROPIC_API_KEY') || undefined;
-// Une seule tentative de plus, et 15 s au plus par tentative : l'artisan attend devant son écran ; au-delà, on lui
-// propose la saisie à la main plutôt qu'un sablier.
-const anthropic = cleApi ? new Anthropic({ apiKey: cleApi, maxRetries: 1, timeout: 15_000 }) : null;
+// Une seule tentative, 15 s au plus : l'artisan attend devant son écran ; au-delà, on lui propose la saisie à la main
+// plutôt qu'un sablier. Pas de nouvelle tentative : une réservation (une dictée comptée) = un appel facturé au plus
+// (relecture gardien-securite du 4 nov., 3).
+const anthropic = cleApi ? new Anthropic({ apiKey: cleApi, maxRetries: 0, timeout: 15_000 }) : null;
 
 serve((req) => traiterDictee(req, {
   cleServeur: CLE_SERVEUR || undefined,

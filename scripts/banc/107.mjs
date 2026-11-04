@@ -85,6 +85,12 @@ export async function verifier({ db, q, en, commeAnonyme, compte, verifier }) {
   await terminer(a.id, 'echec', 'refus'); await terminer(b.id, 'echec', 'illisible'); await terminer(c.id, 'echec', 'surcharge');
   const apresEchecs = await reserver(SOLO, ORG_SOLO);
   verifier(apresEchecs.utilise === 3, `107 : refus et réponse illisible décomptent, pas une surcharge de l'API (${apresEchecs.utilise} = 2 + celle-ci)`);
+  // Une réponse coupée (max_tokens, qu'une dictée très longue provoque) décompte ; un délai, non (gardien du 4 nov., 3)
+  await terminer(apresEchecs.id, 'echec', 'coupee');
+  const d = await reserver(SOLO, ORG_SOLO);
+  await terminer(d.id, 'echec', 'delai');
+  const apresCoupee = await reserver(SOLO, ORG_SOLO);
+  verifier(apresCoupee.utilise === 4, `107 : une réponse coupée décompte, un délai non (${apresCoupee.utilise} = 3 + celle-ci)`);
 
   // Le mois précédent ne compte pas (mois de Paris)
   await q(`UPDATE usage_ia_log SET mois = (date_trunc('month', now() AT TIME ZONE 'Europe/Paris') - interval '1 month')::date
@@ -175,11 +181,33 @@ export async function verifier({ db, q, en, commeAnonyme, compte, verifier }) {
   await q(`INSERT INTO usage_ia_log (organization_id, user_id, fonction, mois, statut, created_at)
     SELECT $1, $2, 'dictee', date_trunc('month', now() AT TIME ZONE 'Europe/Paris')::date, 'reussi', now() - interval '2 days'
       FROM generate_series(1, 99)`, [ORG_PAYEUR, PAYEUR]);
+  await q(`UPDATE usage_ia_log SET payeur = $1 WHERE organization_id = $2`, [PAYEUR, ORG_PAYEUR]);
   const centieme = await reserver(PAYEUR, ORG_PAYEUR);
   const centUnieme = await reserver(PAYEUR, ORG_PAYEUR);
   verifier(centieme.autorise === true && centieme.utilise === 100 && centieme.limite === 100
     && centUnieme.autorise === false && centUnieme.motif === 'quota' && centUnieme.limite === 100 && centUnieme.utilise === 100,
   `107 : au plan Artisan, la 100e dictée du mois passe et la 101e est refusée (${JSON.stringify(centUnieme)})`);
+  // Une organisation neuve du même abonné ne rouvre pas 100 dictées (quota par abonnement, gardien du 4 nov., 2) ;
+  // contre-essai : sans la colonne payeur, la neuve repartait de 1.
+  const ORG_PAYEUR_BIS = '10700000-0000-4000-8000-0000000000a7';
+  await q(`INSERT INTO organizations (id, name, slug, owner_id) VALUES ($1, 'Payeur bis 107', 'payeur-bis-107', $2)`, [ORG_PAYEUR_BIS, PAYEUR]);
+  await q(`INSERT INTO organization_members (organization_id, user_id, role) VALUES ($1, $2, 'owner')`, [ORG_PAYEUR_BIS, PAYEUR]);
+  const orgBis = await reserver(PAYEUR, ORG_PAYEUR_BIS);
+  verifier(orgBis.autorise === false && orgBis.motif === 'quota' && orgBis.utilise === 100,
+    `107 : au plan Artisan, une organisation neuve du même abonné ne rouvre pas 100 dictées (${JSON.stringify(orgBis)})`);
+  verifier(await compte('SELECT count(*) AS n FROM usage_ia_log WHERE id = $1 AND payeur = $2', [centieme.id, PAYEUR]) === 1,
+    '107 : la réservation d\'un plan payant porte le titulaire de l\'abonnement (payeur)');
+  verifier(await compte('SELECT count(*) AS n FROM usage_ia_log WHERE id = $1 AND payeur IS NULL', [premieres[1].id]) === 1,
+    '107 : au plan gratuit, pas de payeur');
+  // Passé d'Artisan au gratuit en cours de mois : une organisation neuve ne rend pas 5 dictées (gardien du 4 nov., F2)
+  const ORG_PAYEUR_TER = '10700000-0000-4000-8000-0000000000a8';
+  await q(`INSERT INTO organizations (id, name, slug, owner_id) VALUES ($1, 'Payeur ter 107', 'payeur-ter-107', $2)`, [ORG_PAYEUR_TER, PAYEUR]);
+  await q(`INSERT INTO organization_members (organization_id, user_id, role) VALUES ($1, $2, 'owner')`, [ORG_PAYEUR_TER, PAYEUR]);
+  await q(`UPDATE subscriptions SET status = 'canceled' WHERE user_id = $1`, [PAYEUR]);
+  const resilie = await reserver(PAYEUR, ORG_PAYEUR_TER);
+  await q(`UPDATE subscriptions SET status = 'active' WHERE user_id = $1`, [PAYEUR]);
+  verifier(resilie.plan === 'gratuit' && resilie.autorise === false && resilie.motif === 'quota',
+    `107 : passé d'Artisan au gratuit en cours de mois, une organisation neuve ne rouvre pas 5 dictées (${JSON.stringify(resilie)})`);
   await q(`DELETE FROM usage_ia_log WHERE user_id = $1`, [PAYEUR]);
 
   // ── Plan Équipe : sans limite mensuelle, 100 par jour ET PAR PERSONNE (décision d'Hugo du 4 nov. 2026) ──
@@ -290,6 +318,11 @@ export async function verifier({ db, q, en, commeAnonyme, compte, verifier }) {
     '107 : un visiteur ne peut pas clore un usage');
   verifier(!!(await erreurDe(() => en(SOLO, () => q('SELECT plan_pour_usage_ia($1, $2) AS p', [PATRON, ORG_PATRON])))),
     '107 : un utilisateur ne peut pas lire le plan d\'un autre');
+  verifier(!!(await erreurDe(() => en(SOLO, () => q('SELECT * FROM abonnement_pour_usage_ia($1, $2)', [PATRON, ORG_PATRON]))))
+    && !!(await erreurDe(() => commeAnonyme(() => q('SELECT * FROM abonnement_pour_usage_ia($1, $2)', [PATRON, ORG_PATRON])))),
+  '107 : ni un utilisateur ni un visiteur ne lisent l\'abonnement (et le payeur) d\'un autre');
+  verifier(/usage_ia:p:/.test((await q(`SELECT pg_get_functiondef('public.reserver_usage_ia(uuid,uuid,text,jsonb)'::regprocedure) AS d`)).rows[0].d),
+    '107 : la réservation prend un verrou par abonnement (quota partagé entre organisations)');
 
   const luParSolo = await en(SOLO, () => q('SELECT count(*) AS n FROM usage_ia_log')).catch(() => ({ rows: [{ n: 0 }] }));
   verifier(Number(luParSolo.rows[0].n) === 0, '107 : un utilisateur ne lit aucune ligne, même les siennes');

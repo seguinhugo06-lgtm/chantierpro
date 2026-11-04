@@ -267,7 +267,7 @@ SELECT jobname, schedule FROM cron.job WHERE jobname = 'purger-journal-ia';
   Texte du juriste du 3 nov. (sources : Apple 5.1.2(i) ; règlement (UE) 2024/1689, art. 50 § 1 et § 5 ; page de conservation d'Anthropic du 1er juil. 2026). Enregistrer l'accord (compte, date, version du texte). Aucun appel avant l'accord. Accord révocable dans les Paramètres. Si `inference_geo` « us » est choisi : « qui traite les données aux États-Unis ».
 - **Dans l'app, un abonnement inactif au plan élevé** garde ce plan (`choisirAbonnement`, relecture B3). Le serveur est désormais plus strict, il vaudrait mieux aligner l'app.
 - **Écarts relevés par le juriste, hors de ma mission :**
-  - CGU art. 11, « consent au traitement de ses données » : corrigé le 3 nov. (base légale : le contrat, art. 6.1.b) ;
+  - CGU art. 11, « consent au traitement de ses données » : corrigé le 3 nov. (base légale : le contrat, art. 6.1.b) ; *(Annotation du 4 nov. : sur `cloud/ia-allumage`, cette phrase est mise sous l'interrupteur `FONCTIONS.ia` et part avec la `CGU_VERSION` de l'allumage ; la décision 4 n'a plus d'objet.)*
   - ligne Resend de la politique, sans garantie de transfert.
 - **Le premier vrai appel** : forme de la requête, latence, coût. Il est à constater au déploiement (point 4).
 - **Sources non joignables** depuis cette session, que le juriste n'a pas pu relire : privacy.claude.com (politique de conservation commerciale d'Anthropic), dataprivacyframework.gov, EUR-Lex, CNIL, Google Play. Il faut les autoriser dans les réglages réseau de la session pour les relire.
@@ -336,7 +336,7 @@ Session cloud de correction, après deux relectures locales (code, sécurité) e
 
 **Juriste (points de cette branche)**
 - 1 (ligne Anthropic, art. 4) — fait, texte exact. `efb633e`.
-- 2 (CGU art. 11) — fait, textes exacts des l. 196-197, 205, 208. **Attention** : la phrase des l. 196-197 (base légale du contrat au lieu du consentement) est **visible aujourd'hui** (hors interrupteur), sans hausse de `CGU_VERSION` ; voir décisions.
+- 2 (CGU art. 11) — fait, textes exacts des l. 196-197, 205, 208. **Attention** : la phrase des l. 196-197 (base légale du contrat au lieu du consentement) est **visible aujourd'hui** (hors interrupteur), sans hausse de `CGU_VERSION` ; voir décisions. *(Annotation du 4 nov. : sur `cloud/ia-allumage`, cette phrase est mise sous l'interrupteur `FONCTIONS.ia` et part avec la `CGU_VERSION` de l'allumage ; la décision 4 n'a plus d'objet.)*
 - 3 (écran d'accord) — texte posé dans §7 ; l'écran n'est pas codé (bloquant avant l'allumage).
 - 4 (conservation 30 jours) — fait (l. 352 et l. 404). La ligne directrice (`docs/ia/ligne-directrice.md`) n'existe pas sur cette branche (branche `cloud/ia-direction`) : non touchée.
 - 5 (mention IA, art. 50) — fait : phrase sous le titre de la fenêtre, et phrase du micro remplacée. `efb633e`.
@@ -352,7 +352,7 @@ Option recommandée en premier.
 1. **Plafond anti-abus de 100 par jour sur les plans « sans limite »** (et 20 par jour au gratuit, déjà codé). Textes en attente, non changés : « Avec le plan Artisan, dictez sans limite » (`src/stores/subscriptionStore.js`, fenêtre d'offre) et « passez au plan Artisan : dictées sans limite » (`supabase/functions/voice-intent/regles.ts`, `MESSAGES.quota`), et la FAQ (« sans limite mensuelle », à compléter). Recommandé : garder 100 et l'annoncer (« sans limite mensuelle (100 dictées par jour au plus) », texte du juriste) ; sinon retirer le plafond du jour des plans payants et garder 5 par minute.
 2. **Valeur du coupe-circuit global** (3 000 par jour codés). Un abus peut l'atteindre et couper la dictée pour tous.
 3. **Lieu du calcul** : mondial (texte actuel), ou `inference_geo` « us » (prix ×1,1 ; textes : « États-Unis »).
-4. **Clause de sous-traitance (CGU art. 11)** : recommandé, la publier maintenant (retirer l'enveloppe `FONCTIONS.ia`, nouvelles `CGU_VERSION` et date sans condition) ; ou attendre l'allumage. Lié : la phrase « base légale : le contrat », déjà visible, devrait partir avec une nouvelle version des CGU.
+4. **Clause de sous-traitance (CGU art. 11)** : recommandé, la publier maintenant (retirer l'enveloppe `FONCTIONS.ia`, nouvelles `CGU_VERSION` et date sans condition) ; ou attendre l'allumage. Lié : la phrase « base légale : le contrat », déjà visible, devrait partir avec une nouvelle version des CGU. *(Annotation du 4 nov. : sur `cloud/ia-allumage`, cette phrase est mise sous l'interrupteur `FONCTIONS.ia` et part avec la `CGU_VERSION` de l'allumage ; la décision 4 n'a plus d'objet.)*
 5. **Durée du journal** : 12 mois (codés et annoncés) ou autre.
 6. **Écran d'accord** : valider le texte du juriste (§7), puis le construire (accord en base).
 7. **Date des CGU le jour de l'allumage** (`src/lib/cgu.js`, « 2026-11-03 », « 3 novembre 2026 ») ; un test le rappelle.
@@ -371,7 +371,7 @@ Option recommandée en premier.
 Tous viennent de ses corrections exactes du 3 nov. : ligne Anthropic et conservation (politique), CGU art. 11 (trois paragraphes), mention IA et phrase du micro (fenêtre de dictée), FAQ de la dictée, texte de l'écran d'accord (§7). Un seul texte est de moi : le message serveur 403 « Votre rôle ne permet pas de créer un devis. » (texte du gardien). Relecture `juriste-btp` de la reprise : ci-dessous.
 
 ### Relectures de ces corrections
-- **`juriste-btp`** : textes conformes à ses corrections. Il juge que changer la phrase de l'art. 11 (base légale) sans relever `CGU_VERSION` est permis (art. 10 des CGU : correction de forme, aucun droit retiré) ; la correction est notée dans le commentaire de `src/lib/cgu.js`. Deux alignements de documents faits (phrase du micro dans §2, commentaire de LegalPages).
+- **`juriste-btp`** : textes conformes à ses corrections. Il juge que changer la phrase de l'art. 11 (base légale) sans relever `CGU_VERSION` est permis (art. 10 des CGU : correction de forme, aucun droit retiré) ; la correction est notée dans le commentaire de `src/lib/cgu.js`. Deux alignements de documents faits (phrase du micro dans §2, commentaire de LegalPages). *(Annotation du 4 nov. : sur `cloud/ia-allumage`, cette phrase est mise sous l'interrupteur `FONCTIONS.ia` et part avec la `CGU_VERSION` de l'allumage ; la décision 4 n'a plus d'objet.)*
 - **`gardien-securite`** : les 8 corrections sont justes et complètes, banc relancé vert (693), aucune régression. Restent, **non corrigés** (choix d'Hugo, aucun ne bloque l'application de 107) :
   1. *moyen* — le coupe-circuit de 3 000 est partagé : environ 150 comptes gratuits (150 × 20) couperaient la dictée aux payants pendant 24 h. Proposition : un budget gratuit à part (par exemple 1 500 par jour, motif `global`). **À régler avant de passer `IA_DICTEE` à « tous ».**
   2. *faible* — une réponse `coupee` ne décompte pas, alors que sa longueur vient de la dictée (jusqu'à 20 appels par jour au coût de sortie maximal au gratuit). Proposition : décompter `coupee`. Lié à la décision 9.
@@ -388,7 +388,7 @@ Tous viennent de ses corrections exactes du 3 nov. : ligne Anthropic et conserva
 - La v11 en production est ouverte à tout compte connecté si la clé est posée : l'étape 0 du §4 passe avant tout.
 - Le coupe-circuit global protège le coût mais peut couper la dictée pour tous en cas d'abus.
 - `ON DELETE CASCADE` : un compte supprimé libère ses dictées dans le décompte de l'entreprise du patron (faible : le compte n'existe plus).
-- La phrase de l'art. 11 modifiée est visible sans nouvelle version des CGU (décision 4).
+- La phrase de l'art. 11 modifiée est visible sans nouvelle version des CGU (décision 4). *(Annotation du 4 nov. : sur `cloud/ia-allumage`, cette phrase est mise sous l'interrupteur `FONCTIONS.ia` et part avec la `CGU_VERSION` de l'allumage ; la décision 4 n'a plus d'objet.)*
 
 ### Résumé des corrections du 3 nov.
 1. Ordre de mise en production réécrit : la v11 en production n'a pas de quota. Constater la clé (la retirer si elle est posée), puis 107, puis `voice-intent`, puis la clé et sa limite de dépense, puis le constat.

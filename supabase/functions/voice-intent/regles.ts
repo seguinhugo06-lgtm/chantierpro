@@ -8,7 +8,8 @@
  * 107) → appel du modèle → usage TERMINÉ (jetons, durée, réussite ou échec). Une panne de notre côté (API, crédits, clé,
  * délai, réseau) est close en « échec » et ne décompte pas ; un refus du modèle ou une réponse illisible, provoqués par
  * la dictée, sont clos en « échec » mais décomptent (motifs `refus`, `illisible`, comptés par la base). Une réponse
- * coupée par notre propre plafond de jetons (`max_tokens`) a son motif à part, `coupee`, qui ne décompte pas.
+ * coupée par le plafond de jetons (`max_tokens`) a son motif à part, `coupee`, qui décompte aussi : une dictée très
+ * longue la provoque (relecture gardien-securite du 4 nov., 3). Le délai ne décompte pas (décision d'Hugo attendue).
  * Une exception imprévue rend 503 IA_INDISPONIBLE, avec corsHeaders (filet global).
  */
 
@@ -234,7 +235,7 @@ async function traiter(req: Request, dep: Dependances): Promise<Response> {
     await terminer({ statut: 'echec', motif: 'refus', ...jetons });
     return erreur('NON_TRAITEE', MESSAGES.nonTraitee, 422);
   }
-  // Coupée par notre propre plafond de jetons : défaut de notre côté, motif à part, non décompté.
+  // Coupée par le plafond de jetons (une dictée très longue la provoque) : motif à part, décompté par la base (107).
   if (message.stop_reason === 'max_tokens') {
     journal('erreur', 'réponse coupée par max_tokens');
     await terminer({ statut: 'echec', motif: 'coupee', ...jetons });

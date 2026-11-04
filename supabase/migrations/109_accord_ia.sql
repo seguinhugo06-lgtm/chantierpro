@@ -20,6 +20,9 @@
 --   autre chose (même pour le serveur) : un accord retiré le reste, on en donne un nouveau.
 -- - service_role : lecture SEULE (la fonction Edge vérifie l'accord avec la clé de service, après le jeton de l'utilisateur).
 -- - À la suppression d'un compte, ses accords sont effacés (ON DELETE CASCADE), comme le reste de ses données.
+-- - Pas d'organization_id, à dessein (exception à la règle des migrations) : l'accord est PERSONNEL (une personne accepte
+--   que SA dictée parte à une IA), il ne s'hérite pas d'une entreprise ; sans cette colonne, 072 (suppression d'un
+--   compte) et 105 (départ d'un membre) ne le transfèrent pas au patron (relecture du 4 nov.).
 --
 -- ─── Vérification après application (éditeur SQL) ───────────────────────────
 --   SELECT relrowsecurity FROM pg_class WHERE oid = 'public.accords_ia'::regclass;                       → t
