@@ -76,7 +76,8 @@ La branche `cloud/metier-qualifications` n'existait pas sur le dépôt le 4 nov.
 | `npm run banc:migrations` | vert : 668 vérifications, dont les 22 de 111 |
 | `src/lib/__tests__/electricite.test.js` | 28 tests : J-20 (au 30/11, dans « À faire » le 10/11, en retard le 11/11), nom du document, mots interdits, TVA selon le local (avec contre-essais : autre local, client professionnel, ligne non marquée qui garde la certification), générateur de la page de signature |
 | Parcours `scripts/parcours/electricite.cjs` à 375 px (`npm run parcours -- électricien`) | vert, 21 vérifications : sans le réglage, pas d'onglet (contre-essai) ; rappel créé ; compte rendu à vide refusé, puis saisi ; aperçu sans « conforme » ; numéro `CRI-2026-00001` ; PDF produit (`audit-ui/electricite-compte-rendu.pdf`) ; facture tirée (495,00 € TTC, numéro du compte rendu cité) ; tâche Consuel dans « À faire » |
-| `npm run verifier -- --complet` | voir § 7 |
+| `npm run verifier -- --complet` sur `cee017c` | tests (1 258), lint, smoke, build, banc et audit d'interface **verts** ; parcours : **6 échecs** au premier passage, pendant que deux `git push` faisaient tourner en même temps le hook de pré-push (tests + build) sur la même machine ; noms des 6 non affichés par le résumé |
+| `npm run parcours` relancé seul, même commit | **172 parcours réussis sur 172** ; le fichier `audit-ui/derniere-verification.json` garde l'échec du premier passage : la session locale doit rejouer `npm run verifier -- --complet` avant de livrer |
 
 Captures (dossier `audit-ui/`, ignoré par git) : `electricite-consuel-375.png`, `electricite-compte-rendu-375.png`, `electricite-facture-375.png`.
 
@@ -111,7 +112,7 @@ Tous dans `src/lib/electricite.js`, `src/lib/compteRenduElectriciteHtml.js` et `
 
 ## 7. Ce qui reste
 
-- **Vérification complète** : résultat ci-dessous.
+- **Vérification complète à rejouer en local**, sur une machine au repos (voir § 3) ; je ne l'ai pas relancée en entier, pour économiser le crédit cloud.
 - **À relire au texte** (réseau à ouvrir : `legifrance.gouv.fr`, `bofip.impots.gouv.fr`) :
   - D342-19 : le texte dit-il « mise en service » ou « mise sous tension » ? La tâche doit reprendre son mot.
   - Taux de la part « fourniture » d'une borne (BOFiP).
@@ -139,7 +140,7 @@ Tous dans `src/lib/electricite.js`, `src/lib/compteRenduElectriciteHtml.js` et `
 4. TVA d'une borne : 5,5 % suggéré sur la ligne du devis selon le local, jamais selon le client. Aucun taux pour la fourniture.
 5. Correctif des deux générateurs : une pose de borne ne déclenche plus la certification « rénovation énergétique ».
 6. Migration 111 préparée et vérifiée au banc (668 vérifications vertes). À appliquer avant d'allumer le réglage.
-7. Vérification standard verte ; parcours à 375 px vert (21 vérifications) ; 28 tests nouveaux.
+7. Standard vert ; complet vert sauf 6 parcours tombés sous charge, puis 172 parcours sur 172 relancés seuls. À rejouer en local.
 8. Relectures : critique-produit (cadrage réduit), juriste-btp (2 points bloquants corrigés), gardien-securite (applicable).
 9. Qualification IRVE : point d'accroche seulement (`cloud/metier-qualifications` absente).
 10. Tes 5 décisions sont au § 6 ; restent à relire au texte : D342-19 et la TVA de la fourniture.
