@@ -24,6 +24,7 @@ import {
   BellRing,
   Users,
   Flame,
+  Wrench,
 } from 'lucide-react';
 
 import { useData } from '../context/DataContext';
@@ -45,6 +46,8 @@ import { useSubscriptionStore, PLANS } from '../stores/subscriptionStore';
 import { jourLocal, dateLue } from '../lib/dates';
 import Modal, { ModalHeader, ModalTitle, ModalBody } from './ui/Modal';
 import RappelRamonage, { echeanceLue } from './ramonage/RappelRamonage';
+import RappelEntretien from './entretien/RappelEntretien';
+import { rappelsDus as rappelsEntretienDus } from '../lib/entretien';
 import { rappelsDus, DELAI_RAPPEL_DEFAUT } from '../lib/ramonage';
 import { profilManquant, enPhrase } from '../lib/profilLegal';
 import { devisARelancer, joursDepuisEnvoi } from '../lib/ventes';
@@ -110,12 +113,16 @@ export default function Dashboard({
   // Ouvre la page Devis & factures sur une demande : { relancer: id } (fiche + feuille « Relancer »), { etat } (liste filtrée)
   ouvrirDevis,
 }) {
-  const { paiements = [], ramonages = [], suivreRamonage, updateClient, dataLoading, getChantierBilan } = useData();
+  const { paiements = [], ramonages = [], entretiens = [], suivreRamonage, suivreEntretien, updateClient, dataLoading, getChantierBilan } = useData();
   // Rappels du prochain ramonage (module ramonage, D-30) : le client apparaît ici dès « prochain − délai »
   const [rappelOuvert, setRappelOuvert] = useState(null);
   const rappelsRamonage = useMemo(() => (entreprise?.ramonageActif
     ? rappelsDus(ramonages, clients, { jours: Number(entreprise?.ramonageRappelJours) || DELAI_RAPPEL_DEFAUT, aujourdhui: jourLocal() })
     : []), [entreprise?.ramonageActif, entreprise?.ramonageRappelJours, ramonages, clients]);
+  // Rappels du prochain entretien (module entretien, D-33), même règle
+  const rappelsEntretien = useMemo(() => (entreprise?.entretienActif
+    ? rappelsEntretienDus(entretiens, clients, { jours: Number(entreprise?.entretienRappelJours) || DELAI_RAPPEL_DEFAUT, aujourdhui: jourLocal() })
+    : []), [entreprise?.entretienActif, entreprise?.entretienRappelJours, entretiens, clients]);
   const { showToast } = useToast();
   const { confirm } = useConfirm();
   const { canAccess, canPerform } = usePermissions();
@@ -329,8 +336,17 @@ export default function Dashboard({
       onClick: () => setRappelOuvert(r),
       action: { libelle: 'Rappeler', onClick: () => setRappelOuvert(r) },
     }));
-    return [...computed.actions, ...ramonageActions, ...memoActions].sort((a, b) => a.priority - b.priority);
-  }, [computed.actions, memosJour, toggleMemo, rappelsRamonage, setPage]);
+    const entretienActions = rappelsEntretien.map((r) => ({
+      priority: 2,
+      icon: Wrench,
+      ton: 'alerte',
+      label: `Entretien à prévoir — ${[r.client.prenom, r.client.nom].filter(Boolean).join(' ') || r.client.entreprise || 'client'}`,
+      detail: `Avant le ${dateLue(r.entretien.prochain_avant).toLocaleDateString('fr-FR')} (${echeanceLue(r.joursRestants)})`,
+      onClick: () => setRappelOuvert({ ...r, sorte: 'entretien' }),
+      action: { libelle: 'Rappeler', onClick: () => setRappelOuvert({ ...r, sorte: 'entretien' }) },
+    }));
+    return [...computed.actions, ...ramonageActions, ...entretienActions, ...memoActions].sort((a, b) => a.priority - b.priority);
+  }, [computed.actions, memosJour, toggleMemo, rappelsRamonage, rappelsEntretien, setPage]);
   const rappelAffiche = rappelOuvert;
 
   const visibleActions = showAllActions ? allActions : allActions.slice(0, 5);
@@ -583,7 +599,26 @@ export default function Dashboard({
           <ModalTitle>{rappelAffiche ? `Rappeler ${[rappelAffiche.client.prenom, rappelAffiche.client.nom].filter(Boolean).join(' ')}` : 'Rappel'}</ModalTitle>
         </ModalHeader>
         <ModalBody>
-          {rappelAffiche && (
+          {rappelAffiche?.sorte === 'entretien' && (
+            <RappelEntretien
+              rappel={rappelAffiche}
+              entreprise={entreprise}
+              envoiAutoPrevu={!!entreprise?.entretienEnvoiAuto && String(entreprise?.email || '').includes('@')}
+              suivreEntretien={suivreEntretien}
+              refuserRappels={async (c) => {
+                const ok = await confirm({
+                  title: 'Ne plus rappeler ce client ?',
+                  message: `${[c.prenom, c.nom].filter(Boolean).join(' ')} ne recevra plus aucun rappel, ni d'entretien ni de ramonage (ni SMS proposé, ni e-mail automatique). Ce refus ne s'annule pas.`,
+                  confirmText: 'Ne plus rappeler',
+                  variant: 'warning',
+                });
+                if (!ok) return;
+                setRappelOuvert(null);
+                if ((await updateClient(c.id, { rappels_refuses_le: new Date().toISOString() })) !== false) showToast('Refus des rappels noté : plus aucun rappel pour ce client.', 'success');
+              }}
+            />
+          )}
+          {rappelAffiche && rappelAffiche.sorte !== 'entretien' && (
             <RappelRamonage
               rappel={rappelAffiche}
               entreprise={entreprise}

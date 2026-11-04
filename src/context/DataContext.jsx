@@ -15,6 +15,7 @@ import { celebrateMilestone } from '../lib/celebrate';
 import { captureException } from '../lib/sentry';
 import { estEcritureDifferable, estSessionExpiree, messageEcritureRefusee } from '../lib/erreursEcriture';
 import { numeroRamonageDemo } from '../lib/ramonage';
+import { numeroEntretienDemo, echeanceLegale } from '../lib/entretien';
 
 /**
  * DataContext - Global data state (clients, devis, chantiers, etc.)
@@ -220,6 +221,14 @@ export function DataProvider({ children, initialData = {} }) {
     }
     return initialData.ramonages ?? [];
   });
+  // Attestations d'entretien (migration 113, lot métier entretien)
+  const [entretiens, setEntretiens] = useState(() => {
+    if (isDemo) {
+      const data = loadDemoData();
+      return data?.entretiens ?? initialData.entretiens ?? [];
+    }
+    return initialData.entretiens ?? [];
+  });
 
   // Custom templates (user-saved devis templates)
   const [customTemplates, setCustomTemplates] = useState(() => {
@@ -300,12 +309,13 @@ export function DataProvider({ children, initialData = {} }) {
         // Oubliés jusqu'au 10 oct. 2026 : un rendez-vous de démo disparaissait au rechargement
         planningEvents,
         ramonages,
+        entretiens,
       });
       logger.debug('💾 Demo data saved to localStorage');
     }, 500);
 
     return () => clearTimeout(timeoutId);
-  }, [clients, devis, chantiers, depenses, pointages, equipe, ajustements, catalogue, paiements, echanges, ouvrages, memos, customTemplates, templateUsages, planningEvents, ramonages]);
+  }, [clients, devis, chantiers, depenses, pointages, equipe, ajustements, catalogue, paiements, echanges, ouvrages, memos, customTemplates, templateUsages, planningEvents, ramonages, entretiens]);
 
   // Listen for auth state changes to get userId
   useEffect(() => {
@@ -443,6 +453,7 @@ export function DataProvider({ children, initialData = {} }) {
         if (data.ouvrages) setOuvrages(clean(data.ouvrages));
         appliquer('memos', setMemos, data.memos && clean(data.memos));
         appliquer('ramonages', setRamonages, data.ramonages && clean(data.ramonages));
+        appliquer('entretiens', setEntretiens, data.entretiens && clean(data.entretiens));
         if (data.devisTemplates) setCustomTemplates(clean(data.devisTemplates));
         if (data.templateUsages) setTemplateUsages(clean(data.templateUsages));
 
@@ -1118,6 +1129,38 @@ export function DataProvider({ children, initialData = {} }) {
     return modifierEnBase('ramonages', id, avant, updates, setRamonages);
   }, [ramonages, userId, modifierEnBase]);
 
+  // ============ ENTRETIENS (attestations, migration 113) ============
+  // Même mécanique que les ramonages : numéro ENT-AAAA-NNNNN par la base, contenu figé dès l'enregistrement.
+  const addEntretien = useCallback(async (data) => {
+    if (!(await exigerCgu())) {
+      toast.info('Attestation non enregistrée', 'Les conditions d’utilisation n’ont pas été acceptées.');
+      return null;
+    }
+    const nouveau = {
+      ...data,
+      id: crypto.randomUUID(),
+      echeance_legale: echeanceLegale(data.categorie, data.realise_le) || null,
+      numero: isDemo ? numeroEntretienDemo(entretiens) : null,
+      jeton_rappel: isDemo ? crypto.randomUUID() : null,
+      user_id: userId,
+      created_at: new Date().toISOString(),
+    };
+    setEntretiens(prev => [nouveau, ...prev]);
+    return creerEnBase('entretiens', nouveau, setEntretiens);
+  }, [entretiens, userId, creerEnBase, exigerCgu]);
+
+  const suivreEntretien = useCallback(async (id, suivi) => {
+    if (!isDemo && !userId) {
+      toast.info('Connexion en cours', 'Réessayez dans un instant.');
+      return false;
+    }
+    const permis = ['facture_id', 'annulee_le', 'annulation_motif', 'rappel_fait_le', 'rappel_canal'];
+    const updates = Object.fromEntries(Object.entries(suivi || {}).filter(([cle]) => permis.includes(cle)));
+    const avant = entretiens.find(x => x.id === id);
+    setEntretiens(prev => prev.map(r => (r.id === id ? { ...r, ...updates } : r)));
+    return modifierEnBase('entretiens', id, avant, updates, setEntretiens);
+  }, [entretiens, userId, modifierEnBase]);
+
   const toggleMemo = useCallback(async (id) => {
     const memo = memos.find(m => m.id === id);
     if (!memo) return;
@@ -1233,9 +1276,9 @@ export function DataProvider({ children, initialData = {} }) {
   // changement) : envoyer seulement les champs modifiés effacerait les autres colonnes.
   const etatsParTable = useMemo(() => ({
     clients, devis, chantiers, depenses, pointages, equipe, catalogue, ajustements, paiements, echanges,
-    ouvrages, memos, planning_events: planningEvents, devis_templates: customTemplates, ramonages,
+    ouvrages, memos, planning_events: planningEvents, devis_templates: customTemplates, ramonages, entretiens,
   }), [clients, devis, chantiers, depenses, pointages, equipe, catalogue, ajustements, paiements, echanges,
-    ouvrages, memos, planningEvents, customTemplates, ramonages]);
+    ouvrages, memos, planningEvents, customTemplates, ramonages, entretiens]);
 
   const rejouerEcriture = useCallback(async ({ action, entity, data }) => {
     if (isDemo || !userId) return false;
@@ -1391,6 +1434,10 @@ export function DataProvider({ children, initialData = {} }) {
     ramonages,
     addRamonage,
     suivreRamonage,
+    // Entretien (attestations)
+    entretiens,
+    addEntretien,
+    suivreEntretien,
 
     // Conditions d'utilisation : la garde unique (App.jsx l'enregistre)
     exigerCgu,
@@ -1414,7 +1461,7 @@ export function DataProvider({ children, initialData = {} }) {
     userId,
   }), [
     clients, devisAvecAvoirs, chantiers, depenses, pointages, equipe, ajustements,
-    catalogue, paiements, echanges, ouvrages, planningEvents, memos, ramonages, loading, dataLoading, loadError, retryLoad, rechargerDonnees,
+    catalogue, paiements, echanges, ouvrages, planningEvents, memos, ramonages, entretiens, loading, dataLoading, loadError, retryLoad, rechargerDonnees,
     customTemplates, templateUsages,
     addClient, updateClient, deleteClient, getClient,
     addDevis, updateDevis, deleteDevis, getDevis, getDevisByClient, getDevisByChantier, generateNextNumero,
@@ -1429,7 +1476,7 @@ export function DataProvider({ children, initialData = {} }) {
     addOuvrage, updateOuvrage, deleteOuvrage,
     addPlanningEvent, updatePlanningEvent, deletePlanningEvent,
     addMemo, updateMemo, deleteMemo, toggleMemo,
-    addRamonage, suivreRamonage, exigerCgu, enregistrerGardeCgu,
+    addRamonage, suivreRamonage, addEntretien, suivreEntretien, exigerCgu, enregistrerGardeCgu,
     addTemplate, updateTemplate, deleteTemplate, toggleTemplateFavori, trackTemplateUsage,
     getChantierBilan, rejouerEcriture, userId,
   ]);

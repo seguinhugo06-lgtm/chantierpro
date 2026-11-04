@@ -53,6 +53,14 @@ export const REGLAGES_SANS_COLONNE = {
   ramonageRappelJours: 30,
   ramonageEnvoiAuto: false,
   ramonageTarifs: {},
+  // Attestations d'entretien (D-33, migration 113) : onglet « Entretien » de la fiche client (chaudière, PAC, poêle),
+  // délai du rappel, envoi automatique des rappels par e-mail, tarifs par type d'appareil, appareils de mesure repris.
+  entretienActif: false,
+  entretienRappelJours: 30,
+  entretienEnvoiAuto: false,
+  entretienTarifs: {},
+  entretienAppareilsMesure: '',
+  entretienAttestationCapacite: '',
 };
 
 function reglagesDe(row) {

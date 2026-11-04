@@ -1086,6 +1086,74 @@ export const FIELD_MAPPINGS = {
     }),
   },
 
+  // ── Attestations d'entretien (migration 113) ─────────────────────────
+  // Même règle que les ramonages : numéro, jeton et date de création posés par la base ; contenu figé dès l'insertion ;
+  // facture liée, annulation et suivi du rappel envoyés seulement s'ils sont connus de la ligne (F3 de 104).
+  entretiens: {
+    toSupabase: (item) => {
+      const num = (v) => (v === '' || v === null || v === undefined || !Number.isFinite(Number(String(v).replace(',', '.'))) ? null : Number(String(v).replace(',', '.')));
+      return {
+        id: item.id,
+        client_id: item.client_id || null,
+        appareil_ref: item.appareil_ref,
+        remplace_id: item.remplace_id || null,
+        ...Object.fromEntries(['facture_id', 'annulee_le', 'annulation_motif', 'rappel_fait_le', 'rappel_canal']
+          .filter((cle) => item[cle] !== undefined).map((cle) => [cle, item[cle] || null])),
+        categorie: item.categorie,
+        realise_le: item.realise_le,
+        intervenant_nom: item.intervenant_nom || '',
+        emetteur: item.emetteur || null,
+        client_nom: item.client_nom || '',
+        client_adresse: item.client_adresse || '',
+        client_contact: item.client_contact || null,
+        adresse_installation: item.adresse_installation || '',
+        local: item.local || '',
+        appareils: item.appareils || [],
+        puissance_kw: num(item.puissance_kw),
+        contrat_performance: !!item.contrat_performance,
+        dernier_entretien: item.dernier_entretien || null,
+        dernier_ramonage: item.dernier_ramonage || null,
+        appareils_mesure: item.appareils_mesure || '',
+        mesures: item.mesures || {},
+        operations: item.operations || null,
+        co_ppm: num(item.co_ppm),
+        rendement: item.rendement || {},
+        emissions: item.emissions || {},
+        classe_energetique: item.classe_energetique || null,
+        etancheite: item.etancheite || null,
+        etancheite_detail: item.etancheite_detail || null,
+        defauts: item.defauts || null,
+        actions: item.actions || null,
+        conseils: item.conseils || {},
+        observations: item.observations || null,
+        prochain_avant: item.prochain_avant,
+        echeance_legale: item.echeance_legale || null,
+        logement_plus_2_ans: item.logement_plus_2_ans !== false,
+        eligible_55: !!item.eligible_55,
+        eligible_55_detail: item.eligible_55_detail || null,
+        prix_ht: num(item.prix_ht),
+        signature: item.signature || null,
+      };
+    },
+    fromSupabase: (row) => {
+      const json = (v, defaut) => (typeof v === 'string' ? JSON.parse(v) : v) || defaut;
+      return {
+        ...row,
+        numero: row.numero || null,
+        emetteur: json(row.emetteur, null),
+        appareils: json(row.appareils, []),
+        mesures: json(row.mesures, {}),
+        rendement: json(row.rendement, {}),
+        emissions: json(row.emissions, {}),
+        conseils: json(row.conseils, {}),
+        puissance_kw: row.puissance_kw === null || row.puissance_kw === undefined ? '' : Number(row.puissance_kw),
+        co_ppm: row.co_ppm === null || row.co_ppm === undefined ? '' : Number(row.co_ppm),
+        prix_ht: row.prix_ht === null || row.prix_ht === undefined ? null : Number(row.prix_ht),
+        annulation_motif: row.annulation_motif || '',
+      };
+    },
+  },
+
   // ── Devis Templates (user-saved quote templates) ────────────────────
   devis_templates: {
     toSupabase: (item) => ({
@@ -1253,6 +1321,7 @@ export async function loadAllData(userId, orgId, entrepriseId, onCore) {
       devisTemplatesRes,
       templateUsagesRes,
       ramonagesRes,
+      entretiensRes,
     ] = await Promise.all([
       pClients,
       pChantiers,
@@ -1281,6 +1350,8 @@ export async function loadAllData(userId, orgId, entrepriseId, onCore) {
       scopeToOrg(supabase.from('template_usages').select('*'), orgId, userId).order('used_at', { ascending: false }).limit(50).then(r => r, () => ({ data: [] })),
       // Attestations de ramonage (104) : un échec de lecture se dit (l'historique vide ferait croire à des passages perdus)
       scopeToOrg(supabase.from('ramonages').select('*'), orgId, userId).order('realise_le', { ascending: false }).then(r => r, (e) => ({ data: [], error: { message: e?.message || String(e) } })),
+      // Attestations d'entretien (113) : table absente tant que la migration n'est pas appliquée → erreur dite, liste vide
+      scopeToOrg(supabase.from('entretiens').select('*'), orgId, userId).order('realise_le', { ascending: false }).then(r => r, (e) => ({ data: [], error: { message: e?.message || String(e) } })),
     ]);
 
     // Échecs de chargement : supabase-js ne lève pas, il renvoie `error` et `data: null`. Sans ce
@@ -1290,7 +1361,7 @@ export async function loadAllData(userId, orgId, entrepriseId, onCore) {
     const erreurs = detecterEchecsChargement({
       clients: clientsRes, chantiers: chantiersRes, devis: devisRes, depenses: depensesRes,
       equipe: equipeRes, pointages: pointagesRes, catalogue: catalogueRes, planningEvents: planningEventsRes,
-      paiements: paiementsRes, memos: memosRes, ramonages: ramonagesRes,
+      paiements: paiementsRes, memos: memosRes, ramonages: ramonagesRes, entretiens: entretiensRes,
     });
 
     const data = {
@@ -1321,6 +1392,7 @@ export async function loadAllData(userId, orgId, entrepriseId, onCore) {
       devisTemplates: (devisTemplatesRes?.data || []).map(FIELD_MAPPINGS.devis_templates.fromSupabase),
       templateUsages: (templateUsagesRes?.data || []).map(FIELD_MAPPINGS.template_usages.fromSupabase),
       ramonages: (ramonagesRes?.data || []).map(FIELD_MAPPINGS.ramonages.fromSupabase),
+      entretiens: (entretiensRes?.data || []).map(FIELD_MAPPINGS.entretiens.fromSupabase),
     };
 
     logger.debug('Loaded data from Supabase:', {

@@ -13,7 +13,7 @@ import { buildAttestationRamonageHtml } from '../../lib/attestationRamonageHtml'
 import { useConfirm } from '../../context/AppContext';
 
 /** Choix exclusif en boutons (44 px) ; `deselection` : toucher le choix actif le retire (constats facultatifs). */
-function Choix({ libelle, options, valeur, onChange, deselection = false, erreur, id }) {
+export function Choix({ libelle, options, valeur, onChange, deselection = false, erreur, id }) {
   return (
     <fieldset id={id} className="min-w-0">
       <legend className="block mb-1.5 text-sm font-medium text-encre-2">{libelle}</legend>
@@ -40,7 +40,7 @@ function Choix({ libelle, options, valeur, onChange, deselection = false, erreur
   );
 }
 
-function Section({ titre, children }) {
+export function Section({ titre, children }) {
   return (
     <section className="bg-surface border border-bord rounded-2xl p-4 space-y-4">
       <h3 className="text-base font-semibold text-encre">{titre}</h3>
@@ -54,7 +54,7 @@ function Section({ titre, children }) {
  * Le tracé reste ouvert pendant la saisie (chaque trait met à jour l'image) : une signature en plusieurs traits n'est
  * pas coupée au premier.
  */
-function Signature({ valeur, onChange }) {
+export function Signature({ valeur, onChange }) {
   const pad = useRef(null);
   const boite = useRef(null);
   const [trace, setTrace] = useState(!valeur);

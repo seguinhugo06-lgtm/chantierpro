@@ -1,0 +1,114 @@
+import { useEffect, useState } from 'react';
+import { Wrench, BellRing, AlertTriangle } from 'lucide-react';
+import Carte from '../ui/Carte';
+import Champ from '../ui/Champ';
+import { Interrupteur } from './RamonageTab';
+import { CATEGORIES, DELAI_RAPPEL_DEFAUT } from '../../lib/entretien';
+
+/**
+ * Paramètres → Entretien (D-33, migration 113). Activé, le module ajoute l'onglet « Entretien » aux fiches clients
+ * (chaudière, pompe à chaleur, poêle : attestation, facture, rappel) ; rien ne change pour un artisan qui ne l'active pas.
+ * Réglages rangés dans settings_json.reglages (entrepriseService, REGLAGES_SANS_COLONNE).
+ */
+const nombre = (v) => {
+  const n = Number(String(v ?? '').replace(',', '.'));
+  return Number.isFinite(n) ? n : null;
+};
+
+export default function EntretienTab({ entreprise, setEntreprise }) {
+  const actif = !!entreprise?.entretienActif;
+  const envoiAuto = !!entreprise?.entretienEnvoiAuto;
+  const [jours, setJours] = useState(String(entreprise?.entretienRappelJours ?? DELAI_RAPPEL_DEFAUT));
+  const [mesure, setMesure] = useState(entreprise?.entretienAppareilsMesure || '');
+  const [capacite, setCapacite] = useState(entreprise?.entretienAttestationCapacite || '');
+  const [tarifs, setTarifs] = useState(() => Object.fromEntries(
+    CATEGORIES.map((c) => [c.valeur, entreprise?.entretienTarifs?.[c.valeur] != null ? String(entreprise.entretienTarifs[c.valeur]).replace('.', ',') : '']),
+  ));
+  useEffect(() => { setJours(String(entreprise?.entretienRappelJours ?? DELAI_RAPPEL_DEFAUT)); }, [entreprise?.entretienRappelJours]);
+
+  const enregistrer = (champs) => setEntreprise((p) => ({ ...p, ...champs }));
+  const enregistrerJours = () => {
+    const borne = Math.min(120, Math.max(1, Math.round(nombre(jours) ?? DELAI_RAPPEL_DEFAUT)));
+    setJours(String(borne));
+    if (borne !== entreprise?.entretienRappelJours) enregistrer({ entretienRappelJours: borne });
+  };
+  const enregistrerTexte = (cle, valeur) => { if (valeur.trim() !== (entreprise?.[cle] || '')) enregistrer({ [cle]: valeur.trim() }); };
+  const enregistrerTarifs = () => {
+    const propres = {};
+    for (const [cat, v] of Object.entries(tarifs)) {
+      const n = nombre(v);
+      if (String(v).trim() && n !== null && n > 0) propres[cat] = Math.round(n * 100) / 100;
+    }
+    if (JSON.stringify(propres) !== JSON.stringify(entreprise?.entretienTarifs || {})) enregistrer({ entretienTarifs: propres });
+  };
+
+  return (
+    <div className="space-y-4" data-testid="reglages-entretien">
+      <Carte>
+        <div className="flex items-center gap-2 mb-3 text-encre-2">
+          <Wrench size={18} aria-hidden="true" />
+          <h3 className="text-lg font-semibold text-encre">Entretien</h3>
+        </div>
+        <Interrupteur
+          id="entretien-actif"
+          actif={actif}
+          onChange={(v) => enregistrer({ entretienActif: v })}
+          libelle="J’entretiens des chaudières, pompes à chaleur ou poêles"
+          description="Ajoute l’onglet « Entretien » aux fiches clients : l’attestation d’entretien numérotée en PDF (avec les éléments exigés pour chaque appareil), la facture, et le rappel du prochain entretien."
+        />
+      </Carte>
+
+      {actif && (
+        <>
+          <Carte>
+            <div className="flex items-center gap-2 mb-3 text-encre-2">
+              <BellRing size={18} aria-hidden="true" />
+              <h3 className="text-lg font-semibold text-encre">Rappel du prochain entretien</h3>
+            </div>
+            <div className="space-y-4">
+              <Champ libelle="Rappeler le client, en jours avant la date conseillée" type="text" inputMode="numeric" value={jours}
+                onChange={(e) => setJours(e.target.value)} onBlur={enregistrerJours}
+                aide="À partir de ce jour, le client apparaît dans « À faire » sur l’accueil et sur sa fiche, avec un SMS prêt à envoyer." />
+              <Interrupteur
+                id="entretien-envoi-auto"
+                actif={envoiAuto}
+                onChange={(v) => enregistrer({ entretienEnvoiAuto: v })}
+                libelle="Envoyer les rappels automatiquement par e-mail"
+                description="Chaque matin, Mallettico envoie en votre nom un e-mail aux clients dont l’entretien approche, une seule fois par échéance, avec un lien pour ne plus en recevoir. Jamais à un client qui a refusé les rappels."
+              />
+              {envoiAuto && !String(entreprise?.email || '').includes('@') && (
+                <p role="alert" className="flex gap-2 text-sm text-alerte-texte">
+                  <AlertTriangle size={16} className="flex-shrink-0 mt-0.5" aria-hidden="true" />
+                  Ajoutez votre e-mail dans Paramètres → Mon entreprise : vos clients doivent pouvoir vous répondre. Sans lui, aucun rappel automatique ne part.
+                </p>
+              )}
+              <p className="text-sm text-encre-3">La date conseillée est la vôtre (douze mois après la visite par défaut). Le rappel cite l’obligation d’entretien et son article seulement quand la puissance de l’appareil la rend certaine : chaudière de 4 à 400 kW (une fois par année civile), pompe à chaleur de 4 à 70 kW (au moins tous les deux ans), poêle ou insert (au moins tous les douze mois s’il est utilisé).</p>
+            </div>
+          </Carte>
+
+          <Carte>
+            <h3 className="text-lg font-semibold text-encre mb-3">Pour vos attestations</h3>
+            <div className="space-y-4">
+              <Champ libelle="Appareils de mesure (marque et référence)" facultatif value={mesure} onChange={(e) => setMesure(e.target.value)}
+                onBlur={() => enregistrerTexte('entretienAppareilsMesure', mesure)} aide="Proposés sur chaque nouvelle attestation : l’annexe de l’arrêté exige leur marque et leur référence." />
+              <Champ libelle="Attestation de capacité (fluides frigorigènes) : numéro et organisme" facultatif value={capacite} onChange={(e) => setCapacite(e.target.value)}
+                onBlur={() => enregistrerTexte('entretienAttestationCapacite', capacite)} aide="Exigée pour intervenir sur le circuit d’une pompe à chaleur au R32, R410A ou autre HFC (articles R. 543-76 et R. 543-99 du code de l’environnement)." />
+            </div>
+          </Carte>
+
+          <Carte>
+            <h3 className="text-lg font-semibold text-encre mb-1">Vos tarifs</h3>
+            <p className="text-sm text-encre-2 mb-3">Prix hors taxes proposé pour un nouvel appareil (facultatif). Pour un appareil déjà connu, le prix de son dernier entretien est repris.</p>
+            <p className="text-sm text-encre-2 mb-3">Client particulier : une visite d’entretien facturée à l’acte demande un devis détaillé avant l’intervention (arrêté du 24 janvier 2017, article 4) et, si le contrat est conclu chez lui, aucun paiement ne peut être reçu avant sept jours (code de la consommation, article L. 221-10). Le parcours entretien ne fait pas ce devis : faites-le depuis « Devis ».</p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {CATEGORIES.map((c) => (
+                <Champ key={c.valeur} libelle={`${c.libelle} (€ HT)`} facultatif type="text" inputMode="decimal" value={tarifs[c.valeur]}
+                  onChange={(e) => setTarifs((p) => ({ ...p, [c.valeur]: e.target.value }))} onBlur={enregistrerTarifs} />
+              ))}
+            </div>
+          </Carte>
+        </>
+      )}
+    </div>
+  );
+}

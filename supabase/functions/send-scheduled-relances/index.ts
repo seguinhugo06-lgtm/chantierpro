@@ -23,6 +23,8 @@ import { corsHeaders } from '../_shared/cors.ts';
 import { estClientPro, creditsParFacture, paiementsParDocument, resteDu, relancable, penalites, mentionRetard } from './regles.ts';
 // Rappels du prochain ramonage (migration 104, D-30) : règles et e-mail sans import distant, testés sous vitest
 import { rappelsAEnvoyer, emailRappelRamonage, jourParis } from './ramonage.ts';
+// Rappels du prochain entretien (migration 113, D-33) : même mécanique, testée sous vitest
+import { rappelsAEnvoyerEntretien, emailRappelEntretien } from './entretien.ts';
 import { nomImprime } from '../_shared/identite.ts';
 // Adresse complète sans répéter « code postal ville » (Paramètres l'enregistre en trois champs depuis le 26 oct. 2026)
 import { adresseComplete } from '../_shared/adresseEntreprise.ts';
@@ -620,6 +622,135 @@ serve(async (req) => {
         detail.action = ok ? 'sent' : 'failed';
         detail.error = errMsg;
         ramonage.details.push(detail);
+        await new Promise((res) => setTimeout(res, 200));
+      }
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Rappels du prochain entretien (D-33, migration 113) : même mécanique que le ramonage, pour une fiche entreprise
+    // dont l'artisan a activé l'envoi automatique (Paramètres → Entretien). Table absente (113 pas encore appliquée) :
+    // l'erreur est dite dans le rapport, sans bloquer le reste.
+    // ─────────────────────────────────────────────────────────────
+    const entretien: any = { entreprises: 0, dus: 0, envoyes: 0, echecs: 0, details: [] as any[] };
+    report.entretien = entretien;
+    const { data: entsEntretien, error: errEntsEntretien } = await admin
+      .from('entreprise')
+      .select('id, user_id, organization_id, nom, forme_juridique, telephone, email, adresse, code_postal, ville, couleur, settings_json, archived_at')
+      .eq('settings_json->reglages->>entretienEnvoiAuto', 'true');
+    if (errEntsEntretien) {
+      console.error(`[send-scheduled-relances] Lecture entreprises (entretien): ${errEntsEntretien.message}`);
+      entretien.erreur = errEntsEntretien.message;
+      report.failed++;
+    }
+    const organisationsVuesE = new Set<string>();
+    for (const ent of entsEntretien || []) {
+      if (ent.archived_at) continue;
+      const reglages = ent.settings_json?.reglages || {};
+      if (reglages.entretienActif !== true && reglages.entretienActif !== 'true') continue;
+      if (!String(ent.email || '').includes('@')) {
+        entretien.details.push({ entreprise: ent.nom, action: 'sans-email-entreprise' });
+        continue;
+      }
+      const serie = ent.organization_id || ent.user_id;
+      if (organisationsVuesE.has(serie)) continue;
+      organisationsVuesE.add(serie);
+      entretien.entreprises++;
+
+      const dansOrgE = (requete: any) => (ent.organization_id ? requete.eq('organization_id', ent.organization_id) : requete.eq('user_id', ent.user_id));
+      const toutLireE = async (fabrique: (de: number, a: number) => any) => {
+        const lignes: any[] = [];
+        for (let de = 0; ; de += 1000) {
+          const { data, error } = await fabrique(de, de + 999);
+          if (error) return { data: null, error };
+          lignes.push(...(data || []));
+          if (!data || data.length < 1000) return { data: lignes, error: null };
+        }
+      };
+      const [resE, resC] = await Promise.all([
+        toutLireE((de, a) => dansOrgE(admin.from('entretiens')
+          .select('id, client_id, appareil_ref, categorie, realise_le, prochain_avant, puissance_kw, contrat_performance, local, appareils, annulee_le, rappel_fait_le, jeton_rappel')
+          .is('annulee_le', null).gte('prochain_avant', aujourdhui)).order('id').range(de, a)),
+        toutLireE((de, a) => dansOrgE(admin.from('clients').select('id, nom, prenom, email, rappels_refuses_le')).order('id').range(de, a)),
+      ]);
+      if (resE.error || resC.error) {
+        const msg = [resE.error?.message, resC.error?.message].filter(Boolean).join(' | ');
+        console.error(`[send-scheduled-relances] Lecture entretiens ${ent.nom}: ${msg}`);
+        entretien.details.push({ entreprise: ent.nom, action: 'erreur-lecture', error: msg });
+        entretien.echecs++;
+        report.failed++;
+        continue;
+      }
+      const jours = Math.min(120, Math.max(1, Math.round(Number(reglages.entretienRappelJours) || 30)));
+      const dus = rappelsAEnvoyerEntretien(resE.data || [], resC.data || [], { jours, aujourdhui }).slice(0, maxPerOrg);
+      entretien.dus += dus.length;
+      report.totalDue += dus.length;
+      const identite = {
+        nom: nomImprime({ nom: ent.nom, forme_juridique: ent.forme_juridique, nomEntrepreneur: reglages.nomEntrepreneur }),
+        adresse: adresseComplete(ent).split('\n').join(', '),
+        telephone: ent.telephone,
+        email: ent.email,
+        couleur: ent.couleur,
+      };
+
+      for (const { entretien: e, client } of dus) {
+        const detail: any = { entreprise: ent.nom, entretien: e.id, prochain: e.prochain_avant, clientEmail: client.email };
+        if (dryRun) { detail.action = 'would-send'; entretien.details.push(detail); continue; }
+
+        const pris = await admin.from('entretiens').update({ rappel_fait_le: new Date().toISOString(), rappel_canal: 'email_auto' })
+          .eq('id', e.id).is('rappel_fait_le', null).select('id');
+        if (pris.error || !pris.data?.length) {
+          detail.action = pris.error ? 'erreur-prise' : 'deja-fait';
+          if (pris.error) { detail.error = pris.error.message; entretien.echecs++; report.failed++; }
+          entretien.details.push(detail);
+          continue;
+        }
+
+        const { objet, html, texte } = emailRappelEntretien({ entreprise: identite, client, entretien: e, lien: `${APP_ORIGIN}/rappel-entretien/${e.jeton_rappel}` });
+        let ok = false; let errMsg: string | null = null; let providerId: string | null = null;
+        try {
+          const resp = await fetch(`${SUPABASE_URL}/functions/v1/send-email`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${SERVICE_ROLE}` },
+            body: JSON.stringify({ action: 'send_email', to: client.email, subject: objet, html, text: texte, from_name: identite.nom || undefined, reply_to: ent.email || undefined }),
+          });
+          const data = await resp.json().catch(() => ({}));
+          if (!resp.ok || data?.error) throw new Error(data?.error || `send-email HTTP ${resp.status}`);
+          ok = true; providerId = data?.id || data?.messageId || null;
+        } catch (err) {
+          errMsg = String((err as Error)?.message || err);
+        }
+
+        if (!ok) {
+          const rendu = await admin.from('entretiens').update({ rappel_fait_le: null, rappel_canal: null }).eq('id', e.id).select('id');
+          if (rendu.error || !rendu.data?.length) {
+            console.error(`[send-scheduled-relances] RAPPEL ENTRETIEN ${e.id} marqué fait sans envoi : ${rendu.error?.message || '0 ligne'}`);
+            detail.rappelPerdu = true;
+          }
+        }
+
+        const { error: errJournal } = await admin.from('relance_executions').insert({
+          user_id: ent.user_id,
+          organization_id: ent.organization_id,
+          document_id: e.id,
+          document_type: 'entretien',
+          client_id: client.id,
+          step_id: 'rappel-entretien',
+          step_name: 'Rappel du prochain entretien',
+          sequence_type: 'entretien',
+          channel: 'email',
+          status: ok ? 'sent' : 'failed',
+          subject: objet,
+          body: texte,
+          triggered_by: 'auto_cron',
+          error_message: errMsg,
+          metadata: { email_provider_id: providerId, prochain_avant: e.prochain_avant },
+        });
+        if (errJournal) console.error(`[send-scheduled-relances] Journal du rappel d'entretien ${e.id} perdu : ${errJournal.message}`);
+
+        if (ok) { entretien.envoyes++; report.sent++; } else { entretien.echecs++; report.failed++; }
+        detail.action = ok ? 'sent' : 'failed';
+        detail.error = errMsg;
+        entretien.details.push(detail);
         await new Promise((res) => setTimeout(res, 200));
       }
     }

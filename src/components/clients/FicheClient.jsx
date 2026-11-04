@@ -20,6 +20,7 @@ import { usePermissions } from '../../hooks/usePermissions';
 import { generatePortalToken, sendPortalInvite } from '../../services/portalService';
 import supabase, { isDemo } from '../../supabaseClient';
 import OngletRamonage from '../ramonage/OngletRamonage';
+import OngletEntretien from '../entretien/OngletEntretien';
 import { OngletDocuments, OngletChantiers, OngletEchanges, OngletTaches, OngletPhotos, OngletActivite } from './OngletsClient';
 import { villeDe, lienTel } from './outils';
 
@@ -44,15 +45,17 @@ export default function FicheClient({
   nouveauDevisPour, nouveauChantierPour, ouvrirDevis, setPage, setSelectedChantier, setSelectedDevis,
 }) {
   const { canPerform, canViewPrices, canAccess } = usePermissions();
-  const { paiements = [], ramonages = [] } = useData();
+  const { paiements = [], ramonages = [], entretiens = [] } = useData();
   const { showToast } = useToast();
   const { confirm } = useConfirm();
   const ramonageActif = !!entreprise?.ramonageActif;
+  const entretienActif = !!entreprise?.entretienActif;
   // Un ramoneur arrive sur l'onglet « Ramonage », même quand la fiche entreprise est lue après l'affichage (compte réel) ;
   // jamais contre un onglet choisi par l'artisan
-  const [onglet, setOnglet] = useState(ramonageActif ? 'ramonage' : 'documents');
+  const ongletMetier = ramonageActif ? 'ramonage' : entretienActif ? 'entretien' : null;
+  const [onglet, setOnglet] = useState(ongletMetier || 'documents');
   const ongletChoisi = useRef(false);
-  useEffect(() => { if (ramonageActif && !ongletChoisi.current) setOnglet('ramonage'); }, [ramonageActif]);
+  useEffect(() => { if (ongletMetier && !ongletChoisi.current) setOnglet(ongletMetier); }, [ongletMetier]);
 
   const peutModifier = canPerform('client', 'edit');
   const peutSupprimer = canPerform('client', 'delete');
@@ -266,6 +269,7 @@ export default function FicheClient({
             onChange={(id) => { ongletChoisi.current = true; setOnglet(id); }}
             onglets={[
               ...(ramonageActif ? [{ id: 'ramonage', libelle: 'Ramonage', compte: ramonages.filter((r) => r.client_id === client.id && !r.annulee_le).length }] : []),
+              ...(entretienActif ? [{ id: 'entretien', libelle: 'Entretien', compte: entretiens.filter((r) => r.client_id === client.id && !r.annulee_le).length }] : []),
               { id: 'documents', libelle: 'Documents', compte: stats.devis + stats.factures },
               { id: 'chantiers', libelle: 'Chantiers', compte: stats.chantiers },
               { id: 'activite', libelle: 'Activité' },
@@ -277,6 +281,9 @@ export default function FicheClient({
 
           {onglet === 'ramonage' && ramonageActif && (
             <OngletRamonage client={client} entreprise={entreprise} setPage={setPage} setSelectedDevis={setSelectedDevis} showToast={showToast} modeDiscret={modeDiscret} />
+          )}
+          {onglet === 'entretien' && entretienActif && (
+            <OngletEntretien client={client} entreprise={entreprise} setPage={setPage} setSelectedDevis={setSelectedDevis} showToast={showToast} modeDiscret={modeDiscret} />
           )}
           {onglet === 'documents' && (
             <OngletDocuments clientDevis={clientDevis} paiements={paiements} voitPrix={canViewPrices} formatMoney={formatMoney} onOuvrir={ouvrirDocument} />

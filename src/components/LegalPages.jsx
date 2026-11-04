@@ -329,6 +329,10 @@ export default function LegalPages({ page, couleur: _couleur, setPage }) {
         <P>
           <strong className={textPrimary}>Rappels de ramonage.</strong> Si un utilisateur active l'envoi automatique des rappels (Paramètres → Ramonage), Mallettico envoie en son nom, une seule fois par échéance, un e-mail à ses clients dont le prochain ramonage approche. Données utilisées : nom, prénom et adresse e-mail du client, date du dernier ramonage, type d'appareil et pièce, date conseillée du prochain ramonage. L'utilisateur est responsable de ce traitement ; Mallettico agit pour son compte, comme sous-traitant (RGPD, art. 28), et n'utilise ces données à aucune autre fin. Chaque e-mail contient un lien qui enregistre, sans compte, le refus du client ; la date du refus est conservée tant que le compte de l'utilisateur existe. Les e-mails sont envoyés par Resend (article 4).
         </P>
+        {/* Rappels d'entretien (D-33, migration 113) : même traitement que les rappels de ramonage (avis juriste-btp du 4 nov. 2026, § 7.1, 10) */}
+        <P>
+          <strong className={textPrimary}>Rappels d'entretien.</strong> Si un utilisateur active l'envoi automatique des rappels d'entretien (Paramètres → Entretien), Mallettico envoie en son nom, une seule fois par échéance, un e-mail à ses clients dont le prochain entretien de chaudière, de pompe à chaleur ou de poêle approche. Données utilisées : nom, prénom et adresse e-mail du client, date du dernier entretien, type, marque, modèle, puissance et pièce de l'appareil, date conseillée du prochain entretien. L'utilisateur est responsable de ce traitement ; Mallettico agit pour son compte, comme sous-traitant (RGPD, art. 28), et n'utilise ces données à aucune autre fin. Chaque e-mail contient un lien qui enregistre, sans compte, le refus du client, valable pour tous les rappels de cet utilisateur ; la date du refus est conservée tant que le compte de l'utilisateur existe. Les e-mails sont envoyés par Resend (article 4).
+        </P>
       </Section>
 
       <Section title="Article 3 - Durée de conservation">

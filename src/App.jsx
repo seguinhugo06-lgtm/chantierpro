@@ -307,6 +307,7 @@ export default function App() {
     // d'utilisation, par la garde unique de DataContext (relecture juriste du 25 oct. 2026, G3)
     // (relances : leur activation, et l'envoi « 100 % automatique », seul à faire partir les e-mails sans un clic)
     const activeEnvois = (!base?.ramonageEnvoiAuto && newVal?.ramonageEnvoiAuto)
+      || (!base?.entretienEnvoiAuto && newVal?.entretienEnvoiAuto)
       || (!base?.relanceConfig?.enabled && newVal?.relanceConfig?.enabled)
       || (!base?.relanceConfig?.autoSend && newVal?.relanceConfig?.autoSend);
     if (activeEnvois && !newVal?.__cguVerifiees) {
