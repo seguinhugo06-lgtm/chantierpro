@@ -721,4 +721,103 @@ module.exports = [
       }
     },
   },
+  {
+    // Relecture du 4 nov. 2026 (tâche 28) : la lettre de mise en demeure, envoyée au client, écrivait « TTC » en franchise.
+    // Facture en retard de plus de 30 jours, ouverte dans la fiche : « Mise en demeure », lecture du HTML remis à
+    // l'impression (imprimerHtml : iframe srcdoc). Micro : ni « HT » ni « TTC » ; SARL (contre-essai) : « TTC » reste.
+    nom: 'lettre de mise en demeure : sans « TTC » en franchise, avec « TTC » en SARL (facture en retard de 45 jours)',
+    reel: true,
+    async executer({ ouvrir, sessionFactice, attendre, verifier }) {
+      const { creerBase, UID } = require('../lib/fauxSupabase.cjs');
+      const ORG = '0e0e0e0e-0e0e-4e0e-8e0e-0e0e0e0e0e0e';
+      const jour = (n) => new Date(Date.now() - n * 86400000).toISOString().slice(0, 10);
+      const CLIENT = { id: 'c0c0c0c0-0000-4000-8000-000000000604', nom: 'Exemple', prenom: 'Lou', telephone: '0600000004', email: 'lou@exemple.fr', adresse: '9 rue Imaginaire, 24000 Exempleville', created_at: '2026-01-01T08:00:00Z' };
+      const facture = (franchise) => ({ id: 'f0f0f0f0-0000-4000-8000-000000000604', client_id: CLIENT.id, type: 'facture', facture_type: 'totale', statut: 'envoye', numero: 'FAC-2026-0604', objet: 'Prises du salon',
+        date: jour(75), date_echeance: jour(45), date_envoi: jour(75), total_ht: 1000, total_tva: franchise ? 0 : 200, tva: franchise ? 0 : 200, total_ttc: franchise ? 1000 : 1200, tva_rate: franchise ? 0 : 20, created_at: `${jour(75)}T08:00:00Z`,
+        lignes: [{ id: 'l1', description: 'Pose prises', quantite: 10, unite: 'u', prixUnitaire: 100, tva: franchise ? 0 : 20 }] });
+      const entreprise = (forme) => ({ id: 'e0e0e0e0-0000-4000-8000-000000000604', user_id: UID, organization_id: ORG, nom: 'Élec Exemple', forme_juridique: forme,
+        siret: '00000000000000', telephone: '0500000000', email: 'contact@exemple.fr', adresse: '1 rue Imaginaire', code_postal: '24000', ville: 'Exempleville',
+        is_active: true, is_default: true, settings_json: { reglages: { nomEntrepreneur: 'Jean Exemple' } }, created_at: '2026-01-01T00:00:00Z' });
+      for (const forme of ['Micro-entreprise', 'SARL']) {
+        const franchise = forme === 'Micro-entreprise';
+        const base = creerBase({ clients: [CLIENT], devis: [facture(franchise)], entreprise: [entreprise(forme)] });
+        const { page } = await ouvrir({
+          reel: true, largeur: 1440, page: 'devis', session: sessionFactice(UID), supabase: base.reponse,
+          avantChargement: () => {
+            try { localStorage.setItem('pwa-install-dismissed', String(Date.now())); } catch { /* */ }
+            // Ce que imprimerHtml remet au navigateur (srcdoc de l'iframe d'impression), sans ouvrir la boîte d'impression
+            window.__imprimes = [];
+            const d = Object.getOwnPropertyDescriptor(HTMLIFrameElement.prototype, 'srcdoc');
+            Object.defineProperty(HTMLIFrameElement.prototype, 'srcdoc', { configurable: true, get() { return d.get.call(this); },
+              set(v) { if (this.getAttribute('aria-hidden') === 'true') { window.__imprimes.push(String(v)); return; } d.set.call(this, v); } });
+          },
+        });
+        await attendre(2500);
+        const ouvert = await page.evaluate(() => {
+          const ligne = [...document.querySelectorAll('button, [role="button"], tr, a')].find((x) => /FAC-2026-0*604/.test(x.innerText || ''));
+          ligne?.click();
+          return !!ligne;
+        });
+        verifier(ouvert, `${forme} : la facture FAC-2026-0604 est dans la liste`);
+        await attendre(1500);
+        const clic = await page.evaluate(() => {
+          const b = [...document.querySelectorAll('button')].find((x) => (x.innerText || '').trim() === 'Mise en demeure');
+          b?.click();
+          return !!b;
+        });
+        verifier(clic, `${forme} : le bouton « Mise en demeure » est proposé (retard de 45 jours)`);
+        await attendre(1200);
+        const lettre = await page.evaluate(() => {
+          const html = (window.__imprimes || []).find((x) => /mise en demeure/i.test(x)) || '';
+          const lu = new DOMParser().parseFromString(html, 'text/html');
+          lu.querySelectorAll('style, script').forEach((x) => x.remove());
+          return (lu.body?.textContent || '').replace(/\s+/g, ' ');
+        });
+        verifier(/FAC-2026-0*604/.test(lettre), `${forme} : la lettre imprimée vise la facture (${lettre.slice(0, 120)})`);
+        const ht = lettre.match(/.{0,30}(?<![A-Za-zÀ-ÿ])(HT|TTC)(?![A-Za-zÀ-ÿ]).{0,30}/);
+        if (franchise) {
+          verifier(!ht, `${forme} : ni « HT » ni « TTC » dans la lettre (${ht ? ht[0] : ''})`);
+          verifier(/Montant : 1\s000,00\s€/.test(lettre), `${forme} : « Montant : 1 000,00 € » (${(lettre.match(/Montant :.{0,25}/) || [''])[0]})`);
+        } else {
+          verifier(/1\s200,00\s€ TTC/.test(lettre), `${forme} : « TTC » reste hors franchise (${ht ? ht[0] : 'aucun'})`);
+        }
+      }
+    },
+  },
+  {
+    // Relecture du 4 nov. 2026 (tâche 28) : la page de paiement en ligne (/pay/:token, éteinte) écrivait « Total TTC ».
+    // Faux get_facture_for_payment (migration 114 : forme_juridique). Micro : ni « HT » ni « TTC » ; SARL et facture
+    // émise avec TVA par une micro (contre-essais) : « TTC » reste.
+    nom: 'page de paiement en ligne : « Total » en franchise, « Total TTC » en SARL et pour une facture émise avec TVA',
+    reel: true,
+    async executer({ ouvrir, attendre, verifier, ORIGIN }) {
+      const json = (corps) => ({ status: 200, body: JSON.stringify(corps) });
+      const cas = [
+        ['Micro-entreprise', 0, false],
+        ['SARL', 60, true],
+        ['Micro-entreprise', 60, true], // émise avec TVA : elle se paie telle qu'émise
+      ];
+      for (const [forme, tva, ttcAttendu] of cas) {
+        const reponse = {
+          facture: { numero: 'FAC-2026-0605', type: 'facture', facture_type: 'totale', date: '2026-10-01', date_echeance: '2026-10-31', statut: 'envoye',
+            total_ht: 300, total_tva: tva, total_ttc: 300 + tva, montant_paye: 0, montant_credite: 0, recu: 0, reste_du: 300 + tva, payable: true, lignes: [] },
+          client: { nom: 'Martin', prenom: 'Léa', email: 'lea@exemple.fr' },
+          entreprise: { nom: 'Élec du Sud', forme_juridique: forme, siret: '12345678900012', couleur: '#f97316', iban: 'FR7600000000000000000000000' },
+          stripe_enabled: false, commission_model: 'artisan',
+        };
+        const { page } = await ouvrir({ reel: true, largeur: 390, supabase: (req, u) => (u.pathname === '/rest/v1/rpc/get_facture_for_payment' ? json(reponse) : json([])) });
+        await page.goto(`${ORIGIN}/pay/9c1f0c52-3c1e-4f8e-9a57-0c2f6e1b9d05`, { waitUntil: 'networkidle0' });
+        await attendre(1200);
+        const texte = await page.evaluate(() => (document.body.innerText || '').replace(/\s+/g, ' '));
+        const libelle = `${forme}${tva ? ', émise avec TVA' : ''}`;
+        verifier(/FAC-2026-0*605/.test(texte), `${libelle} : la page montre la facture (${texte.slice(0, 120)})`);
+        const ht = texte.match(/.{0,30}(?<![A-Za-zÀ-ÿ])(HT|TTC)(?![A-Za-zÀ-ÿ]).{0,30}/);
+        if (ttcAttendu) verifier(/Total TTC/.test(texte), `${libelle} : « Total TTC » reste (${ht ? ht[0] : 'aucun'})`);
+        else {
+          verifier(!ht, `${libelle} : ni « HT » ni « TTC » sur la page (${ht ? ht[0] : ''})`);
+          verifier(/Total/.test(texte), `${libelle} : « Total » affiché`);
+        }
+      }
+    },
+  },
 ];
