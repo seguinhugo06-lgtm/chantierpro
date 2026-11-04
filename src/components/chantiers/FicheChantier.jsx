@@ -680,7 +680,7 @@ export default function FicheChantier({
 
       <QuickChantierModal
         isOpen={!!enEdition} onClose={() => setEnEdition(null)} onSubmit={modifierFiche}
-        clients={clients} devis={devis} isDark={isDark} couleur={couleur} editChantier={enEdition} voitPrix={voitPrix}
+        clients={clients} devis={devis} isDark={isDark} couleur={couleur} editChantier={enEdition} voitPrix={voitPrix} franchiseTva={franchiseTva}
       />
     </div>
   );

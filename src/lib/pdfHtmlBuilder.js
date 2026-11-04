@@ -6,7 +6,7 @@
 import { subscription } from '../stores/subscriptionStore';
 import { filterValidLignes } from './formatters';
 import { euros, pourcent, blocConditionsPaiement } from './formatDocument';
-import { lignesTotauxHtml, lignesAcompteHtml } from './totauxDocument';
+import { lignesTotauxHtml, lignesAcompteHtml, libellesColonnesPrix } from './totauxDocument';
 import { echeance } from './paiementsFacture';
 import { dateLue } from './dates';
 import { mentionImmatriculation } from './immatriculation';
@@ -93,7 +93,7 @@ export function buildDocumentHTML(doc, client, chantier, entreprise, options = {
       <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${l.quantite || 0}</td>
       <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${l.unite || 'unité'}</td>
       <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:right">${euros(pu)}</td>
-      <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${isMicro ? '-' : pourcent(l.tva !== undefined ? l.tva : tauxTvaDocument(doc, entreprise))}</td>
+      ${isMicro ? '' : `<td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${pourcent(l.tva !== undefined ? l.tva : tauxTvaDocument(doc, entreprise))}</td>`}
       <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:right;font-weight:600;${total < 0 ? 'color:#dc2626;' : ''}">${euros(total)}</td>
     </tr>`;
   }).join('');
@@ -163,7 +163,7 @@ export function buildDocumentHTML(doc, client, chantier, entreprise, options = {
         ${entreprise?.codeApe ? ` · APE: ${entreprise.codeApe}` : ''}
         ${getRCSComplet(entreprise) ? `<br>${getRCSComplet(entreprise)}` : ''}
         ${entreprise?.tvaIntra ? `<br>TVA Intra: ${entreprise.tvaIntra}` : ''}
-        ${isMicro ? '<br><em>TVA non applicable, art. 293 B du CGI</em>' : ''}
+        ${isMicro ? '<br><em>TVA non applicable, article 293 B du CGI</em>' : ''}
       </div>
     </div>
     <div class="doc-type">
@@ -209,12 +209,12 @@ export function buildDocumentHTML(doc, client, chantier, entreprise, options = {
   <table>
     <thead>
       <tr>
-        <th style="width:40%">Description</th>
+        <th style="width:${isMicro ? 50 : 40}%">Description</th>
         <th style="width:10%">Qté</th>
         <th style="width:10%">Unité</th>
-        <th style="width:15%">PU HT</th>
-        <th style="width:10%">TVA</th>
-        <th style="width:15%">Total HT</th>
+        <th style="width:15%">${libellesColonnesPrix(isMicro).pu}</th>
+        ${isMicro ? '' : '<th style="width:10%">TVA</th>'}
+        <th style="width:15%">${libellesColonnesPrix(isMicro).total}</th>
       </tr>
     </thead>
     <tbody>
@@ -230,7 +230,7 @@ export function buildDocumentHTML(doc, client, chantier, entreprise, options = {
     ` : ''}
   </div>
 
-  ${isMicro ? '<div class="micro-mention">TVA non applicable, article 293 B du Code Général des Impôts</div>' : ''}
+  ${isMicro ? '<div class="micro-mention">TVA non applicable, article 293 B du CGI</div>' : ''}
 
   <!-- CONDITIONS -->
   ${!isAvoir ? `<div class="conditions">

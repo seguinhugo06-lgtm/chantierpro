@@ -46,6 +46,8 @@ export default function QuickChantierModal({
   editChantier = null,
   clientInitial = null,
   voitPrix = false,
+  // Franchise en base de TVA (estFranchiseTva) : le budget se saisit sans « HT » (décision du 24 oct. 2026)
+  franchiseTva = false,
 }) {
   const isEditMode = !!editChantier;
   const [form, setForm] = useState(FORMULAIRE_VIDE);
@@ -219,7 +221,7 @@ export default function QuickChantierModal({
             <div className="p-4 rounded-xl bg-surface-2 space-y-3">
               <div className="relative">
                 <Champ
-                  id="chantier-budget" libelle="Budget du chantier (€ HT)" type="number" inputMode="decimal" placeholder="15000"
+                  id="chantier-budget" libelle={franchiseTva ? 'Budget du chantier (€)' : 'Budget du chantier (€ HT)'} type="number" inputMode="decimal" placeholder="15000"
                   aide={!form.budget_estime ? 'Montant que vous allez facturer au client' : undefined}
                   value={form.budget_estime} onChange={(e) => setForm((p) => ({ ...p, budget_estime: e.target.value }))}
                 />

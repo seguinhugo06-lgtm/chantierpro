@@ -33,7 +33,8 @@ export default function ChoixTva({ entreprise, updateEntreprise }) {
           <Info size={18} aria-hidden="true" className="flex-shrink-0 mt-0.5" />
           <div className="text-sm">
             <p className="font-semibold">Pas de TVA : franchise en base</p>
-            <p className="mt-0.5">Statut « Micro-entreprise » : Mallettico suppose que vous êtes en franchise en base de TVA. Vos devis et factures n’ajoutent alors aucune TVA et portent la mention « TVA non applicable, art. 293 B du CGI ». Si vous avez dépassé les seuils de la franchise ou opté pour la TVA, choisissez le statut « Entreprise individuelle (EI) » : Mallettico facturera alors la TVA. En cas de doute, demandez à votre service des impôts des entreprises.</p>
+            {/* La mention de la facture, mot pour mot comme sur les PDF : CGI art. 293 E, II (contrôle du 3 nov. 2026) */}
+            <p className="mt-0.5">Statut « Micro-entreprise » : Mallettico suppose que vous êtes en franchise en base de TVA. Vos devis et factures n’ajoutent alors aucune TVA et portent la mention « TVA non applicable, article 293 B du CGI ». Si vous avez dépassé les seuils de la franchise ou opté pour la TVA, choisissez le statut « Entreprise individuelle (EI) » : Mallettico facturera alors la TVA. En cas de doute, demandez à votre service des impôts des entreprises.</p>
           </div>
         </div>
       ) : (

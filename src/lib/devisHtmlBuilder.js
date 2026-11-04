@@ -18,7 +18,7 @@ import { urlPublique } from './urlPublique';
 import { FONCTIONS } from './fonctions';
 import { euros, pourcent, quantite, blocConditionsPaiement } from './formatDocument';
 import { echapperHtml as h, couleurCss } from './echapperHtml';
-import { lignesTotauxHtml, lignesAcompteHtml, totauxDocument } from './totauxDocument';
+import { lignesTotauxHtml, lignesAcompteHtml, totauxDocument, libellesColonnesPrix } from './totauxDocument';
 import { echeance } from './paiementsFacture';
 import { franchiseAppliquee, tauxTvaDocument, premierTaux } from './franchiseTva';
 import { imprimerHtml } from './imprimerHtml';
@@ -135,6 +135,9 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mod
   // Filter out section markers, null/undefined, and lines with no description
   lignes = filterValidLignes(lignes);
 
+  // En franchise (art. 293 B du CGI) : pas de colonne « TVA », ni en-tête ni cellule, la mention vaut pour toutes les
+  // lignes (décision d'Hugo du 3 nov. 2026, D-31, 3). Commentaire écrit ici, hors du gabarit : rien d'interne dans le HTML
+  // remis au client (contrôle du 3 nov. 2026 : il partait dans l'en-tête du tableau). Même règle dans DevisPage.jsx.
   // Rendu d'une ligne
   const renderRow = (l) => {
     const pu = getLinePU(l);
@@ -145,7 +148,7 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mod
       <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${quantite(l.quantite)}</td>
       <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${h(l.unite || 'unité')}</td>
       <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:right">${euros(pu)}</td>
-      <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${isMicro ? '-' : pourcent(l.tva !== undefined ? l.tva : tauxTvaDocument(doc, entreprise))}</td>
+      ${isMicro ? '' : `<td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:center">${pourcent(l.tva !== undefined ? l.tva : tauxTvaDocument(doc, entreprise))}</td>`}
       <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;text-align:right;font-weight:600;${total < 0 ? 'color:#dc2626;' : ''}">${euros(total)}</td>
     </tr>`;
   };
@@ -161,11 +164,11 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mod
     ? lotSections.map(s => {
         const sub = s.lignes.reduce((sum, l) => sum + getLineTotal(l), 0);
         const header = s.titre
-          ? `<tr><td colspan="6" style="padding:14px 8px 6px;font-weight:700;font-size:10.5pt;color:${color};border-bottom:2px solid ${color}">${h(s.titre)}</td></tr>`
+          ? `<tr><td colspan="${isMicro ? 5 : 6}" style="padding:14px 8px 6px;font-weight:700;font-size:10.5pt;color:${color};border-bottom:2px solid ${color}">${h(s.titre)}</td></tr>`
           : '';
         const rows = s.lignes.map(renderRow).join('');
         const subtotal = s.titre
-          ? `<tr><td colspan="5" style="padding:6px 8px;text-align:right;font-size:8.5pt;color:#64748b;font-style:italic">Sous-total ${h(s.titre)}</td><td style="padding:6px 8px;text-align:right;font-weight:700;font-size:9pt">${euros(sub)}</td></tr>`
+          ? `<tr><td colspan="${isMicro ? 4 : 5}" style="padding:6px 8px;text-align:right;font-size:8.5pt;color:#64748b;font-style:italic">Sous-total ${h(s.titre)}</td><td style="padding:6px 8px;text-align:right;font-weight:700;font-size:9pt">${euros(sub)}</td></tr>`
           : '';
         return header + rows + subtotal;
       }).join('')
@@ -260,7 +263,7 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mod
         ${e.codeApe ? ` · APE: ${e.codeApe}` : ''}
         ${rcsComplet ? `<br>${rcsComplet}` : ''}
         ${e.tvaIntra ? `<br>TVA Intra: ${e.tvaIntra}` : ''}
-        ${isMicro ? '<br><em>TVA non applicable, art. 293 B du CGI</em>' : ''}
+        ${isMicro ? '<br><em>TVA non applicable, article 293 B du CGI</em>' : ''}
       </div>
     </div>
     <div class="doc-type">
@@ -300,12 +303,12 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mod
   <table>
     <thead>
       <tr>
-        <th style="width:40%">Description</th>
+        <th style="width:${isMicro ? 50 : 40}%">Description</th>
         <th style="width:10%">Qté</th>
         <th style="width:10%">Unité</th>
-        <th style="width:15%">PU HT</th>
-        <th style="width:10%">TVA</th>
-        <th style="width:15%">Total HT</th>
+        <th style="width:15%">${libellesColonnesPrix(isMicro).pu}</th>
+        ${isMicro ? '' : '<th style="width:10%">TVA</th>'}
+        <th style="width:15%">${libellesColonnesPrix(isMicro).total}</th>
       </tr>
     </thead>
     <tbody>
@@ -330,12 +333,12 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mod
     ` : ''}
   </div>
 
-  ${isMicro ? '<div class="micro-mention">TVA non applicable, article 293 B du Code Général des Impôts</div>' : ''}
+  ${isMicro ? '<div class="micro-mention">TVA non applicable, article 293 B du CGI</div>' : ''}
 
   ${mentionTvaReduiteHtml({ tvaDetails: calculatedTvaDetails, nomClient: formatClientName(client, ''), isMicro, isFacture, isAcompte: doc.facture_type === 'acompte', isAvoir: doc.facture_type === 'avoir' })}
 
   ${doc.notes && doc.facture_type !== 'avoir' ? `
-  <!-- NOTES (« Notes (visibles sur le PDF) » de l'éditeur : n'étaient imprimées nulle part, recette du 9 oct. 2026) -->
+  <!-- NOTES -->${''/* « Notes (visibles sur le PDF) » de l'éditeur : n'étaient imprimées nulle part, recette du 9 oct. 2026 (commentaire hors du HTML remis au client, contrôle du 3 nov. 2026) */}
   <div class="conditions" style="margin-top:10px">
     <h4>NOTES</h4>
     <div style="white-space:pre-line">${h(doc.notes)}</div>
@@ -530,6 +533,23 @@ export function buildSituationFactureHtml({ situation, parentDevis, client, chan
 
   const lignes = filterValidLignes(situation.lignes);
   const defaultTvaRate = premierTaux(situation.tvaRate, parentDevis?.tvaRate, parentDevis?.tva_rate, 10);
+  const tauxSaisi = (l) => (l.tva !== undefined ? parseFloat(l.tva) : defaultTvaRate);
+
+  // Franchise en base de TVA (art. 293 B du CGI) : seule une situation facturée ou payée correspond à une facture émise ;
+  // si elle porte de la TVA, elle se réimprime telle quelle (CGI art. 289, I-4 et V ; art. 283, 3). Une situation en
+  // brouillon ou validée n'a pas de numéro de facture : elle s'imprime sans TVA, comme la facture qui en sera tirée
+  // (CGI art. 293 E, II). Décision d'Hugo du 3 nov. 2026 (avis juriste-btp du même jour).
+  // Avant (relevé du 3 nov. 2026) : « PU HT », « TVA 10 % », « Montant situation TTC » et pas de mention 293 B pour
+  // une micro-entreprise.
+  const tvaSaisie = lignes.reduce((s, l) => {
+    const marche = (l.quantite || 0) * getLinePU(l);
+    return s + (marche * ((l.cumulActuel || 0) - (l.cumulPrecedent || 0)) / 100) * (tauxSaisi(l) / 100);
+  }, 0);
+  const isMicro = franchiseAppliquee(
+    { type: 'facture', statut: (situation.statut === 'facturee' || situation.statut === 'payee') ? 'envoye' : 'brouillon', tva: tvaSaisie },
+    entreprise,
+  );
+  const ht = isMicro ? '' : ' HT';
 
   // Calculate totals from lignes with multi-TVA support
   let totalMarcheHT = 0;
@@ -543,7 +563,7 @@ export function buildSituationFactureHtml({ situation, parentDevis, client, chan
     const cumuleHT = marcheHT * (l.cumulActuel || 0) / 100;
     const precedentHT = marcheHT * (l.cumulPrecedent || 0) / 100;
     const situationHT = cumuleHT - precedentHT;
-    const taux = l.tva !== undefined ? parseFloat(l.tva) : defaultTvaRate;
+    const taux = isMicro ? 0 : tauxSaisi(l);
 
     totalMarcheHT += marcheHT;
     totalCumuleHT += cumuleHT;
@@ -576,7 +596,7 @@ export function buildSituationFactureHtml({ situation, parentDevis, client, chan
 
   // Build TVA rows (one per rate)
   const tvaRates = Object.entries(tvaParTaux).filter(([, d]) => d.base > 0).sort((a, b) => parseFloat(a[0]) - parseFloat(b[0]));
-  const tvaRowsHTML = tvaRates.length > 1
+  const tvaRowsHTML = isMicro ? '' : tvaRates.length > 1
     ? tvaRates.map(([taux, data]) => `<div class="totals-row sub"><span>TVA ${pourcent(taux)} (base ${euros(data.base)})</span><span>${euros(data.montant)}</span></div>`).join('')
     : `<div class="totals-row sub"><span>TVA ${pourcent(tvaRates.length > 0 ? tvaRates[0][0] : defaultTvaRate)}</span><span>${euros(totalTVA)}</span></div>`;
 
@@ -616,6 +636,7 @@ export function buildSituationFactureHtml({ situation, parentDevis, client, chan
     .totals-row.deduction { color: #dc2626; }
     .totals-row.grand-total { background: ${color}; color: white; padding: 12px; border-radius: 6px; font-size: 13pt; font-weight: bold; margin-top: 8px; }
     .conditions { background: #f1f5f9; padding: 12px; border-radius: 6px; margin-top: 15px; font-size: 7.5pt; line-height: 1.6; }
+    .micro-mention { background: #dbeafe; padding: 8px; border-radius: 4px; font-size: 8pt; color: #1e40af; margin-top: 10px; }
     .conditions h4 { font-size: 8pt; margin-bottom: 8px; color: #475569; }
     .footer { margin-top: 20px; padding-top: 12px; border-top: 1px solid #e2e8f0; font-size: 7pt; color: #64748b; text-align: center; line-height: 1.6; }
     .assurances { font-size: 7pt; color: #64748b; margin-top: 8px; }
@@ -673,7 +694,7 @@ export function buildSituationFactureHtml({ situation, parentDevis, client, chan
       <tr>
         <th style="width:24%">Désignation</th>
         <th style="width:9%">Qté marché</th>
-        <th style="width:10%">PU HT</th>
+        <th style="width:10%">${libellesColonnesPrix(isMicro).pu}</th>
         <th style="width:12%">Mt marché</th>
         <th style="width:8%">% Avanc.</th>
         <th style="width:12%">Mt cumulé</th>
@@ -698,16 +719,17 @@ export function buildSituationFactureHtml({ situation, parentDevis, client, chan
 
   <!-- TOTAUX -->
   <div class="totals-section">
-    <div class="totals-row sub"><span>Total marché HT</span><span>${euros(totalMarcheHT)}</span></div>
-    <div class="totals-row sub"><span>Travaux cumulés HT</span><span>${euros(totalCumuleHT)}</span></div>
-    <div class="totals-row sub"><span>Travaux précédents HT</span><span style="color:#64748b">${euros(totalPrecedentHT)}</span></div>
-    <div class="totals-row sep"><span><strong>Travaux de la situation HT</strong></span><span><strong>${euros(totalSituationHT)}</strong></span></div>
+    <div class="totals-row sub"><span>Total marché${ht}</span><span>${euros(totalMarcheHT)}</span></div>
+    <div class="totals-row sub"><span>Travaux cumulés${ht}</span><span>${euros(totalCumuleHT)}</span></div>
+    <div class="totals-row sub"><span>Travaux précédents${ht}</span><span style="color:#64748b">${euros(totalPrecedentHT)}</span></div>
+    <div class="totals-row sep"><span><strong>Travaux de la situation${ht}</strong></span><span><strong>${euros(totalSituationHT)}</strong></span></div>
     ${tvaRowsHTML}
-    <div class="totals-row sub"><span><strong>Montant situation TTC</strong></span><span><strong>${euros(totalSituationTTC)}</strong></span></div>
+    ${isMicro ? '' : `<div class="totals-row sub"><span><strong>Montant situation TTC</strong></span><span><strong>${euros(totalSituationTTC)}</strong></span></div>`}
     ${retenueGarantiePct > 0 ? `<div class="totals-row deduction"><span>Retenue de garantie (${pourcent(retenueGarantiePct)})</span><span>- ${euros(retenueGarantie)}</span></div>` : ''}
     ${acompteVerse > 0 ? `<div class="totals-row deduction"><span>Acomptes déjà versés</span><span>- ${euros(acompteVerse)}</span></div>` : ''}
-    <div class="totals-row grand-total"><span>NET À PAYER</span><span>${euros(netAPayer)}</span></div>
+    <div class="totals-row grand-total"><span>NET À PAYER${isMicro ? ' (hors taxes et toutes taxes comprises)' : ''}</span><span>${euros(netAPayer)}</span></div>
   </div>
+  ${isMicro ? '<div class="micro-mention">TVA non applicable, article 293 B du CGI</div>' : ''}
 
   <!-- CONDITIONS -->
   <div class="conditions">
@@ -715,7 +737,7 @@ export function buildSituationFactureHtml({ situation, parentDevis, client, chan
     Paiement à ${e.delaiPaiement} jours à compter de la date de facture.<br>
     ${e.iban ? `<strong>IBAN:</strong> ${e.iban}` : ''} ${e.bic ? ` · <strong>BIC:</strong> ${e.bic}` : ''}<br>
     ${estClientPro(client) ? 'Pénalités de retard: taux BCE + 10 points. Indemnité forfaitaire de recouvrement: 40 €.' : ''}
-    ${retenueGarantiePct > 0 ? `<br><br><strong>Retenue de garantie:</strong> ${pourcent(retenueGarantiePct)} retenus conformément à la loi n°71-584 du 16 juillet 1971. Libérable 1 an après la réception des travaux sauf réserves.` : ''}
+    ${retenueGarantiePct > 0 ? `<br><br><strong>Retenue de garantie :</strong> ${pourcent(retenueGarantiePct)} (loi n° 71-584 du 16 juillet 1971 : 5 % au plus). Libérée un an après la réception des travaux, avec ou sans réserves, sauf opposition motivée du maître de l'ouvrage notifiée par lettre recommandée.` : ''}
   </div>
 
   <!-- FOOTER -->

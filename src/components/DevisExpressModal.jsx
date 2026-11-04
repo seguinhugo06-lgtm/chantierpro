@@ -6,7 +6,7 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { sansTva } from '../lib/franchiseTva';
 import { X, ChevronLeft, ChevronRight, Search, Check, FileText, TrendingUp, Minus, Plus, Trash2, FolderOpen, UserPlus, Clock, RotateCcw } from 'lucide-react';
-import { getMetiersWithModeles, getModelesByMetier, prepareModeleLignes, calculateModeleTotal, calculateModeleMarge, searchModeles } from '../lib/data/modeles-devis';
+import { getMetiersWithModeles, getModelesByMetier, prepareModeleLignes, calculateModeleTotal, calculateModeleMarge, searchModeles, descriptionModele } from '../lib/data/modeles-devis';
 import { formatClientName } from '../lib/formatters';
 import Modal, { ModalTitle } from './ui/Modal';
 import { Bouton } from './ui/Bouton';
@@ -240,7 +240,7 @@ export default function DevisExpressModal({
   const handleCreateDevis = async () => {
     if (!selectedClient || isCreating) return;
     // Une ligne chiffrée sans désignation : le total ne correspondrait plus aux lignes imprimées (relecture juriste-btp du 16 oct. 2026)
-    const sansDesignation = messageLigneSansDesignation(lignes.map((l) => ({ ...l, montant: l.total ?? l.montant })));
+    const sansDesignation = messageLigneSansDesignation(lignes.map((l) => ({ ...l, montant: l.total ?? l.montant })), { franchise });
     if (sansDesignation) { setCreationError(sansDesignation); return; }
 
     setIsCreating(true);
@@ -567,7 +567,7 @@ export default function DevisExpressModal({
                       <div className="flex items-start gap-3" onClick={() => { if (qty === 0) handleSelectModele(modele); }}>
                         <div className="flex-1 cursor-pointer">
                           <p className={`font-semibold ${textPrimary}`}>{modele.nom}</p>
-                          <p className={`text-sm ${textMuted} mt-1`}>{modele.description}</p>
+                          <p className={`text-sm ${textMuted} mt-1`}>{descriptionModele(modele, franchise)}</p>
                           <div className="flex items-center gap-4 mt-2">
                             <span className={`text-xs px-2 py-1 rounded-full bg-surface-2 ${textMuted}`}>
                               {modele.lignes.length} lignes
@@ -615,7 +615,7 @@ export default function DevisExpressModal({
               {step2Total > 0 && (
                 <div className={`sticky bottom-0 -mx-4 -mb-4 px-4 py-3 border-t ${borderColor} bg-surface/95 backdrop-blur-sm`}>
                   <div className="flex items-center justify-between">
-                    <span className={`text-sm font-medium ${textSecondary}`}>Total estime HT</span>
+                    <span className={`text-sm font-medium ${textSecondary}`}>{franchise ? 'Total estimé' : 'Total estimé HT'}</span>
                     <span className="text-xl font-bold tabular-nums text-encre">
                       ~{step2Total.toLocaleString('fr-FR')} EUR
                     </span>
@@ -792,22 +792,29 @@ export default function DevisExpressModal({
               {/* Summary */}
               <div className={`p-4 rounded-xl ${bgCard} border ${borderColor}`}>
                 <div className="space-y-2">
+                  {/* En franchise (art. 293 B) : ni « HT » ni « TTC » (décision du 24 oct. 2026) ; sans remise, une seule ligne de total */}
+                  {!(franchise && !(remise > 0)) && (
                   <div className="flex justify-between">
-                    <span className={textMuted}>Total HT</span>
+                    <span className={textMuted}>{franchise ? 'Total avant remise' : 'Total HT'}</span>
                     <span className={textPrimary}>{totals.totalHT.toLocaleString('fr-FR')} €</span>
                   </div>
+                  )}
                   {remise > 0 && (
                     <div className="flex justify-between text-danger-texte">
                       <span>Remise ({remise}%)</span>
                       <span>-{totals.remiseAmount.toLocaleString('fr-FR')} €</span>
                     </div>
                   )}
+                  {franchise ? (
+                    <p className={`text-sm ${textMuted}`}>TVA non applicable, art. 293 B du CGI</p>
+                  ) : (
                   <div className="flex justify-between">
-                    <span className={textMuted}>{franchise ? 'TVA non applicable, art. 293 B du CGI' : `TVA (${tvaDefaut}%)`}</span>
+                    <span className={textMuted}>{`TVA (${tvaDefaut}%)`}</span>
                     <span className={textPrimary}>{totals.tva.toLocaleString('fr-FR')} €</span>
                   </div>
+                  )}
                   <div className={`flex justify-between pt-2 border-t ${borderColor}`}>
-                    <span className={`font-semibold ${textPrimary}`}>Total TTC</span>
+                    <span className={`font-semibold ${textPrimary}`}>{franchise ? 'Total' : 'Total TTC'}</span>
                     <span className="font-bold text-lg tabular-nums text-encre">
                       {totals.ttc.toLocaleString('fr-FR')} €
                     </span>
@@ -882,6 +889,7 @@ export default function DevisExpressModal({
         onClose={() => setShowTemplateSelector(false)}
         onSelectTemplate={handleTemplateSelect}
         customTemplates={customTemplates}
+        franchise={franchise}
         isDark={isDark}
         couleur={couleur}
       />

@@ -1,0 +1,355 @@
+# Avis de juriste-btp du 3 nov. 2026 au soir — recherche par métier (relecture au texte)
+
+Relecture faite en local, avec accès aux textes officiels (Légifrance, BOFiP, service-public), des points « à revoir en local » de la branche `cloud/metiers`. Chaque point donne son verdict (confirme, a-corriger, a-decider, introuvable), sa source avec la date de consultation, la citation et la correction exacte. Recopié tel quel depuis le résultat de la relecture (session locale) ; les corrections ont été appliquées par la session cloud de correction (`71a36af`), puis contrôlées.
+
+## cloud/metiers (origin, pointe 4526173e ; copie identique claude/metiers-btp-rb0xi4). La relecture du fichier relecture.j
+
+- **points** :
+  - (1)
+    - **point** : TVA à 20 % des chaudières gaz et fioul depuis le 1er mars 2025, fourniture et pose. Texte de l'app : modeles/chauffage.js (commentaire au-dessus de tva: 20), modeles/index.js (« à relire au texte »), trade-library.js (« à relire au BOFiP »), chauffagiste.md l. 71, commun.md l. 53 (« (à vérifier) »).
+    - **verdict** : confirme
+    - **source** : CGI art. 279-0 bis, 2 bis, c (version en vigueur depuis le 1er mars 2025, loi n° 2025-127 du 14 févr. 2025, art. 32), https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000051215062 ; CGI art. 278-0 bis A, III bis, https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000053545596 ; BOI-TVA-LIQ-30-20-95 § 70 (version du 09/09/2026), https://bofip.impots.gouv.fr/bofip/9417-PGP.html ; BOI-TVA-LIQ-30-20-90-20 § 200 (09/09/2026), https://bofip.impots.gouv.fr/bofip/1666-PGP.html. Consultés le 03/11/2026.
+    - **citation** : CGI 279-0 bis, 2 bis, c : « Les travaux comprenant la fourniture ou l'installation d'une chaudière susceptible d'utiliser des combustibles fossiles. » BOFiP § 70 : « au gaz ou au fioul, [...] à haute ou très haute performance énergétique, réalisés à compter du 1er mars 2025 ».
+    - **correctionExacte** : Règle juste, sources à remplacer. Dans src/lib/data/modeles/chauffage.js, remplacer les trois lignes de commentaire par : « // Chaudière susceptible d'utiliser des combustibles fossiles : taux normal (20 %) pour les travaux comprenant sa fourniture ou son installation, réalisés à compter du 1er mars 2025 (CGI art. 279-0 bis, 2 bis, c, et 278-0 bis A, III bis ; BOI-TVA-LIQ-30-20-95 § 70). L'entretien et la réparation restent au taux réduit : voir le modèle « entretien-chaudiere ». » Dans index.js, remplacer « (docs/metiers/chauffagiste.md § 5, FFB et CAPEB ; à relire au texte) » par « (CGI art. 279-0 bis, 2 bis, c ; BOI-TVA-LIQ-30-20-95 § 70) ». Dans trade-library.js, remplacer « (loi de finances pour 2025 ; avis juriste-btp du 3 nov. 2026 ; à relire au BOFiP) » par « (CGI art. 279-0 bis, 2 bis, c ; BOI-TVA-LIQ-30-20-90-20 § 200) ». Dans commun.md l. 53, supprimer « chaudières fossiles au 1er mars 2025 » de la liste « à vérifier ».
+  - (2)
+    - **point** : 10 % du 1er janvier au 28 février 2025 pour une chaudière gaz (chauffagiste.md l. 71 : « Entre le 1er janv. et le 28 févr. 2025, 10 % (sortie du 5,5 % par l'arrêté du 4 déc. 2024) [20] (à vérifier) »).
+    - **verdict** : confirme
+    - **source** : Arrêté du 4 déc. 2024 (NOR BCPE2431738A, JORF n° 0304 du 24 déc. 2024, texte n° 36), art. 2, https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000050823106 ; CGI ann. IV art. 30-0 D ter (aucune chaudière gaz ni fioul dans la liste du 5,5 %) ; CGI art. 279-0 bis, 2 bis, c, en vigueur au 1er mars 2025. Consultés le 03/11/2026. Le 10 % sur ces deux mois se déduit des deux textes ; aucun texte ne l'écrit en toutes lettres.
+    - **citation** : Arrêté du 4 déc. 2024, art. 2 : « Le présent arrêté entre en vigueur le 1er janvier 2025. »
+    - **correctionExacte** : chauffagiste.md l. 71, remplacer la phrase par : « Entre le 1er janv. et le 28 févr. 2025 : 10 % dans un logement achevé depuis plus de deux ans, les chaudières gaz et fioul ne figurant plus dans la liste du 5,5 % (arrêté du 4 déc. 2024, JO du 24 déc. 2024, en vigueur le 1er janv. 2025 ; CGI ann. IV art. 30-0 D ter). »
+  - (3)
+    - **point** : Ancien taux pour les devis signés avant le 1er mars 2025. Textes de l'app : chauffagiste.md l. 71 (« devis signés et acomptes versés avant cette date gardent l'ancien taux ») et l. 82 (« 20 % sauf devis antérieur au 1er mars 2025 »).
+    - **verdict** : a-corriger
+    - **source** : BOI-TVA-LIQ-30-20-95 § 70 (09/09/2026), https://bofip.impots.gouv.fr/bofip/9417-PGP.html ; note d'entrée en vigueur de CGI art. 279-0 bis (loi n° 2025-127, art. 32). Consultés le 03/11/2026.
+    - **citation** : « elle ne concerne pas les opérations ayant fait l'objet d'un devis daté, accepté par les deux parties et ayant donné lieu à un acompte encaissé avant le 1er mars 2025 »
+    - **correctionExacte** : Trois conditions cumulatives, pas une seule. l. 71 : remplacer « devis signés et acomptes versés avant cette date gardent l'ancien taux » par « les opérations ayant fait l'objet d'un devis daté, accepté par les deux parties et ayant donné lieu à un acompte encaissé avant le 1er mars 2025 gardent l'ancien taux (BOI-TVA-LIQ-30-20-95 § 70 ; un chèque remis avant cette date suffit, même encaissé après) ». l. 82 : remplacer « 20 % sauf devis antérieur au 1er mars 2025 » par « 20 % sauf devis daté, accepté par les deux parties et ayant donné lieu à un acompte encaissé avant le 1er mars 2025 ».
+  - (4)
+    - **point** : TVA de l'entretien et de la réparation d'une chaudière fossile. Textes de l'app : chauffagiste.md l. 72 (« 10 % le plus probable [...] ; jamais 5,5 % ») ; chauffage.js (« l'exclusion de 2025 viserait peut-être aussi l'entretien ») ; qualifications.test.js (« Comportement actuel, pas une règle établie ») ; synthese.md (« Entretien de chaudière : jamais 5,5 % »).
+    - **verdict** : a-corriger
+    - **source** : BOI-TVA-LIQ-30-20-90-20 § 230 (09/09/2026), https://bofip.impots.gouv.fr/bofip/1666-PGP.html ; BOI-TVA-LIQ-30-20-95 § 35 (09/09/2026), https://bofip.impots.gouv.fr/bofip/9417-PGP.html ; CGI ann. IV art. 30-0 D, 8° (version du 19/06/2025), https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000051757624 ; art. 30-0 D nonies, https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000050824510. Consultés le 03/11/2026.
+    - **citation** : § 230 : « sont toujours soumis au taux réduit dès lors que la chaudière est installée dans des locaux d'habitation achevés depuis plus de deux ans ». § 35 : « Le taux réduit reste néanmoins applicable aux prestations d'entretien ou de réparation [...] portant sur des chaudières ». 30-0 D, 8° : « Les prestations d'entretien et de réparation des chaudières à très haute performance énergétique ».
+    - **correctionExacte** : Le 10 % est confirmé, mais « jamais 5,5 % » est faux. chauffagiste.md l. 72, remplacer par : « Entretien et réparation d'une chaudière gaz ou fioul (pièces comprises), dans un logement achevé depuis plus de 2 ans : 10 % (BOI-TVA-LIQ-30-20-90-20 § 230). 5,5 % si la chaudière est à très haute performance énergétique au sens de l'art. 30-0 D nonies de l'annexe IV (efficacité saisonnière d'au moins 92 % jusqu'à 70 kW, régulateur de classe IV à VIII), même si l'on change le brûleur ou le corps de chauffe ; jamais si l'opération aboutit à une nouvelle chaudière (art. 30-0 D, 8° ; BOI-TVA-LIQ-30-20-95 § 35). L'exclusion de 2025 ne vise que la fourniture ou l'installation. » chauffage.js, remplacer la phrase sur l'entretien par : « L'entretien d'une chaudière fossile n'est pas visé par l'exclusion : 10 %, ou 5,5 % pour une chaudière à très haute performance énergétique (BOI-TVA-LIQ-30-20-90-20 § 230 ; BOI-TVA-LIQ-30-20-95 § 35). » Dans le test, remplacer le commentaire par « L'exclusion de 2025 ne vise pas l'entretien (BOI-TVA-LIQ-30-20-90-20 § 230) : le taux de l'entreprise (10 %) est juste par défaut ; 5,5 % possible pour une chaudière THPE » et le titre par « l'entretien d'une chaudière garde le taux de l'entreprise (10 % par défaut) ». synthese.md : « Entretien de chaudière : 10 %, ou 5,5 % si la chaudière est THPE (ann. IV art. 30-0 D nonies). »
+  - (5)
+    - **point** : Liste ORGANISMES_RGE (src/lib/qualifications.js) : 'Qualibat', 'Qualifelec', 'Qualit\'EnR', 'Certibat', 'Cerqual Qualitel', 'Autre' ; Qualiopi retiré ; Céquami en suspens.
+    - **verdict** : confirme
+    - **source** : Ministère de la Transition écologique, « Le label reconnu garant de l'environnement RGE » (mis à jour le 11 juin 2025), https://www.ecologie.gouv.fr/politiques-publiques/label-reconnu-garant-lenvironnement-rge ; arrêté du 1er déc. 2015, art. 4 (les ministres rendent publique la liste des organismes), https://www.legifrance.gouv.fr/loda/id/JORFTEXT000031585721. Consultés le 03/11/2026. L'annuaire France Rénov' était inaccessible à l'outil (erreur de certificat).
+    - **citation** : « organismes de qualification (Qualibat, Qualit'EnR et Qualifelec) ou de certification (Certibat et Cerqual) »
+    - **correctionExacte** : Les cinq organismes et le retrait de Qualiopi sont confirmés. Remplacer le commentaire au-dessus de ORGANISMES_RGE par : « /** Organismes RGE cités par le ministère (ecologie.gouv.fr, 11 juin 2025) : qualification (Qualibat, Qualit'EnR, Qualifelec), certification (Certibat, Cerqual). */ ». Céquami : une page de l'ADEME et du ministère le cite parmi les cinq organismes qui alimentent l'annuaire, mais il est absent de la page du 11 juin 2025. Ne l'ajouter qu'après vérification sur l'annuaire France Rénov'. Pour « Autre », voir le point Anah ci-dessous.
+  - (6)
+    - **point** : Qualiopi relève des organismes de formation (C. trav. L6316-1) : message de raisonRgeNonImprime « Qualiopi certifie les organismes de formation, pas les entreprises RGE ».
+    - **verdict** : confirme
+    - **source** : C. trav. art. L6316-1 (en vigueur depuis le 1er janv. 2024), https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000048600506. Consulté le 03/11/2026.
+    - **citation** : « Les prestataires mentionnés à l'article L. 6351-1 financés par un opérateur de compétences, [...] sont certifiés sur la base de critères définis par décret en Conseil d'Etat. »
+    - **correctionExacte** : Aucune correction dans l'app. Dans commun.md l. 98, les dates « obligatoire depuis le 1er janv. 2022, valable 3 ans » n'ont pas été relues : ne pas les imprimer.
+  - (7)
+    - **point** : Mentions RGE exigées par l'Anah sur le devis et la facture (aRevoirEnLocal n° 3) ; l'app imprime « Entreprise RGE (Reconnu garant de l'environnement) — N° … (organisme) — Domaine : … — Valide jusqu'au … », avec le domaine facultatif et sans organisme si « Autre » est choisi.
+    - **verdict** : a-corriger
+    - **source** : Anah, « Guide des travaux éligibles dans le cadre d'une rénovation énergétique », juillet 2025 (PDF mis à jour le 26/11/2025), p. 31, tableau « Mentions spécifiques », coches « mentions obligatoires » pour le devis et pour la facture, https://www.anah.gouv.fr/sites/default/files/2025-12/202507-guide-travaux-eligibles-devis-factures_WEBA.pdf. Consulté le 03/11/2026.
+    - **citation** : « Critères de qualification RGE de l'entreprise avec intitulé de la qualification, organisme certificateur et le numéro de qualification dans chaque domaine »
+    - **correctionExacte** : Dans src/lib/qualifications.js : (1) retirer 'Autre' de ORGANISMES_RGE ; (2) dans raisonRgeNonImprime, après le test Qualiopi, ajouter : if (!texte(entreprise?.rgeOrganisme) || texte(entreprise?.rgeOrganisme) === 'Autre') return 'Choisissez l’organisme qui a délivré votre RGE : l’Anah exige son nom sur les devis et factures des travaux aidés.'; puis if (!texte(entreprise?.rgeDomaine)) return 'Ajoutez l’intitulé de votre qualification RGE, tel qu’il figure sur votre certificat : l’Anah l’exige sur les devis et factures des travaux aidés.'; (3) ligne imprimée : `Entreprise RGE (Reconnu garant de l'environnement) — Qualification : ${texte(e.rgeDomaine)} — ${organisme} — N° ${numero} — Valide jusqu'au ${dateFr(e.rgeValidite)}`. Dans Settings.jsx, champ rgeDomaine : libelle=« Intitulé de la qualification RGE », aide=« Tel qu’il figure sur votre certificat (ex. : QualiPAC chauffage et eau chaude sanitaire). Exigé par l’Anah sur les devis et factures des travaux aidés. » Mettre à jour en conséquence qualifications.test.js et le parcours documents.cjs.
+  - (8)
+    - **point** : Mentions RGE exigées par les fiches CEE sur le devis et la facture (aRevoirEnLocal n° 3, volet CEE).
+    - **verdict** : introuvable
+    - **source** : Fiche BAR-TH-171 vA78-4 (à compter du 01/01/2026, partie A au 01/07/2026), ecologie.gouv.fr, https://www.ecologie.gouv.fr/sites/default/files/documents/BAR-TH-171%20vA78-4%20%C3%A0%20compter%20du%2001-01-2026%20-%20Partie%20A%20%C3%A0%20compter%20du%2001-07-2026.pdf, lue par extrait. Consultée le 03/11/2026.
+    - **citation** : « Le professionnel ayant réalisé l'opération est titulaire d'un signe de qualité répondant aux mêmes exigences que celles prévues à l'article 2 du décret n° 2014-812 »
+    - **correctionExacte** : Aucun texte trouvé n'impose le numéro RGE sur la facture CEE. La preuve de réalisation doit mentionner l'équipement : type de PAC, efficacité saisonnière (ηs), classe du régulateur, marque et référence. Ne coder aucune mention CEE avant d'avoir lu l'arrêté du 4 sept. 2014 (pièces à archiver).
+  - (9)
+    - **point** : Réforme RGE : arrêté du 23 juin 2026 et dates d'effet divergentes (commun.md l. 96 : « 26 juil. 2026 selon la CAPEB, 1er mars 2027 pour une partie selon un autre site [...] (à vérifier au JO) »).
+    - **verdict** : confirme
+    - **source** : Arrêté du 23 juin 2026 modifiant l'arrêté du 1er déc. 2015 (NOR VLOL2524331A, JORF n° 0148 du 26 juin 2026, texte n° 60), art. 5, https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000054311368. Consulté le 03/11/2026.
+    - **citation** : Art. 5 : « Les dispositions de l'article 2 du présent arrêté entrent en vigueur au 1er mars 2027 »
+    - **correctionExacte** : Les deux dates sont exactes : elles visent des articles différents. Dans commun.md l. 96, remplacer « dates d'effet divergentes (...) (à vérifier au JO) » par : « entrée en vigueur échelonnée (art. 5) : l'art. 3 (relevé de sinistralité sur quatre ans, références, suspension jusqu'à 24 mois) un mois après la publication, soit vers le 26 juil. 2026 ; les art. 2 (dérogation, annexe I ter, voie VAE avec profil « expérimenté ») et 4 (contrôles selon que l'entreprise fait plus ou moins de 10 chantiers aidés par an) au 1er mars 2027 ». La date exacte de l'art. 3 a été lue par extrait.
+  - (10)
+    - **point** : PAC air/air à 5,5 % depuis le 18 juillet 2026, pose comprise (chauffagiste.md l. 74 : « Un fabricant affirme que la main-d'œuvre de pose resterait à 10 % [...] (à vérifier) »).
+    - **verdict** : confirme
+    - **source** : CGI art. 278-0 bis A, I (version du 21/02/2026, loi n° 2026-103 du 19 févr. 2026, art. 92), https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000053545596 ; arrêté du 13 juil. 2026 (NOR CPPE2619005A, JORF n° 0165 du 17 juil. 2026, texte n° 39 ; en vigueur le lendemain de sa publication), https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000054436382 ; CGI ann. IV art. 30-0 D ter, 1° bis (version en vigueur depuis le 10/09/2026, modifiée par un arrêté du 14 août 2026 dont le contenu n'a pas été lu), https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000051757621. Consultés le 03/11/2026.
+    - **citation** : 278-0 bis A : « Ces prestations portent sur la pose, l'installation, l'adaptation ou l'entretien de matériaux » ; arrêté : fluide conforme « à la date de signature du devis ».
+    - **correctionExacte** : Dans chauffagiste.md l. 74, remplacer « Un fabricant affirme [...] (à vérifier) » par : « Pose, installation, adaptation et entretien : même taux de 5,5 % (CGI 278-0 bis A, I, 3°). Si l'appareil ne remplit pas les critères du 1° bis, la fourniture est à 20 % (gros équipement, CGI ann. IV art. 30-00 A) et la pose à 10 %. Le BOFiP ne pose aucune condition RGE pour le taux. » Supprimer « PAC au 18 juil. 2026 » de la liste « à vérifier » de commun.md l. 53, et « (à vérifier : date et numéro de l'arrêté) » de l. 54.
+  - (11)
+    - **point** : Critères 2026 du 5,5 % pour les PAC air/eau, les poêles et les chauffe-eau (chauffagiste.md l. 73 « critères 2026 non lus » et l. 75 « aucune source trouvée »).
+    - **verdict** : confirme
+    - **source** : CGI ann. IV art. 30-0 D ter (version en vigueur depuis le 10/09/2026), https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000051757621 ; BOI-TVA-LIQ-30-20-95 § 70 (PAC avec appoint fossile). Consultés le 03/11/2026.
+    - **citation** : PAC : efficacité saisonnière « supérieure ou égale à 126 % » en basse température (111 % en moyenne et haute température).
+    - **correctionExacte** : chauffagiste.md l. 73, remplacer « (à vérifier : critères 2026 non lus) » par « (CGI ann. IV art. 30-0 D ter, version du 10 sept. 2026 : efficacité saisonnière ≥ 126 % en basse température, ≥ 111 % en moyenne et haute température ; avec appoint, couverture par la PAC ≥ 70 % ; PAC associée à une chaudière d'appoint fossile : 20 %, BOI-TVA-LIQ-30-20-95 § 70) ». l. 75, remplacer « (à vérifier : aucune source trouvée dans cette recherche) » par « (art. 30-0 D ter, 4° : efficacité ≥ 79 % pour les granulés ou plaquettes, ≥ 65 % pour les bûches, avec des plafonds d'émissions ; chaudière biomasse, 3° : efficacité saisonnière ≥ 77 % jusqu'à 20 kW, ≥ 79 % au-delà) ». Chauffe-eau thermodynamique : efficacité pour l'eau chaude ≥ 95 % (profil M), 100 % (L), 110 % (XL).
+  - (12)
+    - **point** : Borne de recharge (IRVE) à 5,5 % (electricien.md l. 75 et proposition l. 109 : « CGI art. 278-0 bis N selon la FFB ; [...] arrêté du 27 mai 2021 [...] ; prise renforcée exclue. Ancienneté du logement et qualification IRVE comme conditions du taux : à vérifier au BOFiP »).
+    - **verdict** : a-corriger
+    - **source** : CGI art. 278-0 bis, N (version en vigueur depuis le 1er mars 2026), https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000047622738 ; arrêté du 22 juin 2023 (NOR ECOE2311568A, JORF n° 0154 du 5 juil. 2023), codifié à l'art. 30-0 H de l'annexe IV, https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000047783647. Consultés le 03/11/2026.
+    - **citation** : 278-0 bis, N : « Les infrastructures de recharge sont installées dans des locaux à usage d'habitation et sont destinées aux résidents » ; 3° : « Les prestations sont réalisées par une personne répondant à des critères de qualification ».
+    - **correctionExacte** : La base légale (278-0 bis N) est juste. Trois erreurs : l'arrêté, la prise renforcée, l'ancienneté. electricien.md l. 75, remplacer par : « Borne de recharge dans un local à usage d'habitation, destinée aux résidents : 5,5 % sur la pose, l'installation et l'entretien (CGI art. 278-0 bis, N), si la configuration respecte l'art. 30-0 H de l'annexe IV (arrêté du 22 juin 2023 : socle ou connecteur de type 2, ou prise de type E dite « renforcée », d'au moins 14 A) et si l'installateur a l'habilitation et, le cas échéant, la qualification de l'art. 22 du décret n° 2017-26. Aucune condition d'ancienneté : logements neufs ou anciens. Le critère est la nature du local, pas la qualité du client. Taux de la part « fourniture » de la borne : à confirmer au BOFiP. » l. 109 : remplacer « prise renforcée exclue (CGI 278-0 bis N selon la FFB) » par « prise renforcée de type E (≥ 14 A) admise (CGI ann. IV art. 30-0 H) », et « ancienneté du logement et qualification IRVE : à vérifier au BOFiP » par « sans condition d'ancienneté ; qualification de l'installateur exigée (décret n° 2017-26, art. 22) ». Même correction dans synthese.md (lot 4 : « 278-0 bis N ? »).
+  - (13)
+    - **point** : Fin du crédit d'impôt pour une borne de recharge au 31 déc. 2025 (electricien.md l. 90, « à vérifier sur la loi de finances 2026 »).
+    - **verdict** : confirme
+    - **source** : Service-public.fr, fiche F35578 (vérifiée le 15 avril 2026), https://www.service-public.gouv.fr/particuliers/vosdroits/F35578. Consultée le 03/11/2026.
+    - **citation** : « Le crédit d'impôt est supprimé pour les dépenses payées à partir du 1er janvier 2026. »
+    - **correctionExacte** : electricien.md l. 90, remplacer « (à vérifier sur la loi de finances 2026 : sources commerciales concordantes, texte non lu) » par « (service-public F35578, vérifiée le 15 avril 2026 : 75 % des dépenses, 500 € par système de charge pilotable, dépenses payées en 2025 seulement) ».
+  - (14)
+    - **point** : Photovoltaïque à 5,5 % pour 9 kWc au plus depuis le 1er oct. 2025 (electricien.md l. 77, « selon le juriste [...] (à vérifier) »).
+    - **verdict** : confirme
+    - **source** : CGI art. 278-0 bis, P, https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000047622738 ; BOI-TVA-LIQ-30-20-97 (22/10/2025), introduction et § 10 à 40, https://bofip.impots.gouv.fr/bofip/14817-PGP.html/identifiant=BOI-TVA-LIQ-30-20-97-20251022 ; arrêté du 8 sept. 2025 (CGI ann. IV art. 30-0 E). Consultés le 03/11/2026.
+    - **citation** : 278-0 bis, P : « utilisant l'énergie radiative du soleil d'une puissance inférieure ou égale à 9 kilowatts-crête »
+    - **correctionExacte** : electricien.md l. 77, remplacer par : « Photovoltaïque : 5,5 % depuis le 1er oct. 2025 sur la livraison et l'installation, dans un logement neuf ou ancien, d'équipements de 9 kWc au plus qui répondent aux critères de l'arrêté du 8 sept. 2025 (CGI art. 278-0 bis, P ; ann. IV art. 30-0 E : bilan carbone des modules, système de gestion d'énergie), posés par une personne certifiée ou qualifiée. Pour un devis daté, accepté et suivi d'un acompte ou d'une offre de financement avant le 1er janv. 2026, l'ancien taux de 10 % reste admis (BOI-TVA-LIQ-30-20-97). Ne proposer le 5,5 % que si ces critères sont saisis. »
+  - (15)
+    - **point** : MaPrimeRénov' fermée au 1er janv. 2026 et rouverte le 23 févr. 2026 (commun.md l. 61-62 : « les sources divergent » ; rénovation d'ampleur réservée aux logements E, F, G « selon une source »).
+    - **verdict** : confirme
+    - **source** : info.gouv.fr, « Réouverture de MaPrimeRénov' », https://www.info.gouv.fr/actualite/reouverture-de-maprimerenov ; ecologie.gouv.fr, « Réouverture du guichet MaPrimeRénov' », https://www.ecologie.gouv.fr/actualites/reouverture-du-guichet-maprimerenov (lus par extrait). Consultés le 03/11/2026.
+    - **citation** : « Le guichet de MaPrimeRénov' réouvre ce lundi 23 février 2026 à midi. »
+    - **correctionExacte** : commun.md l. 61, remplacer « (les sources divergent : tout le dispositif ou la seule rénovation d'ampleur) » par « (guichet suspendu faute de budget au 1er janv. 2026 ; rouvert le 23 févr. 2026 pour toutes les aides de l'Anah) ». l. 62, remplacer « Accès : logements E, F, G selon une source, tous les ménages selon une autre (à vérifier) » par « Accès : tous les ménages, pour les seuls logements classés E, F ou G ; rendez-vous avec un conseiller France Rénov' obligatoire avant le dépôt ».
+  - (16)
+    - **point** : Décret n° 2026-822 du 25 août 2026 : parcours par geste « réservé aux PAC » depuis le 1er sept. 2026, fenêtres, combles, VMC, chauffe-eau et poêles retirés (commun.md l. 63, « selon la presse », « à vérifier au décret »).
+    - **verdict** : confirme
+    - **source** : Décret n° 2026-822 du 25 août 2026 (NOR VLOL2621819D, JORF n° 0199 du 27 août 2026, texte n° 27), art. 5 et annexe 1, https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000054750363 ; service-public.fr, actualité A18332 (mise à jour le 27 août 2026), https://www.service-public.gouv.fr/particuliers/actualites/A18332. Consultés le 03/11/2026.
+    - **citation** : Art. 5 : « entrent en vigueur le 1er septembre 2026 et s'appliquent aux demandes de primes déposées à compter de cette même date » ; service-public : « Les travaux d'isolation thermique sont également exclus à compter du 1er septembre ».
+    - **correctionExacte** : commun.md l. 63, remplacer « (décret n° 2026-822 du 25 août 2026, JO du 27 août, selon la presse) » par « (décret n° 2026-822 du 25 août 2026, JO du 27 août, art. 5 : demandes déposées à compter du 1er sept. 2026) ». Remplacer « plusieurs sources disent le parcours par geste « réservé aux pompes à chaleur » » par « restent au parcours par geste en métropole : PAC air/eau, géothermiques et solarothermiques, raccordement à un réseau de chaleur ou de froid, dépose d'une cuve à fioul (avec l'un d'eux), audit énergétique ». Supprimer « (à vérifier au décret) ».
+  - (17)
+    - **point** : PLF 2027 : baisse du budget et dépôt avant le 31 déc. 2026 pour garder le barème 2026 (commun.md l. 64).
+    - **verdict** : introuvable
+    - **source** : Assemblée nationale, projet de loi de finances pour 2027 n° 3210 (amendement II-CD194), https://www.assemblee-nationale.fr/dyn/17/amendements/3210C/CION-DVP/CD194 ; recherche sur budget.gouv.fr, anah.gouv.fr et service-public.fr. Consultés le 03/11/2026.
+    - **citation** : Seul le projet existe : « Projet de loi de finances pour 2027 (no 3210) ». Aucune source officielle ne parle d'un dépôt avant le 31 décembre 2026.
+    - **correctionExacte** : Garder « (à vérifier) » dans commun.md l. 64 et préciser « projet de loi, non voté ». Ne rien afficher dans l'app sur le budget 2027 ni sur une date limite de dépôt.
+  - (18)
+    - **point** : CEE : décret n° 2025-1048 du 30 oct. 2025 (6e période, commun.md l. 68).
+    - **verdict** : confirme
+    - **source** : Décret n° 2025-1048 du 30 oct. 2025 (JORF n° 0259 du 4 nov. 2025), https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000052486193. Consulté le 03/11/2026.
+    - **citation** : « La sixième période d'obligation d'économies d'énergie s'étend du 1er janvier 2026 au 31 décembre 2030. »
+    - **correctionExacte** : Aucune. Dans commun.md l. 68, remplacer la source [12] [résumé] par le décret (JO du 4 nov. 2025).
+  - (19)
+    - **point** : Coup de pouce Chauffage : modèle de PAC agréé et numéro d'agrément « sur la facture » depuis le 1er sept. 2026, liste du 15 oct. 2026 (commun.md l. 70 ; chauffagiste.md l. 88).
+    - **verdict** : a-corriger
+    - **source** : Arrêté du 29 mai 2026 (NOR ECOR2612353A, JORF n° 125 du 30 mai 2026, texte n° 27), art. 2 et 4, https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000054152008 ; arrêté du 2 juil. 2026 fixant la liste des modèles de PAC agréés (JORF du 5 juil. 2026), https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000054388298, modifié les 29 juil., 8 sept. et 6 oct. 2026 (JORF n° 0239 du 13 oct. 2026). Consultés le 03/11/2026.
+    - **citation** : Arrêté du 29 mai 2026, art. 2, III : « la preuve de réalisation de l'opération mentionne le numéro d'agrément du modèle de pompe à chaleur installée »
+    - **correctionExacte** : commun.md l. 70, remplacer « le n° d'agrément figurer sur la facture [12][13] (à vérifier sur la charte) » par « le modèle doit être agréé (décret n° 2026-413) à la date d'engagement de l'opération, et la preuve de réalisation de l'opération mentionne le numéro d'agrément du modèle installé (arrêté du 29 mai 2026, art. 2, pour les opérations engagées à compter du 1er sept. 2026) ». La preuve de réalisation est en principe la facture, à confirmer à l'arrêté du 4 sept. 2014. chauffagiste.md l. 88, remplacer « liste complétée le 15 oct. 2026 » par « liste fixée par l'arrêté du 2 juil. 2026, modifiée les 29 juil., 8 sept. et 6 oct. 2026 (JO du 13 oct.) ». Ne toujours pas en faire une mention bloquante.
+  - (20)
+    - **point** : Attestation d'entretien de chaudière : remise sous 15 jours, conservation 2 ans (chauffagiste.md l. 35-36, « numéros à relire »).
+    - **verdict** : confirme
+    - **source** : C. env. art. R224-41-8 (en vigueur depuis le 12 juin 2009, décret n° 2009-649), https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000020726526 ; R224-41-4 (chaudières de 4 à 400 kW), https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000020726538. Consultés le 03/11/2026.
+    - **citation** : R224-41-8 : « dans un délai de quinze jours suivant sa visite » ; conservation « une durée minimale de deux ans ».
+    - **correctionExacte** : chauffagiste.md l. 35 et 36, remplacer « cela correspond, selon le juriste, au régime de 2009 (numéros à relire) » par « (C. env. R224-41-8) ». Le contenu de l'attestation (arrêté du 15 sept. 2009, annexe, modifié en 2020 et 2022) n'a pas été relu : à lire avant de figer le modèle.
+  - (21)
+    - **point** : Attestation d'entretien de PAC de 4 à 70 kW : au moins tous les 2 ans, remise, conservation, débiteur de l'obligation (chauffagiste.md l. 39, 40 et 60).
+    - **verdict** : confirme
+    - **source** : C. env. art. R224-44-1, R224-44-3 et R224-44-4 (décret n° 2020-912), https://www.legifrance.gouv.fr/codes/id/LEGIARTI000042166368/2020-09-08. Consulté le 03/11/2026 (version de 2020 affichée).
+    - **citation** : R224-44-3 : « La période séparant deux entretiens ne peut pas excéder deux ans. » R224-44-1 : l'occupant, « sauf stipulation contraire du bail ».
+    - **correctionExacte** : l. 39 : remplacer « R. 224-44 et s. [...] (numéros à relire au texte) » par « C. env. R224-44 à R224-44-5 ». l. 40 : remplacer « remise au commanditaire dans les 15 jours [...] non lu au texte ; conservation : rien d'officiel trouvé (à vérifier [...]) » par « attestation établie dans les quinze jours suivant la visite et remise au commanditaire (C. env. R224-44-4) ; l'article ne fixe aucune durée de conservation ». l. 60 : remplacer « Propriétaire, occupant ou exploitant selon les sources (à vérifier) » par « Occupant, sauf stipulation contraire du bail ; propriétaire ou syndicat des copropriétaires pour un système collectif (C. env. R224-44-1) ».
+  - (22)
+    - **point** : Entretien des poêles et inserts : fréquence, délai de remise, conservation (chauffagiste.md l. 47-48 et l. 62, « à vérifier dans R. 1331-68 »).
+    - **verdict** : confirme
+    - **source** : CSP art. R1331-68 (en vigueur depuis le 1er oct. 2023), https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000047947027 ; CSP art. R1331-75, https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000047947083. Consultés le 03/11/2026.
+    - **citation** : R1331-68 : « L'entretien est effectué au moins tous les douze mois. » R1331-75 : « dans un délai de quinze jours ouvrés suivant l'achèvement de l'opération ».
+    - **correctionExacte** : l. 47, remplacer la phrase par « Attestation remise dans les quinze jours ouvrés suivant l'opération, conservée au moins deux ans par le commanditaire (CSP R1331-75) ». l. 48, remplacer par « Fréquence : au moins tous les douze mois ; premier entretien dans les douze mois suivant l'installation ou le remplacement (CSP R1331-68) ». l. 62 : remplacer « Annuelle (à vérifier) » par « Au moins tous les douze mois ».
+  - (23)
+    - **point** : Fluides frigorigènes : arrêté du 21 nov. 2025 ou arrêté du 30 juin 2008, catégories A1… ou I à V (frigoriste.md l. 26 et 28 ; chauffagiste.md l. 27).
+    - **verdict** : a-corriger
+    - **source** : Arrêté du 21 nov. 2025 relatif aux attestations de capacité (NOR TECP2532495A, JORF n° 0286 du 6 déc. 2025, texte n° 19), art. 9 et annexe I, https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000052993429. Consulté le 03/11/2026.
+    - **citation** : Art. 9 : « Il est rendu obligatoire au 1er janvier 2027. » ; « Les attestations de capacité délivrées après le 12 mars 2024 ont une validité limitée au 12 mars 2029. »
+    - **correctionExacte** : Remplacer frigoriste.md l. 26 (« deux régimes coexistent [...] (à vérifier : statut au JO et date d'effet) ») et chauffagiste.md l. 27 par : « Arrêté du 21 nov. 2025 (JO du 6 déc. 2025) : en vigueur le lendemain de sa publication, obligatoire au 1er janv. 2027 ; il abroge l'arrêté du 30 juin 2008 à compter du 31 déc. 2026, et des attestations peuvent encore être délivrées selon l'arrêté de 2008 jusqu'à cette date (art. 9). Nouvelles catégories (annexe I) : A1 (A1 FF, A1 HC), A2 (A2 FF, A2 HC), B, C, D, E et V. Les attestations délivrées après le 12 mars 2024 expirent au plus tard le 12 mars 2029. Mallettico ne code aucune catégorie : il affiche celle que l'artisan saisit. » frigoriste.md l. 28 : remplacer « [...] statut au Journal officiel (à vérifier) » par « (arrêté du 21 nov. 2025, art. 9) ».
+  - (24)
+    - **point** : CERFA 15497*04, fiche d'intervention (frigoriste.md l. 34 : « depuis le 6 juillet 2024 »).
+    - **verdict** : confirme
+    - **source** : Fiche officielle du formulaire n° 15497*04, https://www.formulaires.service-public.gouv.fr/gf/showFormulaireSignaletiqueConsulter.do?numCerfaAndExtension=15497. Consultée le 03/11/2026.
+    - **citation** : « Ce formulaire est valable à partir du 23/07/2024 »
+    - **correctionExacte** : La version 04 est bien la version en vigueur, aucune version postérieure n'est publiée. Remplacer « depuis le 6 juillet 2024 » par « valable à partir du 23 juillet 2024 (fiche officielle du formulaire) ». Titre exact : « Fiche d'intervention pour les opérations nécessitant une manipulation de fluides frigorigènes fluorés sur un équipement thermodynamique ».
+  - (25)
+    - **point** : Contrôle d'étanchéité obligatoire à partir de 5 t éq. CO2 (frigoriste.md l. 56 ; avis du juriste « obligatoire seulement à partir de 5 t éq. CO2 »).
+    - **verdict** : confirme
+    - **source** : DGPR, FAQ « Fluides frigorigènes fluorés » (mise à jour février 2024), p. 11-12, https://www.ecologie.gouv.fr/sites/default/files/documents/FAQ%20%20vf.pdf ; arrêté du 29 févr. 2016, art. 4. Le règlement (UE) 2024/573, art. 5, n'a pas pu être lu (EUR-Lex illisible pour l'outil). Consultés le 03/11/2026.
+    - **citation** : Tableau DGPR : « 5 t.éq. CO2 ≤ charge < 50 t. éq. CO2 » : 12 mois, 24 mois avec un système permanent de détection ; de 50 à 500 t : 6 mois (12 mois avec détection).
+    - **correctionExacte** : frigoriste.md l. 56 : remplacer « conformes à la connaissance du juriste » par « (FAQ DGPR, févr. 2024 ; arrêté du 29 févr. 2016, art. 4) ». Laisser « (à vérifier) » sur l'exemption des équipements hermétiquement scellés de moins de 10 t éq. CO2, non retrouvée.
+  - (26)
+    - **point** : Gaz : modèles 1, 2 et 3 du certificat de conformité (arrêté du 23 févr. 2018), modèle 2 pré-rempli (plombier.md l. 32 et l. 72).
+    - **verdict** : confirme
+    - **source** : Ministère de la Transition écologique, « Appareils et matériels à gaz – Installations intérieures à gaz » (mis à jour le 28 juil. 2025), https://www.ecologie.gouv.fr/politiques-publiques/appareils-materiels-gaz-installations-interieures-gaz ; arrêté du 23 févr. 2018, art. 21, https://www.legifrance.gouv.fr/loda/id/JORFTEXT000036667631. Consultés le 03/11/2026.
+    - **citation** : « le professionnel auquel vous faites appel est tenu de vous remettre un certificat de conformité modèle 2 » ; « Cerfa N°16026*01 »
+    - **correctionExacte** : plombier.md l. 32 : remplacer « le modèle 2 couvre, selon la CAPEB, le remplacement ou l'ajout d'un appareil, ex-modèle 4 compris » par « le certificat de conformité modèle 2 (Cerfa n° 16026*01) est remis par le professionnel qui crée, modifie ou remplace une installation de gaz ; il porte un numéro et le visa d'un organisme habilité (arrêté du 23 févr. 2018, art. 21 ; ministère, 28 juil. 2025) ». Les modèles 1 et 3 ne sont définis que dans une présentation de la DGPR (21 janv. 2020) : garder « à relire aux annexes ».
+  - (27)
+    - **point** : Gaz : habilitation de Qualigaz jusqu'au 31 déc. 2026 (plombier.md l. 33).
+    - **verdict** : introuvable
+    - **source** : Recherche Légifrance sur les arrêtés d'habilitation pris sur le fondement de l'arrêté du 23 févr. 2018 : trouvés pour Copraudit (20 déc. 2021, 27 nov. 2024), pas pour Qualigaz ; ecologie.gouv.fr, page gaz du 28 juil. 2025. Consultés le 03/11/2026.
+    - **citation** : Organismes cités par le ministère : « Copraudit », « Dekra » et « Qualigaz evonia ».
+    - **correctionExacte** : plombier.md l. 33 : remplacer « jusqu'au 31 déc. 2026 [4] : renouvellement à vérifier en janvier 2027 » par « (arrêté d'habilitation et échéance non retrouvés sur Légifrance le 3 nov. 2026 ; organismes cités par le ministère : Copraudit, Dekra, Qualigaz evonia) ». Ne jamais imprimer le nom d'un organisme habilité.
+  - (28)
+    - **point** : Consuel : attestations bleue et violette, et décret n° 2024-1122 (electricien.md l. 41-46).
+    - **verdict** : confirme
+    - **source** : Consuel, fiche SC 170-5 (oct. 2020), https://www.consuel.com/wp-content/uploads/2021/02/SC170_5.pdf ; décret n° 2024-1122 du 4 déc. 2024 (C. énergie D342-19), https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000050730488. Consultés le 03/11/2026.
+    - **citation** : SC 170 : AC « Violette » pour « Toute installation de production avec dispositif de stockage de l'énergie électrique (batterie) » ; AC « Bleue » pour toute installation de production sans stockage.
+    - **correctionExacte** : Dans le tableau de l. 41-42, remplacer les deux lignes par : Bleue | 15523*01 | « Production d'électricité (photovoltaïque, éolien…) sans stockage : une par point de livraison et par type de production » ; Violette | 15524*01 | « Production d'électricité avec stockage (batterie), ou pose seule d'une batterie sur une installation de production existante ». Supprimer l. 44 (« à relire sur la fiche SC 170 »). Pour l. 46, le décret 2024-1122 est confirmé (mise à disposition électronique de l'attestation au gestionnaire de réseau depuis le 1er janv. 2025).
+  - (29)
+    - **point** : Consuel : validité d'un an (electricien.md l. 47 : « formulaire valable un an à compter du visa, selon des sources commerciales (à vérifier) »).
+    - **verdict** : a-corriger
+    - **source** : Consuel, conditions générales de vente SC 178, https://www.consuel.com/wp-content/uploads/2021/02/SC178_6.pdf ; tarifs SC 120 au 1er sept. 2026, https://www.consuel.com/wp-content/uploads/2026/08/SC120_39.pdf (lus par extrait). Consultés le 03/11/2026.
+    - **citation** : « sa date limite de validité (un an à compter de sa date d'émission) »
+    - **correctionExacte** : l. 47, remplacer par : « Validité : le formulaire d'attestation est valable un an à compter de sa date d'émission par le Consuel (CGV Consuel SC 178) ; il n'est ensuite ni repris ni échangé. »
+  - (30)
+    - **point** : Services à la personne : plafonds de 12 000 €, petit bricolage 500 € et 2 h, jardinage 5 000 € (multiservice.md l. 55-57 ; commun.md l. 81).
+    - **verdict** : confirme
+    - **source** : C. trav. art. D7233-5 (version du 30/12/2016), https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000033747497 ; CGI art. 199 sexdecies (en vigueur depuis le 14 juin 2026), https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000033813202/. Consultés le 03/11/2026.
+    - **citation** : D7233-5 : « est plafonné à 500 euros par an et par foyer fiscal » ; « La durée d'une intervention de petit bricolage ne peut excéder deux heures » ; jardinage « plafonné à 5 000 € par an et par foyer fiscal ». 199 sexdecies : « dans la limite de 12 000 € ».
+    - **correctionExacte** : multiservice.md l. 56 : remplacer « D7233-5 (à vérifier) » par « C. trav. D7233-5 ». l. 57 : remplacer « [1] (à vérifier) » par « CGI 199 sexdecies (15 000 € la première année, 20 000 € dans certains cas, majorations de 1 500 € plafonnées à 15 000 €) ». commun.md l. 81 : supprimer « (à vérifier sur BOFiP : plafonds 2026) ».
+  - (31)
+    - **point** : Services à la personne : attestation fiscale remise « avant le 31 mars » (multiservice.md l. 45 ; commun.md l. 82).
+    - **verdict** : introuvable
+    - **source** : C. trav. art. D7233-4 (version du 30/12/2016), https://www.legifrance.gouv.fr/codes/section_lc/LEGITEXT000006072050/LEGISCTA000018500092/. Consulté le 03/11/2026.
+    - **citation** : D7233-4 fixe le contenu de l'attestation : « 1° Le nom, l'adresse et le numéro d'identification [...] », le numéro et la date d'enregistrement de la déclaration, le montant acquitté et le récapitulatif des interventions. Il ne fixe aucune date de remise.
+    - **correctionExacte** : multiservice.md l. 45 : remplacer « avant le 31 mars de l'année N+1 (modèle service-public) » par « date de remise non fixée par C. trav. D7233-4 ; « avant le 31 mars » vient du modèle service-public : à présenter comme un conseil, jamais comme une obligation légale ».
+  - (32)
+    - **point** : Services à la personne après la loi de finances 2026 (commun.md l. 84 : « loi n° 2026-103 : aménagements pour les services rendus hors du domicile »).
+    - **verdict** : a-corriger
+    - **source** : CGI art. 199 sexdecies, mention de version sur Légifrance, https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000033813202/. Consulté le 03/11/2026.
+    - **citation** : « Modifié par LOI n°2026-492 du 12 juin 2026 - art. 12 (V) » (en vigueur depuis le 14 juin 2026).
+    - **correctionExacte** : La dernière modification ne vient pas de la loi n° 2026-103. commun.md l. 84, remplacer par : « Version en vigueur depuis le 14 juin 2026 (loi n° 2026-492 du 12 juin 2026, art. 12) : contenu de la modification à lire avant de coder ; plafonds en vigueur : 12 000 € et ceux de C. trav. D7233-5. »
+  - (33)
+    - **point** : Dispense de la condition d'activité exclusive pour les micro-entrepreneurs, décret n° 2024-851 (multiservice.md l. 58).
+    - **verdict** : confirme
+    - **source** : Décret n° 2024-851 du 25 juil. 2024 (JORF n° 0178 du 27 juil. 2024), https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000050054724 ; entreprendre.service-public.fr, actualité A17570. Consultés le 03/11/2026.
+    - **citation** : Titre du décret : « dispense à la condition d'activité exclusive des services à la personne pour les entrepreneurs individuels soumis au régime de la micro-entreprise et les entreprises de moins de 11 salariés ».
+    - **correctionExacte** : multiservice.md l. 58, remplacer « seuil « hors SAP ≤ 30 % du CA de l'année précédente » vu sur une seule source (à vérifier) » par « activités accessoires au plus égales à 30 % du chiffre d'affaires total de l'année civile précédente, comptabilité séparée (service-public A17570) ; dispense ouverte aussi aux entreprises de moins de 11 salariés (C. trav. L7232-1-2) ; en vigueur depuis le 1er janv. 2025 ».
+  - (34)
+    - **point** : Éco-PTZ prolongé au 31 déc. 2027, plafonds de 15 000 à 50 000 € (commun.md l. 74, « source non officielle »).
+    - **verdict** : a-corriger
+    - **source** : Service-public.fr, fiche F19905 (vérifiée le 1er sept. 2026), https://www.service-public.gouv.fr/particuliers/vosdroits/F19905 ; CGI art. 244 quater U et BOFiP BOI-BIC-RICI-10-110 (offres émises jusqu'au 31 déc. 2027, loi n° 2023-1322, art. 71). Consultés le 03/11/2026.
+    - **citation** : F19905 : « Jusqu'au 31 décembre 2027, il est possible de bénéficier d'un éco-PTZ complémentaire » ; montants maximums : 7 000 €, 15 000 €, 25 000 €, 30 000 €, 50 000 €.
+    - **correctionExacte** : commun.md l. 74, remplacer par : « Offres émises jusqu'au 31 déc. 2027 (CGI 244 quater U). Montant maximal : 7 000 € pour les seules parois vitrées, 15 000 € pour une autre action seule, 25 000 € pour deux, 30 000 € pour trois ou plus, 50 000 € pour une rénovation globale, 10 000 € pour l'assainissement non collectif (service-public F19905, vérifiée le 1er sept. 2026). »
+  - (35)
+    - **point** : TVA d'une extension : « 20 % » dans macon.md l. 92-93 et charpentier.md l. 70-71, contre « agrandissement > 10 % de surface » dans docs/metier-btp.md l. 70.
+    - **verdict** : a-corriger
+    - **source** : BOI-TVA-LIQ-30-20-90-30 (version du 22/10/2025), § 20, 360, 380 et 400, https://bofip.impots.gouv.fr/bofip/1733-PGP.html ; CGI art. 279-0 bis, 2, https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000051215062. Consultés le 03/11/2026.
+    - **citation** : § 380 : les travaux de construction (addition de construction, surélévation) « relèvent dans tous les cas du taux normal » ; 279-0 bis, 2, b : « A l'issue desquels la surface de plancher des locaux existants est augmentée de plus de 10 %. »
+    - **correctionExacte** : Les fiches maçon et charpentier ont raison ; c'est la base métier qui est incomplète. docs/metier-btp.md l. 70, remplacer la ligne par : « | 20 % | Construction neuve ; addition de construction (extension, véranda, garage) et surélévation : toujours (BOI-TVA-LIQ-30-20-90-30 § 380 ; tolérance de 9 m² dans les cas du § 380) ; travaux qui, sur deux ans au plus, augmentent de plus de 10 % la surface de plancher des locaux existants ou concourent à produire un immeuble neuf : tous les travaux de la période (CGI 279-0 bis, 2) ; locaux non habitation | CGI art. 278 et 279-0 bis, 2 | ». macon.md l. 93 et charpentier.md l. 71 : remplacer « deux lectures [...] À trancher au BOI-TVA-LIQ-30-20-90-30 avant de coder » par « toute extension (addition de construction) est à 20 % (BOI-TVA-LIQ-30-20-90-30 § 380) ; la règle des 10 % de surface s'applique en plus aux travaux sur l'existant ». macon.md l. 96 : remplacer « (ventilation à vérifier au BOFiP) » par « (les constructions hors du volume existant ne comptent pas pour apprécier les 10 % des travaux sur l'existant, § 380) ». À signaler à la session principale : MB § 4 à mettre à jour.
+  - (36)
+    - **point** : Gros équipements exclus du 10 % (CGI ann. IV art. 30-00 A), commun.md l. 46-51 : hammam et sauna « (à vérifier) », cuisines « rien trouvé ».
+    - **verdict** : confirme
+    - **source** : CGI ann. IV art. 30-00 A (en vigueur depuis le 1er janv. 2010, arrêté du 30 déc. 2009), https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000021643090 ; BOI-TVA-LIQ-30-20-90-20 § 50 et 210 (09/09/2026). Consultés le 03/11/2026.
+    - **citation** : BOFiP § 50 : « la part correspondant à la fourniture de certains gros équipements » « dont la liste est fixée à l'article 30-00 A de l'annexe IV au CGI »
+    - **correctionExacte** : commun.md l. 46-51 : supprimer « (à vérifier) » sur les cabines de hammam ou de sauna prêtes à poser, qui sont dans la liste. Remplacer la ligne cuisines par « cuisines équipées : absentes de la liste de l'art. 30-00 A ». Liste exacte : équipements collectifs d'un immeuble comportant plusieurs locaux (chaudière, cuve à fioul, citerne à gaz, pompe à chaleur) ; ascenseur ; cabines de hammam ou de sauna prêtes à poser ; tous systèmes de climatisation et PAC air/air.
+  - (37)
+    - **point** : Date de l'arrêté du 5,5 % : 4 ou 24 déc. 2024 (commun.md l. 54, menuisier.md l. 47, plaquiste.md l. 45).
+    - **verdict** : confirme
+    - **source** : Arrêté du 4 déc. 2024 (NOR BCPE2431738A, JORF n° 0304 du 24 déc. 2024, texte n° 36), https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000050823106 ; codifié aux art. 30-0 D à 30-0 D nonies de l'annexe IV. Consulté le 03/11/2026.
+    - **citation** : « Le présent arrêté entre en vigueur le 1er janvier 2025. »
+    - **correctionExacte** : Les deux dates sont justes : signé le 4 déc., publié le 24 déc. Dans les trois fiches, remplacer la parenthèse « (... date de l'arrêté ou du JO (à vérifier)) » par « (arrêté du 4 déc. 2024, publié au JO du 24 déc. 2024, en vigueur le 1er janv. 2025 ; CGI ann. IV art. 30-0 D à 30-0 D nonies) ».
+  - (38)
+    - **point** : Dommages-ouvrage : exception pénale de L243-3, al. 2 (commun.md l. 24, « à relire au texte »).
+    - **verdict** : confirme
+    - **source** : C. assur. art. L243-3, https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006796023. Consulté le 03/11/2026.
+    - **citation** : « ne s'appliquent pas à la personne physique construisant un logement pour l'occuper elle-même ou le faire occuper par son conjoint, ses ascendants, ses descendants ou ceux de son conjoint »
+    - **correctionExacte** : commun.md l. 24 : ajouter « ou ceux de son conjoint » après « descendants » et supprimer « (à relire au texte) ». Peine confirmée : six mois d'emprisonnement et 75 000 € d'amende, ou l'une des deux.
+  - (39)
+    - **point** : Arrêté du 5 janv. 2016 : modèle d'attestation décennale (commun.md l. 20).
+    - **verdict** : confirme
+    - **source** : Arrêté du 5 janv. 2016 (C. assur. art. A243-2 à A243-5), https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000031824672 ; A243-2, https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000031857559 (lus par extrait). Consultés le 03/11/2026.
+    - **citation** : C. assur. L243-2 : attestations « jointes aux devis et factures des professionnels assurés ».
+    - **correctionExacte** : commun.md l. 20 : remplacer « s'applique aux attestations émises à partir du 1er juil. 2016 pour des chantiers ouverts après cette date » par « s'applique aux attestations émises après le 1er juil. 2016 et visant des chantiers ouverts après cette date ». Mentions minimales lues par extrait : nom et adresse de l'assuré, identification de l'assureur, numéro de contrat, période de validité, date d'émission, activités couvertes ; titre « Attestation d'assurance » et mention « Assurance de responsabilité décennale obligatoire ». Garder « lire l'annexe avant de coder un contrôle ».
+  - (40)
+    - **point** : Vigilance : un particulier vérifie « à la conclusion seulement » (macon.md l. 40 : « vérification à la conclusion seulement, satisfaite par un devis [...] ; pas d'attestation tous les 6 mois »).
+    - **verdict** : a-corriger
+    - **source** : C. trav. art. D8222-4 (en vigueur depuis le 1er mai 2008), https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000018520704 ; D8222-5 (version du 1er janv. 2023, décret n° 2022-1015), https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000046078939. Consultés le 03/11/2026.
+    - **citation** : D8222-4 : « s'il se fait remettre, par son cocontractant, lors de la conclusion du contrat » « et tous les six mois jusqu'à la fin de son exécution, » « l'un des documents énumérés à l'article D. 8222-5. »
+    - **correctionExacte** : macon.md l. 40, remplacer par : « Particulier pour son usage personnel (ou celui de son conjoint, partenaire, concubin, ascendants ou descendants) : il satisfait à son obligation en se faisant remettre, à la conclusion du contrat puis tous les six mois jusqu'à la fin de son exécution, un seul des documents de D8222-5. Un devis portant le nom ou la dénomination, l'adresse complète et le numéro d'immatriculation de l'entreprise en est un (C. trav. D8222-4 ; D8222-5, 2°, c). L'attestation de vigilance ne lui est pas exigée. »
+  - (41)
+    - **point** : Amiante : repérage avant travaux pour un permis délivré avant le 1er juillet 1997 « (arrêté du 16 juil. 2019) » (macon.md l. 52 ; plaquiste.md l. 54 et l. 83).
+    - **verdict** : a-corriger
+    - **source** : Arrêté du 16 juil. 2019 relatif au repérage de l'amiante avant certaines opérations, art. 3, https://www.legifrance.gouv.fr/loda/id/JORFTEXT000038777498 ; C. trav. art. R4412-97 ; CSP art. R1334-14 et suivants, https://www.legifrance.gouv.fr/codes/section_lc/LEGITEXT000006072665/LEGISCTA000006191045/. Consultés le 03/11/2026.
+    - **citation** : La date du « 1er juillet 1997 » n'apparaît pas dans l'arrêté de 2019, qui vise les « immeubles bâtis » sans limite de date. Elle délimite la section du CSP : immeubles bâtis « dont le permis de construire a été délivré avant le 1er juillet 1997 ».
+    - **correctionExacte** : macon.md l. 52 et plaquiste.md l. 54 : remplacer « dans un immeuble bâti dont le permis de construire a été délivré avant le 1er juillet 1997 (arrêté du 16 juil. 2019, à relire) » par « dans tout immeuble bâti (C. trav. R4412-97 ; arrêté du 16 juil. 2019, art. 3) ; le donneur d'ordre transmet au repéreur la date du permis de construire. La date du 1er juil. 1997 délimite les obligations du propriétaire au titre du code de la santé publique (R1334-14 et s.), pas le champ du repérage avant travaux. » plaquiste.md l. 83 : remplacer « sur un bâtiment d'avant 1997 » par « sur un bâtiment existant (date du permis de construire demandée) ».
+  - (42)
+    - **point** : Plomb : CREP avant travaux en parties communes d'avant 1949 (CSP L1334-8), texte du juriste repris dans peintre.md l. 55.
+    - **verdict** : confirme
+    - **source** : CSP art. L1334-8, https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000031928065 ; arrêté du 25 avr. 2006, https://www.legifrance.gouv.fr/loda/id/JORFTEXT000000269242 (lus par extrait). Consultés le 03/11/2026.
+    - **citation** : (Extrait lu en résumé) Les travaux en parties communes d'un immeuble collectif d'habitation construit avant le 1er janvier 1949, susceptibles d'altérer substantiellement les revêtements, doivent être précédés d'un CREP.
+    - **correctionExacte** : Aucune sur la règle. Seuils de l'arrêté du 25 avr. 2006, lus par extrait (création ou remplacement d'ouvertures, au moins 20 m² de revêtements, plus de 25 m linéaires d'éléments peints) : à relire avant de coder une alerte.
+  - (43)
+    - **point** : Chaudières fioul : décret n° 2022-8 et fin de l'exception biofioul en 2027 (chauffagiste.md l. 83 : « Un décret de 2026 supprimerait l'exception « biofioul » en 2027 [15] (à vérifier, source grand public) »).
+    - **verdict** : introuvable
+    - **source** : CCH art. R171-13 (version en vigueur depuis le 14 sept. 2026, décret n° 2026-863 du 12 sept. 2026, art. 1), https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000044893796 ; décret n° 2022-8, https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000044844392. Consultés le 03/11/2026.
+    - **citation** : R171-13, I : coefficient « inférieur à 300 gCO2eq / kWh PCI » ; IV : application aux travaux engagés après le 1er janvier 2027. L'article ne dit rien du biofioul.
+    - **correctionExacte** : chauffagiste.md l. 83, remplacer la phrase sur le biofioul par : « CCH R171-13, modifié par le décret n° 2026-863 du 12 sept. 2026 (version en vigueur depuis le 14 sept. 2026, applicable aux travaux engagés après le 1er janv. 2027) : seuil de 300 gCO2eq/kWh PCI ; dérogations : impossibilité technique (servitudes, droit des sols, propriété) ou raccordement impossible à un réseau de chaleur ou de gaz avec renforcement nécessaire du réseau électrique, justifiés par une note d'un professionnel qualifié. Le sort du biofioul dépend des coefficients de l'arrêté pris pour R172-6, non lu (à vérifier). »
+  - (44)
+    - **point** : Isolation lors d'une réfection de toiture, décret n° 2016-711 (couvreur.md l. 47 : « réfection de toiture portant sur plus de 50 % »).
+    - **verdict** : a-corriger
+    - **source** : CCH art. R173-5 et R173-6 (décret n° 2016-711, codifié par le décret n° 2021-872 depuis le 1er juil. 2021), https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000043819423 et https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000043819425 (lus par extrait). Consultés le 03/11/2026.
+    - **citation** : (Extrait lu en résumé) R173-5 : les travaux qui remplacent ou recouvrent au moins 50 % de la toiture, hors ouvertures, obligent à isoler.
+    - **correctionExacte** : couvreur.md l. 47, remplacer par : « Isolation embarquée : une réfection de toiture qui remplace ou recouvre au moins 50 % de la couverture, hors ouvertures, oblige le propriétaire à isoler la toiture ou le plancher haut du dernier niveau occupé (CCH R173-5, issu du décret n° 2016-711). Exceptions (R173-6) : risque de pathologie, servitudes ou aspect, modification architecturale, temps de retour de plus de 10 ans, justifiés par une note d'un professionnel qualifié. »
+  - (45)
+    - **point** : MaPrimeAdapt' : 22 000 € HT (carreleur.md l. 68).
+    - **verdict** : confirme
+    - **source** : Service-public.fr, fiche F37501, https://www.service-public.gouv.fr/particuliers/vosdroits/F37501 ; economie.gouv.fr, « MaPrimeAdapt' : tout savoir » (lus par extrait). Consultés le 03/11/2026.
+    - **citation** : « Très modestes : 70 % du montant des travaux, dans la limite de 22 000 € hors taxes. »
+    - **correctionExacte** : Aucune. Remplacer « [résumé, economie.gouv.fr] » par « (service-public F37501) ».
+  - (46)
+    - **point** : C. conso. L121-4 : « se dire agréé par un organisme public » (serrurier.md l. 64, « article exact à vérifier »).
+    - **verdict** : confirme
+    - **source** : C. conso. art. L121-4 (version en vigueur depuis le 28 mai 2022, ordonnance n° 2021-1734), https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000044563107 (lu par extrait). Consulté le 03/11/2026.
+    - **citation** : 4° : « agréé, approuvé ou autorisé par un organisme public ou privé alors que ce n'est pas le cas », ou ne pas respecter les conditions de cet agrément ; 2° : afficher un certificat ou un label sans l'autorisation nécessaire.
+    - **correctionExacte** : serrurier.md l. 64 : remplacer « (... L121-4, article exact à vérifier) » par « (C. conso. L121-4, 2° : afficher un certificat ou un label sans autorisation ; 4° : se dire agréé, approuvé ou autorisé par un organisme public ou privé à tort, ou ne pas respecter les conditions de l'agrément) ». Ce texte vaut aussi pour la ligne RGE imprimée (voir le point du périmètre).
+  - (47)
+    - **point** : C. conso. L132-2 : peines des pratiques commerciales trompeuses (serrurier.md l. 64, « montant peut-être modifié en 2024 — à vérifier »).
+    - **verdict** : confirme
+    - **source** : C. conso. art. L132-2 (version en vigueur depuis le 12 mai 2024), https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000049532070. Consulté le 03/11/2026.
+    - **citation** : Deux ans d'emprisonnement et 300 000 € d'amende, portés jusqu'à 10 % du chiffre d'affaires moyen annuel ou 50 % des dépenses de publicité (80 % pour une allégation environnementale).
+    - **correctionExacte** : serrurier.md l. 64 : remplacer « [résumé ; montant peut-être modifié en 2024 — à vérifier] » par « (C. conso. L132-2, version du 12 mai 2024 ; 3 ans d'emprisonnement si la pratique a conduit à conclure des contrats, L132-2-1) ».
+  - (48)
+    - **point** : C. conso. L132-14 : abus de faiblesse, 3 ans et 375 000 € (serrurier.md l. 65, « montant à vérifier au texte »).
+    - **verdict** : confirme
+    - **source** : C. conso. art. L132-14, https://www.legifrance.gouv.fr/codes/section_lc/LEGITEXT000006069565/LEGISCTA000032221133/ ; art. L132-14-1 (depuis le 2 juil. 2025), https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000051828125. Consultés le 03/11/2026.
+    - **citation** : « est puni d'un emprisonnement de trois ans et d'une amende de 375 000 euros »
+    - **correctionExacte** : serrurier.md l. 65 : remplacer « [résumé ; montant à vérifier au texte] » par « (C. conso. L132-14 ; peine portée à 5 ans et 500 000 € quand l'abus est commis dans les conditions du 1° de L121-9, L132-14-1, depuis le 2 juil. 2025) ».
+  - (49)
+    - **point** : Loi Labbé : arrêté du 15 janv. 2021, 1er juillet 2022 (paysagiste.md l. 40).
+    - **verdict** : confirme
+    - **source** : Arrêté du 15 janv. 2021 (art. 3 ; crée l'art. 14-3 de l'arrêté du 4 mai 2017), https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000043023130 ; C. rural L253-7. Consultés le 03/11/2026.
+    - **citation** : Dispositions applicables « à compter du 1er juillet 2022 » dans les propriétés privées à usage d'habitation ; exceptions : biocontrôle, produits à faible risque, produits utilisables en agriculture biologique.
+    - **correctionExacte** : paysagiste.md l. 40 : remplacer « Dates conformes à la connaissance du juriste ; relire la version consolidée de l'arrêté du 15 janv. 2021 » par « (arrêté du 15 janv. 2021, art. 3 ; art. 14-3 de l'arrêté du 4 mai 2017) ».
+  - (50)
+    - **point** : Chiffres de priorité par métier (Sirene par code NAF), rang 1 de l'électricien.
+    - **verdict** : a-decider
+    - **source** : Hors du champ juridique et des sources officielles de la mission (INSEE non listé) : non vérifié.
+    - **citation** : —
+    - **correctionExacte** : Garder la mention « indices non officiels » dans chiffres.md ; ne publier aucun chiffre dans l'app ni sur le site.
+  - (51)
+    - **point** : Rejouer npm run verifier -- --complet ; écart entre 241 et environ 840 avertissements de lint.
+    - **verdict** : a-decider
+    - **source** : Hors du champ juridique. git : origin/cloud/metiers pointe sur 4526173e, postérieur à 3b0d6f1c (9a2eed55 et 4526173e). Constaté le 03/11/2026.
+    - **citation** : —
+    - **correctionExacte** : La session locale doit rejouer la vérification sur 4526173e, la pointe livrable, et non sur 3b0d6f1c.
+  - (52)
+    - **point** : Copie poussée sur claude/metiers-btp-rb0xi4 : diverge-t-elle ?
+    - **verdict** : confirme
+    - **source** : git ls-remote origin (lecture seule), 03/11/2026.
+    - **citation** : refs/heads/claude/metiers-btp-rb0xi4 et refs/heads/cloud/metiers → 4526173e077ae7c5a941a42d5715a412d82d116f.
+    - **correctionExacte** : Copie identique. La supprimer après livraison : git push origin --delete claude/metiers-btp-rb0xi4 (action de la session locale).
+  - (53)
+    - **point** : Défaut important : taux des chaudières gaz différents selon l'écran (5,5 / 10 / 20 %). État à 4526173e : modèles (chauffage.js) et bibliothèque des métiers (trade-library.js) à 20 %. Le référentiel bibliotheque/ouvrages-lot08-plomberie-cvc.js (PL_02_01_001 et PL_02_01_002, « tva: 10 ») et l'import du référentiel d'articles (src/lib/data/index.js, createCatalogueItem, « tva: 10 » en dur, pour chaud-gaz-mur, chaud-gaz-sol et chaud-fioul) restent à 10 %.
+    - **verdict** : a-corriger
+    - **source** : CGI art. 279-0 bis, 2 bis, c ; BOI-TVA-LIQ-30-20-90-20 § 200 ; BOI-TVA-LIQ-30-20-95 § 70 (voir le premier point) ; code lu par git show origin/cloud/metiers. Consultés le 03/11/2026.
+    - **citation** : « sont exclus du bénéfice du taux réduit les travaux comprenant la fourniture ou l'installation d'une chaudière susceptible d'utiliser des combustibles fossiles » (BOI-TVA-LIQ-30-20-90-20 § 200)
+    - **correctionExacte** : Il reste deux sources à corriger. (1) ouvrages-lot08-plomberie-cvc.js : dans PL_02_01_001 et PL_02_01_002, remplacer « tva: 10, » par « tva: 20, ». (2) src/lib/data/index.js, createCatalogueItem : remplacer « tva: 10, » par « tva: Number.isFinite(articleBtp.tva) ? articleBtp.tva : 10, », et dans articles-btp-suite.js ajouter « tva: 20 » aux articles chaud-gaz-mur, chaud-gaz-sol et chaud-fioul. (3) Étendre le test « aucune ligne de chaudière gaz à taux réduit » au référentiel et à createCatalogueItem. Une entreprise en franchise reste à 0 %.
+  - (54)
+    - **point** : Défaut important : le RGE n'arrive pas sur la page de signature (liste fermée de get_devis_for_signature, migration 106 l. 312-320, sans rge, rgeOrganisme, rgeValidite ni rgeDomaine), alors que l'aide de Paramètres dit « Reconnu garant de l’environnement. Imprimé sur vos devis et factures. »
+    - **verdict** : a-corriger
+    - **source** : Anah, guide de juillet 2025, p. 31 (mention RGE obligatoire sur le devis) ; supabase/migrations/106_pages_publiques_par_l_organisation_de_la_piece.sql, lu par git show le 03/11/2026.
+    - **citation** : « Critères de qualification RGE de l'entreprise avec intitulé de la qualification, organisme certificateur et le numéro de qualification dans chaque domaine » : obligatoire sur le devis.
+    - **correctionExacte** : Le devis signé, pièce de référence du dossier d'aide, perd une mention que l'Anah exige. (1) Nouvelle migration (banc + gardien-securite), dans le jsonb_build_object des réglages de get_devis_for_signature, ajouter : 'rge', r ->> 'rge', 'rgeOrganisme', r ->> 'rgeOrganisme', 'rgeValidite', r ->> 'rgeValidite', 'rgeDomaine', r ->> 'rgeDomaine',. (2) D'ici là, aide du champ settings-field-rge : « Reconnu garant de l’environnement. Imprimé sur vos devis et factures en PDF ; il n’apparaît pas sur la page de signature en ligne ni sur l’exemplaire signé. » Une fois la migration en production, revenir à « Reconnu garant de l’environnement. Imprimé sur vos devis et factures. »
+  - (55)
+    - **point** : Défaut important : validité du RGE jugée à la date du jour et non à celle du document.
+    - **verdict** : confirme
+    - **source** : Code à 4526173e (commit 9a2eed55), lu le 03/11/2026 : qualificationsHtml(entreprise, echap, jourDuDocument(doc)) dans DevisPage.jsx, devisHtmlBuilder.js (buildDevisHtml et buildSituationFactureHtml) et pdfHtmlBuilder.js ; test « la validité s’apprécie à la date du document » ; parcours documents.cjs.
+    - **citation** : qualifications.js : « la validité s'apprécie à la date du document, pas du jour de la réimpression ».
+    - **correctionExacte** : Défaut corrigé. Reste un texte inexact pour un document ancien. Aide du champ rgeValidite : remplacer « Après cette date, le RGE n’est plus imprimé sur vos documents. » par « Après cette date, le RGE n’est plus imprimé sur vos nouveaux documents. » Dans raisonRgeNonImprime, remplacer « le RGE n’est plus imprimé sur vos documents. » par « le RGE n’est plus imprimé sur vos nouveaux documents. »
+  - (56)
+    - **point** : Défaut important : libellé imprimé jamais relu par le juriste (« Entreprise RGE (Reconnu garant de l'environnement) — N° … (organisme) — Domaine : … — Valide jusqu'au … », domaine facultatif ; « Autre » imprimé sans organisme).
+    - **verdict** : a-corriger
+    - **source** : Anah, guide de juillet 2025, p. 31 ; C. conso. L121-4, 2° et 4° (version du 28 mai 2022). Consultés le 03/11/2026.
+    - **citation** : Anah : « intitulé de la qualification, organisme certificateur et le numéro de qualification dans chaque domaine »
+    - **correctionExacte** : Le libellé ne contient rien de faux : « Reconnu garant de l'environnement » est exact, et « Entreprise RGE » évite « Qualification » pour une certification. En revanche, l'intitulé et l'organisme sont obligatoires pour l'Anah alors que l'app les rend facultatifs. Appliquer la correction exacte du point « Mentions RGE exigées par l'Anah » : intitulé et organisme exigés pour imprimer, « Autre » retiré, ligne `Entreprise RGE (Reconnu garant de l'environnement) — Qualification : ${intitulé} — ${organisme} — N° ${numero} — Valide jusqu'au ${date}`.
+  - (57)
+    - **point** : Défaut important : périmètre d'impression, sur tous les devis et factures ou seulement sur les travaux du domaine qualifié (décision n° 3 pour Hugo).
+    - **verdict** : a-decider
+    - **source** : C. conso. L121-4, 4° (« ne pas respecter les conditions de l'agrément ») et L121-2 (qualités du professionnel) ; Anah, guide de juillet 2025, p. 31. Consultés le 03/11/2026.
+    - **citation** : L121-4, 4° : « agréé, approuvé ou autorisé par un organisme public ou privé alors que ce n'est pas le cas »
+    - **correctionExacte** : Aucun texte n'interdit d'imprimer une qualification exacte sur tous les documents. Le risque de tromperie naît d'une mention sans domaine sur des travaux non couverts. Recommandation : imprimer sur tous les documents, seulement si l'intitulé est saisi (il dit alors ce qui est couvert), et jamais sans intitulé. Hugo tranche.
+  - (58)
+    - **point** : Observation hors liste : autres lignes à 5,5 % de trade-library.js, présentes avant la branche. Lot « plancher chauffant » (l. 864-870), « Plancher chauffant hydraulique posé sur isolant, hors chape » (l. 938), « Désembouage du réseau de chauffage avec produit et rinçage » (l. 939).
+    - **verdict** : a-decider
+    - **source** : CGI ann. IV art. 30-0 D (liste des prestations du 5,5 %) et art. 30-0 D ter, https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000051757624. Consultés le 03/11/2026.
+    - **citation** : La liste du 5,5 % couvre l'isolation, les équipements de chauffage et d'eau chaude à énergie renouvelable, la ventilation, le calorifugeage, la régulation, l'individualisation des frais, les brasseurs d'air et l'entretien des chaudières THPE. Elle ne mentionne ni les émetteurs ni le désembouage.
+    - **correctionExacte** : Hors du périmètre de cette relecture : ouvrir une tâche. Proposer 10 % par défaut sur ces lignes, sauf si elles sont des travaux indissociablement liés à une opération éligible (par exemple l'isolant sous chape, ou une PAC posée dans le même lot). À relire au BOI-TVA-LIQ-30-20-95 § 20 avant de modifier.

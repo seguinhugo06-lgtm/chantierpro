@@ -22,6 +22,9 @@ export default function AvoirCreationModal({
   couleur: _couleur,
   modeDiscret,
   formatMoney: formatMoneyProp,
+  // Facture source imprimée en franchise de TVA (franchiseAppliquee, src/lib/franchiseTva.js) : ni « HT » ni « TTC »
+  // (décision du 24 oct. 2026). Une facture émise avec TVA garde ses libellés : l'avoir l'annule telle qu'elle a été émise.
+  franchise = false,
 }) {
   // Theme
   const textPrimary = 'text-encre';
@@ -317,6 +320,7 @@ export default function AvoirCreationModal({
                         </div>
                       )}
                       <div className={`pt-2 mt-2 border-t ${borderColor}`}>
+                        {!franchise && (<>
                         <div className="flex justify-between text-sm">
                           <span className={textMuted}>Total HT</span>
                           <span className="font-semibold tabular-nums text-danger-texte">-{fm(Math.abs(avoirHT))}</span>
@@ -325,8 +329,9 @@ export default function AvoirCreationModal({
                           <span className={textMuted}>TVA</span>
                           <span className="font-semibold tabular-nums text-danger-texte">-{fm(Math.abs(remaining - Math.abs(avoirHT)))}</span>
                         </div>
-                        <div className="flex justify-between text-base mt-1">
-                          <span className={`font-bold ${textPrimary}`}>Total TTC</span>
+                        </>)}
+                        <div className={`flex justify-between text-base ${franchise ? '' : 'mt-1'}`}>
+                          <span className={`font-bold ${textPrimary}`}>{franchise ? 'Total de l’avoir' : 'Total TTC'}</span>
                           <span className="font-bold tabular-nums text-danger-texte">-{fm(remaining)}</span>
                         </div>
                       </div>
@@ -394,7 +399,7 @@ export default function AvoirCreationModal({
                                 {line.description || 'Ligne sans description'}
                               </p>
                               <p className={`text-xs ${textMuted}`}>
-                                {maxQty} {line.unite || 'u'} × {fm(pu)} HT
+                                {maxQty} {line.unite || 'u'} × {fm(pu)}{franchise ? '' : ' HT'}
                               </p>
                             </div>
 
@@ -434,6 +439,7 @@ export default function AvoirCreationModal({
                     )}
 
                     <div className="space-y-1.5">
+                      {!franchise && (<>
                       <div className="flex justify-between text-sm">
                         <span className={textMuted}>Total HT</span>
                         <span className={`font-semibold tabular-nums ${partialTotals.ht > 0 ? 'text-danger-texte' : textMuted}`}>
@@ -446,8 +452,9 @@ export default function AvoirCreationModal({
                           {partialTotals.tva > 0 ? `-${fm(partialTotals.tva)}` : '0,00 €'}
                         </span>
                       </div>
-                      <div className={`flex justify-between text-base pt-1.5 border-t ${borderColor}`}>
-                        <span className={`font-bold ${textPrimary}`}>Total TTC</span>
+                      </>)}
+                      <div className={`flex justify-between text-base ${franchise ? '' : `pt-1.5 border-t ${borderColor}`}`}>
+                        <span className={`font-bold ${textPrimary}`}>{franchise ? 'Total de l’avoir' : 'Total TTC'}</span>
                         <span className={`font-bold tabular-nums ${partialTotals.ttc > 0 ? 'text-danger-texte' : textMuted}`}>
                           {partialTotals.ttc > 0 ? `-${fm(partialTotals.ttc)}` : '0,00 €'}
                         </span>

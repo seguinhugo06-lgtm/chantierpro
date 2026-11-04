@@ -12,7 +12,8 @@ import EmptyState from '../ui/EmptyState';
  * TemplateManager — manage custom devis templates
  * Used in Settings page, "Modèles" tab
  */
-export default function TemplateManager({ isDark, couleur, modeDiscret }) {
+// franchiseTva : l'entreprise est en franchise en base de TVA (estFranchiseTva) — ni « HT » ni « TTC » (décision du 24 oct. 2026)
+export default function TemplateManager({ isDark, couleur, modeDiscret, franchiseTva = false }) {
   const { customTemplates, addTemplate, updateTemplate, deleteTemplate, toggleTemplateFavori } = useData();
   const { confirm } = useConfirm();
 
@@ -237,7 +238,7 @@ export default function TemplateManager({ isDark, couleur, modeDiscret }) {
                         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
                           <span className={textMuted}>{(t.lignes || []).length} ligne{(t.lignes || []).length > 1 ? 's' : ''}</span>
                           <span className="font-semibold tabular-nums text-encre">
-                            {fmt(total)} HT
+                            {fmt(total)}{franchiseTva ? '' : ' HT'}
                           </span>
                           <span className={`flex items-center gap-1 ${CLASSES_TON_MARGE[niveauMarge(marge).ton].texte}`}>
                             <TrendingUp size={14} aria-hidden="true" />
@@ -284,7 +285,7 @@ export default function TemplateManager({ isDark, couleur, modeDiscret }) {
                       ))}
                     </div>
                     <div className={`flex items-center justify-end mt-3 pt-2 border-t text-sm font-medium border-bord`}>
-                      <span className={textMuted}>Total HT :</span>
+                      <span className={textMuted}>{franchiseTva ? 'Total :' : 'Total HT :'}</span>
                       <span className={`ml-2 ${textPrimary}`}>{fmt(total)}</span>
                     </div>
                   </div>
