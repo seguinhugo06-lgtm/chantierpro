@@ -27,11 +27,11 @@ export async function verifier({ db, q, en, commeAnonyme, verifier }) {
     `INSERT INTO entretiens (user_id, organization_id, numero, client_id, appareil_ref, categorie, realise_le, intervenant_nom, client_nom,
        client_adresse, adresse_installation, local, appareils, appareils_mesure, co_ppm, prochain_avant, prix_ht, remplace_id)
      VALUES ($1, $2, $3, $4, $5, $6, now(), 'Intervenant 113', 'Client 113', '1 rue de l''Exemple', '1 rue de l''Exemple', 'Cuisine',
-       $7::jsonb, 'Analyseur Exemple', $8, $9::date, 120, $10)
+       $7::jsonb, $11, $8, $9::date, 120, $10)
      RETURNING id, numero, organization_id, jeton_rappel`,
     [o.par || SOLO, o.org === undefined ? ORG_SOLO : o.org, o.numero ?? null, o.client === undefined ? clientSolo : o.client, appareil,
       o.categorie || 'chaudiere', o.appareils || '[{"marque":"M","modele":"X","energie":"gaz"}]', o.co === undefined ? 3 : o.co,
-      o.prochain || `${an + 1}-11-01`, o.remplace ?? null]))).rows[0];
+      o.prochain || `${an + 1}-11-01`, o.remplace ?? null, o.mesure === undefined ? 'Analyseur Exemple' : o.mesure]))).rows[0];
 
   // 1. Numéro attribué par la base, une série par organisation
   const a = await creer({ numero: `ENT-${an}-00042` });
@@ -72,10 +72,19 @@ export async function verifier({ db, q, en, commeAnonyme, verifier }) {
   verifier(!!sansCO && !!prochainAvant && !!sansAppareil && !!categorieInconnue,
     '113 : CO exigé pour une chaudière, date conseillée après la visite, au moins un appareil, catégorie connue');
 
+  // 4 bis. Appareils de mesure : exigés pour la chaudière et la PAC, facultatifs pour un poêle (annexe 3 de l'arrêté du
+  // 20 juil. 2023 ; relecture du 4 nov. 2026, point 2)
+  const poeleSansMesure = await refus(() => creer({ categorie: 'poele', co: null, mesure: null }));
+  const chaudiereSansMesure = await refus(() => creer({ mesure: '  ' }));
+  const pacSansMesure = await refus(() => creer({ categorie: 'pac', co: null, mesure: null, appareils: '[{"marque":"M","modele":"X","type":"air_eau"}]' }));
+  verifier(poeleSansMesure === false && !!chaudiereSansMesure && !!pacSansMesure,
+    `113 : appareils de mesure exigés pour la chaudière et la PAC, pas pour le poêle (${poeleSansMesure}/${!!chaudiereSansMesure}/${!!pacSansMesure})`);
+
   // 5. Client, facture et attestation remplacée : de la même organisation ; on ne remplace qu'une annulée, une fois
   const clientEtranger = await refus(() => creer({ client: clientPatron }));
   const vivante = await refus(() => creer({ remplace: a.id }));
-  const premier = await refus(() => creer({ remplace: b.id }));
+  let remplacante = null;
+  const premier = await refus(async () => { remplacante = await creer({ remplace: b.id }); });
   const second = await refus(() => creer({ remplace: b.id }));
   const facturePatron = (await q(`INSERT INTO devis (user_id, organization_id, numero, type, facture_type, statut, total_ttc)
     VALUES ($1, $2, 'TEST-113-F', 'facture', 'totale', 'brouillon', 100) RETURNING id`, [PATRON, ORG_PATRON])).rows[0].id;
@@ -85,9 +94,16 @@ export async function verifier({ db, q, en, commeAnonyme, verifier }) {
 
   // 6. Le lien de désinscription : le jeton d'un entretien pose le refus de ce client ; aucune nouvelle fonction publique
   const inconnu = await commeAnonyme(() => q(`SELECT refuser_rappels_ramonage($1) AS ok`, ['11300000-0000-4000-8000-0000000000ff']));
-  const connu = await commeAnonyme(() => q(`SELECT refuser_rappels_ramonage($1) AS ok`, [a.jeton_rappel]));
-  await q(`SELECT refuser_rappels_ramonage($1)`, [a.jeton_rappel]);
-  const refuse = (await q(`SELECT rappels_refuses_le FROM clients WHERE id = $1`, [clientSolo])).rows[0].rappels_refuses_le;
+  // Lu juste après l'appel du visiteur, dans sa transaction (commeAnonyme l'annule ensuite), sans appel serveur qui le
+  // masquerait (relecture du 4 nov. 2026, point 7)
+  const refusVisiteur = async (jeton, clientId) => commeAnonyme(async () => {
+    const ok = (await q(`SELECT refuser_rappels_ramonage($1) AS ok`, [jeton])).rows[0].ok;
+    await db.exec('RESET ROLE');
+    const le = (await q(`SELECT rappels_refuses_le FROM clients WHERE id = $1`, [clientId])).rows[0].rappels_refuses_le;
+    return { rows: [{ ok }], refuse: le };
+  });
+  const connu = await refusVisiteur(a.jeton_rappel, clientSolo);
+  const refuse = connu.refuse;
   const intact = (await q(`SELECT rappels_refuses_le FROM clients WHERE id = $1`, [clientPatron])).rows[0].rappels_refuses_le;
   verifier(inconnu.rows[0].ok === false && connu.rows[0].ok === true && refuse !== null && intact === null,
     `113 : le lien d'un rappel d'entretien enregistre le refus de ce client seulement (${inconnu.rows[0].ok}/${connu.rows[0].ok})`);
@@ -102,8 +118,10 @@ export async function verifier({ db, q, en, commeAnonyme, verifier }) {
       qualite_client, adresse_intervention, appareil_type, combustible, conduit, methode, vacuite, prochain_avant)
     VALUES ($1, $2, $3, $4, now(), 'I', 'C', 'proprietaire', 'A', 'insert', 'bois', 'maconne', 'mecanique_manuelle', 'assuree', '2099-01-01')
     RETURNING jeton_rappel`, [SOLO, ORG_SOLO, clientR, appareil]))).rows[0];
-  const viaRamonage = await commeAnonyme(() => q(`SELECT refuser_rappels_ramonage($1) AS ok`, [ram.jeton_rappel]));
-  verifier(viaRamonage.rows[0].ok === true, '113 : le lien d\'un rappel de ramonage marche toujours');
+  const viaRamonage = await refusVisiteur(ram.jeton_rappel, clientR);
+  const refuseR = viaRamonage.refuse;
+  verifier(viaRamonage.rows[0].ok === true && refuseR !== null,
+    `113 : le lien d'un rappel de ramonage marche toujours et enregistre le refus (${viaRamonage.rows[0].ok}, ${refuseR !== null})`);
 
   // 6 ter. Le jeton, l'auteur et l'organisation ne se réécrivent pas ; un rappel envoyé par le serveur ne s'efface pas
   // par une ligne relue avant l'envoi (m1)
@@ -122,10 +140,19 @@ export async function verifier({ db, q, en, commeAnonyme, verifier }) {
   const rendue = (await q(`SELECT count(*)::int AS n FROM tables_rendues_au_depart() t WHERE t = 'entretiens'`)).rows[0].n;
   verifier(rendue === 1, '113 : les attestations d\'entretien sont rendues au propriétaire au départ d\'un membre (105)');
 
+  // 6 quinquies. Un compte ne vide ni le client ni l'attestation remplacée, et ne choisit pas updated_at (aligné sur 111,
+  // F1 et F2 : sinon la mention « annule et remplace » disparaît et l'index unique se libère)
+  await en(SOLO, () => q(`UPDATE entretiens SET client_id = NULL, remplace_id = NULL, updated_at = '2001-01-01' WHERE id = $1`, [remplacante.id]));
+  const fige = (await q(`SELECT client_id, remplace_id, updated_at > now() - interval '1 hour' AS recent FROM entretiens WHERE id = $1`, [remplacante.id])).rows[0];
+  const second2 = await refus(() => creer({ remplace: b.id }));
+  verifier(fige.client_id === clientSolo && fige.remplace_id === b.id && fige.recent === true && !!second2,
+    `113 : un compte ne vide ni le client ni l'attestation remplacée, updated_at posé par la base (${fige.remplace_id === b.id}/${fige.recent})`);
+
   // 7. Le client supprimé : le lien se vide, l'attestation reste ; le serveur n'est pas concerné par le gel
   const clientTemp = (await q(`INSERT INTO clients (user_id, organization_id, nom) VALUES ($1, $2, 'Client supprimé 113') RETURNING id`,
     [SOLO, ORG_SOLO])).rows[0].id;
   const t = await creer({ client: clientTemp });
+  // L'action ON DELETE SET NULL s'exécute en propriétaire de la table : elle passe le gel (client_id n'est plus une exception)
   await q(`DELETE FROM clients WHERE id = $1`, [clientTemp]);
   await q(`UPDATE entretiens SET rappel_canal = 'email_auto' WHERE id = $1`, [t.id]);
   const reste = (await q(`SELECT client_id, client_nom, rappel_canal FROM entretiens WHERE id = $1`, [t.id])).rows[0];

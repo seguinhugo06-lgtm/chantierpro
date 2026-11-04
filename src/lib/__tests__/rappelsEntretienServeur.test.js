@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  rappelsAEnvoyerEntretien, emailRappelEntretien, phraseObligationServeur, obligationConnueServeur, fichesQuiEnvoient,
+  rappelsAEnvoyerEntretien, emailRappelEntretien, phraseObligationServeur, obligationConnueServeur, fichesQuiEnvoient, ficheValable, fichesSansEmail,
 } from '../../../supabase/functions/send-scheduled-relances/entretien.ts';
 import { phraseObligation, obligationConnue } from '../entretien';
 
@@ -51,6 +51,13 @@ describe('rappels d’entretien côté serveur', () => {
     expect(sans).not.toContain('R. 224-41-7');
     expect(sans).not.toContain('Vous restez libre');
   });
+  it('D-33 : ni article ni phrase de libre choix dans l’e-mail d’une PAC ou d’un poêle (en attente de la décision d’Hugo)', () => {
+    for (const x of [e({ categorie: 'pac', puissance_kw: 8 }), e({ categorie: 'poele', appareils: [{ energie: 'granules' }] })]) {
+      const { texte, html } = emailRappelEntretien({ entreprise, client, entretien: x, lien: 'x' });
+      expect(texte).not.toMatch(/R\. 224-44-3|R\. 1331-68|Pour rappel/);
+      expect(html).not.toMatch(/R\. 224-44-3|R\. 1331-68|Pour rappel/);
+    }
+  });
   it('échappe le texte saisi dans le HTML', () => {
     const { html } = emailRappelEntretien({ entreprise, client: { ...client, prenom: '<b>x</b>' }, entretien: e({ local: '<img>' }), lien: 'x' });
     expect(html).not.toContain('<img>');
@@ -70,6 +77,24 @@ describe('fiche entreprise qui envoie les rappels (gardien-securite, 4 nov. 2026
     expect(fichesQuiEnvoient(fiches, proprietaires).map((f) => f.id).sort()).toEqual(['f-patron', 'f-seul']);
     // Contre-essai : sans propriétaire connu, aucune fiche de l'organisation n'envoie
     expect(fichesQuiEnvoient(fiches, new Map()).map((f) => f.id)).toEqual(['f-seul']);
+  });
+  it('une fiche du propriétaire inutilisable (archivée, module éteint, sans e-mail) ne bloque pas sa fiche valable', () => {
+    const actif = { reglages: { ramonageActif: true } };
+    const fiches = [
+      { id: 'f-sans-email', user_id: 'patron', organization_id: 'org1', created_at: '2026-01-01', email: '', settings_json: actif },
+      { id: 'f-eteinte', user_id: 'patron', organization_id: 'org1', created_at: '2026-01-02', email: 'a@exemple.fr', settings_json: { reglages: {} } },
+      { id: 'f-valable', user_id: 'patron', organization_id: 'org1', created_at: '2026-02-01', email: 'b@exemple.fr', settings_json: actif },
+    ];
+    const proprietaires = new Map([['org1', 'patron']]);
+    const retenues = fichesQuiEnvoient(fiches, proprietaires, ficheValable('ramonageActif'));
+    expect(retenues.map((f) => f.id)).toEqual(['f-valable']);
+    expect(fichesSansEmail(fiches, proprietaires, 'ramonageActif', retenues)).toEqual([]);
+    // Contre-essai : sans le filtre, la première fiche (sans e-mail) était retenue seule et la fiche valable perdue
+    expect(fichesQuiEnvoient(fiches, proprietaires).map((f) => f.id)).toEqual(['f-sans-email']);
+    // Seule fiche du propriétaire sans e-mail : rien n'envoie, et le rapport le dit
+    const seule = [fiches[0]];
+    expect(fichesQuiEnvoient(seule, proprietaires, ficheValable('ramonageActif'))).toEqual([]);
+    expect(fichesSansEmail(seule, proprietaires, 'ramonageActif', []).map((f) => f.id)).toEqual(['f-sans-email']);
   });
   it('« climatisation » dans l’objet pour un appareil en froid seul', () => {
     const { objet } = emailRappelEntretien({ entreprise, client, entretien: e({ categorie: 'pac', appareils: [{ type: 'clim' }] }), lien: 'x' });

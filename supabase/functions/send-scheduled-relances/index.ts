@@ -24,7 +24,7 @@ import { estClientPro, creditsParFacture, paiementsParDocument, resteDu, relanca
 // Rappels du prochain ramonage (migration 104, D-30) : règles et e-mail sans import distant, testés sous vitest
 import { rappelsAEnvoyer, emailRappelRamonage, jourParis } from './ramonage.ts';
 // Rappels du prochain entretien (migration 113, D-33) : même mécanique, testée sous vitest
-import { rappelsAEnvoyerEntretien, emailRappelEntretien, fichesQuiEnvoient } from './entretien.ts';
+import { rappelsAEnvoyerEntretien, emailRappelEntretien, fichesQuiEnvoient, ficheValable, fichesSansEmail } from './entretien.ts';
 import { nomImprime } from '../_shared/identite.ts';
 // Adresse complète sans répéter « code postal ville » (Paramètres l'enregistre en trois champs depuis le 26 oct. 2026)
 import { adresseComplete } from '../_shared/adresseEntreprise.ts';
@@ -516,7 +516,11 @@ serve(async (req) => {
     const aujourdhui = jourParis();
     const propsR = await proprietaires(entsRamonage || []);
     if (propsR.error) { ramonage.erreur = propsR.error.message; report.failed++; }
-    for (const ent of propsR.error ? [] : fichesQuiEnvoient(entsRamonage || [], propsR.carte)) {
+    const fichesR = propsR.error ? [] : fichesQuiEnvoient(entsRamonage || [], propsR.carte, ficheValable('ramonageActif'));
+    for (const f of propsR.error ? [] : fichesSansEmail(entsRamonage || [], propsR.carte, 'ramonageActif', fichesR)) {
+      ramonage.details.push({ entreprise: f.nom, action: 'sans-email-entreprise' });
+    }
+    for (const ent of fichesR) {
       if (ent.archived_at) continue;
       const reglages = ent.settings_json?.reglages || {};
       if (reglages.ramonageActif !== true && reglages.ramonageActif !== 'true') continue;
@@ -656,7 +660,11 @@ serve(async (req) => {
     const organisationsVuesE = new Set<string>();
     const propsE = await proprietaires(entsEntretien || []);
     if (propsE.error) { entretien.erreur = propsE.error.message; report.failed++; }
-    for (const ent of propsE.error ? [] : fichesQuiEnvoient(entsEntretien || [], propsE.carte)) {
+    const fichesE = propsE.error ? [] : fichesQuiEnvoient(entsEntretien || [], propsE.carte, ficheValable('entretienActif'));
+    for (const f of propsE.error ? [] : fichesSansEmail(entsEntretien || [], propsE.carte, 'entretienActif', fichesE)) {
+      entretien.details.push({ entreprise: f.nom, action: 'sans-email-entreprise' });
+    }
+    for (const ent of fichesE) {
       if (ent.archived_at) continue;
       const reglages = ent.settings_json?.reglages || {};
       if (reglages.entretienActif !== true && reglages.entretienActif !== 'true') continue;

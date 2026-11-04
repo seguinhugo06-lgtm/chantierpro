@@ -88,11 +88,10 @@ describe('entretien — obligation énoncée seulement si ses conditions sont co
     expect(p).not.toContain('04/11/2027');
     expect(phraseObligation({ categorie: 'chaudiere', puissance_kw: '', realise_le: '2026-11-04T10:00:00' })).toBe('');
   });
-  it('PAC : « au moins tous les deux ans », jamais « annuel »', () => {
-    const p = phraseObligation({ categorie: 'pac', puissance_kw: 8, realise_le: '2026-11-04T10:00:00' });
-    expect(p).toContain('au moins tous les deux ans');
-    expect(p).toContain('4 novembre 2028');
-    expect(p).not.toMatch(/annuel/);
+  it('D-33 : la phrase d’obligation ne sort que pour une chaudière (PAC et poêle en attente de la décision d’Hugo)', () => {
+    expect(obligationConnue({ categorie: 'pac', puissance_kw: 8 })).toBe(true);
+    expect(phraseObligation({ categorie: 'pac', puissance_kw: 8, realise_le: '2026-11-04T10:00:00' })).toBe('');
+    expect(phraseObligation({ categorie: 'poele', appareils: [{ energie: 'granules' }], realise_le: '2026-11-04T10:00:00' })).toBe('');
   });
   it('le SMS d’une chaudière ne cite l’article que si la puissance est connue', () => {
     const e = { categorie: 'chaudiere', puissance_kw: 24, realise_le: '2026-11-04T10:00:00', prochain_avant: '2027-11-04' };
@@ -180,10 +179,21 @@ describe('entretien — champs obligatoires (annexes 3 et 5)', () => {
   });
   it('poêle : marque et modèle « lorsqu’elles sont disponibles », points et conseils exigés', () => {
     const b = nouveauBrouillon({ client, categorieValeur: 'poele', maintenant: new Date('2026-11-04T10:00:00') });
-    const poele = { ...b, local: 'Salon', intervenant_nom: 'P', appareils_mesure: 'Sans mesure : contrôle visuel',
+    const poele = { ...b, local: 'Salon', intervenant_nom: 'P', appareils_mesure: '',
       appareils: [{ ...b.appareils[0], energie: 'granules', points: { 'commun.decendrage': true } }], conseils: { choix: ['stockage'], texte: '' } };
     expect(manquants(poele)).toEqual([]);
     expect(manquants({ ...poele, conseils: { choix: [], texte: '' } }).map((x) => x.champ)).toContain('conseils');
+  });
+  it('appareils de mesure : facultatifs pour un poêle (annexe 3 de l’arrêté du 20 juil. 2023), exigés pour une PAC', () => {
+    const b = nouveauBrouillon({ client, categorieValeur: 'pac', maintenant: new Date('2026-11-04T10:00:00') });
+    expect(manquants({ ...b, appareils_mesure: '' }).map((x) => x.champ)).toContain('appareils_mesure');
+  });
+  it('classe énergétique « Non déterminée » : acceptée pour le bois ou à 70 kW et plus, refusée pour le gaz de moins de 70 kW', () => {
+    expect(manquants(chaudiere({ classe_energetique: 'Non déterminée' })).map((x) => x.champ)).toContain('classe_energetique');
+    expect(manquants(chaudiere({ classe_energetique: 'Non déterminée', puissance_kw: '80' }))).toEqual([]);
+    const bois = chaudiere({ classe_energetique: 'Non déterminée', operations: '', mesures: { temperature_fumees: '180 °C' } });
+    bois.appareils = [{ ...bois.appareils[0], energie: 'bois_buches', points: { 'solide.decendrage': true } }];
+    expect(manquants(bois)).toEqual([]);
   });
 });
 

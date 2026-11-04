@@ -58,11 +58,6 @@ const dateFr = (jour: string) => {
   const [a, m, j] = String(jour).slice(0, 10).split('-');
   return `${j}/${m}/${a}`;
 };
-const MOIS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
-const dateLongue = (jour: string) => {
-  const [a, m, j] = String(jour).slice(0, 10).split('-').map(Number);
-  return `${j} ${MOIS[m - 1]} ${a}`;
-};
 const NOMS: Record<string, string> = { chaudiere: 'chaudière', pac: 'pompe à chaleur', poele: 'poêle ou insert' };
 
 /** Jour de la visite à Paris (la date de la visite est un horodatage). */
@@ -78,21 +73,12 @@ export function obligationConnueServeur(e: EntretienServeur): boolean {
   return e.categorie === 'poele' && !(e.appareils || []).some((a) => a?.energie === 'autre_biomasse' || a?.hydraulique);
 }
 
-/** Même texte que phraseObligation (src/lib/entretien.js), avis § 4.5. */
+/** Même texte que phraseObligation (src/lib/entretien.js), avis § 4.5. D-33 n'autorise l'obligation et sa source que
+ * dans le rappel d'une chaudière : PAC et poêle attendent la décision d'Hugo (relecture du 4 nov. 2026, point 3). */
 export function phraseObligationServeur(e: EntretienServeur): string {
-  if (!obligationConnueServeur(e)) return '';
+  if (e.categorie !== 'chaudiere' || !obligationConnueServeur(e)) return '';
   const visite = jourVisite(e.realise_le);
-  if (e.categorie === 'chaudiere') {
-    return `Pour rappel, l’entretien d’une chaudière doit être fait une fois par année civile (article R. 224-41-7 du code de l’environnement) : le prochain doit avoir lieu au plus tard le 31 décembre ${Number(visite.slice(0, 4)) + 1}.`;
-  }
-  if (e.categorie === 'pac') {
-    const [a, m, j] = visite.split('-').map(Number);
-    // + 2 ans, jour ramené au dernier du mois (29 février)
-    const dernier = new Date(Date.UTC(a + 2, m, 0)).getUTCDate();
-    const echeance = `${a + 2}-${String(m).padStart(2, '0')}-${String(Math.min(j, dernier)).padStart(2, '0')}`;
-    return `Pour rappel, l’entretien d’une pompe à chaleur ou d’une climatisation de 4 à 70 kW doit être fait au moins tous les deux ans (article R. 224-44-3 du code de l’environnement) : le prochain doit avoir lieu au plus tard le ${dateLongue(echeance)}.`;
-  }
-  return 'Pour rappel, l’entretien d’un poêle ou d’un insert à bois ou à granulés doit être fait au moins tous les douze mois lorsqu’il est utilisé (article R. 1331-68 du code de la santé publique).';
+  return `Pour rappel, l’entretien d’une chaudière doit être fait une fois par année civile (article R. 224-41-7 du code de l’environnement) : le prochain doit avoir lieu au plus tard le 31 décembre ${Number(visite.slice(0, 4)) + 1}.`;
 }
 export const LIBRE_CHOIX = 'Vous restez libre de confier cet entretien au professionnel qualifié de votre choix.';
 
@@ -149,16 +135,44 @@ export function emailRappelEntretien({ entreprise, client, entretien, lien }: {
  * gardien-securite du 4 nov. 2026, M1 : sinon un membre qui crée sa propre fiche avec l'envoi automatique écrivait aux
  * clients de l'organisation sous son identité, et recevait leurs réponses). Sans organisation : la fiche de son auteur.
  */
+/** La fiche entreprise peut-elle envoyer les rappels du module ? Module actif et e-mail de réponse rempli. */
+export const ficheValable = (module: 'ramonageActif' | 'entretienActif') => (f: { email?: string | null; settings_json?: any }): boolean => {
+  const v = f?.settings_json?.reglages?.[module];
+  return (v === true || v === 'true') && String(f?.email || '').includes('@');
+};
+
 export function fichesQuiEnvoient<T extends { user_id: string; organization_id?: string | null; archived_at?: string | null; created_at?: string | null }>(
-  fiches: T[], proprietaires: Map<string, string>,
+  fiches: T[], proprietaires: Map<string, string>, valable: (f: T) => boolean = () => true,
 ): T[] {
   const retenues = new Map<string, T>();
   const triees = [...fiches].sort((a, b) => String(a.created_at || '').localeCompare(String(b.created_at || '')));
   for (const f of triees) {
-    if (f.archived_at) continue;
+    // D'abord écarter les fiches qui ne peuvent pas envoyer (archivée, module éteint, sans e-mail), PUIS choisir celle du
+    // propriétaire : sinon une fiche inutilisable retenue en premier bloquerait une autre fiche valable (relecture du 4 nov., 5)
+    if (f.archived_at || !valable(f)) continue;
     if (f.organization_id && proprietaires.get(f.organization_id) !== f.user_id) continue;
     const serie = f.organization_id || f.user_id;
     if (!retenues.has(serie)) retenues.set(serie, f);
   }
   return [...retenues.values()];
+}
+
+/**
+ * Séries (organisation ou compte seul) sans aucune fiche qui envoie, alors que la fiche du propriétaire a le module actif
+ * mais pas d'e-mail : à dire dans le rapport (« sans-email-entreprise »), pour qu'un arrêt des rappels ne soit pas muet.
+ */
+export function fichesSansEmail<T extends { user_id: string; organization_id?: string | null; archived_at?: string | null; email?: string | null; settings_json?: any; nom?: string }>(
+  fiches: T[], proprietaires: Map<string, string>, module: 'ramonageActif' | 'entretienActif', retenues: T[],
+): T[] {
+  const servies = new Set(retenues.map((f) => f.organization_id || f.user_id));
+  const vues = new Set<string>();
+  return fiches.filter((f) => {
+    const serie = f.organization_id || f.user_id;
+    if (f.archived_at || servies.has(serie) || vues.has(serie)) return false;
+    if (f.organization_id && proprietaires.get(f.organization_id) !== f.user_id) return false;
+    const v = f?.settings_json?.reglages?.[module];
+    if (!(v === true || v === 'true') || String(f.email || '').includes('@')) return false;
+    vues.add(serie);
+    return true;
+  });
 }
