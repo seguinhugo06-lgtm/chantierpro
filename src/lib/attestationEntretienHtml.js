@@ -21,7 +21,7 @@ import { PAGE_CSS } from './devisHtmlBuilder';
 import {
   categorie, ENERGIES, TYPES_PAC, TYPES_POELE, EVACUATIONS, TECHNOLOGIES_CHAUDIERE, libelleDe, pointsCoches, niveauCO, PHRASES_CO,
   SAUF_IMPOSSIBILITE, referenceRendement, referenceEmissions, POLLUANTS, TABLEAU_13, RUBRIQUES_CHAUDIERE, PHRASE_CONSEILS_CHAUDIERE,
-  PHRASE_CONSEILS, SUJETS_CONSEILS, jourDe, estSolide, estGazFioul,
+  PHRASES_CONSEILS, SUJETS_CONSEILS, jourDe, estSolide, estGazFioul,
 } from './entretien';
 
 const jourFr = (jour) => (jour ? dateLue(String(jour).slice(0, 10)).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : '');
@@ -29,7 +29,7 @@ const signatureValide = (s) => typeof s === 'string' && /^data:image\/(png|jpe?g
 
 /** Information sur les rappels (prospection d'un client existant, CPCE L. 34-5 ; RGPD art. 21), comme pour le ramonage. */
 export function informationRappelsEntretien(nomEntreprise) {
-  return `${nomEntreprise || 'Votre professionnel'} pourra vous rappeler par e-mail ou par SMS la date conseillée de votre prochain entretien. Vous pouvez le refuser gratuitement : dès maintenant, en le lui disant, ou à tout moment, en répondant STOP à un rappel ou par le lien présent dans chaque e-mail de rappel.`;
+  return `${nomEntreprise || 'Votre professionnel'} pourra vous rappeler par e-mail ou par SMS la date conseillée de votre prochain entretien. Vous pouvez le refuser gratuitement : dès maintenant, en le lui disant, ou à tout moment, en répondant STOP à un rappel ou par le lien présent dans chaque e-mail de rappel. Un refus vaut pour tous les rappels de ce professionnel.`;
 }
 
 /**
@@ -64,7 +64,7 @@ export function buildAttestationEntretienHtml({ entretien: e, entreprise, rempla
     const type = e.categorie === 'pac' ? libelleDe(TYPES_PAC, a.type) : e.categorie === 'poele' ? libelleDe(TYPES_POELE, a.type) : 'Chaudière';
     const titre = appareils.length > 1 ? `<h2>Appareil ${i + 1}</h2>` : '<h2>Identification de l’appareil</h2>';
     const bruleur = a.bruleur && (a.bruleur.marque || a.bruleur.modele || a.bruleur.date)
-      ? [a.bruleur.marque, a.bruleur.modele, a.bruleur.date ? `posé le ${jourFr(a.bruleur.date)}` : ''].filter(Boolean).map(h).join(', ') : '';
+      ? [a.bruleur.marque, a.bruleur.modele, a.bruleur.date ? `date : ${jourFr(a.bruleur.date)}` : ''].filter(Boolean).map(h).join(', ') : '';
     return `${titre}
   <table>
     ${ligne('Type', h(type))}
@@ -117,7 +117,7 @@ export function buildAttestationEntretienHtml({ entretien: e, entreprise, rempla
     const texte = String(e.conseils?.texte || '').trim();
     conseils = `<h2>Conseils et recommandations</h2>
   <div class="bloc">${[...choisis.map((c) => `• ${h(c)}`), texte ? h(texte) : ''].filter(Boolean).join('\n')}</div>
-  <p class="mention">${h(PHRASE_CONSEILS)}</p>`;
+  <p class="mention">${h(PHRASES_CONSEILS[e.categorie] || '')}</p>`;
   }
 
   const signature = signatureValide(e.signature)
@@ -209,9 +209,9 @@ export function buildAttestationEntretienHtml({ entretien: e, entreprise, rempla
   </table>
   <h2>Évaluation des émissions de polluants</h2>
   <table class="grille">
-    <thead><tr><th>Émission(s) de polluants atmosphériques de la chaudière (${h(POLLUANTS(a0.energie))})</th><th>Émission(s) de référence (niveau d’émissions atteint par l’utilisation des meilleures technologies de chaudières récentes existant en 2009 sur le marché)</th></tr></thead>
-    <tr><td>${h(e.emissions?.evalue)}<br><small>Valeur(s) évaluée(s) à l’aide des tableaux de l’annexe 3 de l’arrêté du 15 septembre 2009</small></td>
-      <td>${h(referenceEmissions(a0.energie))}<br><small>Valeur(s) de référence du tableau 8 de l’annexe 3, ${h(SAUF_IMPOSSIBILITE)}</small></td></tr>
+    <thead><tr><th>Émission (s) de polluants atmosphériques de la chaudière (${h(POLLUANTS(a0.energie))})</th><th>Émission (s) de référence (la (ou les) valeur (s) de référence correspond (ent) au (x) niveau (x) équivalent (s) d’émissions atteint (s) par l’utilisation des meilleures technologies de chaudières récentes existant en 2009 sur le marché)</th></tr></thead>
+    <tr><td>${h(e.emissions?.evalue)}<br><small>Valeur (s) évaluée (s) à l’aide des tableaux de l’annexe 3 de l’arrêté du 15 septembre 2009</small></td>
+      <td>${h(referenceEmissions(a0.energie))}<br><small>Valeur (s) de référence du tableau 8 « Tableau relatif aux valeurs de référence » de l’annexe 3 de l’arrêté du 15 septembre 2009, accompagnée (s) de la mention : « ${h(SAUF_IMPOSSIBILITE)} »</small></td></tr>
   </table>
   <h2>Classe énergétique</h2>
   <table>${ligne('Classe énergétique de la chaudière', h(e.classe_energetique))}</table>
@@ -234,7 +234,7 @@ export function buildAttestationEntretienHtml({ entretien: e, entreprise, rempla
   <table>${ligne('Prochain entretien conseillé avant le', `<strong>${h(jourFr(e.prochain_avant))}</strong>`)}</table>
 
   <div class="attestation">
-    <p>Je soussigné(e) ${h(e.intervenant_nom)}, pour ${em.nom}, atteste avoir effectué le ${h(jourFr(jourDe(e.realise_le)))} la visite d’entretien de l’appareil désigné ci-dessus.</p>
+    <p>Je soussigné(e) ${h(e.intervenant_nom)}, pour ${em.nom}, atteste avoir effectué le ${h(jourFr(jourDe(e.realise_le)))} la visite d’entretien ${appareils.length > 1 ? 'des appareils désignés' : e.categorie === 'pac' ? 'du système désigné' : 'de l’appareil désigné'} ci-dessus.</p>
     <p style="margin-top:8px">Fait le ${h(jourFr(jourDe(e.created_at || new Date().toISOString())))}</p>
     <p style="margin-top:6px"><strong>Signature : ${h(e.intervenant_nom)}</strong></p>
     ${signature}

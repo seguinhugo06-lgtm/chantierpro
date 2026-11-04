@@ -29,6 +29,7 @@
 --   select has_table_privilege('authenticated', 'public.entretiens', 'DELETE');                           -- false
 --   select has_function_privilege('anon', 'public.sceller_entretien()', 'execute');                       -- false
 --   select prosrc like '%entretiens%' from pg_proc where proname = 'refuser_rappels_ramonage';            -- true
+--     (à refaire après toute réapplication de 104, qui remettrait l'ancienne fonction : rejouer alors 113)
 -- Banc : scripts/banc/113.mjs. À relire par gardien-securite avant application (D-22).
 -- ============================================================
 
@@ -206,6 +207,12 @@ BEGIN
     NEW.annulation_motif := OLD.annulation_motif;
   ELSIF NEW.annulee_le IS NOT NULL THEN
     NEW.annulee_le := now();
+  END IF;
+  -- Un rappel envoyé par le serveur ne s'efface pas par une ligne relue avant l'envoi (relecture gardien-securite du
+  -- 4 nov. 2026, m1 : lier une facture renvoyait rappel_fait_le = null, et un second e-mail partait le lendemain)
+  IF OLD.rappel_canal = 'email_auto' AND NEW.rappel_fait_le IS NULL THEN
+    NEW.rappel_fait_le := OLD.rappel_fait_le;
+    NEW.rappel_canal := OLD.rappel_canal;
   END IF;
   IF NEW.facture_id IS NOT NULL AND NEW.facture_id IS DISTINCT FROM OLD.facture_id AND NOT EXISTS (
     SELECT 1 FROM public.devis d

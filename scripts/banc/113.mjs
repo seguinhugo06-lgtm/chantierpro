@@ -96,6 +96,32 @@ export async function verifier({ db, q, en, commeAnonyme, verifier }) {
   const internes = (await q(`SELECT has_function_privilege('authenticated', 'public.sceller_entretien()', 'execute') AS x`)).rows[0].x;
   verifier(ouvertes.length === 0 && internes === false, '113 : aucune fonction d\'entretien ouverte aux visiteurs ni aux comptes');
 
+  // 6 bis. La fonction remplacée reconnaît toujours le jeton d'un ramonage (relecture gardien-securite, m2 a)
+  const clientR = (await q(`INSERT INTO clients (user_id, organization_id, nom) VALUES ($1, $2, 'Client ramonage 113') RETURNING id`, [SOLO, ORG_SOLO])).rows[0].id;
+  const ram = (await en(SOLO, () => q(`INSERT INTO ramonages (user_id, organization_id, client_id, appareil_ref, realise_le, intervenant_nom, client_nom,
+      qualite_client, adresse_intervention, appareil_type, combustible, conduit, methode, vacuite, prochain_avant)
+    VALUES ($1, $2, $3, $4, now(), 'I', 'C', 'proprietaire', 'A', 'insert', 'bois', 'maconne', 'mecanique_manuelle', 'assuree', '2099-01-01')
+    RETURNING jeton_rappel`, [SOLO, ORG_SOLO, clientR, appareil]))).rows[0];
+  const viaRamonage = await commeAnonyme(() => q(`SELECT refuser_rappels_ramonage($1) AS ok`, [ram.jeton_rappel]));
+  verifier(viaRamonage.rows[0].ok === true, '113 : le lien d\'un rappel de ramonage marche toujours');
+
+  // 6 ter. Le jeton, l'auteur et l'organisation ne se réécrivent pas ; un rappel envoyé par le serveur ne s'efface pas
+  // par une ligne relue avant l'envoi (m1)
+  await q(`UPDATE entretiens SET rappel_fait_le = now(), rappel_canal = 'email_auto' WHERE id = $1`, [p.id]);
+  await en(PATRON, () => q(`UPDATE entretiens SET jeton_rappel = $2, user_id = $3, rappel_fait_le = NULL, rappel_canal = NULL WHERE id = $1`,
+    [p.id, '11300000-0000-4000-8000-0000000000ee', SOLO]));
+  const garde = (await q(`SELECT jeton_rappel, user_id, rappel_canal, rappel_fait_le FROM entretiens WHERE id = $1`, [p.id])).rows[0];
+  verifier(garde.jeton_rappel === p.jeton_rappel && garde.user_id === PATRON && garde.rappel_canal === 'email_auto' && garde.rappel_fait_le !== null,
+    `113 : jeton et auteur figés ; un rappel automatique envoyé reste noté (${garde.rappel_canal})`);
+  // Un SMS noté par l'artisan s'annule toujours (« Annuler »)
+  await en(SOLO, () => q(`UPDATE entretiens SET rappel_fait_le = NULL, rappel_canal = NULL WHERE id = $1`, [a.id]));
+  const annule = (await q(`SELECT rappel_canal FROM entretiens WHERE id = $1`, [a.id])).rows[0].rappel_canal;
+  verifier(annule === null, '113 : un rappel noté à la main (SMS) s\'annule');
+
+  // 6 quater. Un départ de l'équipe rend ses attestations au propriétaire (105), malgré le gel
+  const rendue = (await q(`SELECT count(*)::int AS n FROM tables_rendues_au_depart() t WHERE t = 'entretiens'`)).rows[0].n;
+  verifier(rendue === 1, '113 : les attestations d\'entretien sont rendues au propriétaire au départ d\'un membre (105)');
+
   // 7. Le client supprimé : le lien se vide, l'attestation reste ; le serveur n'est pas concerné par le gel
   const clientTemp = (await q(`INSERT INTO clients (user_id, organization_id, nom) VALUES ($1, $2, 'Client supprimé 113') RETURNING id`,
     [SOLO, ORG_SOLO])).rows[0].id;
@@ -111,5 +137,6 @@ export async function verifier({ db, q, en, commeAnonyme, verifier }) {
 
   await q(`DELETE FROM entretiens WHERE user_id = ANY($1)`, [[SOLO, PATRON]]);
   await q('DELETE FROM devis WHERE id = $1', [facturePatron]);
-  await q('DELETE FROM clients WHERE id = ANY($1)', [[clientSolo, clientPatron]]);
+  await q('DELETE FROM ramonages WHERE client_id = $1', [clientR]);
+  await q('DELETE FROM clients WHERE id = ANY($1)', [[clientSolo, clientPatron, clientR]]);
 }

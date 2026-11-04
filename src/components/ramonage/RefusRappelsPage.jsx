@@ -41,7 +41,7 @@ export default function RefusRappelsPage({ jeton, sujet = 'ramonage' }) {
           <div role="status" className="text-center space-y-3">
             <CheckCircle size={40} className="mx-auto text-succes-texte" aria-hidden="true" />
             <h1 className="text-xl font-semibold text-encre">C’est noté</h1>
-            <p className="text-base text-encre-2">Vous ne recevrez plus de rappel {mot} de ce professionnel. Vous pouvez toujours le contacter directement.</p>
+            <p className="text-base text-encre-2">Vous ne recevrez plus aucun rappel de ce professionnel, ni d’entretien ni de ramonage. Vous pouvez toujours le contacter directement.</p>
           </div>
         ) : etat === 'inconnu' || etat === 'erreur' ? (
           <div role="alert" className="text-center space-y-3">
@@ -53,8 +53,8 @@ export default function RefusRappelsPage({ jeton, sujet = 'ramonage' }) {
         ) : (
           <div className="space-y-4">
             <BellOff size={36} className="text-encre-2" aria-hidden="true" />
-            <h1 className="text-xl font-semibold text-encre">Ne plus recevoir de rappel {mot} ?</h1>
-            <p className="text-base text-encre-2">{sujet === 'entretien' ? 'Votre professionnel vous envoie un e-mail avant la date conseillée de votre prochain entretien.' : 'Votre ramoneur vous envoie un e-mail avant la date de votre prochain ramonage.'} Vous pouvez arrêter ces rappels, à tout moment et sans frais.</p>
+            <h1 className="text-xl font-semibold text-encre">Ne plus recevoir de rappel de ce professionnel ?</h1>
+            <p className="text-base text-encre-2">{sujet === 'entretien' ? 'Votre professionnel vous envoie un e-mail avant la date conseillée de votre prochain entretien.' : 'Votre ramoneur vous envoie un e-mail avant la date de votre prochain ramonage.'} Vous pouvez arrêter ces rappels, à tout moment et sans frais. L’arrêt vaut pour tous ses rappels (entretien et ramonage).</p>
             <Bouton variante="principal" pleineLargeur chargement={etat === 'envoi'} onClick={refuser}>Ne plus recevoir de rappel</Bouton>
           </div>
         )}

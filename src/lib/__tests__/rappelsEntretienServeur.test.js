@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  rappelsAEnvoyerEntretien, emailRappelEntretien, phraseObligationServeur, obligationConnueServeur,
+  rappelsAEnvoyerEntretien, emailRappelEntretien, phraseObligationServeur, obligationConnueServeur, fichesQuiEnvoient,
 } from '../../../supabase/functions/send-scheduled-relances/entretien.ts';
 import { phraseObligation, obligationConnue } from '../entretien';
 
@@ -28,7 +28,8 @@ describe('rappels d’entretien côté serveur', () => {
   });
   it('même règle d’obligation et même phrase que l’app', () => {
     const cas = [e(), e({ puissance_kw: null }), e({ puissance_kw: 500 }), e({ categorie: 'pac', puissance_kw: 8 }),
-      e({ categorie: 'pac', puissance_kw: 8, contrat_performance: true }), e({ categorie: 'pac', puissance_kw: 3 }), e({ categorie: 'poele', puissance_kw: null })];
+      e({ categorie: 'pac', puissance_kw: 8, contrat_performance: true }), e({ categorie: 'pac', puissance_kw: 3 }), e({ categorie: 'poele', puissance_kw: null }),
+      e({ categorie: 'poele', appareils: [{ energie: 'autre_biomasse' }] }), e({ categorie: 'poele', appareils: [{ energie: 'granules', hydraulique: true }] })];
     for (const x of cas) {
       const app = { ...x, puissance_kw: x.puissance_kw ?? '' };
       expect(obligationConnueServeur(x)).toBe(obligationConnue(app));
@@ -54,5 +55,24 @@ describe('rappels d’entretien côté serveur', () => {
     const { html } = emailRappelEntretien({ entreprise, client: { ...client, prenom: '<b>x</b>' }, entretien: e({ local: '<img>' }), lien: 'x' });
     expect(html).not.toContain('<img>');
     expect(html).not.toContain('<b>x</b>');
+  });
+});
+
+describe('fiche entreprise qui envoie les rappels (gardien-securite, 4 nov. 2026, M1)', () => {
+  it('dans une organisation, seule la fiche du propriétaire ; sans organisation, celle de l’auteur', () => {
+    const fiches = [
+      { id: 'f-ouvrier', user_id: 'ouvrier', organization_id: 'org1', created_at: '2026-01-01' },
+      { id: 'f-patron', user_id: 'patron', organization_id: 'org1', created_at: '2026-02-01' },
+      { id: 'f-seul', user_id: 'seul', organization_id: null, created_at: '2026-01-01' },
+      { id: 'f-archivee', user_id: 'patron2', organization_id: 'org2', archived_at: '2026-03-01' },
+    ];
+    const proprietaires = new Map([['org1', 'patron'], ['org2', 'patron2']]);
+    expect(fichesQuiEnvoient(fiches, proprietaires).map((f) => f.id).sort()).toEqual(['f-patron', 'f-seul']);
+    // Contre-essai : sans propriétaire connu, aucune fiche de l'organisation n'envoie
+    expect(fichesQuiEnvoient(fiches, new Map()).map((f) => f.id)).toEqual(['f-seul']);
+  });
+  it('« climatisation » dans l’objet pour un appareil en froid seul', () => {
+    const { objet } = emailRappelEntretien({ entreprise, client, entretien: e({ categorie: 'pac', appareils: [{ type: 'clim' }] }), lien: 'x' });
+    expect(objet.startsWith('Entretien de votre climatisation')).toBe(true);
   });
 });

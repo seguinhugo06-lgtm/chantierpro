@@ -23,7 +23,7 @@ export interface EntretienServeur {
   puissance_kw?: number | string | null;
   contrat_performance?: boolean | null;
   local?: string | null;
-  appareils?: { marque?: string; modele?: string }[] | null;
+  appareils?: { marque?: string; modele?: string; type?: string; energie?: string; hydraulique?: boolean }[] | null;
   annulee_le?: string | null;
   rappel_fait_le?: string | null;
   jeton_rappel?: string;
@@ -75,7 +75,7 @@ export function obligationConnueServeur(e: EntretienServeur): boolean {
   const ok = p !== null && Number.isFinite(p);
   if (e.categorie === 'chaudiere') return ok && (p as number) >= 4 && (p as number) <= 400;
   if (e.categorie === 'pac') return ok && (p as number) >= 4 && (p as number) <= 70 && !e.contrat_performance;
-  return e.categorie === 'poele';
+  return e.categorie === 'poele' && !(e.appareils || []).some((a) => a?.energie === 'autre_biomasse' || a?.hydraulique);
 }
 
 /** Même texte que phraseObligation (src/lib/entretien.js), avis § 4.5. */
@@ -100,7 +100,7 @@ export const LIBRE_CHOIX = 'Vous restez libre de confier cet entretien au profes
 export function emailRappelEntretien({ entreprise, client, entretien, lien }: {
   entreprise: EntrepriseServeur; client: ClientServeur; entretien: EntretienServeur; lien: string;
 }): { objet: string; html: string; texte: string } {
-  const nomAppareil = NOMS[entretien.categorie] || 'appareil';
+  const nomAppareil = entretien.categorie === 'pac' && entretien.appareils?.[0]?.type === 'clim' ? 'climatisation' : (NOMS[entretien.categorie] || 'appareil');
   const prochain = dateFr(entretien.prochain_avant);
   const visite = dateFr(jourVisite(entretien.realise_le));
   const a = entretien.appareils?.[0] || {};
@@ -142,4 +142,23 @@ export function emailRappelEntretien({ entreprise, client, entretien, lien }: {
 </table></td></tr></table></body></html>`;
 
   return { objet, html, texte };
+}
+
+/**
+ * Les fiches entreprise qui envoient les rappels : une par organisation, celle de son propriétaire (relecture
+ * gardien-securite du 4 nov. 2026, M1 : sinon un membre qui crée sa propre fiche avec l'envoi automatique écrivait aux
+ * clients de l'organisation sous son identité, et recevait leurs réponses). Sans organisation : la fiche de son auteur.
+ */
+export function fichesQuiEnvoient<T extends { user_id: string; organization_id?: string | null; archived_at?: string | null; created_at?: string | null }>(
+  fiches: T[], proprietaires: Map<string, string>,
+): T[] {
+  const retenues = new Map<string, T>();
+  const triees = [...fiches].sort((a, b) => String(a.created_at || '').localeCompare(String(b.created_at || '')));
+  for (const f of triees) {
+    if (f.archived_at) continue;
+    if (f.organization_id && proprietaires.get(f.organization_id) !== f.user_id) continue;
+    const serie = f.organization_id || f.user_id;
+    if (!retenues.has(serie)) retenues.set(serie, f);
+  }
+  return [...retenues.values()];
 }

@@ -7,7 +7,7 @@ import { Choix, Section, Signature } from '../ramonage/SaisieRamonage';
 import {
   CATEGORIES, categorie, ENERGIES, TYPES_PAC, TYPES_POELE, EVACUATIONS, TECHNOLOGIES_CHAUDIERE, CLASSES, groupesPoints, niveauCO,
   PHRASES_CO, DEVOIR_CO, RUBRIQUES_CHAUDIERE, SUJETS_CONSEILS, referenceRendement, referenceEmissions, POLLUANTS, manquants,
-  nouveauBrouillon, prochainParDefaut, echeanceLegale, apresEcheance, limiteRemise, criteres55, tauxPropose, estSolide, estGazFioul, jourDe,
+  nouveauBrouillon, prochainParDefaut, echeanceLegale, apresEcheance, limiteRemise, criteres55, tauxPropose, obligationConnue, peutEtre55, estSolide, estGazFioul, jourDe,
 } from '../../lib/entretien';
 import { emetteurDe } from '../../lib/ramonage';
 import { buildAttestationEntretienHtml } from '../../lib/attestationEntretienHtml';
@@ -135,7 +135,8 @@ export default function SaisieEntretien({ client, precedent = null, remplace = n
     ? buildAttestationEntretienHtml({ entretien: { ...donnees, numero: null }, entreprise, remplace, rappelsRefuses: refusRappels })
     : ''), [etape]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const echeance = cat ? echeanceLegale(form.categorie, form.realise_le) : '';
+  // L'échéance légale ne s'affiche que si l'obligation est certaine (puissance connue et dans le champ)
+  const echeance = cat && obligationConnue(form) ? echeanceLegale(form.categorie, form.realise_le) : '';
   const co = niveauCO(form.co_ppm);
   const limite = cat ? limiteRemise(form.categorie, form.realise_le) : '';
   const enRetardRemise = limite && limite < jourDe(new Date().toISOString());
@@ -305,7 +306,7 @@ export default function SaisieEntretien({ client, precedent = null, remplace = n
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           <Champ id="entretien-mesures" libelle="Température des fumées" value={form.mesures?.temperature_fumees || ''} erreur={erreurDe('mesures')}
                             onChange={(e) => majSous('mesures', { temperature_fumees: e.target.value })} />
-                          <Champ libelle="O2 et CO2 (chaudière automatique)" facultatif value={form.mesures?.o2_co2 || ''} onChange={(e) => majSous('mesures', { o2_co2: e.target.value })} />
+                          <Champ id="entretien-mesures_o2" libelle="O2 et CO2 (chaudière automatique)" facultatif={!a0.points?.['solide.alimentation']} erreur={erreurDe('mesures_o2')} value={form.mesures?.o2_co2 || ''} onChange={(e) => majSous('mesures', { o2_co2: e.target.value })} />
                         </div>
                       )}
                     </>
@@ -401,7 +402,7 @@ export default function SaisieEntretien({ client, precedent = null, remplace = n
                   {apresEcheance(form.prochain_avant, echeance) && <Alerte>La date conseillée dépasse l’échéance légale du {jourFr(echeance)}.</Alerte>}
                   <Case libelle="Logement achevé depuis plus de deux ans" checked={form.logement_plus_2_ans} onChange={(v) => maj({ logement_plus_2_ans: v })}
                     aide="TVA proposée sur la facture : 10 % pour l’entretien dans un logement de plus de deux ans, 20 % sinon. Vous pourrez la changer sur la facture." />
-                  {form.logement_plus_2_ans && !(form.categorie === 'pac' && a0.type === 'clim') && (
+                  {form.logement_plus_2_ans && peutEtre55(form) && (
                     <>
                       <Case libelle="Appareil éligible au taux de 5,5 %" checked={form.eligible_55} onChange={(v) => maj({ eligible_55: v })} aide={criteres55(form)} />
                       {form.eligible_55 && (

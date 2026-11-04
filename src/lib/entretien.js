@@ -40,7 +40,7 @@ export const CATEGORIES = [
     titre: 'Attestation d’entretien de poêle ou d’insert',
     texte: 'Article R. 1331-75 du code de la santé publique ; arrêté du 20 juillet 2023, annexe 3',
     pied: 'À conserver au moins deux ans et à tenir à la disposition des agents chargés du contrôle (article R. 1331-75 du code de la santé publique).',
-    delaiAttestation: 'dans les quinze jours ouvrés suivant l’opération (article R. 1331-75 du code de la santé publique)',
+    delaiAttestation: 'dans les quinze jours ouvrés suivant l’achèvement de l’opération (article R. 1331-75 du code de la santé publique)',
   },
 ];
 export const categorie = (valeur) => CATEGORIES.find((c) => c.valeur === valeur) || null;
@@ -128,9 +128,9 @@ const POELE_COMMUN = [
   point('air_comburant', 'Inspection et nettoyage des amenées d’air comburant'),
   point('ventilateur', 'Nettoyage du ventilateur (si présent) et des éléments aérauliques (passages d’air, grilles)'),
   point('usure', 'Vérification et remplacement éventuel des pièces d’usure (joints et bougies d’allumage le cas échéant, selon les prescriptions du constructeur), des trappes d’accès ou de tout élément amovible'),
-  point('pressostat', 'Vérification des organes de sécurité : vérifier le pressostat'),
-  point('arret_auto', 'Vérification des organes de sécurité : vérifier l’arrêt automatique de l’appareil notamment en cas de dépassement de la limite haute de température'),
-  point('regulation', 'Vérification des organes de sécurité : vérifier le bon fonctionnement de la régulation (alimentation, ventilation)'),
+  point('pressostat', 'Vérification des organes de sécurité du dispositif de chauffage (si présent) : vérifier le pressostat'),
+  point('arret_auto', 'Vérification des organes de sécurité du dispositif de chauffage (si présent) : vérifier l’arrêt automatique de l’appareil notamment en cas de dépassement de la limite haute de température'),
+  point('regulation', 'Vérification des organes de sécurité du dispositif de chauffage (si présent) : vérifier le bon fonctionnement de la régulation (alimentation, ventilation)'),
   point('alimentation', 'Vérification et nettoyage du circuit d’alimentation en combustible (si concerné)'),
   point('extracteur', 'Nettoyage, vérification et réglage de l’extracteur de fumée (si concerné)'),
   point('electrique', 'Vérification des connexions électriques (si concerné)'),
@@ -226,8 +226,10 @@ export function referenceEmissions(energie) {
   if (energie === 'gaz') return 'NOx : 35 mg / kWh à 0 % d’O2';
   if (energie === 'fioul') return 'NOx : 90 mg / kWh à 0 % d’O2';
   if (estSolide(energie)) {
-    const cov = ['granules', 'bois_dechiquete'].includes(energie) ? '10' : '55';
-    return `Poussières : 30 mg / Nm³ à 10 % d’O2 ; COV : ${cov} mg C3H8 / Nm³ à 10 % d’O2`;
+    // Tableau 8 : 10 « pour les granulés de bois et le bois déchiqueté », 55 « pour les bois de bûches » ; rien pour le
+    // charbon ou un autre solide (juriste-btp, 4 nov. 2026 : à vérifier, rien n'est imprimé)
+    const cov = ['granules', 'bois_dechiquete'].includes(energie) ? '10' : energie === 'bois_buches' ? '55' : null;
+    return `Poussières : 30 mg / Nm³ à 10 % d’O2${cov ? ` ; COV : ${cov} mg C3H8 / Nm³ à 10 % d’O2` : ''}`;
   }
   return '';
 }
@@ -247,8 +249,15 @@ export const RUBRIQUES_CHAUDIERE = [
   { cle: 'remplacement', libelle: 'Conseils et recommandations portant sur l’intérêt éventuel du remplacement du brûleur, de la chaudière, ou de l’installation de chauffage :' },
 ];
 export const PHRASE_CONSEILS_CHAUDIERE = 'Les conseils et recommandations de la présente attestation sont donnés à titre indicatif et ont une valeur informative. Aucun investissement proposé par la personne ayant effectué l’entretien ne revêt un caractère obligatoire. Il s’agit de conseils et non de prescriptions ou d’injonctions de faire, sauf pour le cas où une teneur anormalement élevée en monoxyde de carbone est constatée.';
-/** PAC (annexe 2 de l'arrêté de 2020) et poêle (annexe 2 de l'arrêté de 2023) : la fin de la phrase commune aux deux. */
-export const PHRASE_CONSEILS = 'Ces conseils sont donnés à titre indicatif et ont une valeur informative. Aucun investissement proposé par la personne ayant effectué l’entretien ne revêt un caractère obligatoire. Il s’agit de conseils et non de prescriptions ou d’injonctions de faire.';
+/**
+ * PAC (arrêté du 24 juil. 2020, annexe 2) et poêle (arrêté du 20 juil. 2023, annexe 2), mot pour mot. Pour le poêle, la
+ * mention « et sont conformes aux recommandations disponibles sur le site internet de l'ADEME » n'est pas imprimée : ces
+ * recommandations n'ont pas été lues et le texte libre de l'artisan n'est pas vérifiable (juriste-btp, 4 nov. 2026).
+ */
+export const PHRASES_CONSEILS = {
+  pac: 'Ces conseils sont inscrits sur l’attestation d’entretien, ils sont donnés à titre indicatif et ont une valeur informative. Aucun investissement proposé par la personne ayant effectué l’entretien ne revêt un caractère obligatoire. Il s’agit de conseils et non de prescriptions ou d’injonctions de faire.',
+  poele: 'Ces conseils et recommandations sont joints à l’attestation d’entretien. Ils sont donnés à titre indicatif et ont une valeur informative. Aucun investissement proposé par la personne ayant effectué l’entretien ne revêt un caractère obligatoire. Il s’agit de conseils et non de prescriptions ou d’injonctions de faire.',
+};
 /** Sujets des conseils (annexe 2 de chaque arrêté), en cases ; un texte libre les complète. */
 export const SUJETS_CONSEILS = {
   pac: liste([
@@ -329,7 +338,15 @@ export function obligationConnue(e) {
   const p = nombre(e?.puissance_kw);
   if (e?.categorie === 'chaudiere') return p !== null && p >= 4 && p <= 400;
   if (e?.categorie === 'pac') return p !== null && p >= 4 && p <= 70 && !e?.contrat_performance;
-  return e?.categorie === 'poele';
+  // Poêle : la phrase dit « à bois ou à granulés » ; un appareil « autre biomasse » ou hydraulique (poêle ou chaudière ?
+  // non tranché) ne la reçoit pas
+  return e?.categorie === 'poele' && !(e.appareils || []).some((a) => a?.energie === 'autre_biomasse' || a?.hydraulique);
+}
+
+/** Le nom de l'appareil dans les messages : « chaudière », « pompe à chaleur », « climatisation », « poêle ou insert ». */
+export function nomAppareil(e) {
+  if (e?.categorie === 'pac') return e?.appareils?.[0]?.type === 'clim' ? 'climatisation' : 'pompe à chaleur';
+  return categorie(e?.categorie)?.court || 'appareil';
 }
 
 const dateFr = (jour) => (jour ? dateLue(String(jour).slice(0, 10)).toLocaleDateString('fr-FR') : '');
@@ -351,13 +368,12 @@ export const PHRASE_LIBRE_CHOIX = 'Vous restez libre de confier cet entretien au
 
 /** Le SMS de rappel (avis § 4.5 pour la chaudière ; même forme sans obligation sinon). */
 export function texteSms({ entreprise, entretien, aujourdhui = jourLocal() }) {
-  const c = categorie(entretien?.categorie);
   const qui = [nomImprime(entreprise), entreprise?.tel || entreprise?.telephone].filter(Boolean).join(', ');
   const verbe = String(entretien?.prochain_avant || '') < aujourdhui ? 'était conseillé avant le' : 'est à prévoir avant le';
   const obligation = entretien?.categorie === 'chaudiere' && obligationConnue(entretien)
     ? ' Il est à faire une fois par année civile (art. R. 224-41-7 du code de l’environnement).' : '';
-  const participe = entretien?.categorie === 'chaudiere' ? 'entretenue' : 'entretenu';
-  return `Bonjour, l’entretien de votre ${c?.court || 'appareil'} ${verbe} ${dateFr(entretien?.prochain_avant)}.${obligation} `
+  const participe = entretien?.categorie === 'poele' ? 'entretenu' : 'entretenue';
+  return `Bonjour, l’entretien de votre ${nomAppareil(entretien)} ${verbe} ${dateFr(entretien?.prochain_avant)}.${obligation} `
     + `${qui}${qui ? ', ' : ''}qui l’a ${participe} le ${dateFr(jourDe(entretien?.realise_le))}. Pour ne plus recevoir de rappel, répondez STOP.`;
 }
 
@@ -367,7 +383,7 @@ export function criteres55(e) {
   const energie = e?.appareils?.[0]?.energie;
   if (e?.categorie === 'chaudiere') {
     return estSolide(energie)
-      ? 'Chaudière bois ou biomasse qui remplit les critères de l’article 30-0 D ter, 3° de l’annexe IV du CGI (efficacité saisonnière d’au moins 77 % jusqu’à 20 kW et 79 % au-delà, émissions plafonnées, régulateur de classe IV à VIII).'
+      ? 'Chaudière bois ou biomasse jusqu’à 300 kW qui remplit les critères de l’article 30-0 D ter, 3° de l’annexe IV du CGI (efficacité saisonnière d’au moins 77 % jusqu’à 20 kW et 79 % au-delà, émissions plafonnées, régulateur de classe IV à VIII).'
       : 'Chaudière à très haute performance énergétique (annexe IV du CGI, art. 30-0 D nonies) : efficacité énergétique saisonnière d’au moins 92 % jusqu’à 70 kW (au-delà : 87 % à pleine puissance et 95,5 % à 30 %) ET régulateur de classe IV, V, VI, VII ou VIII. La condensation seule ne suffit pas.';
   }
   if (e?.categorie === 'pac') {
@@ -377,6 +393,11 @@ export function criteres55(e) {
   }
   return 'Appareil qui remplit l’article 30-0 D ter, 4° de l’annexe IV du CGI (granulés ou plaquettes : rendement d’au moins 79 %, CO ≤ 300, particules ≤ 20, COG ≤ 60, NOx ≤ 200 mg/Nm³ ; bûches : rendement d’au moins 65 %, CO ≤ 1500, particules ≤ 40, COG ≤ 120, NOx ≤ 200 mg/Nm³, à 13 % d’O2).';
 }
+/** La case 5,5 % a-t-elle un sens ? Ni une climatisation en froid seul, ni une chaudière au charbon (pas une énergie
+ * renouvelable, ann. IV, art. 30-0 D, 2°). */
+export const peutEtre55 = (e) => !(e?.categorie === 'pac' && e?.appareils?.[0]?.type === 'clim')
+  && !(e?.categorie === 'chaudiere' && e?.appareils?.[0]?.energie === 'charbon');
+
 /**
  * Taux proposé pour la facture : 10 % dans un logement achevé depuis plus de deux ans, 5,5 % si l'artisan déclare
  * l'appareil éligible, 20 % sinon ; aucun en franchise. Jamais 20 % pour une chaudière gaz en état d'entretien.
@@ -384,7 +405,7 @@ export function criteres55(e) {
 export function tauxPropose(e, { franchise = false } = {}) {
   if (franchise) return 0;
   if (!e?.logement_plus_2_ans) return 20;
-  if (e?.categorie === 'pac' && e?.appareils?.[0]?.type === 'clim') return 10;
+  if (!peutEtre55(e)) return 10;
   return e?.eligible_55 ? 5.5 : 10;
 }
 
@@ -496,6 +517,8 @@ export function manquants(e) {
     if (estGazFioul(a.energie) && vide(e.operations)) ajoute('operations', 'Les opérations réalisées (norme NF X50-010 ou NF X50-011)');
     if (niveauCO(e.co_ppm) === null) ajoute('co_ppm', 'La teneur en CO mesurée dans l’air ambiant (ppm)');
     if (estSolide(a.energie) && vide(e.mesures?.temperature_fumees)) ajoute('mesures', 'La température des fumées');
+    // Annexe 1, § 3 : O2 et CO2 « pour les chaudières automatiques uniquement » (alimentation automatique cochée)
+    if (estSolide(a.energie) && a.points?.['solide.alimentation'] && vide(e.mesures?.o2_co2)) ajoute('mesures_o2', 'La teneur en O2 et en CO2 (chaudière automatique)');
     if (vide(e.rendement?.evalue)) ajoute('rendement', 'Le rendement évalué');
     if (vide(e.rendement?.reference)) ajoute('rendement_reference', 'Le rendement de référence');
     if (vide(e.emissions?.evalue)) ajoute('emissions', 'Les émissions évaluées');

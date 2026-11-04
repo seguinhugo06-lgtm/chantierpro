@@ -22,3 +22,13 @@ Pièges appris :
 - Ne pas retirer à `anon` le SELECT sur `organization_members` : des policies d'autres tables (066, 067, 068, 073) y font une sous-requête ; sans le droit, un visiteur aurait une erreur au lieu de zéro ligne.
 - Le banc réaccorde tous les droits de table après les migrations (`banc-migrations.mjs`) : un droit par colonne ne se vérifie qu'après un rejeu de la migration dans les vérifications (voir `scripts/banc/078.mjs`).
 - Une policy qui refuse une écriture ne lève pas d'erreur (0 ligne) : l'app doit relire les lignes modifiées (`.select()`), sinon elle annonce un succès.
+
+## Attestations d'entretien (relecture du 4 nov. 2026, branche cloud/metier-entretien, migration 113, non appliquée)
+
+113 calque 104 (policies, REVOKE/GRANT, sceller/figer, refus par `refuser_rappels_ramonage` étendue) : jugé sain, aucune nouvelle fonction publique, liste de 092 juste.
+
+| Faille | Gravité | Statut |
+|---|---|---|
+| Cron (ramonage l. 518, entretien l. 655 de send-scheduled-relances/index.ts) : une seule fiche entreprise par organisation, prise au hasard ; tout membre peut créer sa fiche dans l'organisation (policies 084 « Org members can insert entreprise ») avec envoi auto → rappels aux clients du patron sous son nom et son reply_to, rappel du patron marqué fait | MAJEURE | ouverte (héritée de 104) |
+| Écriture d'app = ligne entière : un `rappel_fait_le` local périmé (null) efface la prise du cron → second e-mail (entretiens et ramonages) | MINEURE | ouverte |
+| Banc 113 : ne prouve pas qu'un jeton de ramonage marche encore avec la 113 ; l'appel visiteur est masqué par un appel serveur (l. 89) | MINEURE (preuve) | ouverte |

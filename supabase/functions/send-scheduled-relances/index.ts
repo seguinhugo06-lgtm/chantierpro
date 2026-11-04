@@ -24,7 +24,7 @@ import { estClientPro, creditsParFacture, paiementsParDocument, resteDu, relanca
 // Rappels du prochain ramonage (migration 104, D-30) : règles et e-mail sans import distant, testés sous vitest
 import { rappelsAEnvoyer, emailRappelRamonage, jourParis } from './ramonage.ts';
 // Rappels du prochain entretien (migration 113, D-33) : même mécanique, testée sous vitest
-import { rappelsAEnvoyerEntretien, emailRappelEntretien } from './entretien.ts';
+import { rappelsAEnvoyerEntretien, emailRappelEntretien, fichesQuiEnvoient } from './entretien.ts';
 import { nomImprime } from '../_shared/identite.ts';
 // Adresse complète sans répéter « code postal ville » (Paramètres l'enregistre en trois champs depuis le 26 oct. 2026)
 import { adresseComplete } from '../_shared/adresseEntreprise.ts';
@@ -492,11 +492,20 @@ serve(async (req) => {
     // deux passages simultanés ne l'envoient pas deux fois ; un envoi en échec le rend (repris le lendemain).
     // Les envois et les échecs comptent dans sent / failed : l'alerte quotidienne (088) les voit.
     // ─────────────────────────────────────────────────────────────
+    // Propriétaire de chaque organisation : seule sa fiche entreprise envoie les rappels (gardien-securite, 4 nov. 2026, M1)
+    const proprietaires = async (fiches: any[]) => {
+      const ids = [...new Set((fiches || []).map((f) => f.organization_id).filter(Boolean))];
+      const carte = new Map<string, string>();
+      if (!ids.length) return { carte, error: null };
+      const { data, error } = await admin.from('organizations').select('id, owner_id').in('id', ids);
+      for (const o of data || []) carte.set(o.id, o.owner_id);
+      return { carte, error };
+    };
     const ramonage: any = { entreprises: 0, dus: 0, envoyes: 0, echecs: 0, details: [] as any[] };
     report.ramonage = ramonage;
     const { data: entsRamonage, error: errEntsRamonage } = await admin
       .from('entreprise')
-      .select('id, user_id, organization_id, nom, forme_juridique, telephone, email, adresse, code_postal, ville, couleur, settings_json, archived_at')
+      .select('id, user_id, organization_id, nom, forme_juridique, telephone, email, adresse, code_postal, ville, couleur, settings_json, archived_at, created_at')
       .eq('settings_json->reglages->>ramonageEnvoiAuto', 'true');
     if (errEntsRamonage) {
       console.error(`[send-scheduled-relances] Lecture entreprises (ramonage): ${errEntsRamonage.message}`);
@@ -505,7 +514,9 @@ serve(async (req) => {
     }
     const organisationsVues = new Set<string>();
     const aujourdhui = jourParis();
-    for (const ent of entsRamonage || []) {
+    const propsR = await proprietaires(entsRamonage || []);
+    if (propsR.error) { ramonage.erreur = propsR.error.message; report.failed++; }
+    for (const ent of propsR.error ? [] : fichesQuiEnvoient(entsRamonage || [], propsR.carte)) {
       if (ent.archived_at) continue;
       const reglages = ent.settings_json?.reglages || {};
       if (reglages.ramonageActif !== true && reglages.ramonageActif !== 'true') continue;
@@ -635,7 +646,7 @@ serve(async (req) => {
     report.entretien = entretien;
     const { data: entsEntretien, error: errEntsEntretien } = await admin
       .from('entreprise')
-      .select('id, user_id, organization_id, nom, forme_juridique, telephone, email, adresse, code_postal, ville, couleur, settings_json, archived_at')
+      .select('id, user_id, organization_id, nom, forme_juridique, telephone, email, adresse, code_postal, ville, couleur, settings_json, archived_at, created_at')
       .eq('settings_json->reglages->>entretienEnvoiAuto', 'true');
     if (errEntsEntretien) {
       console.error(`[send-scheduled-relances] Lecture entreprises (entretien): ${errEntsEntretien.message}`);
@@ -643,7 +654,9 @@ serve(async (req) => {
       report.failed++;
     }
     const organisationsVuesE = new Set<string>();
-    for (const ent of entsEntretien || []) {
+    const propsE = await proprietaires(entsEntretien || []);
+    if (propsE.error) { entretien.erreur = propsE.error.message; report.failed++; }
+    for (const ent of propsE.error ? [] : fichesQuiEnvoient(entsEntretien || [], propsE.carte)) {
       if (ent.archived_at) continue;
       const reglages = ent.settings_json?.reglages || {};
       if (reglages.entretienActif !== true && reglages.entretienActif !== 'true') continue;

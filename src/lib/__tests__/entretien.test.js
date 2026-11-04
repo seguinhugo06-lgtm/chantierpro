@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   echeanceLegale, prochainParDefaut, apresEcheance, limiteRemise, niveauCO, PHRASES_CO, obligationConnue, phraseObligation,
   tauxPropose, manquants, nouveauBrouillon, groupesPoints, pointsCoches, ligneFacture, rappelsDus, texteSms,
-  referenceEmissions, numeroEntretienDemo, appareilsDuClient, entretienPrecedent,
+  referenceEmissions, numeroEntretienDemo, appareilsDuClient, entretienPrecedent, nomAppareil,
 } from '../entretien';
 
 // Données fictives seulement
@@ -240,5 +240,33 @@ describe('entretien — brouillon repris de l’an dernier, historique, rappels'
   });
   it('numéro de démo à la suite', () => {
     expect(numeroEntretienDemo([{ numero: 'ENT-2026-00004' }], new Date('2026-06-01'))).toBe('ENT-2026-00005');
+  });
+});
+
+describe('entretien — corrections de la relecture juriste-btp du 4 nov. 2026', () => {
+  it('aucune référence COV inventée pour le charbon (tableau 8 : bûches et granulés seulement)', () => {
+    expect(referenceEmissions('charbon')).toBe('Poussières : 30 mg / Nm³ à 10 % d’O2');
+    expect(referenceEmissions('charbon')).not.toContain('COV');
+  });
+  it('pas de 5,5 % pour une chaudière au charbon (pas une énergie renouvelable)', () => {
+    expect(tauxPropose({ categorie: 'chaudiere', logement_plus_2_ans: true, eligible_55: true, appareils: [{ energie: 'charbon' }] })).toBe(10);
+    expect(tauxPropose({ categorie: 'chaudiere', logement_plus_2_ans: true, eligible_55: true, appareils: [{ energie: 'granules' }] })).toBe(5.5);
+  });
+  it('pas de phrase d’obligation pour un poêle « autre biomasse » ou hydraulique (statut non tranché)', () => {
+    expect(obligationConnue({ categorie: 'poele', appareils: [{ energie: 'granules' }] })).toBe(true);
+    expect(obligationConnue({ categorie: 'poele', appareils: [{ energie: 'autre_biomasse' }] })).toBe(false);
+    expect(obligationConnue({ categorie: 'poele', appareils: [{ energie: 'bois_buches', hydraulique: true }] })).toBe(false);
+  });
+  it('chaudière automatique à combustible solide : O2 et CO2 exigés', () => {
+    const e = chaudiere({ operations: '', mesures: { temperature_fumees: '180 °C' } });
+    e.appareils = [{ ...e.appareils[0], energie: 'granules', points: { 'solide.alimentation': true } }];
+    expect(manquants(e).map((x) => x.champ)).toEqual(['mesures_o2']);
+    expect(manquants({ ...e, mesures: { temperature_fumees: '180 °C', o2_co2: 'O2 8 %, CO2 12 %' } })).toEqual([]);
+  });
+  it('« climatisation » pour un appareil en froid seul, « entretenue » pour une pompe à chaleur', () => {
+    expect(nomAppareil({ categorie: 'pac', appareils: [{ type: 'clim' }] })).toBe('climatisation');
+    const sms = texteSms({ entreprise: { nom: 'X' }, entretien: { categorie: 'pac', appareils: [{ type: 'air_eau' }], realise_le: '2026-11-04T10:00:00', prochain_avant: '2027-11-04' }, aujourdhui: '2027-10-10' });
+    expect(sms).toContain('votre pompe à chaleur');
+    expect(sms).toContain('qui l’a entretenue');
   });
 });
