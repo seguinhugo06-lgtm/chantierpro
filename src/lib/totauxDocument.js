@@ -104,13 +104,6 @@ export function libellesColonnesPrix(isMicro = false) {
   return isMicro ? { pu: 'Prix unitaire', total: 'Total' } : { pu: 'PU HT', total: 'Total HT' };
 }
 
-/**
- * Lignes « Total HT / Remise / TVA par taux / Total TTC » du bloc des totaux, en HTML (classes
- * `row sub` / `row total` des générateurs). Avec une remise : total des lignes, remise, puis total
- * HT après remise ; la TVA porte sur les bases après remise.
- * En franchise (isMicro) : ni « HT » ni « TTC » — « Total avant remise / Total après remise » avec une remise, et
- * sans remise le seul total final (« Total HT » serait le même montant), comme la fiche de devis à l'écran.
- */
 /** Libellé du dernier total d'une pièce imprimée (D-31 (1)) : « Total TTC » hors franchise ; en franchise, « Net à payer
  * (hors taxes et toutes taxes comprises) » sur une facture, « Total (hors taxes et toutes taxes comprises) » sur un devis,
  * « Total de l’avoir » sur un avoir. Partagé par les générateurs et le document imprimé du portail client. */
@@ -120,6 +113,13 @@ export function libelleTotalImprime(doc, isMicro = false) {
   return doc?.type === 'facture' ? 'Net à payer (hors taxes et toutes taxes comprises)' : 'Total (hors taxes et toutes taxes comprises)';
 }
 
+/**
+ * Lignes « Total HT / Remise / TVA par taux / Total TTC » du bloc des totaux, en HTML (classes
+ * `row sub` / `row total` des générateurs). Avec une remise : total des lignes, remise, puis total
+ * HT après remise ; la TVA porte sur les bases après remise.
+ * En franchise (isMicro) : ni « HT » ni « TTC » — « Total avant remise / Total après remise » avec une remise, et
+ * sans remise le seul total final (« Total HT » serait le même montant), comme la fiche de devis à l'écran.
+ */
 export function lignesTotauxHtml(doc, { isMicro = false, tauxDefaut = 10 } = {}) {
   const t = totauxDocument(doc, { tauxDefaut, isMicro });
   const ligne = (libelle, valeur, style = '') => `<div class="row sub"${style ? ` style="${style}"` : ''}><span>${libelle}</span><span>${valeur}</span></div>`;

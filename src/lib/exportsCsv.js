@@ -1,5 +1,6 @@
 import { dateLue } from './dates';
 import { margeBrute } from './margeArticle';
+import { estFranchiseTva, franchiseAppliquee } from './franchiseTva';
 
 /**
  * Tableaux des exports CSV (liste des devis et factures, catalogue), en lignes de cellules. En franchise en base de TVA
@@ -7,9 +8,16 @@ import { margeBrute } from './margeArticle';
  * « Prix unitaire » (D-31, tâche 28 `franchise-restes`, 4 nov. 2026). Les montants ne changent pas.
  */
 
-/** Devis et factures : en-tête puis une ligne par document. `franchise` : vrai seulement si AUCUNE pièce exportée n'a été émise
- * avec TVA (franchiseAppliquee sur chacune) — sinon cette TVA, due, disparaîtrait de l'export. */
-export function tableauExportDocuments(docs, { clients = [], franchise = false } = {}) {
+/** Export des pièces en franchise (une seule colonne « Montant ») : seulement si l'entreprise est en franchise ET qu'AUCUNE
+ * pièce exportée n'a été émise avec TVA (franchiseAppliquee sur chacune) — sinon cette TVA, due, disparaîtrait de l'export. */
+export function exportDocumentsEnFranchise(docs, entreprise) {
+  return estFranchiseTva(entreprise) && (docs || []).every((d) => franchiseAppliquee(d, entreprise));
+}
+
+/** Devis et factures : en-tête puis une ligne par document ; le choix des colonnes vient de `entreprise` et des pièces
+ * (exportDocumentsEnFranchise). */
+export function tableauExportDocuments(docs, { clients = [], entreprise = null } = {}) {
+  const franchise = exportDocumentsEnFranchise(docs, entreprise);
   const enTete = ['Numéro', 'Type', 'Client', 'Date', 'Objet', ...(franchise ? ['Montant'] : ['Montant HT', 'TVA', 'Montant TTC']), 'Statut', 'Date envoi', 'Date signature', 'Date paiement'];
   const fmtDate = (v) => (v ? dateLue(v).toLocaleDateString('fr-FR') : '');
   const lignes = docs.map((d) => {

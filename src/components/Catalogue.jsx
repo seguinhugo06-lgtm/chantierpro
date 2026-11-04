@@ -22,7 +22,7 @@ import { remettreFichier } from '../lib/natif';
 import { jourLocal } from '../lib/dates';
 import { devisAvecLigneAjoutee } from '../lib/ajoutLigneDevis';
 import { estFranchiseTva } from '../lib/franchiseTva';
-import { lireCsv, nombreFr, associerColonnes } from '../lib/csvImport';
+import { lireCsv, associerColonnes, articleDepuisLigneCsv } from '../lib/csvImport';
 import { tableauExportCatalogue } from '../lib/exportsCsv';
 import { achatConnu, margeBrute, niveauMarge, CLASSES_TON_MARGE } from '../lib/margeArticle';
 import { formatMoney } from '../lib/formatters';
@@ -532,45 +532,17 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
   const importerCsv = async () => {
     if (!importData) return;
     setImportEnCours(true);
-    // Prix et TVA lus à la française (« 1 250,00 », « 5,5 ») ; un prix illisible ou nul : ligne écartée et comptée
-    // (avant : 1 €, TVA 5, articles à 0 €) ; TVA 0 % respectée ; chaque refus de la base compté.
+    // Une ligne → un article (articleDepuisLigneCsv, src/lib/csvImport.js : lecture à la française, prix illisible écarté,
+    // colonne TVA ignorée en franchise) ; chaque refus de la base compté.
     let importes = 0, ecartees = 0, misAJour = 0, refuses = 0, prixIllisibles = 0;
-    const tvaDe = (v, defaut) => { const n = nombreFr(v); return Number.isFinite(n) ? n : defaut; };
-    // En franchise, le champ « Taux TVA » n'est pas proposé (FenetresCatalogue.champsImport) : la colonne du fichier est ignorée
-    const colTva = franchiseTva ? undefined : importMapping.tva_rate;
     for (const row of importData.rows) {
-      const nom = row[importMapping.designation] || '';
-      if (!nom) { ecartees++; continue; }
-      const ref = row[importMapping.reference] || '';
-      const prix = nombreFr(row[importMapping.prix]);
-      const achatLu = nombreFr(row[importMapping.prixAchat]);
-      const stockLu = nombreFr(row[importMapping.stock]);
-      const existant = ref ? catalogue.find((c) => c.reference === ref) : null; // doublon par référence
-      if (!(prix > 0) && !existant) { prixIllisibles++; continue; }
-      if (existant) {
-        const maj = {
-          ...existant,
-          nom: nom || existant.nom,
-          prix: prix > 0 ? prix : existant.prix,
-          prixAchat: Number.isFinite(achatLu) ? achatLu : existant.prixAchat,
-          unite: row[importMapping.unite] || existant.unite,
-          categorie: row[importMapping.categorie] || existant.categorie,
-          description: row[importMapping.description] || existant.description,
-          tva_rate: tvaDe(row[colTva], existant.tva_rate),
-          tva: tvaDe(row[colTva], existant.tva ?? existant.tva_rate),
-          stock_actuel: Number.isFinite(stockLu) ? Math.round(stockLu) : existant.stock_actuel,
-        };
-        if (updateCatalogueItemProp) { if (await updateCatalogueItemProp(existant.id, maj)) misAJour++; else refuses++; }
-        else { setCatalogue((prev) => prev.map((c) => (c.id === existant.id ? maj : c))); misAJour++; }
-      } else {
-        const tva = tvaDe(row[colTva], 20);
-        const nouveau = {
-          nom, reference: ref, description: row[importMapping.description] || '', prix,
-          prixAchat: Number.isFinite(achatLu) ? achatLu : null, unite: row[importMapping.unite] || 'u', categorie: row[importMapping.categorie] || 'Autre',
-          tva_rate: tva, tva, favori: false, stock_actuel: Number.isFinite(stockLu) ? Math.round(stockLu) : undefined, stock_seuil_alerte: undefined,
-        };
-        if (await creerArticle(nouveau)) importes++; else refuses++;
-      }
+      const { ecartee, prixIllisible, maj, nouveau } = articleDepuisLigneCsv(row, importMapping, { catalogue, franchise: franchiseTva });
+      if (ecartee) { ecartees++; continue; }
+      if (prixIllisible) { prixIllisibles++; continue; }
+      if (maj) {
+        if (updateCatalogueItemProp) { if (await updateCatalogueItemProp(maj.id, maj)) misAJour++; else refuses++; }
+        else { setCatalogue((prev) => prev.map((c) => (c.id === maj.id ? maj : c))); misAJour++; }
+      } else if (await creerArticle(nouveau)) importes++; else refuses++;
     }
     setImportEnCours(false);
     setImportData(null);

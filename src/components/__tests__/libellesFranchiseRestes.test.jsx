@@ -2,7 +2,9 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { estFranchiseTva, franchiseAppliquee } from '../../lib/franchiseTva';
 import { buildMiseEnDemeureHtml } from '../../lib/miseEnDemeureBuilder';
-import { tableauExportDocuments, tableauExportCatalogue } from '../../lib/exportsCsv';
+import { tableauExportDocuments, tableauExportCatalogue, exportDocumentsEnFranchise } from '../../lib/exportsCsv';
+import { associerColonnes, articleDepuisLigneCsv } from '../../lib/csvImport';
+import { htmlDocumentPortail } from '../portal/documentImprimePortail';
 import { libelleTotalImprime, lignesTotauxHtml } from '../../lib/totauxDocument';
 
 /**
@@ -123,8 +125,8 @@ describe('variables des relances', () => {
 describe('exports CSV', () => {
   const docs = [{ numero: 'FAC-1', type: 'facture', client_nom: 'Rousseau', total_ht: 100, tva: 0, total_ttc: 100, statut: 'envoye' }];
   it('devis et factures : une colonne « Montant » en franchise', () => {
-    const [enTeteMicro, ligneMicro] = tableauExportDocuments(docs, { franchise: estFranchiseTva(MICRO) });
-    const [enTeteSarl, ligneSarl] = tableauExportDocuments(docs, { franchise: estFranchiseTva(SARL) });
+    const [enTeteMicro, ligneMicro] = tableauExportDocuments(docs, { entreprise: MICRO });
+    const [enTeteSarl, ligneSarl] = tableauExportDocuments(docs, { entreprise: SARL });
     expect(enTeteMicro.join(';')).not.toMatch(HT_OU_TTC);
     expect(enTeteMicro).toContain('Montant');
     expect(enTeteMicro).not.toContain('TVA');
@@ -136,10 +138,47 @@ describe('exports CSV', () => {
 
   it('devis et factures : une facture émise avec TVA par une micro-entreprise garde les colonnes HT, TVA et TTC', () => {
     const avecTva = [...docs, { numero: 'FAC-2', type: 'facture', statut: 'envoye', total_ht: 100, tva: 20, total_ttc: 120 }];
-    // Même règle que DevisPage.exportCSV
-    const franchise = estFranchiseTva(MICRO) && avecTva.every((d) => franchiseAppliquee(d, MICRO));
-    expect(franchise).toBe(false);
-    expect(tableauExportDocuments(avecTva, { franchise })[0]).toEqual(expect.arrayContaining(['Montant HT', 'TVA', 'Montant TTC']));
+    // Le drapeau est calculé par exportsCsv.js (DevisPage.exportCSV ne passe que l'entreprise)
+    expect(exportDocumentsEnFranchise(avecTva, MICRO)).toBe(false);
+    const [enTete, , ligneTva] = tableauExportDocuments(avecTva, { entreprise: MICRO });
+    expect(enTete).toEqual(expect.arrayContaining(['Montant HT', 'TVA', 'Montant TTC']));
+    expect(ligneTva[enTete.indexOf('TVA')]).toBe('20.00');
+    // Contre-essai : sans cette pièce, une seule colonne « Montant »
+    expect(exportDocumentsEnFranchise(docs, MICRO)).toBe(true);
+    expect(exportDocumentsEnFranchise(docs, SARL)).toBe(false);
+  });
+
+  it('catalogue : l’export en franchise se réimporte avec son prix d’achat (aller-retour)', () => {
+    const cat = [{ reference: 'R1', nom: 'Prise', categorie: 'Élec', unite: 'u', prix: 30, prixAchat: 10, tva_rate: 0 }];
+    for (const entreprise of [MICRO, SARL]) {
+      const [enTete, ligne] = tableauExportCatalogue(cat, { franchise: estFranchiseTva(entreprise) });
+      const mapping = associerColonnes(enTete);
+      expect(mapping.prixAchat).toBeTruthy();
+      expect(mapping.prix).toBeTruthy();
+      const row = Object.fromEntries(enTete.map((h, i) => [h, String(ligne[i])]));
+      const { nouveau } = articleDepuisLigneCsv(row, mapping, { franchise: estFranchiseTva(entreprise) });
+      expect(nouveau.prixAchat).toBe(10);
+      expect(nouveau.prix).toBe(30);
+    }
+    // Les deux apostrophes sont reconnues
+    expect(associerColonnes(['Nom', "Prix d'achat"]).prixAchat).toBe("Prix d'achat");
+    expect(associerColonnes(['Nom', 'Prix d’achat']).prixAchat).toBe('Prix d’achat');
+  });
+
+  it('import en franchise : la colonne TVA du fichier ne change rien (hors franchise, elle compte)', () => {
+    const mapping = { designation: 'Nom', reference: 'Réf', prix: 'Prix', tva_rate: 'TVA' };
+    const catalogue = [{ id: 'a1', reference: 'R1', nom: 'Prise', prix: 30, tva_rate: 0, tva: 0 }];
+    const avecTva = { Nom: 'Prise', Réf: 'R1', Prix: '35', TVA: '5,5' };
+    const sansTva = { Nom: 'Prise', Réf: 'R1', Prix: '35' };
+    const nouvelleAvec = { ...avecTva, Réf: 'R2' };
+    const nouvelleSans = { ...sansTva, Réf: 'R2' };
+    const lire = (row, franchise) => articleDepuisLigneCsv(row, mapping, { catalogue, franchise });
+    expect(lire(avecTva, true)).toEqual(lire(sansTva, true));
+    expect(lire(avecTva, true).maj.tva_rate).toBe(0);
+    expect(lire(nouvelleAvec, true)).toEqual(lire(nouvelleSans, true));
+    // Contre-essai : hors franchise, le taux du fichier est lu
+    expect(lire(avecTva, false).maj.tva_rate).toBe(5.5);
+    expect(lire(nouvelleAvec, false).nouveau.tva_rate).toBe(5.5);
   });
 
   it('catalogue : « Prix unitaire » et « Prix d’achat », sans colonne de TVA, en franchise', () => {
@@ -207,5 +246,19 @@ describe('document imprimé du portail client', () => {
     expect(libelleTotalImprime(facture, franchiseAppliquee(facture, SARL))).toBe('Total TTC');
     // Même libellé que le bloc des totaux des générateurs
     expect(lignesTotauxHtml({ ...facture, lignes: [{ quantite: 1, prixUnitaire: 100 }] }, { isMicro: true })).toContain('Net à payer (hors taxes et toutes taxes comprises)');
+  });
+
+  it('le HTML du portail (htmlDocumentPortail) : ni « HT » ni « TTC » en franchise, « TTC » en SARL et pour une facture émise avec TVA', () => {
+    const facture = { numero: 'FAC-7', type: 'facture', statut: 'envoye', created_at: '2026-10-01', tva: 0, total_ht: 100, total_ttc: 100,
+      lignes: [{ description: 'Prise', quantite: 1, unite: 'u', prixUnitaire: 100, montant: 100 }] };
+    const portail = (doc, entreprise) => texte(htmlDocumentPortail(doc, { entreprise, client: client }));
+    const micro = portail(facture, MICRO);
+    expect(micro).not.toMatch(HT_OU_TTC);
+    expect(micro).toMatch(/Net à payer \(hors taxes et toutes taxes comprises\) 100\.00 €/);
+    expect(micro).toMatch(/TVA non applicable, article 293 B du CGI/);
+    const sarl = portail(facture, SARL);
+    expect(sarl).toMatch(/Total TTC/);
+    expect(sarl).toMatch(/P\.U\. HT/);
+    expect(portail({ ...facture, tva: 20, total_ttc: 120 }, MICRO)).toMatch(/Total TTC 120\.00 €/);
   });
 });
