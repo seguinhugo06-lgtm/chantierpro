@@ -4,6 +4,7 @@ import { Bouton } from '../ui/Bouton';
 import { texteSms, lienSms, lienAppel, descriptionAppareil } from '../../lib/ramonage';
 import { dateLue } from '../../lib/dates';
 import { estClientPro } from '../../lib/relanceUtils';
+import { noterRappel } from './actionsRamonage';
 
 const jourFr = (jour) => dateLue(String(jour || '').slice(0, 10)).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
 
@@ -27,14 +28,9 @@ export default function RappelRamonage({ rappel, entreprise, suivreRamonage, ref
   const sms = lienSms(client?.telephone, texteSms({ entreprise, ramonage }));
   const appel = estClientPro(client) ? lienAppel(client?.telephone) : '';
 
-  const noter = (canal) => {
-    setFait(canal);
-    suivreRamonage(ramonage.id, { rappel_fait_le: new Date().toISOString(), rappel_canal: canal });
-  };
-  const annuler = () => {
-    setFait(null);
-    suivreRamonage(ramonage.id, { rappel_fait_le: null, rappel_canal: null });
-  };
+  // « Rappel noté » seulement après l'écriture : false = échec (message déjà affiché), la carte reste dans son état
+  const noter = (canal) => noterRappel(() => suivreRamonage(ramonage.id, { rappel_fait_le: new Date().toISOString(), rappel_canal: canal }), () => setFait(canal));
+  const annuler = () => noterRappel(() => suivreRamonage(ramonage.id, { rappel_fait_le: null, rappel_canal: null }), () => setFait(null));
 
   return (
     <div data-testid="rappel-ramonage" className="rounded-2xl border border-alerte-texte/30 bg-alerte-fond p-4">

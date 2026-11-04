@@ -14,6 +14,7 @@ import { buildAttestationEntretienHtml } from '../../lib/attestationEntretienHtm
 import { useConfirm } from '../../context/AppContext';
 import { usePermissions } from '../../hooks/usePermissions';
 import { dateLue } from '../../lib/dates';
+import { estFranchiseTva } from '../../lib/franchiseTva';
 
 const jourFr = (jour) => (jour ? dateLue(String(jour).slice(0, 10)).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : '');
 
@@ -68,6 +69,7 @@ export default function SaisieEntretien({ client, precedent = null, remplace = n
   const initial = useRef(null);
   const enConfirmation = useRef(false);
 
+  const franchise = estFranchiseTva(entreprise);
   const cat = categorie(form.categorie);
   const a0 = form.appareils?.[0] || {};
   const donnees = { ...form, emetteur: emetteurDe(entreprise) };
@@ -189,7 +191,7 @@ export default function SaisieEntretien({ client, precedent = null, remplace = n
             <Champ id={ch('fluide')} libelle="Fluide frigorigène (R32, R410A, R290…)" value={a.fluide} erreur={erreurDe(`appareil${i}-fluide`)} onChange={(e) => majAppareil(i, { fluide: e.target.value })} />
             <Champ libelle="Charge (kg)" facultatif inputMode="decimal" value={String(a.charge_kg ?? '')} onChange={(e) => majAppareil(i, { charge_kg: nombreSaisi(e.target.value) })} />
             <Champ as="textarea" className="sm:col-span-2" libelle="Autres machines du même bâtiment (marque, modèle, puissance)" facultatif value={a.autres_machines}
-              aide="Toutes les machines qui chauffent ou refroidissent le bâtiment forment un seul système (article R. 224-42 du code de l’environnement) : une attestation pour le système."
+              aide="Toutes les machines thermodynamiques (pompes à chaleur, climatisations) qui chauffent ou refroidissent le même bâtiment forment un seul système, dont la puissance est la somme de leurs puissances (article R. 224-42, 1° du code de l’environnement) : une attestation pour le système."
               onChange={(e) => majAppareil(i, { autres_machines: e.target.value })} />
           </div>
         )}
@@ -278,7 +280,7 @@ export default function SaisieEntretien({ client, precedent = null, remplace = n
                 )}
 
                 <Section titre={form.categorie === 'pac' ? 'Puissance du système' : 'Puissance'}>
-                  <Champ libelle={form.categorie === 'pac' ? 'Puissance nominale du système, en kW (machines du bâtiment additionnées)' : 'Puissance nominale, en kW'} facultatif
+                  <Champ libelle={form.categorie === 'pac' ? 'Puissance nominale du système, en kW (machines du bâtiment additionnées)' : form.categorie === 'chaudiere' ? 'Puissance nominale, en kW (chaudières en réseau dans le même local : la somme de leurs puissances, article R. 224-20 du code de l’environnement)' : 'Puissance nominale, en kW'} facultatif
                     inputMode="decimal" value={String(form.puissance_kw ?? '')} onChange={(e) => maj({ puissance_kw: nombreSaisi(e.target.value) })}
                     aide="Si elle est connue, le rappel peut citer l’obligation d’entretien et son article." />
                   {form.categorie === 'pac' && (
@@ -288,7 +290,7 @@ export default function SaisieEntretien({ client, precedent = null, remplace = n
                 </Section>
 
                 <Section titre="Mesures">
-                  <Champ id="entretien-appareils_mesure" libelle="Appareils de mesure utilisés (marque et référence)" value={form.appareils_mesure}
+                  <Champ id="entretien-appareils_mesure" libelle="Appareils de mesure utilisés (marque et référence)" value={form.appareils_mesure} facultatif={form.categorie === 'poele'}
                     erreur={erreurDe('appareils_mesure')} onChange={(e) => maj({ appareils_mesure: e.target.value })} aide="Repris d’une attestation à l’autre ; réglable dans Paramètres → Entretien." />
                   {form.categorie === 'chaudiere' && estGazFioul(a0.energie) && (
                     <Champ id="entretien-operations" as="textarea" libelle={`Opérations réalisées (3.1 de la norme ${a0.energie === 'fioul' ? 'NF X50-011' : 'NF X50-010'})`}
@@ -298,7 +300,7 @@ export default function SaisieEntretien({ client, precedent = null, remplace = n
                     <>
                       <Champ id="entretien-co_ppm" libelle="CO mesuré dans l’air ambiant (ppm)" inputMode="decimal" value={String(form.co_ppm ?? '')}
                         erreur={erreurDe('co_ppm')} onChange={(e) => maj({ co_ppm: nombreSaisi(e.target.value) })}
-                        aide="Pièce aérée puis refermée, autres appareils à l’arrêt, chaudière à sa puissance nominale depuis au moins trois minutes, à 50 cm de sa face avant." />
+                        aide="Après réglage et entretien : pièce aérée si possible, puis portes et fenêtres refermées ; autres appareils à combustion à l’arrêt ; chaudière à sa puissance nominale depuis au moins trois minutes ; sonde déplacée sur la largeur de la chaudière, à environ 50 cm de sa face avant, pendant au moins 30 secondes (arrêté du 15 septembre 2009, annexe 1, § 5)." />
                       {co && <p className="rounded-xl bg-surface-2 p-3 text-sm text-encre">Phrase imprimée : « {PHRASES_CO[co]} »</p>}
                       {co === 'b' && <Alerte>{DEVOIR_CO.b}</Alerte>}
                       {co === 'c' && <Alerte ton="danger">{DEVOIR_CO.c}</Alerte>}
@@ -345,7 +347,7 @@ export default function SaisieEntretien({ client, precedent = null, remplace = n
                       <Champ id="entretien-emissions" libelle={`Émissions évaluées (${POLLUANTS(a0.energie)})`} value={form.emissions?.evalue || ''} erreur={erreurDe('emissions')}
                         aide={referenceEmissions(a0.energie) ? `Référence imprimée : ${referenceEmissions(a0.energie)}` : undefined} onChange={(e) => majSous('emissions', { evalue: e.target.value })} />
                       <Champ id="entretien-classe_energetique" as="select" libelle="Classe énergétique" value={form.classe_energetique} erreur={erreurDe('classe_energetique')}
-                        aide="Tableau 12 pour une chaudière gaz ou fioul de moins de 70 kW fabriquée avant 2015 ; sinon la classe de son étiquette." onChange={(e) => maj({ classe_energetique: e.target.value })}>
+                        aide="Chaudière gaz ou fioul de moins de 70 kW non étiquetée : tableau 12. Chaudière étiquetée : la classe de son étiquette. Sinon (bois, charbon, 70 kW ou plus, sans étiquette) : « Non déterminée »." onChange={(e) => maj({ classe_energetique: e.target.value })}>
                         <option value="">Choisir…</option>
                         {CLASSES.map((o) => <option key={o.valeur} value={o.valeur}>{o.libelle}</option>)}
                       </Champ>
@@ -384,7 +386,7 @@ export default function SaisieEntretien({ client, precedent = null, remplace = n
                       <Champ libelle="Dernier ramonage" facultatif type="date" value={form.dernier_ramonage || ''} onChange={(e) => maj({ dernier_ramonage: e.target.value })} />
                     )}
                   </div>
-                  {enRetardRemise && <Alerte>L’attestation doit être remise {cat.delaiAttestation} : la date limite ({jourFr(limite)}) est passée.</Alerte>}
+                  {enRetardRemise && <Alerte>L’attestation doit être {cat.delaiAttestation} : la date limite ({jourFr(limite)}) est passée.</Alerte>}
                   <Champ as="textarea" libelle="Observations" facultatif value={form.observations} onChange={(e) => maj({ observations: e.target.value })} />
                 </Section>
 
@@ -400,9 +402,12 @@ export default function SaisieEntretien({ client, precedent = null, remplace = n
                   </div>
                   {echeance && <p className="text-sm text-encre-2">Échéance légale : au plus tard le {jourFr(echeance)}{form.categorie === 'poele' ? ', si l’appareil est utilisé' : ''}.</p>}
                   {apresEcheance(form.prochain_avant, echeance) && <Alerte>La date conseillée dépasse l’échéance légale du {jourFr(echeance)}.</Alerte>}
-                  <Case libelle="Logement achevé depuis plus de deux ans" checked={form.logement_plus_2_ans} onChange={(v) => maj({ logement_plus_2_ans: v })}
-                    aide="TVA proposée sur la facture : 10 % pour l’entretien dans un logement de plus de deux ans, 20 % sinon. Vous pourrez la changer sur la facture." />
-                  {form.logement_plus_2_ans && peutEtre55(form) && (
+                  {/* Franchise de TVA (art. 293 B) : la facture sort sans TVA, aucun taux n'est proposé (relecture locale, point 6) */}
+                  {!franchise && (
+                    <Case libelle="Logement achevé depuis plus de deux ans" checked={form.logement_plus_2_ans} onChange={(v) => maj({ logement_plus_2_ans: v })}
+                      aide="TVA proposée sur la facture : 10 % pour l’entretien dans un logement de plus de deux ans, 20 % sinon. Vous pourrez la changer sur la facture." />
+                  )}
+                  {!franchise && form.logement_plus_2_ans && peutEtre55(form) && (
                     <>
                       <Case libelle="Appareil éligible au taux de 5,5 %" checked={form.eligible_55} onChange={(v) => maj({ eligible_55: v })} aide={criteres55(form)} />
                       {form.eligible_55 && (
@@ -412,8 +417,8 @@ export default function SaisieEntretien({ client, precedent = null, remplace = n
                     </>
                   )}
                   {canViewPrices && (
-                    <Champ libelle="Prix (€ HT)" facultatif inputMode="decimal" value={form.prix_ht === null || form.prix_ht === undefined ? '' : String(form.prix_ht).replace('.', ',')}
-                      aide={`Repris du dernier entretien ou de vos tarifs. TVA proposée : ${tauxPropose(form)} %.`}
+                    <Champ libelle={franchise ? 'Prix (€)' : 'Prix (€ HT)'} facultatif inputMode="decimal" value={form.prix_ht === null || form.prix_ht === undefined ? '' : String(form.prix_ht).replace('.', ',')}
+                      aide={franchise ? 'Repris du dernier entretien ou de vos tarifs. TVA non applicable (article 293 B du CGI).' : `Repris du dernier entretien ou de vos tarifs. TVA proposée : ${tauxPropose(form, { franchise })} %.`}
                       onChange={(e) => { const v = e.target.value.replace(',', '.'); maj({ prix_ht: v === '' ? null : v }); }} />
                   )}
                   <Case libelle="Le client refuse les rappels de son prochain entretien" checked={refusRappels} disabled={!!client?.rappels_refuses_le} onChange={setRefusRappels}

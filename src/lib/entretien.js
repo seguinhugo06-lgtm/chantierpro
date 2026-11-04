@@ -25,7 +25,7 @@ export const CATEGORIES = [
     texte: 'Article R. 224-41-8 du code de l’environnement ; arrêté du 15 septembre 2009, annexe 5',
     // Avis § 7.1, 7
     pied: 'À conserver au moins deux ans et à tenir à la disposition des agents chargés du contrôle (article R. 224-41-8 du code de l’environnement).',
-    delaiAttestation: 'dans les quinze jours suivant la visite (article R. 224-41-8 du code de l’environnement)',
+    delaiAttestation: 'établie dans les quinze jours suivant la visite, puis remise au commanditaire (article R. 224-41-8 du code de l’environnement)',
   },
   {
     valeur: 'pac', libelle: 'Pompe à chaleur ou climatisation', court: 'pompe à chaleur',
@@ -33,14 +33,14 @@ export const CATEGORIES = [
     texte: 'Article R. 224-44-4 du code de l’environnement ; arrêté du 24 juillet 2020, annexe 3',
     // Sans durée : aucune n'est fixée pour le client (R. 224-44-4)
     pied: 'À tenir à la disposition des agents chargés du contrôle (article R. 224-44-4 du code de l’environnement).',
-    delaiAttestation: 'dans les quinze jours suivant la visite (article R. 224-44-4 du code de l’environnement)',
+    delaiAttestation: 'établie dans les quinze jours suivant la visite, puis remise au commanditaire (article R. 224-44-4 du code de l’environnement)',
   },
   {
     valeur: 'poele', libelle: 'Poêle ou insert (bois, granulés)', court: 'poêle ou insert',
     titre: 'Attestation d’entretien de poêle ou d’insert',
     texte: 'Article R. 1331-75 du code de la santé publique ; arrêté du 20 juillet 2023, annexe 3',
     pied: 'À conserver au moins deux ans et à tenir à la disposition des agents chargés du contrôle (article R. 1331-75 du code de la santé publique).',
-    delaiAttestation: 'dans les quinze jours ouvrés suivant l’achèvement de l’opération (article R. 1331-75 du code de la santé publique)',
+    delaiAttestation: 'remise dans les quinze jours ouvrés suivant l’achèvement de l’opération (article R. 1331-75 du code de la santé publique)',
   },
 ];
 export const categorie = (valeur) => CATEGORIES.find((c) => c.valeur === valeur) || null;
@@ -59,7 +59,11 @@ export const TYPES_PAC = liste([['air_eau', 'PAC air/eau'], ['eau_eau', 'PAC eau
 export const TECHNOLOGIES_CHAUDIERE = liste([['standard', 'Standard'], ['basse_temperature', 'Basse température'], ['condensation', 'Condensation'],
   ['solide', 'Combustible solide']]);
 export const EVACUATIONS = liste([['cheminee', 'Conduit de fumée (tirage naturel)'], ['ventouse', 'Ventouse'], ['vmc_gaz', 'VMC gaz'], ['autre', 'Autre']]);
-export const CLASSES = liste(['A+++', 'A++', 'A+', 'A', 'B', 'C', 'D', 'E', 'F', 'G'].map((c) => [c, c]));
+// Arrêté du 15 sept. 2009, art. 1er : la classification ne vaut que pour le gaz ou le fioul de moins de 70 kW (tableau 12) ;
+// une chaudière hors de ce champ et sans étiquette reçoit « Non déterminée » (juriste-btp, 4 nov. 2026)
+export const CLASSE_NON_DETERMINEE = 'Non déterminée';
+export const CLASSES = [...liste(['A+++', 'A++', 'A+', 'A', 'B', 'C', 'D', 'E', 'F', 'G'].map((c) => [c, c])),
+  { valeur: CLASSE_NON_DETERMINEE, libelle: 'Non déterminée (chaudière non étiquetée, hors tableau 12)' }];
 
 export const estSolide = (energie) => ['bois_buches', 'granules', 'bois_dechiquete', 'charbon', 'plaquettes', 'autre_biomasse'].includes(energie);
 const estGranules = (energie) => energie === 'granules';
@@ -352,17 +356,20 @@ export function nomAppareil(e) {
 const dateFr = (jour) => (jour ? dateLue(String(jour).slice(0, 10)).toLocaleDateString('fr-FR') : '');
 const dateLongue = (jour) => (jour ? dateLue(String(jour).slice(0, 10)).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : '');
 
-/** La phrase d'obligation des rappels (avis § 4.5, mot pour mot), ou '' si ses conditions ne sont pas connues. */
+/**
+ * La phrase d'obligation des rappels (avis § 4.5, mot pour mot), ou '' si ses conditions ne sont pas connues.
+ * D-33 ne l'autorise que pour la chaudière : PAC et poêle attendent la décision d'Hugo (question 1 de l'avis) ; leurs
+ * formules restent dans PHRASES_OBLIGATION_EN_ATTENTE, non utilisées.
+ */
 export function phraseObligation(e) {
-  if (!obligationConnue(e)) return '';
-  if (e.categorie === 'chaudiere') {
-    return `Pour rappel, l’entretien d’une chaudière doit être fait une fois par année civile (article R. 224-41-7 du code de l’environnement) : le prochain doit avoir lieu au plus tard le 31 décembre ${Number(jourDe(e.realise_le).slice(0, 4)) + 1}.`;
-  }
-  if (e.categorie === 'pac') {
-    return `Pour rappel, l’entretien d’une pompe à chaleur ou d’une climatisation de 4 à 70 kW doit être fait au moins tous les deux ans (article R. 224-44-3 du code de l’environnement) : le prochain doit avoir lieu au plus tard le ${dateLongue(echeanceLegale('pac', e.realise_le))}.`;
-  }
-  return 'Pour rappel, l’entretien d’un poêle ou d’un insert à bois ou à granulés doit être fait au moins tous les douze mois lorsqu’il est utilisé (article R. 1331-68 du code de la santé publique).';
+  if (!obligationConnue(e) || e.categorie !== 'chaudiere') return '';
+  return `Pour rappel, l’entretien d’une chaudière doit être fait une fois par année civile (article R. 224-41-7 du code de l’environnement) : le prochain doit avoir lieu au plus tard le 31 décembre ${Number(jourDe(e.realise_le).slice(0, 4)) + 1}.`;
 }
+/** En attente d'Hugo (D-33 : chaudière seulement) : formules du juriste pour la PAC et le poêle, non envoyées. */
+export const PHRASES_OBLIGATION_EN_ATTENTE = {
+  pac: (e) => `Pour rappel, l’entretien d’une pompe à chaleur ou d’une climatisation de 4 à 70 kW doit être fait au moins tous les deux ans (article R. 224-44-3 du code de l’environnement) : le prochain doit avoir lieu au plus tard le ${dateLongue(echeanceLegale('pac', e.realise_le))}.`,
+  poele: () => 'Pour rappel, l’entretien d’un poêle ou d’un insert à bois ou à granulés doit être fait au moins tous les douze mois lorsqu’il est utilisé (article R. 1331-68 du code de la santé publique).',
+};
 // Recommandée par juriste-btp (aucun texte ne l'exige ; avis § 4.5, question 6) : elle écarte toute impression de mandat
 export const PHRASE_LIBRE_CHOIX = 'Vous restez libre de confier cet entretien au professionnel qualifié de votre choix.';
 
@@ -383,15 +390,15 @@ export function criteres55(e) {
   const energie = e?.appareils?.[0]?.energie;
   if (e?.categorie === 'chaudiere') {
     return estSolide(energie)
-      ? 'Chaudière bois ou biomasse jusqu’à 300 kW qui remplit les critères de l’article 30-0 D ter, 3° de l’annexe IV du CGI (efficacité saisonnière d’au moins 77 % jusqu’à 20 kW et 79 % au-delà, émissions plafonnées, régulateur de classe IV à VIII).'
+      ? 'Chaudière à bois ou autres biomasses de 300 kW au plus qui remplit l’article 30-0 D ter, 3° de l’annexe IV du CGI : alimentation automatique avec silo d’au moins 225 litres, ou manuelle avec ballon tampon ; efficacité énergétique saisonnière d’au moins 77 % jusqu’à 20 kW et 79 % au-delà ; émissions plafonnées (automatique : CO ≤ 400, particules ≤ 30, COG ≤ 16, NOx ≤ 200 mg/Nm³ ; manuelle : CO ≤ 600, particules ≤ 40, COG ≤ 20, NOx ≤ 200 mg/Nm³, à 10 % d’O2) ; régulateur de classe IV à VIII.'
       : 'Chaudière à très haute performance énergétique (annexe IV du CGI, art. 30-0 D nonies) : efficacité énergétique saisonnière d’au moins 92 % jusqu’à 70 kW (au-delà : 87 % à pleine puissance et 95,5 % à 30 %) ET régulateur de classe IV, V, VI, VII ou VIII. La condensation seule ne suffit pas.';
   }
   if (e?.categorie === 'pac') {
     return ['air_air', 'clim'].includes(e?.appareils?.[0]?.type)
-      ? 'PAC air/air qui remplit l’article 30-0 D ter, 1° bis de l’annexe IV du CGI (jusqu’à 12 kW : classe A+ en multi-split ou A++ en mono-split, en chauffage et en refroidissement ; fluide frigorigène conforme au règlement (UE) 2024/573 ; pilotage connecté). Une climatisation en froid seul n’est pas éligible.'
+      ? 'PAC air/air qui remplit l’article 30-0 D ter, 1° bis de l’annexe IV du CGI : jusqu’à 12 kW, classe A+ en multi-split ou A++ en mono-split, en chauffage (SCOP) et en refroidissement (SEER) ; au-delà de 12 kW, efficacité énergétique saisonnière d’au moins 145 % en chauffage et 250 % en refroidissement (seuils propres aux PAC en toiture) ; fluide frigorigène qui respecte les seuils et le calendrier du règlement (UE) 2024/573 ; PAC connectable à un réseau numérique. Une climatisation en froid seul n’est pas éligible.'
       : 'PAC qui remplit l’article 30-0 D ter, 1° de l’annexe IV du CGI (efficacité énergétique saisonnière d’au moins 126 % à basse température, ou 111 % à moyenne et haute température).';
   }
-  return 'Appareil qui remplit l’article 30-0 D ter, 4° de l’annexe IV du CGI (granulés ou plaquettes : rendement d’au moins 79 %, CO ≤ 300, particules ≤ 20, COG ≤ 60, NOx ≤ 200 mg/Nm³ ; bûches : rendement d’au moins 65 %, CO ≤ 1500, particules ≤ 40, COG ≤ 120, NOx ≤ 200 mg/Nm³, à 13 % d’O2).';
+  return 'Appareil qui remplit l’article 30-0 D ter, 4° de l’annexe IV du CGI (granulés ou plaquettes : efficacité énergétique saisonnière d’au moins 79 %, CO ≤ 300, particules ≤ 20, COG ≤ 60, NOx ≤ 200 mg/Nm³ ; bûches ou autres biomasses : efficacité énergétique saisonnière d’au moins 65 %, CO ≤ 1500, particules ≤ 40, COG ≤ 120, NOx ≤ 200 mg/Nm³, à 13 % d’O2).';
 }
 /** La case 5,5 % a-t-elle un sens ? Ni une climatisation en froid seul, ni une chaudière au charbon (pas une énergie
  * renouvelable, ann. IV, art. 30-0 D, 2°). */
@@ -511,7 +518,8 @@ export function manquants(e) {
     if (e.categorie === 'poele' && vide(a.type)) ajoute(ch('type'), `Le type d’appareil${n}`);
     if (!pointsCoches(e.categorie, a).length) ajoute(ch('points'), `Les points contrôlés${n}`);
   });
-  if (vide(e.appareils_mesure)) ajoute('appareils_mesure', 'La marque et la référence des appareils de mesure');
+  // Exigés par l'annexe 5 (chaudière) et l'annexe 3 (PAC) ; pas par l'annexe 3 de l'arrêté du 20 juil. 2023 (poêle)
+  if (e.categorie !== 'poele' && vide(e.appareils_mesure)) ajoute('appareils_mesure', 'La marque et la référence des appareils de mesure');
   if (e.categorie === 'chaudiere') {
     const a = appareils[0] || {};
     if (estGazFioul(a.energie) && vide(e.operations)) ajoute('operations', 'Les opérations réalisées (norme NF X50-010 ou NF X50-011)');
@@ -522,7 +530,8 @@ export function manquants(e) {
     if (vide(e.rendement?.evalue)) ajoute('rendement', 'Le rendement évalué');
     if (vide(e.rendement?.reference)) ajoute('rendement_reference', 'Le rendement de référence');
     if (vide(e.emissions?.evalue)) ajoute('emissions', 'Les émissions évaluées');
-    if (vide(e.classe_energetique)) ajoute('classe_energetique', 'La classe énergétique');
+    // « Non déterminée » refusée pour une chaudière gaz ou fioul de moins de 70 kW (classification due, art. 1er)
+    if (vide(e.classe_energetique) || (e.classe_energetique === CLASSE_NON_DETERMINEE && estGazFioul(a.energie) && !(nombre(e.puissance_kw) >= 70))) ajoute('classe_energetique', 'La classe énergétique');
     if (!RUBRIQUES_CHAUDIERE.some((r) => !vide(e.conseils?.[r.cle]))) ajoute('conseils', 'Les conseils (au moins une rubrique)');
   } else {
     if (e.categorie === 'pac') {

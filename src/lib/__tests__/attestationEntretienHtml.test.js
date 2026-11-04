@@ -37,6 +37,13 @@ describe('attestation d’entretien — trois documents distincts', () => {
       expect(html).not.toContain('<script>');
       expect(html).toContain('Marque&lt;script&gt;');
     }
+  });  it('poêle sans appareil de mesure ni résultat : pas de bloc « Mesures » vide', () => {
+    const sans = buildAttestationEntretienHtml({ entretien: attestation('poele', { appareils_mesure: '', mesures: {} }), entreprise });
+    expect(sans).not.toContain('<h2>Mesures</h2>');
+    // Contre-essai : renseignés, ils s'impriment
+    const avec = buildAttestationEntretienHtml({ entretien: attestation('poele'), entreprise });
+    expect(avec).toContain('<h2>Mesures</h2>');
+    expect(avec).toContain('Analyseur Exemple A1');
   });
 });
 

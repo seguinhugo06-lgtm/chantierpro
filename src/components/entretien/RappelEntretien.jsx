@@ -4,6 +4,7 @@ import { Bouton } from '../ui/Bouton';
 import { texteSms, descriptionAppareil } from '../../lib/entretien';
 import { lienSms, lienAppel } from '../../lib/ramonage';
 import { echeanceLue } from '../ramonage/RappelRamonage';
+import { noterRappel } from '../ramonage/actionsRamonage';
 import { dateLue } from '../../lib/dates';
 import { estClientPro } from '../../lib/relanceUtils';
 
@@ -19,8 +20,9 @@ export default function RappelEntretien({ rappel, entreprise, suivreEntretien, r
   const [fait, setFait] = useState(null);
   const sms = lienSms(client?.telephone, texteSms({ entreprise, entretien }));
   const appel = estClientPro(client) ? lienAppel(client?.telephone) : '';
-  const noter = (canal) => { setFait(canal); suivreEntretien(entretien.id, { rappel_fait_le: new Date().toISOString(), rappel_canal: canal }); };
-  const annuler = () => { setFait(null); suivreEntretien(entretien.id, { rappel_fait_le: null, rappel_canal: null }); };
+  // « Rappel noté » seulement après l'écriture : false = échec (message déjà affiché), la carte reste dans son état
+  const noter = (canal) => noterRappel(() => suivreEntretien(entretien.id, { rappel_fait_le: new Date().toISOString(), rappel_canal: canal }), () => setFait(canal));
+  const annuler = () => noterRappel(() => suivreEntretien(entretien.id, { rappel_fait_le: null, rappel_canal: null }), () => setFait(null));
 
   return (
     <div data-testid="rappel-entretien" className="rounded-2xl border border-alerte-texte/30 bg-alerte-fond p-4">

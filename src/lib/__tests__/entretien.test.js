@@ -3,6 +3,7 @@ import {
   echeanceLegale, prochainParDefaut, apresEcheance, limiteRemise, niveauCO, PHRASES_CO, obligationConnue, phraseObligation,
   tauxPropose, manquants, nouveauBrouillon, groupesPoints, pointsCoches, ligneFacture, rappelsDus, texteSms,
   referenceEmissions, numeroEntretienDemo, appareilsDuClient, entretienPrecedent, nomAppareil,
+  PHRASES_OBLIGATION_EN_ATTENTE, criteres55, CLASSES, categorie,
 } from '../entretien';
 
 // Données fictives seulement
@@ -88,8 +89,14 @@ describe('entretien — obligation énoncée seulement si ses conditions sont co
     expect(p).not.toContain('04/11/2027');
     expect(phraseObligation({ categorie: 'chaudiere', puissance_kw: '', realise_le: '2026-11-04T10:00:00' })).toBe('');
   });
-  it('PAC : « au moins tous les deux ans », jamais « annuel »', () => {
-    const p = phraseObligation({ categorie: 'pac', puissance_kw: 8, realise_le: '2026-11-04T10:00:00' });
+  it('D-33 : la phrase n’est rendue que pour la chaudière ; PAC et poêle attendent Hugo', () => {
+    expect(phraseObligation({ categorie: 'pac', puissance_kw: 8, realise_le: '2026-11-04T10:00:00' })).toBe('');
+    expect(phraseObligation({ categorie: 'poele', appareils: [{ energie: 'granules' }], realise_le: '2026-11-04T10:00:00' })).toBe('');
+    // Contre-essai : leurs conditions sont connues, seule D-33 retire la phrase
+    expect(obligationConnue({ categorie: 'pac', puissance_kw: 8 })).toBe(true);
+  });
+  it('PAC (formule en attente) : « au moins tous les deux ans », jamais « annuel »', () => {
+    const p = PHRASES_OBLIGATION_EN_ATTENTE.pac({ categorie: 'pac', puissance_kw: 8, realise_le: '2026-11-04T10:00:00' });
     expect(p).toContain('au moins tous les deux ans');
     expect(p).toContain('4 novembre 2028');
     expect(p).not.toMatch(/annuel/);
@@ -156,6 +163,31 @@ describe('entretien — champs obligatoires (annexes 3 et 5)', () => {
     sansEvacuation.appareils = [{ ...sansEvacuation.appareils[0], evacuation: '' }];
     expect(manquants(sansEvacuation).map((x) => x.champ)).toContain('appareil0-evacuation');
   });
+  it('classe « Non déterminée » : refusée pour le gaz ou le fioul sous 70 kW, admise au bois ou à 70 kW et plus', () => {
+    expect(CLASSES.map((c) => c.valeur)).toContain('Non déterminée');
+    const nd = { classe_energetique: 'Non déterminée' };
+    expect(manquants(chaudiere(nd)).map((x) => x.champ)).toContain('classe_energetique');
+    expect(manquants(chaudiere({ ...nd, puissance_kw: '' })).map((x) => x.champ)).toContain('classe_energetique');
+    expect(manquants(chaudiere({ ...nd, puissance_kw: '80' }))).toEqual([]);
+    const bois = chaudiere({ ...nd, operations: '', mesures: { temperature_fumees: '180 °C' } });
+    bois.appareils = [{ ...bois.appareils[0], energie: 'bois_buches', points: { 'solide.decendrage': true } }];
+    expect(manquants(bois)).toEqual([]);
+  });
+  it('délai de l’attestation : « établie » (chaudière, PAC), « remise » (poêle)', () => {
+    expect(categorie('chaudiere').delaiAttestation).toMatch(/^établie dans les quinze jours/);
+    expect(categorie('pac').delaiAttestation).toMatch(/^établie dans les quinze jours/);
+    expect(categorie('poele').delaiAttestation).toMatch(/^remise dans les quinze jours ouvrés/);
+  });
+  it('critères du 5,5 % : efficacité saisonnière (poêle), silo et émissions (chaudière bois), PAC air/air au-delà de 12 kW', () => {
+    const poele = criteres55({ categorie: 'poele' });
+    expect(poele).toContain('efficacité énergétique saisonnière d’au moins 79 %');
+    expect(poele).toContain('bûches ou autres biomasses');
+    expect(poele).not.toMatch(/rendement/);
+    const bois = criteres55({ categorie: 'chaudiere', appareils: [{ energie: 'granules' }] });
+    expect(bois).toContain('silo d’au moins 225 litres');
+    expect(bois).toContain('CO ≤ 400');
+    expect(criteres55({ categorie: 'pac', appareils: [{ type: 'air_air' }] })).toContain('au-delà de 12 kW, efficacité énergétique saisonnière d’au moins 145 % en chauffage et 250 % en refroidissement');
+  });
   it('la puissance et le numéro de série restent facultatifs (« si possible »)', () => {
     expect(manquants(chaudiere({ puissance_kw: '' }))).toEqual([]);
   });
@@ -180,8 +212,9 @@ describe('entretien — champs obligatoires (annexes 3 et 5)', () => {
   });
   it('poêle : marque et modèle « lorsqu’elles sont disponibles », points et conseils exigés', () => {
     const b = nouveauBrouillon({ client, categorieValeur: 'poele', maintenant: new Date('2026-11-04T10:00:00') });
-    const poele = { ...b, local: 'Salon', intervenant_nom: 'P', appareils_mesure: 'Sans mesure : contrôle visuel',
+    const poele = { ...b, local: 'Salon', intervenant_nom: 'P', appareils_mesure: '',
       appareils: [{ ...b.appareils[0], energie: 'granules', points: { 'commun.decendrage': true } }], conseils: { choix: ['stockage'], texte: '' } };
+    // Appareils de mesure : l'annexe 3 de l'arrêté du 20 juil. 2023 ne les demande pas (relecture locale, point 2)
     expect(manquants(poele)).toEqual([]);
     expect(manquants({ ...poele, conseils: { choix: [], texte: '' } }).map((x) => x.champ)).toContain('conseils');
   });

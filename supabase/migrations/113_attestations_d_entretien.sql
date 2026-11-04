@@ -60,7 +60,8 @@ CREATE TABLE IF NOT EXISTS public.entretiens (
   dernier_entretien DATE,
   dernier_ramonage DATE,
   -- La visite
-  appareils_mesure TEXT NOT NULL CHECK (length(btrim(appareils_mesure)) > 0),
+  -- Exigés pour la chaudière (annexe 5) et la PAC (annexe 3) ; pas pour le poêle (arrêté du 20 juil. 2023, annexe 3)
+  appareils_mesure TEXT,
   mesures JSONB NOT NULL DEFAULT '{}'::jsonb CHECK (jsonb_typeof(mesures) = 'object'),
   operations TEXT,
   co_ppm NUMERIC(8, 2) CHECK (co_ppm IS NULL OR co_ppm >= 0),
@@ -91,6 +92,7 @@ CREATE TABLE IF NOT EXISTS public.entretiens (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   -- Annexe 5 : la phrase du CO imprimée dépend de la mesure, qui est donc exigée pour une chaudière
   CONSTRAINT entretiens_co_chaudiere CHECK (categorie <> 'chaudiere' OR co_ppm IS NOT NULL),
+  CONSTRAINT entretiens_appareils_mesure CHECK (categorie = 'poele' OR length(btrim(coalesce(appareils_mesure, ''))) > 0),
   CONSTRAINT entretiens_prochain_apres_visite CHECK (prochain_avant > (realise_le AT TIME ZONE 'Europe/Paris')::date),
   CONSTRAINT entretiens_annulation_motivee CHECK (annulee_le IS NULL OR length(btrim(coalesce(annulation_motif, ''))) > 0)
 );
@@ -194,14 +196,12 @@ BEGIN
   IF current_user NOT IN ('authenticated', 'anon') THEN
     RETURN NEW;
   END IF;
+  -- client_id, remplace_id et updated_at sont figés eux aussi (relecture gardien-securite : un compte ne vide ni le
+  -- client ni l'attestation remplacée). La suppression d'une fiche client vide le lien par ON DELETE SET NULL, exécutée
+  -- en propriétaire de la table : elle passe la garde current_user ci-dessus.
   NEW := jsonb_populate_record(NEW, to_jsonb(OLD)
-    - ARRAY['facture_id', 'client_id', 'remplace_id', 'annulee_le', 'annulation_motif', 'rappel_fait_le', 'rappel_canal', 'updated_at']);
-  IF NEW.client_id IS NOT NULL AND NEW.client_id IS DISTINCT FROM OLD.client_id THEN
-    NEW.client_id := OLD.client_id;
-  END IF;
-  IF NEW.remplace_id IS NOT NULL AND NEW.remplace_id IS DISTINCT FROM OLD.remplace_id THEN
-    NEW.remplace_id := OLD.remplace_id;
-  END IF;
+    - ARRAY['facture_id', 'annulee_le', 'annulation_motif', 'rappel_fait_le', 'rappel_canal']);
+  NEW.updated_at := now();
   IF OLD.annulee_le IS NOT NULL THEN
     NEW.annulee_le := OLD.annulee_le;
     NEW.annulation_motif := OLD.annulation_motif;

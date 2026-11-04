@@ -501,6 +501,11 @@ serve(async (req) => {
       for (const o of data || []) carte.set(o.id, o.owner_id);
       return { carte, error };
     };
+    // Fiche qui peut envoyer : module actif et e-mail de l'entreprise rempli (testé avant le choix de la fiche)
+    const moduleActif = (ent: any, cle: string) => [true, 'true'].includes(ent?.settings_json?.reglages?.[cle]);
+    const avecEmail = (ent: any) => String(ent?.email || '').includes('@');
+    const valableRamonage = (ent: any) => moduleActif(ent, 'ramonageActif') && avecEmail(ent);
+    const valableEntretien = (ent: any) => moduleActif(ent, 'entretienActif') && avecEmail(ent);
     const ramonage: any = { entreprises: 0, dus: 0, envoyes: 0, echecs: 0, details: [] as any[] };
     report.ramonage = ramonage;
     const { data: entsRamonage, error: errEntsRamonage } = await admin
@@ -516,7 +521,7 @@ serve(async (req) => {
     const aujourdhui = jourParis();
     const propsR = await proprietaires(entsRamonage || []);
     if (propsR.error) { ramonage.erreur = propsR.error.message; report.failed++; }
-    for (const ent of propsR.error ? [] : fichesQuiEnvoient(entsRamonage || [], propsR.carte)) {
+    for (const ent of propsR.error ? [] : fichesQuiEnvoient(entsRamonage || [], propsR.carte, valableRamonage)) {
       if (ent.archived_at) continue;
       const reglages = ent.settings_json?.reglages || {};
       if (reglages.ramonageActif !== true && reglages.ramonageActif !== 'true') continue;
@@ -656,7 +661,7 @@ serve(async (req) => {
     const organisationsVuesE = new Set<string>();
     const propsE = await proprietaires(entsEntretien || []);
     if (propsE.error) { entretien.erreur = propsE.error.message; report.failed++; }
-    for (const ent of propsE.error ? [] : fichesQuiEnvoient(entsEntretien || [], propsE.carte)) {
+    for (const ent of propsE.error ? [] : fichesQuiEnvoient(entsEntretien || [], propsE.carte, valableEntretien)) {
       if (ent.archived_at) continue;
       const reglages = ent.settings_json?.reglages || {};
       if (reglages.entretienActif !== true && reglages.entretienActif !== 'true') continue;
