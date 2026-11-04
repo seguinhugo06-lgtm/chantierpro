@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { fromSupabase, toSupabase, REGLAGES_SANS_COLONNE, createEntreprise, updateEntreprise, archiveEntreprise, setActiveEntreprise, _reinitialiserRepliMetiers } from '../entrepriseService';
 import { captureException } from '../../lib/sentry';
 
