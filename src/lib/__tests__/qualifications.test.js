@@ -40,7 +40,6 @@ describe('qualifications imprimées', () => {
       expect(lignesQualifications({ ...e, rgeValidite: v }, AUJ)).toEqual([]);
       expect(raisonRgeNonImprime({ ...e, rgeValidite: v }, AUJ)).toMatch(/pas lisible/);
     }
-    expect(lignesQualifications({ labels: [{ actif: true, nom: 'QualiPAC', numero: 'QP-9', dateExpiration: '31/12/2099' }] }, AUJ)).toEqual([]);
   });
 
   it('sans date de fin, le RGE n’est pas imprimé et l’écran demande la date (avis juriste du 3 nov. 2026)', () => {
@@ -71,10 +70,9 @@ describe('qualifications imprimées', () => {
     expect(raisonRgeNonImprime(e, AUJ)).toMatch(/Qualiopi/);
   });
 
-  it('mentionRGE à false coupe tout ; l’ancien format `labels` exige un numéro', () => {
+  it('mentionRGE à false coupe tout ; l’ancien format `labels` (sans intitulé, organisme ni date exigés) n’est plus imprimé', () => {
     expect(lignesQualifications({ rge: 'E-1', rgeOrganisme: 'Qualibat', rgeDomaine: 'QualiPAC', rgeValidite: '2027-01-01', mentionRGE: false }, AUJ)).toEqual([]);
-    expect(lignesQualifications({ labels: [{ actif: true, nom: 'QualiPAC' }, { actif: true, nom: 'QualiPAC', numero: 'QP-9' }] }, AUJ))
-      .toEqual(['QualiPAC N°QP-9']);
+    expect(lignesQualifications({ labels: [{ actif: true, nom: 'QualiPAC', numero: 'QP-9' }] }, AUJ)).toEqual([]);
   });
 
   it('devisHtmlBuilder imprime le RGE, échappé', () => {
@@ -92,6 +90,16 @@ describe('qualifications imprimées', () => {
   it('pdfHtmlBuilder (documents rapides) imprime le RGE', () => {
     expect(buildDocumentHTML(doc, client, null, { ...base, rge: 'E-12345', rgeOrganisme: 'Qualit\'EnR', rgeDomaine: 'QualiPAC', rgeValidite: '2027-06-30' }))
       .toContain('Qualification : QualiPAC — Qualit&#39;EnR — N° E-12345');
+  });
+
+  // Relecture du 4 nov. 2026 : la règle n'était testée que sur devisHtmlBuilder. Une facture ancienne réimprimée
+  // aujourd'hui (fin de validité déjà passée) garde sa ligne RGE, puisqu'elle était valide le jour de la facture.
+  it('pdfHtmlBuilder : une facture ancienne réimprimée garde son RGE, valide à sa date', () => {
+    const e = { ...base, rge: 'E-1', rgeOrganisme: 'Qualibat', rgeDomaine: 'QualiPAC', rgeValidite: '2025-12-31' };
+    const facture = { ...doc, type: 'facture', numero: 'FAC-2025-0042' };
+    expect(buildDocumentHTML({ ...facture, date: '2025-06-01' }, client, null, e)).toContain('Entreprise RGE');
+    // contre-essai : la même facture datée après la fin de validité ne l'imprime pas
+    expect(buildDocumentHTML({ ...facture, date: '2026-01-10' }, client, null, e)).not.toContain('Entreprise RGE');
   });
 });
 

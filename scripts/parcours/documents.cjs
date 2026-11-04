@@ -138,14 +138,27 @@ module.exports = [
   {
     // Recherche « métiers » du 3 nov. 2026 : le RGE saisi dans Paramètres n'était imprimé nulle part. Aperçu réel (générateur
     // de DevisPage) : imprimé s'il est valide à la date du devis, absent s'il est expiré (src/lib/qualifications.js).
+    // Relecture du 4 nov. 2026 : 2099 et 2000 donnent le même résultat qu'on juge au jour du devis ou au jour même ; le
+    // troisième cas met la fin au lendemain de la date du devis ouvert, déjà passée aujourd'hui : imprimé quand même.
     nom: 'aperçu du devis : le RGE saisi s’imprime s’il est valide, pas s’il est expiré',
     async executer({ ouvrir, attendre, verifier }) {
-      for (const [fin, imprime] of [['2099-12-31', true], ['2000-01-01', false]]) {
-        const id = `ent-rge-${fin.slice(0, 4)}`;
+      const auj = new Date().toISOString().slice(0, 10);
+      const cas = [['2099-12-31', true], ['2000-01-01', false]];
+      let dateDevis = null; // « JJ/MM/AAAA », lue dans le premier aperçu
+      for (let n = 0; n < 3; n++) {
+        if (n === 2) {
+          verifier(!!dateDevis, 'date du devis lue dans l’aperçu');
+          const [j, m, a] = dateDevis.split('/');
+          const lendemain = new Date(Date.UTC(+a, +m - 1, +j + 1)).toISOString().slice(0, 10);
+          verifier(lendemain < auj, `fin intermédiaire (${lendemain}) déjà passée aujourd'hui (${auj})`);
+          cas.push([lendemain, true]);
+        }
+        const [fin, imprime] = cas[n];
+        const id = `ent-rge-${fin.replace(/-/g, '')}`;
         const reglages = { rge: 'E-99999', rgeOrganisme: 'Qualibat', rgeValidite: fin, rgeDomaine: 'QualiPAC chauffage et eau chaude sanitaire' };
         const ligne = { ...FICHE_CAPITAL, id, forme_juridique: 'SARL', settings_json: { reglages } };
         const app = { ...FICHE_CAPITAL_APP, id, formeJuridique: 'SARL', ...reglages };
-        const { page, browser } = await ouvrir({ page: 'devis', largeur: 1440, avantChargement: poserEntreprise(`parcours-rge-${fin.slice(0, 4)}`, ligne, app) });
+        const { page, browser } = await ouvrir({ page: 'devis', largeur: 1440, avantChargement: poserEntreprise(`parcours-rge-${fin.replace(/-/g, '')}`, ligne, app) });
         await attendre(800);
         const ouvert = await page.evaluate(() => {
           const b = [...document.querySelectorAll('[data-ui="LigneListe"] > button')].find((x) => /DEV-\d{4}-\d{5}/.test(x.innerText || ''));
@@ -158,6 +171,9 @@ module.exports = [
         await attendre(1200);
         const html = await page.evaluate(() => [...document.querySelectorAll('iframe')].map((f) => f.getAttribute('srcdoc') || '').find((x) => x.length > 100) || '');
         verifier(html.length > 100, `aperçu affiché (fin ${fin})`);
+        const premiereDate = (html.match(/\b\d{2}\/\d{2}\/\d{4}\b/) || [null])[0];
+        if (n === 0) dateDevis = premiereDate;
+        if (n === 2) verifier(premiereDate === dateDevis, `même devis, daté du ${dateDevis} (${premiereDate})`);
         const trouve = /Entreprise RGE \(Reconnu garant de l(?:'|&#39;)environnement\) — Qualification : QualiPAC chauffage et eau chaude sanitaire — Qualibat — N° E-99999 — Valide jusqu(?:'|&#39;)au/.test(html);
         verifier(trouve === imprime, `fin ${fin} : RGE ${imprime ? 'imprimé' : 'absent'} (${(html.match(/.{0,10}Entreprise RGE.{0,60}/) || ['aucun'])[0]})`);
         await browser.close();
