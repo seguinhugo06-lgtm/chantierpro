@@ -192,7 +192,7 @@ describe('page de paiement en ligne', () => {
     expect(payee(data('Micro-entreprise'))).not.toMatch(HT_OU_TTC);
     expect(payee(data('SARL'))).toMatch(/Montant TTC/);
   });
-  it('une facture émise avec TVA par une micro-entreprise garde « TTC » ; sans forme juridique (avant 107), « TTC »', () => {
+  it('une facture émise avec TVA par une micro-entreprise garde « TTC » ; sans forme juridique (avant 114), « TTC »', () => {
     expect(page(data('Micro-entreprise', { total_tva: 50, total_ttc: 350, reste_du: 350 }))).toMatch(/Total TTC/);
     expect(page(data(undefined))).toMatch(/Total TTC/);
   });

@@ -167,7 +167,7 @@ export default function PublicPaymentPage({ payToken }) {
   const couleur = entreprise?.couleur || '#f97316';
   const totalTTC = facture.total_ttc || 0;
   // Franchise en base de TVA (art. 293 B du CGI) : ni « TTC » ni « HT » (D-31) ; la forme juridique vient de
-  // get_facture_for_payment (migration 107). Une facture émise avec TVA garde son « TTC » (franchiseAppliquee).
+  // get_facture_for_payment (migration 114). Une facture émise avec TVA garde son « TTC » (franchiseAppliquee).
   // get_facture_for_payment ne sert que des factures et n'en renvoie pas le type : sans lui, une facture émise avec TVA
   // serait lue comme un brouillon
   const franchise = franchiseAppliquee({ ...facture, type: 'facture' }, entreprise);

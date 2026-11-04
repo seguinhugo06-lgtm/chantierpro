@@ -1,14 +1,16 @@
 -- ============================================================
--- Migration 107: forme juridique sur la page de paiement
+-- Migration 114: forme juridique sur la page de paiement
 -- ============================================================
 -- Pourquoi : en franchise en base de TVA (art. 293 B du CGI), aucun écran n'écrit « HT » ou « TTC » (décision D-31,
 --   tâche 28 `franchise-restes`). La page de paiement en ligne du client (/pay/:token, éteinte, D-21) écrit
 --   « Montant TTC » et « Total TTC » : elle ne peut pas savoir si l'entreprise est en franchise, car
 --   get_facture_for_payment (106) ne renvoie pas sa forme juridique (règle unique : estFranchiseTva, src/lib/franchiseTva.js).
 -- Effet : la fonction renvoie aussi entreprise.forme_juridique (information déjà imprimée sur la facture remise au
---   client, et déjà renvoyée par get_devis_for_signature). Rien d'autre ne change : même corps que 106, mêmes droits
+--   client, et déjà renvoyée par get_devis_for_signature). Elle retire aussi des lignes le prix d'achat de l'artisan
+--   (clés prixAchat et prix_achat), que 106 renvoyait à tout visiteur muni du lien ; même expression que la migration
+--   110 pour get_devis_for_signature. Rien d'autre ne change : même corps que 106, mêmes droits
 --   (CREATE OR REPLACE garde les droits d'exécution).
--- Attention : toute migration qui réécrit à nouveau get_facture_for_payment repart du corps de 107 (sinon la forme
+-- Attention : toute migration qui réécrit à nouveau get_facture_for_payment repart du corps de 114 (sinon la forme
 --   juridique disparaît ; relecture gardien-securite du 4 nov. 2026).
 --
 -- ─── Vérification après application (éditeur SQL) ───────────────────────────
@@ -16,6 +18,8 @@
 --   → true
 --   SELECT has_function_privilege('anon', 'public.get_facture_for_payment(text)', 'execute');
 --   → true (inchangé)
+--   SELECT position('prixAchat' in prosrc) > 0 AS prix_achat_filtre FROM pg_proc WHERE proname = 'get_facture_for_payment';
+--   → true
 -- ============================================================
 
 CREATE OR REPLACE FUNCTION public.get_facture_for_payment(p_token text)
@@ -136,7 +140,13 @@ BEGIN
       'payment_status', v_facture.payment_status,
       'payment_completed_at', v_facture.payment_completed_at,
       'stripe_session_id', CASE WHEN v_serveur THEN v_facture.stripe_session_id END,
-      'lignes', v_facture.lignes,
+      -- 114 : les lignes sans le prix d'achat de l'artisan (prixAchat, prix_achat) : un visiteur muni du lien ne doit pas
+      --   lire le coût ni la marge. Même expression que get_devis_for_signature (110). La page ne lit pas les lignes.
+      'lignes', CASE WHEN jsonb_typeof(v_facture.lignes) = 'array' THEN (
+        SELECT COALESCE(jsonb_agg(CASE WHEN jsonb_typeof(l.v) = 'object' THEN l.v - 'prixAchat' - 'prix_achat' ELSE l.v END
+                                  ORDER BY l.n), '[]'::jsonb)
+        FROM jsonb_array_elements(v_facture.lignes) WITH ORDINALITY AS l(v, n)
+      ) ELSE v_facture.lignes END,
       'user_id', CASE WHEN v_serveur THEN v_facture.user_id END,
       'beneficiaire_id', CASE WHEN v_serveur THEN v_beneficiaire END
     ),
@@ -157,7 +167,7 @@ BEGIN
       'couleur', COALESCE(v_entreprise.couleur_principale, '#f97316'),
       'iban', v_entreprise.iban,
       'bic', v_entreprise.bic,
-      -- 107 : la forme juridique, pour écrire les montants sans « TTC » en franchise en base de TVA (art. 293 B du CGI)
+      -- 114 : la forme juridique, pour écrire les montants sans « TTC » en franchise en base de TVA (art. 293 B du CGI)
       'forme_juridique', v_entreprise.forme_juridique,
       'donnees_fictives', COALESCE(v_entreprise.settings_json -> 'reglages' ->> 'donneesFictives' = 'true', false)
     ) ELSE '{}'::jsonb END,
