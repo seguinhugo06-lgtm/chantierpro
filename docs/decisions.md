@@ -290,3 +290,19 @@ Option `refaire` : La refaire en trois étapes concrètes (fiche, client, premie
 Recommandation : `retirer` — l'Accueil fait déjà ce travail, sans fenêtre qui s'interpose.
 Irréversible : non
 Bloque : rien (premier usage)
+
+### Q-entretien-obligation · Rappel d'entretien d'une pompe à chaleur ou d'un poêle : y écrire aussi l'obligation, avec son article ?
+Contexte : D-33 autorise la phrase « l'entretien doit être fait… (article…) » dans le rappel d'une chaudière seulement. Le juriste a donné les formules pour la PAC (au moins tous les deux ans, R. 224-44-3 du code de l'environnement) et le poêle (au moins tous les douze mois s'il est utilisé, R. 1331-68 du code de la santé publique). En attendant, les rappels de PAC et de poêle partent sans cette phrase (relecture locale du 4 nov. 2026).
+Option `chaudiere` : Chaudière seulement — rien ne change ; le rappel d'une PAC ou d'un poêle donne la date conseillée, sans article.
+Option `tous` : Aussi la PAC et le poêle, avec les formules du juriste — même règle partout ; la phrase n'apparaît que si les données de l'appareil la rendent certaine.
+Recommandation : `tous` — l'obligation est réelle et sourcée pour les trois, et la phrase reste conditionnée aux données saisies.
+Irréversible : non
+Bloque : rien (texte des rappels de PAC et de poêle)
+
+### Q-entretien-reseau · Chaudières en réseau dans un même local : une attestation pour l'ensemble, ou une par chaudière ?
+Contexte : Erratum 5 de l'avis juriste-btp du 4 nov. 2026 : des chaudières raccordées en réseau dans un même local voient leurs puissances additionnées (article R. 224-20 du code de l'environnement). L'écran dit désormais de saisir la somme des puissances ; le nombre d'attestations n'est pas tranché. L'app fait une attestation par appareil (plusieurs appareils dans une attestation : poêles seulement).
+Option `une-par-chaudiere` : Une attestation par chaudière — rien ne change dans l'app ; la puissance saisie est la somme.
+Option `ensemble` : Une attestation pour l'ensemble — il faut permettre plusieurs chaudières dans une attestation, comme pour les poêles.
+Recommandation : `une-par-chaudiere` — à confirmer par le juriste au texte ; aucun changement de code.
+Irréversible : non
+Bloque : rien (cas rare des chaufferies)
