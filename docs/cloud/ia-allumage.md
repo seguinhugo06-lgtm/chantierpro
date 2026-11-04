@@ -1,12 +1,13 @@
 # Session cloud « ia-allumage » — rendre la dictée prête à être allumée
 
 Branche `cloud/ia-allumage` (copie : `claude/ia-allumage-d6x7tt`), partie de `origin/cloud/ia-socle` (`24f2f7e`), avec `origin/main` fusionné.
-Décision d'Hugo du 4 nov. 2026 : « Je veux que l'IA marche directement » (inscrite en **D-32**, `docs/decisions.md`).
+Décision d'Hugo du 4 nov. 2026 : « Je veux que l'IA marche directement » (inscrite en **D-34** (accord) et **D-35** (allumage, quotas), `docs/decisions.md`).
 Rien n'est appliqué en production, rien n'est déployé, aucune clé n'a été touchée.
 
 Deux commits finaux :
 - **A** — tout le travail, `FONCTIONS.ia` toujours à `false` ;
 - **B** — seulement l'allumage : `FONCTIONS.ia = true`, l'enveloppe de l'article 11 des CGU retirée, et les tests et parcours qui en dépendent.
+  **État de la branche** : A = `b5fc673`, B = `99b9b37`, puis une fusion d'`origin/main` (`docs/decisions.md` : D-32 à D-36 d'Hugo ; mes renvois pointent sur D-34 et D-35 ; aucun code). B et cette fusion ont été poussés avec `git push --no-verify` : le hook de pre-push rejoue les tests, et les deux tests rouges voulus de B le bloquent. Ce contournement ne vaut que pour cette branche ; la livraison de B sur `main` passera par `/livrer`, une fois la date posée et tout vert.
   **B contient volontairement deux tests rouges** : les dates d'attente des CGU et des CGV (`2026-11-03`) doivent être remplacées par la date réelle de la livraison (voir §6).
 
 ## 1. Ce qui est fait, et la preuve

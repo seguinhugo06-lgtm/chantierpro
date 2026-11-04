@@ -79,7 +79,7 @@ describe('CGV : version et page', () => {
   afterEach(() => { vi.useRealTimers(); });
 
   it('la version (2026-10-24 sans la dictée) s\'écrit « Version du … »', () => {
-    // Dictée allumée (D-32) : la version de l'allumage, vérifiée plus haut ; sans elle, celle du 24 oct. 2026
+    // Dictée allumée (D-35) : la version de l'allumage, vérifiée plus haut ; sans elle, celle du 24 oct. 2026
     if (!FONCTIONS.ia) expect(CGV_VERSION).toBe('2026-10-24');
     expect(libelleVersionCgv('2026-10-24')).toBe('Version du 24 octobre 2026');
     expect(libelleVersionCgv('2027-01-01')).toBe('Version du 1er janvier 2027');

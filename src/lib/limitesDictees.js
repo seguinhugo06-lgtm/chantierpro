@@ -1,6 +1,6 @@
 /**
  * La ligne des dictées dans les limites des tarifs (tableau et cartes, src/components/landing/comparaisonPlans.js).
- * Décision d'Hugo du 4 nov. 2026 (D-32) : le quota est appliqué par le serveur (voice-intent, migration 107), c'est
+ * Décision d'Hugo du 4 nov. 2026 (D-35) : le quota est appliqué par le serveur (voice-intent, migration 107), c'est
  * donc une limite et non une « fonction ». Rien tant que FONCTIONS.ia est éteint (aucune mention de l'IA sur le site).
  * Rangé ici, hors du dossier du site : le test d'honnêteté du site refuse ces mots dans ses fichiers tant qu'ils
  * pourraient s'afficher sans l'interrupteur.

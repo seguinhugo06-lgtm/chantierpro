@@ -17,7 +17,7 @@ describe('tableau de comparaison des plans : lignes construites depuis PLANS', (
       chantiers: ['2', 'Illimité', 'Illimité'],
       photos: ['50', 'Illimité', 'Illimité'],
       equipe: ['Vous + 1', 'Vous + 1', 'Vous + 10'],
-      // Dictée allumée (D-32) : le quota appliqué par le serveur, et le plafond du jour toujours dit avec « sans limite »
+      // Dictée allumée (D-35) : le quota appliqué par le serveur, et le plafond du jour toujours dit avec « sans limite »
       dictees: ['5 par mois', '100 par mois', 'Sans limite mensuelle (100 par jour et par personne au plus)'],
     });
     expect(tableau.limites.map((l) => l.libelle)).toEqual(['Devis', 'Clients', 'Chantiers', 'Photos de chantier', 'Collaborateurs', 'Dictées']);

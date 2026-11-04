@@ -14,7 +14,7 @@ export default {
       enforce: 'pre',
       transform(code, id) {
         if (!id.replace(/\\/g, '/').endsWith('/src/lib/fonctions.js')) return null;
-        // Depuis l'allumage (commit B, D-32), le code livré porte déjà `ia: true` : rien à changer.
+        // Depuis l'allumage (commit B, D-35), le code livré porte déjà `ia: true` : rien à changer.
         if (/\bia: true,/.test(code)) return null;
         const allume = code.replace(/\bia: false,/, 'ia: true,');
         if (allume === code) throw new Error('parcours-ia-allumee : « ia: false, » introuvable dans fonctions.js');

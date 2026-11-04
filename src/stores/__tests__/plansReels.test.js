@@ -14,7 +14,7 @@ describe('plans : l\'offre réelle (D-29)', () => {
       '10 clients',
       '2 chantiers',
       '50 photos de chantier',
-      // Dictée allumée (D-32, 4 nov. 2026)
+      // Dictée allumée (D-35, 4 nov. 2026)
       '5 dictées par mois',
       'Vous + 1 collaborateur',
       'Signature en ligne des devis',
