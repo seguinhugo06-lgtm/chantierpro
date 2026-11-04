@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { noterRappel } from '../actionsRamonage';
+import { noterRappel } from '../noterRappel';
 
 // RappelRamonage et RappelEntretien : « Rappel noté » ne s'affiche qu'après une écriture réussie
 describe('noterRappel', () => {

@@ -4,7 +4,7 @@ import { Bouton } from '../ui/Bouton';
 import { texteSms, descriptionAppareil } from '../../lib/entretien';
 import { lienSms, lienAppel } from '../../lib/ramonage';
 import { echeanceLue } from '../ramonage/RappelRamonage';
-import { noterRappel } from '../ramonage/actionsRamonage';
+import { noterRappel } from '../../lib/noterRappel';
 import { dateLue } from '../../lib/dates';
 import { estClientPro } from '../../lib/relanceUtils';
 

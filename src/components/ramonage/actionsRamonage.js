@@ -89,15 +89,3 @@ export function donneesFacture({ ramonages, entreprise, aujourdhui = jourLocal()
     objet: ramonages.length > 1 ? 'Ramonages' : 'Ramonage',
   };
 }
-
-/**
- * Note (ou annule) un rappel fait : l'écran ne change qu'après l'écriture (relecture locale du 4 nov. 2026, point 8).
- * `ecrire` rend false en cas d'échec (le message d'erreur est déjà affiché) : l'état reste alors celui d'avant.
- * @returns {Promise<boolean>} l'état a été appliqué
- */
-export async function noterRappel(ecrire, appliquer) {
-  const ok = await ecrire();
-  if (ok === false) return false;
-  appliquer();
-  return true;
-}

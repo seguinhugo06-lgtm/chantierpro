@@ -95,3 +95,93 @@ Tous relus le 4 nov. (voir § 2) : libellés des points contrôlés (trois annex
 8. Ordre en production : livrer, appliquer 113, puis redéployer `send-scheduled-relances`.
 9. À décider par Hugo : devis préalable, refus valable pour tous les rappels, testeur chauffagiste.
 10. Conflit probable avec `cloud/retours` dans `entrepriseService.js` (garder les deux réglages).
+
+## Corrections de la relecture du 4 nov.
+
+Session cloud de correction (consigne metier-entretien-v3). `origin/main` fusionné d'abord (`955b1e9`) : un seul conflit, `src/services/entrepriseService.js`, résolu en gardant `ramonageConseils` ET les six réglages `entretien…`.
+
+### Défauts de la relecture
+
+| # | Point | Fait | Commit |
+|---|---|---|---|
+| 1 | Vérification sur le dernier commit de code | `npm ci` puis `npm run verifier -- --complet` sur `f4bfff3` (voir « Preuves » ci-dessous) | — |
+| 2 | Appareils de mesure inventés pour le poêle | `manquants()` : exigés pour la chaudière et la PAC seulement ; 113 : colonne sans NOT NULL et contrainte `entretiens_appareils_mesure` conditionnelle à la catégorie ; champ « facultatif » à la saisie d'un poêle ; pas de bloc « Mesures » vide sur l'attestation ; aide de Paramètres corrigée | `ca408c7` |
+| 3 | Obligation PAC et poêle dans l'e-mail | `phraseObligation` et `phraseObligationServeur` ne rendent la phrase que pour la chaudière ; les formules du juriste sont gardées, non utilisées (`PHRASES_OBLIGATION_EN_ATTENTE`). Question posée à Hugo : `Q-entretien-obligation` dans `docs/decisions.md` | `ca408c7`, `docs` |
+| 4 | Lien `/rappel-entretien/…` sans preuve | Deux parcours `reel: true` dans `scripts/parcours/entretien.cjs` : rien à l'ouverture, refus au bouton avec le jeton, « C'est noté » ; contre-essai jeton refusé → pas de « C'est noté » | `27a6cdd` |
+| 5 | Fiche du propriétaire choisie avant le filtre | `fichesQuiEnvoient(fiches, proprietaires, valable)` : parmi les fiches du propriétaire, la première qui a le module actif et un e-mail ; si aucune, la première (pour consigner la raison). Test ajouté | `ca408c7` |
+| 6 | TVA proposée en franchise | `estFranchiseTva(entreprise)` passé à `tauxPropose` ; case « logement de plus de deux ans » et 5,5 % masquées en franchise ; libellé « Prix (€) » et « TVA non applicable (article 293 B du CGI) » | `ca408c7` |
+| 7 | Banc 113 : appel serveur masquant le visiteur | Appel serveur supprimé ; le refus est relu dans la transaction du visiteur (`commeAnonyme` annule sa transaction : relu après coup, on ne voyait rien). Fait pour l'entretien ET le ramonage. Mémoire du gardien mise à jour | `ca408c7`, `27a6cdd` |
+| 8 | « Rappel noté » avant l'écriture | `noterRappel()` (`actionsRamonage.js`) : l'état ne change qu'après l'écriture, rien si elle rend `false`. Entretien et ramonage. Test avec contre-essai | `ca408c7` |
+| 9 | 5,5 % PAC air/air au-delà de 12 kW | Phrase ajoutée (145 % / 250 %) | `ca408c7` |
+| 10 | Seconde relecture | juriste-btp et gardien-securite relancés sur les textes, la 113 et la fonction finales (résultats ci-dessous). Erratum 5 : `Q-entretien-reseau` dans `docs/decisions.md` | `docs`, `f4bfff3` |
+
+### Juriste-btp (10 corrections « à corriger »)
+
+Toutes appliquées avec le texte exact demandé (`ca408c7`) : critères du 5,5 % (poêle, chaudière bois, PAC air/air), classe « Non déterminée » et sa règle, aides de puissance (R. 224-42, R. 224-20) et du CO, délais « établie / remise », attestation de capacité (R. 543-75), modèles `chauffage.js` (« Entretien PAC », ligne d'attestation). Exception : le texte de Paramètres sur l'obligation (point 9) a été réécrit pour dire « chaudière seulement », puisque le point 3 limite la phrase à la chaudière.
+
+Non appliqué (à décider) : le devis préalable (point « à décider » 1).
+
+### Gardien-securite
+
+`figer_entretien` : `client_id`, `remplace_id`, `updated_at` figés, `NEW.updated_at := now()` ; banc 7 bis (un compte ne vide ni le client ni l'attestation remplacée). `ca408c7`.
+
+### Seconde relecture (après corrections)
+
+- **juriste-btp** : « applicable ». Légifrance injoignable depuis la session (domaine non autorisé) : relu sur les citations de l'avis. Appliqué (`f4bfff3`) : parenthèse « seuils propres aux PAC en toiture » retirée (absente des citations) ; aide du CO limitée à « la pièce de la chaudière » ; texte de Paramètres simplifié ; modèle « Entretien PAC (de 4 à 70 kW : au moins tous les deux ans) » et ligne PAC « Établissement et remise de l'attestation d'entretien ». Non vérifié au texte : les « 10 % d'O2 » de la chaudière bois (3°).
+- **gardien-securite** : « 113 applicable, fonction déployable », aucun défaut moyen ou plus. Deux points faibles :
+  1. `entreprise.created_at` : lue par 083/086 en production (`ORDER BY en.created_at`), indice fort mais pas une preuve. Si elle manquait, **tous** les rappels de ramonage s'arrêteraient (erreur consignée dans le rapport du passage). À contrôler en production avant redéploiement : `select column_name from information_schema.columns where table_schema='public' and table_name='entreprise' and column_name in ('created_at','archived_at','forme_juridique','code_postal','ville');` → 5 lignes.
+  2. Banc 7 : supprimer le client en compte connecté. Essayé : **au banc, aucune policy DELETE n'existe sur `clients`** (`pg_policies` vide pour DELETE) ; le DELETE de l'artisan ne touche aucune ligne, sans erreur. Le banc vérifie donc maintenant qu'un compte ne supprime rien, et la mise à NULL par le chemin serveur. **À vérifier par la session locale** : la suppression d'un client depuis l'app marche-t-elle en production (policy présente en production mais absente du banc, ou panne verte) ?
+
+### Preuves
+
+| Commande | Résultat |
+|---|---|
+| `npx vitest run` (fichiers entretien, rappels, noterRappel) | entretien 37, attestation 6, rappels serveur 9, noterRappel 2 : verts. Contre-essais : phrase PAC/poêle vide mais conditions connues ; fiche du propriétaire sans filtre = fiche invalide choisie ; écriture `false` = état inchangé |
+| `npm run banc:migrations` | **665 vérifications, tout vert** (19 pour 113). Contre-essai du point 7 : avant la correction de la lecture, les deux contrôles de refus visiteur échouaient (« rien posé ») |
+| `npm run parcours -- entretien` | **3 parcours verts** (27 + 4 + 1 vérifications). Contre-essai : route `/rappel-entretien` retirée de `main.jsx` → le parcours du lien échoue |
+| `npm run verifier -- --complet` sur `f4bfff3` | RESULTAT_VERIFIER |
+
+### Ce qui reste (session locale)
+
+- Fusion, puis complet, parcours entretien et ramonage, banc (comme prévu par la consigne).
+- Contrôle de `entreprise.created_at` et des 2 fiches à envoi automatique en production, avant de redéployer `send-scheduled-relances`.
+- Suppression d'un client : policy DELETE absente du banc (voir ci-dessus).
+- `articles-btp-suite.js:315` garde « Entretien annuel PAC » (bibliothèque d'articles, hors des corrections demandées) : à soumettre au juriste.
+- `figer_ramonage` (m1 côté ramonage) : migration à part, inchangé.
+- Push : `git push origin cloud/metier-entretien` a été **refusé** dans cette session (permission). Les commits sont sur la branche locale ; voir la fin du rapport.
+
+### Décisions d'Hugo
+
+1. Obligation dans le rappel d'une PAC ou d'un poêle (`Q-entretien-obligation`, recommandé : oui, formules du juriste).
+2. Chaudières en réseau : une attestation par chaudière ou pour l'ensemble (`Q-entretien-reseau`, erratum 5).
+3. Devis préalable : parcours sans devis, ou « devis en un geste » (recommandé par le juriste).
+4. Un refus vaut pour tous les rappels (ramonage et entretien).
+5. Phrase « Vous restez libre de confier cet entretien… » dans l'e-mail.
+6. PAC sans attestation de capacité : information, jamais bloquante.
+7. Case « Logement achevé depuis plus de deux ans » cochée par défaut, ou choix exigé.
+8. 5,5 % sur déclaration de l'artisan, rendement saisi à la main.
+9. Noms de modèles qui énoncent une périodicité légale (« au moins tous les deux ans ») : acceptés ?
+10. Autoriser `www.legifrance.gouv.fr` dans le réseau des sessions cloud, pour les relectures au texte.
+11. Trouver un chauffagiste ou un frigoriste pour tester.
+
+### Textes nouveaux soumis au juriste
+
+Paramètres › Entretien (obligation chaudière seulement ; appareils de mesure ; attestation de capacité), aides de la saisie (puissance, CO, classe), alerte de délai, bloc TVA en franchise, critères du 5,5 %, modèles `chauffage.js`. Tous relus à la seconde relecture, sur les citations de l'avis.
+
+### Risques
+
+- Redéployer la fonction change aussi le ramonage en production (fiche choisie parmi les fiches valables du propriétaire). Comparer le passage à blanc à celui de v23.
+- 113 doit être appliquée le jour de la livraison du front (sinon lecture d'une table absente, attestations refusées).
+
+### Résumé
+
+1. `origin/main` fusionné ; conflit `entrepriseService.js` résolu (toutes les clés gardées).
+2. Appareils de mesure facultatifs pour le poêle (app, 113, attestation).
+3. Obligation dans les rappels : chaudière seulement, en attendant Hugo.
+4. Lien de désinscription prouvé par deux parcours en mode réel simulé.
+5. Fiche d'envoi choisie parmi les fiches valables du propriétaire ; « Rappel noté » après l'écriture.
+6. Franchise de TVA : aucun taux proposé ; 10 textes du juriste appliqués.
+7. 113 : `figer_entretien` aligné sur 111 ; banc 665 vérifications vertes.
+8. Seconde relecture : juriste « applicable », gardien « 113 applicable, fonction déployable ».
+9. À vérifier en local : `entreprise.created_at` en production, suppression d'un client (pas de policy DELETE au banc).
+10. Push refusé dans cette session : commits à pousser.

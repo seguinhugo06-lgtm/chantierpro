@@ -4,7 +4,7 @@ import { Bouton } from '../ui/Bouton';
 import { texteSms, lienSms, lienAppel, descriptionAppareil } from '../../lib/ramonage';
 import { dateLue } from '../../lib/dates';
 import { estClientPro } from '../../lib/relanceUtils';
-import { noterRappel } from './actionsRamonage';
+import { noterRappel } from '../../lib/noterRappel';
 
 const jourFr = (jour) => dateLue(String(jour || '').slice(0, 10)).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
 
