@@ -7,7 +7,8 @@ import { margeBrute } from './margeArticle';
  * « Prix unitaire » (D-31, tâche 28 `franchise-restes`, 4 nov. 2026). Les montants ne changent pas.
  */
 
-/** Devis et factures : en-tête puis une ligne par document. */
+/** Devis et factures : en-tête puis une ligne par document. `franchise` : vrai seulement si AUCUNE pièce exportée n'a été émise
+ * avec TVA (franchiseAppliquee sur chacune) — sinon cette TVA, due, disparaîtrait de l'export. */
 export function tableauExportDocuments(docs, { clients = [], franchise = false } = {}) {
   const enTete = ['Numéro', 'Type', 'Client', 'Date', 'Objet', ...(franchise ? ['Montant'] : ['Montant HT', 'TVA', 'Montant TTC']), 'Statut', 'Date envoi', 'Date signature', 'Date paiement'];
   const fmtDate = (v) => (v ? dateLue(v).toLocaleDateString('fr-FR') : '');

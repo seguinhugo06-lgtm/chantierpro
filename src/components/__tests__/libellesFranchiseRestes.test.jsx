@@ -134,6 +134,14 @@ describe('exports CSV', () => {
     expect(enTeteSarl).toHaveLength(ligneSarl.length);
   });
 
+  it('devis et factures : une facture émise avec TVA par une micro-entreprise garde les colonnes HT, TVA et TTC', () => {
+    const avecTva = [...docs, { numero: 'FAC-2', type: 'facture', statut: 'envoye', total_ht: 100, tva: 20, total_ttc: 120 }];
+    // Même règle que DevisPage.exportCSV
+    const franchise = estFranchiseTva(MICRO) && avecTva.every((d) => franchiseAppliquee(d, MICRO));
+    expect(franchise).toBe(false);
+    expect(tableauExportDocuments(avecTva, { franchise })[0]).toEqual(expect.arrayContaining(['Montant HT', 'TVA', 'Montant TTC']));
+  });
+
   it('catalogue : « Prix unitaire » et « Prix d’achat », sans colonne de TVA, en franchise', () => {
     const cat = [{ reference: 'R1', nom: 'Prise', categorie: 'Élec', unite: 'u', prix: 30, prixAchat: 10, tva_rate: 20 }];
     const [enTeteMicro, ligneMicro] = tableauExportCatalogue(cat, { franchise: estFranchiseTva(MICRO) });

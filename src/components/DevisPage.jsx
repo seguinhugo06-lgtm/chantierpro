@@ -1773,8 +1773,10 @@ export default function DevisPage({ clients, addClient, devis, setDevis, chantie
   const exportCSV = (docs) => {
     if (docs.length === 0) return;
     const BOM = '\uFEFF'; // UTF-8 BOM for Excel
-    // Franchise en base de TVA (art. 293 B du CGI) : une seule colonne « Montant » (tableauExportDocuments, D-31)
-    const csv = BOM + tableauExportDocuments(docs, { clients, franchise: isMicro }).map(r => r.join(';')).join('\n');
+    // Franchise en base de TVA (art. 293 B du CGI) : une seule colonne « Montant » (tableauExportDocuments, D-31) ; sauf si
+    // une pièce exportée a été émise avec TVA : elle est due et doit rester visible (CGI art. 283, 3 ; juriste-btp, 4 nov. 2026)
+    const franchiseExport = isMicro && docs.every(d => franchiseAppliquee(d, entreprise));
+    const csv = BOM + tableauExportDocuments(docs, { clients, franchise: franchiseExport }).map(r => r.join(';')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     remettreFichier(blob, `export-${jourLocal()}.csv`);
     showToast(`${docs.length} document${docs.length > 1 ? 's' : ''} exporté${docs.length > 1 ? 's' : ''} en CSV`, 'success');
