@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { AlertTriangle, Check, Plus, Trash2 } from 'lucide-react';
 import { Bouton } from '../ui/Bouton';
+import ChampChoix from '../ui/ChampChoix';
 import { ChampParam, DebouncedInput, CLASSE_CHAMP } from './champsParametres';
 import {
   TYPES_QUALIFICATION, ORGANISMES_RGE, qualificationsDe, raisonNonImprimee, ligneImprimee, champsRgeDeLaListe, motsDe,
@@ -67,13 +68,11 @@ export default function MesQualifications({ entreprise, updateEntreprise }) {
                 </ChampParam>
               )}
               {q.type !== 'sap' && (
-                <ChampParam id={`${pref}-organisme`} cle={`${pref}-organisme`} libelle="Organisme qui l’a délivrée">
+                <ChampParam id={`${pref}-organisme`} idLibelle={`${pref}-organisme-libelle`} cle={`${pref}-organisme`} libelle="Organisme qui l’a délivrée">
                   {q.type === 'rge' ? (
-                    <select id={`${pref}-organisme`} className={CLASSE_CHAMP} value={ORGANISMES_RGE.includes(q.organisme) ? q.organisme : ''}
-                      onChange={(e) => modifier(q.id, { organisme: e.target.value }, `${pref}-organisme`)}>
-                      <option value="">Choisir l’organisme</option>
-                      {ORGANISMES_RGE.map((o) => <option key={o} value={o}>{o}</option>)}
-                    </select>
+                    <ChampChoix id={`${pref}-organisme`} idLibelle={`${pref}-organisme-libelle`} titre="Organisme RGE" vide="Choisir l’organisme"
+                      options={ORGANISMES_RGE.map((o) => ({ valeur: o, libelle: o }))} valeur={ORGANISMES_RGE.includes(q.organisme) ? q.organisme : ''}
+                      onChange={(v) => modifier(q.id, { organisme: v }, `${pref}-organisme`)} />
                   ) : (
                     <>
                       <DebouncedInput id={`${pref}-organisme`} list={t.organismes ? `${pref}-organismes` : undefined} value={q.organisme}
@@ -139,10 +138,9 @@ export default function MesQualifications({ entreprise, updateEntreprise }) {
 
       <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
         <div className="flex-1">
-          <label htmlFor="qualif-type-ajout" className="block text-sm font-medium text-encre-2 mb-1.5">Ajouter une qualification</label>
-          <select id="qualif-type-ajout" className={CLASSE_CHAMP} value={typeAjout} onChange={(e) => setTypeAjout(e.target.value)}>
-            {typesOrdonnes.map((t) => <option key={t.id} value={t.id}>{t.nom}</option>)}
-          </select>
+          <p id="qualif-type-ajout-libelle" className="block text-sm font-medium text-encre-2 mb-1.5">Ajouter une qualification</p>
+          <ChampChoix id="qualif-type-ajout" idLibelle="qualif-type-ajout-libelle" titre="Type de qualification"
+            options={typesOrdonnes.map((t) => ({ valeur: t.id, libelle: t.nom }))} valeur={typeAjout} onChange={setTypeAjout} />
         </div>
         <Bouton variante="secondaire" icone={Plus} onClick={ajouter}>Ajouter</Bouton>
       </div>
