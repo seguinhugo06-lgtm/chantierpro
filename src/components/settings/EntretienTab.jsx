@@ -82,7 +82,7 @@ export default function EntretienTab({ entreprise, setEntreprise }) {
                   Ajoutez votre e-mail dans Paramètres → Mon entreprise : vos clients doivent pouvoir vous répondre. Sans lui, aucun rappel automatique ne part.
                 </p>
               )}
-              <p className="text-sm text-encre-3">La date conseillée est la vôtre (douze mois après la visite par défaut). Le rappel cite l’obligation d’entretien et son article seulement pour une chaudière dont la puissance, de 4 à 400 kW, la rend certaine (une fois par année civile). Pour une pompe à chaleur ou un poêle, il rappelle la date conseillée, sans citer d’article.</p>
+              <p className="text-sm text-encre-3">La date conseillée est la vôtre (douze mois après la visite par défaut). Le rappel ne cite l’obligation d’entretien et son article que pour une chaudière dont vous avez saisi la puissance, de 4 à 400 kW : une fois par année civile (article R. 224-41-7 du code de l’environnement). Pour une pompe à chaleur ou un poêle, il rappelle seulement la date conseillée.</p>
             </div>
           </Carte>
 

@@ -144,10 +144,14 @@ export async function verifier({ db, q, en, commeAnonyme, verifier }) {
   const clientTemp = (await q(`INSERT INTO clients (user_id, organization_id, nom) VALUES ($1, $2, 'Client supprimé 113') RETURNING id`,
     [SOLO, ORG_SOLO])).rows[0].id;
   const t = await creer({ client: clientTemp });
+  // Suppression par le serveur : au banc, aucune policy DELETE n'existe sur clients (pg_policies vide, constaté le 4 nov.
+  // 2026) — un DELETE de l'artisan ne touche aucune ligne, sans erreur ; la mise à NULL ne passe donc que par ce chemin
   await q(`DELETE FROM clients WHERE id = $1`, [clientTemp]);
+  // Un compte qui tente la suppression ne touche rien (et n'efface pas le lien)
+  const parCompte = (await en(SOLO, () => q(`DELETE FROM clients WHERE id = $1 RETURNING id`, [clientSolo]))).rows.length;
   await q(`UPDATE entretiens SET rappel_canal = 'email_auto' WHERE id = $1`, [t.id]);
   const reste = (await q(`SELECT client_id, client_nom, rappel_canal FROM entretiens WHERE id = $1`, [t.id])).rows[0];
-  verifier(reste.client_id === null && reste.client_nom === 'Client 113' && reste.rappel_canal === 'email_auto',
+  verifier(reste.client_id === null && reste.client_nom === 'Client 113' && reste.rappel_canal === 'email_auto' && parCompte === 0,
     '113 : la fiche client supprimée laisse l\'attestation ; le serveur écrit le suivi du rappel');
 
   // 7 bis. Un compte ne vide ni le client ni l'attestation remplacée, et ne date pas lui-même la modification

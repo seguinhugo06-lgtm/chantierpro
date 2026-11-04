@@ -395,7 +395,7 @@ export function criteres55(e) {
   }
   if (e?.categorie === 'pac') {
     return ['air_air', 'clim'].includes(e?.appareils?.[0]?.type)
-      ? 'PAC air/air qui remplit l’article 30-0 D ter, 1° bis de l’annexe IV du CGI : jusqu’à 12 kW, classe A+ en multi-split ou A++ en mono-split, en chauffage (SCOP) et en refroidissement (SEER) ; au-delà de 12 kW, efficacité énergétique saisonnière d’au moins 145 % en chauffage et 250 % en refroidissement (seuils propres aux PAC en toiture) ; fluide frigorigène qui respecte les seuils et le calendrier du règlement (UE) 2024/573 ; PAC connectable à un réseau numérique. Une climatisation en froid seul n’est pas éligible.'
+      ? 'PAC air/air qui remplit l’article 30-0 D ter, 1° bis de l’annexe IV du CGI : jusqu’à 12 kW, classe A+ en multi-split ou A++ en mono-split, en chauffage (SCOP) et en refroidissement (SEER) ; au-delà de 12 kW, efficacité énergétique saisonnière d’au moins 145 % en chauffage et 250 % en refroidissement ; fluide frigorigène qui respecte les seuils et le calendrier du règlement (UE) 2024/573 ; PAC connectable à un réseau numérique. Une climatisation en froid seul n’est pas éligible.'
       : 'PAC qui remplit l’article 30-0 D ter, 1° de l’annexe IV du CGI (efficacité énergétique saisonnière d’au moins 126 % à basse température, ou 111 % à moyenne et haute température).';
   }
   return 'Appareil qui remplit l’article 30-0 D ter, 4° de l’annexe IV du CGI (granulés ou plaquettes : efficacité énergétique saisonnière d’au moins 79 %, CO ≤ 300, particules ≤ 20, COG ≤ 60, NOx ≤ 200 mg/Nm³ ; bûches ou autres biomasses : efficacité énergétique saisonnière d’au moins 65 %, CO ≤ 1500, particules ≤ 40, COG ≤ 120, NOx ≤ 200 mg/Nm³, à 13 % d’O2).';

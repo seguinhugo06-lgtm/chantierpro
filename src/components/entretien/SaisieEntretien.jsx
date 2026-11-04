@@ -300,7 +300,7 @@ export default function SaisieEntretien({ client, precedent = null, remplace = n
                     <>
                       <Champ id="entretien-co_ppm" libelle="CO mesuré dans l’air ambiant (ppm)" inputMode="decimal" value={String(form.co_ppm ?? '')}
                         erreur={erreurDe('co_ppm')} onChange={(e) => maj({ co_ppm: nombreSaisi(e.target.value) })}
-                        aide="Après réglage et entretien : pièce aérée si possible, puis portes et fenêtres refermées ; autres appareils à combustion à l’arrêt ; chaudière à sa puissance nominale depuis au moins trois minutes ; sonde déplacée sur la largeur de la chaudière, à environ 50 cm de sa face avant, pendant au moins 30 secondes (arrêté du 15 septembre 2009, annexe 1, § 5)." />
+                        aide="Après réglage et entretien, dans la pièce de la chaudière : pièce aérée si possible, puis portes et fenêtres refermées ; autres appareils à combustion de la pièce à l’arrêt ; chaudière à sa puissance nominale depuis au moins trois minutes ; sonde déplacée sur la largeur de la chaudière, à environ 50 cm de sa face avant, pendant au moins 30 secondes (arrêté du 15 septembre 2009, annexe 1, § 5)." />
                       {co && <p className="rounded-xl bg-surface-2 p-3 text-sm text-encre">Phrase imprimée : « {PHRASES_CO[co]} »</p>}
                       {co === 'b' && <Alerte>{DEVOIR_CO.b}</Alerte>}
                       {co === 'c' && <Alerte ton="danger">{DEVOIR_CO.c}</Alerte>}
