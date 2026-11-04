@@ -28,6 +28,7 @@ import { jourLocal } from '../lib/dates';
 import { profilManquant, enPhrase } from '../lib/profilLegal';
 import { couleurPleine } from '../lib/theme';
 import { calculerMetre } from '../lib/metre';
+import { estDevisDepannage, marquerLignesDepannage } from '../lib/depannage';
 
 const DRAFT_KEY = 'mallettico_devis_composer_draft';
 const MRU_KEY = 'mallettico_recent_clients';
@@ -134,6 +135,7 @@ export default function DevisComposer({
     conditions: '',
     notes: '',
     travauxUrgents: false,
+    depannage: false,
   });
 
   const [form, setForm] = useState(blankForm);
@@ -177,6 +179,9 @@ export default function DevisComposer({
         prixUnitaire: l.prixUnitaire ?? 0,
         prixAchat: l.prixAchat ?? 0,
         tva: premierTaux(l.tva, tvaDef),
+        // Dépannage (src/lib/depannage.js) : catégorie de la ligne et choix du client sur les pièces, gardés à l'édition
+        ...(l.depannage ? { depannage: l.depannage } : {}),
+        ...(typeof l.conservee === 'boolean' ? { conservee: l.conservee } : {}),
       });
       // Restaurer les lots : si le devis a des sections titrées, reconstruire la
       // liste plate avec les marqueurs _isSection (sinon l'édition perdrait les lots).
@@ -201,6 +206,7 @@ export default function DevisComposer({
         conditions: initialData.conditions || '',
         notes: initialData.notes || '',
         travauxUrgents: initialData.travaux_urgents === true,
+        depannage: estDevisDepannage(initialData),
       });
       return;
     }
@@ -598,6 +604,9 @@ export default function DevisComposer({
       }
     });
     if (cur.lignes.length) sections.push(cur);
+    // Dépannage, réparation ou entretien (arrêté du 24 janv. 2017) : les lignes le portent, les mentions s'impriment
+    const estDepannage = !isFacture && (form.depannage === true || form.travauxUrgents === true);
+    for (const sec of sections) sec.lignes = marquerLignesDepannage(sec.lignes, estDepannage);
     const lignesFormatted = sections.flatMap(s => s.lignes);
     return {
       type: form.type,
@@ -878,6 +887,17 @@ export default function DevisComposer({
                     </select>
                   </div>
                 </div>
+                {!isFacture && (
+                  <label className="flex items-start gap-3 cursor-pointer" data-ui="Depannage">
+                    <input type="checkbox" checked={form.depannage === true || form.travauxUrgents === true} disabled={form.travauxUrgents === true}
+                      onChange={e => setForm(p => ({ ...p, depannage: e.target.checked }))}
+                      className="mt-0.5 w-5 h-5 rounded flex-shrink-0" />
+                    <span>
+                      <span className={`block text-sm font-medium ${textPrimary}`}>Dépannage, réparation ou entretien</span>
+                      <span className={`block text-xs ${textMuted}`}>Client particulier : le devis imprime « Devis gratuit » et lui demande s’il veut conserver les pièces remplacées (arrêté du 24 janvier 2017).</span>
+                    </span>
+                  </label>
+                )}
                 {!isFacture && (
                   <label className="flex items-start gap-3 cursor-pointer" data-ui="TravauxUrgents">
                     <input type="checkbox" checked={form.travauxUrgents === true} onChange={e => setForm(p => ({ ...p, travauxUrgents: e.target.checked }))}

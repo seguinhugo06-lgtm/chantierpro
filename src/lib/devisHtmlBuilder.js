@@ -14,6 +14,7 @@
 import { filterValidLignes, formatClientName } from './formatters';
 import { marquerDocumentFictif } from './donneesFictives';
 import { mentionTvaReduiteHtml } from './mentionTvaReduite';
+import { mentionsDepannageHtml } from './depannage';
 import { urlPublique } from './urlPublique';
 import { FONCTIONS } from './fonctions';
 import { euros, pourcent, quantite, blocConditionsPaiement } from './formatDocument';
@@ -336,6 +337,8 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mod
   ${isMicro ? '<div class="micro-mention">TVA non applicable, article 293 B du CGI</div>' : ''}
 
   ${mentionTvaReduiteHtml({ tvaDetails: calculatedTvaDetails, nomClient: formatClientName(client, ''), isMicro, isFacture, isAcompte: doc.facture_type === 'acompte', isAvoir: doc.facture_type === 'avoir' })}
+
+  ${mentionsDepannageHtml({ doc, client })}
 
   ${doc.notes && doc.facture_type !== 'avoir' ? `
   <!-- NOTES -->${''/* « Notes (visibles sur le PDF) » de l'éditeur : n'étaient imprimées nulle part, recette du 9 oct. 2026 (commentaire hors du HTML remis au client, contrôle du 3 nov. 2026) */}

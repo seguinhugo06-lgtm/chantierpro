@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo, Suspense, lazy } from 'react';
-import { Plus, Download, Trash2, Send, Mail, MessageCircle, Edit3, Check, X, FileText, Receipt, Clock, Search, ChevronRight, ChevronUp, ChevronDown, Star, Eye, Pen, CreditCard, CheckCircle, AlertTriangle, XCircle, Building2, Copy, PenTool, Loader2, Link2, Zap, ArrowUpDown, Bell, RotateCcw, BarChart3, BellRing, ClipboardList, LayoutGrid, List, Kanban, Flag, Smartphone }  from 'lucide-react';
+import { Plus, Download, Trash2, Send, Mail, MessageCircle, Edit3, Check, X, FileText, Receipt, Clock, Search, ChevronRight, ChevronUp, ChevronDown, Star, Eye, Pen, CreditCard, CheckCircle, AlertTriangle, XCircle, Building2, Copy, PenTool, Loader2, Link2, Zap, Wrench, ArrowUpDown, Bell, RotateCcw, BarChart3, BellRing, ClipboardList, LayoutGrid, List, Kanban, Flag, Smartphone }  from 'lucide-react';
 import supabase, { isDemo } from '../supabaseClient';
 import { useSubscriptionStore, PLANS } from '../stores/subscriptionStore';
 const PipelineKanban = lazy(() => import('./pipeline/PipelineKanban'));
@@ -38,6 +38,7 @@ const SignaturePad = chargerALaDemande(() => import('./SignaturePad'));
 const DevisWizard = chargerALaDemande(() => import('./DevisWizard'));
 const DevisComposer = chargerALaDemande(() => import('./DevisComposer'));
 const DevisExpressModal = chargerALaDemande(() => import('./DevisExpressModal'));
+const DevisDepannage = chargerALaDemande(() => import('./depannage/DevisExpress'));
 const AvoirCreationModal = chargerALaDemande(() => import('./modals/AvoirCreationModal'));
 import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/Tabs';
 import { useConfirm, useToast } from '../context/AppContext';
@@ -103,6 +104,7 @@ import { getEntityHistory } from '../lib/auditService';
 import { getSnapshots } from '../lib/snapshotService';
 import useKeepInViewport from '../hooks/useKeepInViewport';
 import { mentionTvaReduiteHtml } from '../lib/mentionTvaReduite';
+import { mentionsDepannageHtml, estDevisDepannage } from '../lib/depannage';
 import { remettreFichier, estNatif, ouvrirLienExterne } from '../lib/natif';
 import { captureException } from '../lib/sentry';
 import { imprimerHtml } from '../lib/imprimerHtml';
@@ -334,6 +336,8 @@ export default function DevisPage({ clients, addClient, devis, setDevis, chantie
   const [showAvoirModal, setShowAvoirModal] = useState(false);
   const [assigningClientDevisId, setAssigningClientDevisId] = useState(null); // B1: assign client to orphan devis
   const [showDevisExpressModal, setShowDevisExpressModal] = useState(false);
+  // Dépannage express (lot 3) : { clientId } quand la feuille est ouverte, null sinon
+  const [depannage, setDepannage] = useState(null);
   const [showSaveTemplateModal, setShowSaveTemplateModal] = useState(false);
   const [editingDevis, setEditingDevis] = useState(null); // devis being edited in wizard
 
@@ -459,6 +463,9 @@ export default function DevisPage({ clients, addClient, devis, setDevis, chantie
       setMode('preview');
       // La feuille « Relancer » envoie au client : seulement pour un rôle qui envoie ; sinon, la fiche seule
       if (canPerform('devis', 'send')) setRelanceDe(doc);
+    } else if (demande.depannage) {
+      // Depuis la fiche d'un client : la feuille « Dépannage express » avec ce client
+      if (canPerform('devis', 'create')) setDepannage({ clientId: demande.depannage.clientId || null });
     } else if (demande.ouvrir || demande.facturer) {
       // Depuis la fiche d'un chantier : le document, et pour « Facturer » le choix acompte / solde / situation
       const doc = devis.find(d => d.id === (demande.ouvrir || demande.facturer));
@@ -807,6 +814,8 @@ export default function DevisPage({ clients, addClient, devis, setDevis, chantie
       signatureDate: signatureData.signatureDate,
       signataire: signatureData.signataire,
       statut: 'accepte',
+      // Devis de dépannage signé sur place depuis le brouillon : remis au client à cet instant
+      ...(selected.date_envoi ? {} : { date_envoi: jourLocal() }),
       ...(signatureData.executionAnticipee ? { execution_anticipee_le: signatureData.signatureDate } : {}),
       // Accord du client pour recevoir son exemplaire par e-mail (L221-9), conservé avec la signature (090)
       ...(signatureData.exemplaireParEmail ? { exemplaire_email_accepte_le: signatureData.signatureDate } : {}),
@@ -1579,6 +1588,8 @@ export default function DevisPage({ clients, addClient, devis, setDevis, chantie
   ${isMicro ? '<div class="micro-mention">TVA non applicable, article 293 B du CGI</div>' : ''}
 
   ${mentionTvaReduiteHtml({ tvaDetails: calculatedTvaDetails, nomClient: formatClientName(client, ''), isMicro, isFacture, isAcompte: doc.facture_type === 'acompte', isAvoir: isAvoirDoc })}
+
+  ${mentionsDepannageHtml({ doc, client })}
 
   ${doc.notes && !isAvoirDoc ? `
   <!-- NOTES -->${''/* « Notes (visibles sur le PDF) » de l'éditeur ; même bloc que src/lib/devisHtmlBuilder.js (commentaire hors du HTML remis au client, contrôle du 3 nov. 2026) */}
@@ -2888,7 +2899,12 @@ export default function DevisPage({ clients, addClient, devis, setDevis, chantie
             secondaire = actPdf;
           } else if (isDevis) {
             const st = selected.statut;
-            if (st === 'brouillon' && peutEnvoyer) {
+            if (st === 'brouillon' && peutEnvoyer && ttc > 0 && estDevisDepannage(selected) && !isExpired(selected)) {
+              // Dépannage (lot 3) : le devis se signe sur place, devant le client, sans passer par l'envoi ; les mêmes
+              // contrôles que l'envoi (mentions obligatoires, client) passent avant la signature
+              principal = { libelle: 'Faire signer', icone: PenTool, onClick: () => trySend(selected, () => setShowSignaturePad(true)) };
+              secondaire = { libelle: 'Envoyer', icone: Send, onClick: () => trySend(selected, sendEmail) };
+            } else if (st === 'brouillon' && peutEnvoyer) {
               principal = ttc > 0
                 ? { libelle: 'Envoyer', icone: Send, onClick: () => trySend(selected, sendEmail) }
                 : { libelle: 'Compléter le devis', icone: Pen, onClick: () => openEditor(selected) };
@@ -3964,6 +3980,18 @@ export default function DevisPage({ clients, addClient, devis, setDevis, chantie
                     <p className="text-xs text-encre-3">3 clics, c'est chiffré</p>
                   </div>
                 </button>
+                {entreprise?.depannageActif && (
+                  <button
+                    onClick={() => { setShowCreateMenu(false); setDepannage({ clientId: null }); }}
+                    className="w-full min-h-[56px] px-4 py-3 flex items-center gap-3 text-left transition-colors border-t hover:bg-surface-2 border-bord"
+                  >
+                    <Wrench size={18} className="text-encre-3" aria-hidden="true" />
+                    <div>
+                      <p className={`text-sm font-medium ${textPrimary}`}>Dépannage express</p>
+                      <p className="text-xs text-encre-3">Votre grille tarifaire, à signer sur place</p>
+                    </div>
+                  </button>
+                )}
                 <button
                   onClick={() => { setShowCreateMenu(false); setEditingDevis(null); setShowDevisWizard(true); }}
                   className="w-full min-h-[56px] px-4 py-3 flex items-center gap-3 text-left transition-colors border-t hover:bg-surface-2 border-bord"
@@ -4179,7 +4207,12 @@ export default function DevisPage({ clients, addClient, devis, setDevis, chantie
             icone={FileText}
             titre="Aucun devis pour l'instant"
             texte="Chiffrez votre premier devis : vous le transformerez en facture une fois signé."
-            action={canPerform('devis', 'create') ? <Bouton variante="principal" icone={Plus} onClick={ouvrirNouveauDevis}>Créer mon premier devis</Bouton> : null}
+            action={canPerform('devis', 'create') ? (
+              <div className="flex flex-wrap justify-center gap-2">
+                <Bouton variante="principal" icone={Plus} onClick={ouvrirNouveauDevis}>Créer mon premier devis</Bouton>
+                {entreprise?.depannageActif ? <Bouton variante="secondaire" icone={Wrench} onClick={() => setDepannage({ clientId: null })}>Dépannage express</Bouton> : null}
+              </div>
+            ) : null}
           />
         ) : (
           <EtatVide
@@ -4499,6 +4532,30 @@ export default function DevisPage({ clients, addClient, devis, setDevis, chantie
         isDark={isDark}
         couleur={couleur}
       />
+
+      {/* Dépannage express (lot 3, src/lib/depannage.js) : le devis créé s'ouvre, prêt pour « Faire signer » */}
+      {depannage && (
+        <DevisDepannage
+          isOpen={!!depannage}
+          clientInitial={depannage.clientId}
+          onClose={() => setDepannage(null)}
+          onCreer={async (devisData) => {
+            const numero = await generateNumero('devis');
+            const client = clients.find(c => c.id === devisData.client_id);
+            const newDevis = await onSubmit({ ...devisData, numero, client_nom: client ? `${client.prenom || ''} ${client.nom}`.trim() : '' });
+            if (!newDevis?.id) return false; // refus : DataContext a dit pourquoi
+            setSelected(newDevis);
+            setMode('preview');
+            showToast(`Devis ${newDevis.numero || numero} créé : faites-le signer sur place`, 'success');
+            return newDevis;
+          }}
+          clients={clients}
+          addClient={addClient}
+          entreprise={entreprise}
+          isDark={isDark}
+          couleur={couleur}
+        />
+      )}
 
       {/* Devis Express Modal - New improved version with BTP templates */}
       <DevisExpressModal

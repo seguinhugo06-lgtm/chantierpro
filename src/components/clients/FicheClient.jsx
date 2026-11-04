@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  ArrowLeft, Phone, MessageCircle, MapPin, Mail, Edit3, Trash2, FileText, ExternalLink, AlertTriangle, Info, Clock, Zap,
+  ArrowLeft, Phone, MessageCircle, MapPin, Mail, Edit3, Trash2, FileText, ExternalLink, AlertTriangle, Info, Clock, Zap, Wrench,
 } from 'lucide-react';
 import { Bouton, BoutonIcone } from '../ui/Bouton';
 import Carte from '../ui/Carte';
@@ -163,6 +163,11 @@ export default function FicheClient({
             {peutDevis && (
               <Bouton variante="principal" taille="grande" pleineLargeur icone={FileText} onClick={() => nouveauDevisPour?.(client.id)}>
                 Nouveau devis
+              </Bouton>
+            )}
+            {peutDevis && entreprise?.depannageActif && ouvrirDevis && (
+              <Bouton variante="secondaire" taille="grande" pleineLargeur icone={Wrench} onClick={() => ouvrirDevis({ depannage: { clientId: client.id } })}>
+                Dépannage express
               </Bouton>
             )}
             <div className="grid grid-cols-3 gap-2">

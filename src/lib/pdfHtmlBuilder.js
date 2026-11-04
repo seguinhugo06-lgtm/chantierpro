@@ -13,6 +13,7 @@ import { estFranchiseTva, tauxTvaDocument } from './franchiseTva';
 import { estSociete } from './mentionsFacture';
 import { marquerDocumentFictif } from './donneesFictives';
 import { natureDuDocument, piedDePageHtml } from './piedDePageDocument';
+import { mentionsDepannageHtml } from './depannage';
 import { blocRetractationHtml, estConcerneParRetractation, lienRetractationEnLigne, mentionsSignatureClientHtml } from './retractation';
 
 /**
@@ -267,6 +268,8 @@ export function buildDocumentHTML(doc, client, chantier, entreprise, options = {
     ${entreprise.cgv}
   </div>
   ` : ''}
+
+  ${mentionsDepannageHtml({ doc, client })}
 
   ${!isFacture && !isAvoir ? `
   <!-- SIGNATURES -->

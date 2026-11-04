@@ -53,6 +53,10 @@ export const REGLAGES_SANS_COLONNE = {
   ramonageRappelJours: 30,
   ramonageEnvoiAuto: false,
   ramonageTarifs: {},
+  // Dépannage express (lot 3, src/lib/depannage.js) : bouton « Dépannage express » de la page Devis et des fiches
+  // clients ; grille tarifaire HT (taux horaire, décompte du temps, déplacement, majorations, forfaits) imprimable TTC
+  depannageActif: false,
+  depannageGrille: {},
 };
 
 function reglagesDe(row) {

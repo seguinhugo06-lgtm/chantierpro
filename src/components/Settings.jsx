@@ -3,7 +3,7 @@ import { useToast, useConfirm } from '../context/AppContext';
 import {
   Download, FileText, RefreshCw, AlertCircle, AlertTriangle, Info, Calculator, Building2, ChevronLeft, Shield, Check,
   Home, Smartphone, Fuel, Landmark, BarChart3, CreditCard, Users, HardDrive, FolderOpen, Construction, Receipt, Mail,
-  GraduationCap, Flame, Package, LayoutTemplate, Scale,
+  GraduationCap, Flame, Package, LayoutTemplate, Scale, Wrench,
 } from 'lucide-react';
 import { captureException } from '../lib/sentry';
 import AdminHelp from './admin-help/AdminHelp';
@@ -13,6 +13,7 @@ import { estFranchiseTva, tvaARegulariser } from '../lib/franchiseTva';
 import Facture2026Tab from './settings/Facture2026Tab';
 import RelanceConfigTab from './settings/RelanceConfigTab';
 import RamonageTab, { Interrupteur } from './settings/RamonageTab';
+import DepannageTab from './settings/DepannageTab';
 import PaymentConfigTab from './settings/PaymentConfigTab';
 import EntrepriseSettingsPage from './settings/EntrepriseSettingsPage';
 import TeamManagement from './settings/TeamManagement';
@@ -71,6 +72,8 @@ const GROUPES = [
     { cle: 'postchantier', libelle: 'Post-chantier', icone: Construction },
     // Parcours ramoneur (D-30) : attestations, rappels, tarifs
     { cle: 'ramonage', libelle: 'Ramonage', icone: Flame },
+    // Dépannage express (lot 3) : grille tarifaire affichable, devis en un écran
+    { cle: 'depannage', libelle: 'Dépannage', icone: Wrench },
   ]},
   { id: 'finance', libelle: 'Finance', rubriques: [
     { cle: 'comptabilite', libelle: 'Comptabilité', icone: Calculator },
@@ -1018,6 +1021,10 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
 
       {tab === 'ramonage' && (
         <RamonageTab entreprise={entreprise} setEntreprise={updateEntreprise} />
+      )}
+
+      {tab === 'depannage' && (
+        <DepannageTab entreprise={entreprise} setEntreprise={updateEntreprise} />
       )}
 
       {tab === 'postchantier' && (

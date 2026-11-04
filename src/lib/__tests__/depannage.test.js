@@ -1,0 +1,200 @@
+import { describe, it, expect } from 'vitest';
+import {
+  normaliserGrille, ttcDe, dureeDecomptee, lignesDevisExpress, estDevisDepannage, mentionsDepannage, marquerLignesDepannage,
+  mentionsDepannageHtml, grilleImprimableHtml, grilleIncomplete, choixConserverPieces, MENTION_DEVIS_GRATUIT, QUESTION_PIECES, OBLIGATIONS,
+} from '../depannage';
+import { calculerTotaux } from '../totauxDocument';
+import { delaiSeptJours, echeanceApresSeptJours } from '../retractation';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+
+const GRILLE = {
+  tauxHoraire: 60, decompte: 'quart', deplacement: 39, deplacementZone: 'Bordeaux et 20 km',
+  majorationNuit: 50, horairesNuit: 'de 20 h à 8 h', majorationDimanche: 100,
+  forfaits: [{ libelle: 'Ouverture de porte claquée', prix: 89 }],
+};
+const PARTICULIER = { nom: 'Durand', categorie: 'particulier' };
+const PRO = { nom: 'SCI', entreprise: 'SCI Les Pins', categorie: 'professionnel' };
+
+describe('grille tarifaire', () => {
+  it('retire les valeurs illisibles, nulles ou négatives', () => {
+    const g = normaliserGrille({ tauxHoraire: '55,5', deplacement: '-3', majorationNuit: 'abc', forfaits: [{ libelle: 'x', prix: 0 }, { libelle: 'Cylindre', prix: '45' }] });
+    expect(g.tauxHoraire).toBe(55.5);
+    expect(g.deplacement).toBeNull();
+    expect(g.majorationNuit).toBeNull();
+    expect(g.forfaits).toEqual([{ libelle: 'Cylindre', prix: 45 }]);
+    expect(g.decompte).toBe('quart');
+  });
+  it('sans taux horaire, la grille est incomplète ; avec, elle ne l’est plus', () => {
+    expect(grilleIncomplete({})).not.toBe('');
+    expect(grilleIncomplete({ tauxHoraire: 50 })).toBe('');
+  });
+});
+
+describe('prix TTC affiché d’un prix HT de la grille', () => {
+  it.each([[60, 10, 66], [54.55, 10, 60.01], [35, 20, 42], [60, 0, 60]])('%s € HT à %s %% → %s € TTC, comme sur un devis d’une ligne', (ht, taux, attendu) => {
+    expect(ttcDe(ht, taux)).toBe(attendu);
+    expect(calculerTotaux([{ description: 'x', quantite: 1, prixUnitaire: ht, tva: taux }], { tauxDefaut: taux }).totalTTC).toBe(attendu);
+  });
+});
+
+describe('décompte du temps', () => {
+  it('arrondit vers le haut au pas de la grille (« entamé »)', () => {
+    expect(dureeDecomptee(1.1, GRILLE)).toBe(1.25);
+    expect(dureeDecomptee(1, GRILLE)).toBe(1);
+    expect(dureeDecomptee(0.2, { ...GRILLE, decompte: 'heure' })).toBe(1);
+    expect(dureeDecomptee(0.6, { ...GRILLE, decompte: 'demi' })).toBe(1);
+    expect(dureeDecomptee('', GRILLE)).toBe(0);
+  });
+});
+
+describe('lignes du devis express', () => {
+  it('déplacement, main-d’œuvre, majoration de nuit, forfait et pièces, en deux lots', () => {
+    const r = lignesDevisExpress({ grille: GRILLE, heures: 1, majoration: 'nuit', forfaits: [0], pieces: [{ libelle: 'Cylindre A2P', quantite: 1, prix: 75 }], tva: 10 });
+    expect(r.erreur).toBe('');
+    expect(r.sections.map((s) => s.titre)).toEqual(['Intervention', 'Pièces remplacées']);
+    expect(r.lignes.map((l) => l.depannage)).toEqual(['deplacement', 'main_oeuvre', 'majoration', 'forfait', 'piece']);
+    expect(r.lignes.map((l) => l.prixUnitaire)).toEqual([39, 60, 30, 89, 75]);
+    expect(r.lignes[1].description).toMatch(/^Main-d’œuvre, taux horaire 66,00\s€ TTC$/);
+    expect(r.lignes[0].description).toMatch(/^Frais de déplacement \(42,90\s€ TTC\)$/);
+    expect(r.lignes[2].description).toContain('+ 50 % du taux horaire');
+    // Le total HT est la somme des prix de la grille, au centime
+    expect(calculerTotaux(r.lignes, { tauxDefaut: 10 }).totalHT).toBe(39 + 60 + 30 + 89 + 75);
+  });
+  it('au taux de 20 % : le TTC du libellé suit le taux du devis', () => {
+    const r = lignesDevisExpress({ grille: GRILLE, heures: 1, tva: 20 });
+    expect(r.lignes[1].description).toMatch(/72,00\s€ TTC$/);
+  });
+  it('en franchise : sans TVA ni suffixe TTC', () => {
+    const r = lignesDevisExpress({ grille: GRILLE, heures: 1.5, pieces: [{ libelle: 'Joint', quantite: 2, prix: 3.5 }], franchise: true });
+    expect(calculerTotaux(r.lignes, { franchise: true }).totalTTC).toBe(39 + 90 + 7);
+    expect(r.lignes[1].description).toMatch(/^Main-d’œuvre, taux horaire 60,00\s€$/);
+    expect(r.lignes.every((l) => l.tva === 0)).toBe(true);
+  });
+  it('la réponse du client sur les pièces est posée sur les lignes « pièce » seulement', () => {
+    const r = lignesDevisExpress({ grille: GRILLE, heures: 1, pieces: [{ libelle: 'Cylindre', quantite: 1, prix: 40 }], conserverPieces: true });
+    expect(r.lignes.find((l) => l.depannage === 'piece').conservee).toBe(true);
+    expect(r.lignes.find((l) => l.depannage === 'main_oeuvre').conservee).toBeUndefined();
+    expect(choixConserverPieces({ lignes: r.lignes })).toBe(true);
+    expect(choixConserverPieces({ lignes: lignesDevisExpress({ grille: GRILLE, pieces: [{ libelle: 'C', quantite: 1, prix: 4 }] }).lignes })).toBeNull();
+  });
+  it('déplacement décoché : pas de ligne de déplacement (contre-essai du premier cas)', () => {
+    const r = lignesDevisExpress({ grille: GRILLE, avecDeplacement: false, heures: 1 });
+    expect(r.lignes.map((l) => l.depannage)).toEqual(['main_oeuvre']);
+  });
+  it('une majoration absente de la grille est refusée', () => {
+    const r = lignesDevisExpress({ grille: { ...GRILLE, majorationDimanche: null }, heures: 1, majoration: 'dimanche' });
+    expect(r.erreur).toMatch(/pas dans votre grille/);
+    expect(r.lignes).toEqual([]);
+  });
+  it('pièce sans prix ou sans nom : erreur dite, rien de créé', () => {
+    expect(lignesDevisExpress({ grille: GRILLE, pieces: [{ libelle: 'Cylindre', quantite: 1, prix: '' }] }).erreur).toMatch(/prix de « Cylindre »/);
+    expect(lignesDevisExpress({ grille: GRILLE, pieces: [{ libelle: '', quantite: 1, prix: 10 }] }).erreur).toMatch(/nom/);
+  });
+  it('aucune ligne : erreur', () => {
+    expect(lignesDevisExpress({ grille: GRILLE, avecDeplacement: false }).erreur).toMatch(/au moins une ligne/);
+  });
+  it('l’urgence n’entre pas dans le calcul : aucun paramètre ne la reçoit', () => {
+    const a = lignesDevisExpress({ grille: GRILLE, heures: 1 });
+    const b = lignesDevisExpress({ grille: GRILLE, heures: 1, urgence: true });
+    expect(b.lignes).toEqual(a.lignes);
+  });
+});
+
+describe('mentions du devis de dépannage (arrêté du 24 janv. 2017, art. 2 et 4 III)', () => {
+  const express = { type: 'devis', lignes: lignesDevisExpress({ grille: GRILLE, heures: 1 }).lignes };
+  it('devis express d’un particulier : « Devis gratuit » et la question sur les pièces, cases vides', () => {
+    const html = mentionsDepannageHtml({ doc: express, client: PARTICULIER });
+    expect(html).toContain(MENTION_DEVIS_GRATUIT);
+    expect(html).toContain(QUESTION_PIECES);
+    expect(html).not.toContain('✕');
+  });
+  it('réponse « Oui » enregistrée : la case Oui est cochée', () => {
+    const doc = { type: 'devis', lignes: lignesDevisExpress({ grille: GRILLE, pieces: [{ libelle: 'C', quantite: 1, prix: 4 }], conserverPieces: true }).lignes };
+    expect(mentionsDepannageHtml({ doc, client: PARTICULIER })).toMatch(/✕<\/span>Oui/);
+  });
+  it('lignes relues de la base (JSON) : reconnues aussi', () => {
+    expect(estDevisDepannage({ type: 'devis', lignes: JSON.stringify(express.lignes) })).toBe(true);
+  });
+  it('devis porté « urgence demandée » : reconnu', () => {
+    expect(estDevisDepannage({ type: 'devis', travaux_urgents: true, lignes: [] })).toBe(true);
+  });
+  it('case « dépannage » de l’éditeur : marque et démarque les lignes, garde les catégories du devis express', () => {
+    const lignes = [{ description: 'Recherche de fuite', quantite: 1, prixUnitaire: 80 }, { _isSection: true, description: 'Lot' }];
+    const marquees = marquerLignesDepannage(lignes, true);
+    expect(estDevisDepannage({ type: 'devis', lignes: marquees })).toBe(true);
+    expect(marquees[1]).toEqual(lignes[1]);
+    expect(estDevisDepannage({ type: 'devis', lignes: marquerLignesDepannage(marquees, false) })).toBe(false);
+    expect(marquerLignesDepannage(express.lignes, true).map((l) => l.depannage)).toEqual(express.lignes.map((l) => l.depannage));
+  });
+  it('contre-essais : devis ordinaire, client professionnel, facture', () => {
+    expect(mentionsDepannage({ doc: { type: 'devis', lignes: [{ description: 'Peinture' }] }, client: PARTICULIER })).toBeNull();
+    expect(mentionsDepannage({ doc: express, client: PRO })).toBeNull();
+    expect(mentionsDepannageHtml({ doc: { ...express, type: 'facture' }, client: PARTICULIER })).toBe('');
+  });
+});
+
+describe('page imprimable de la grille', () => {
+  const ent = { nom: 'Serrures Dupont', formeJuridique: 'Micro-entreprise', nomEntrepreneur: 'Jean Dupont', adresse: '1 rue A', codePostal: '33000', ville: 'Bordeaux', tel: '0600000000', siret: '12345678900011' };
+  it('taux horaire TTC, décompte du temps, déplacement, majorations et forfaits (art. 3)', () => {
+    const html = grilleImprimableHtml({ entreprise: ent, grille: GRILLE });
+    for (const attendu of ['TVA 10 %', 'TVA 20 %', '66,00\u00a0€ / h', '72,00\u00a0€ / h', 'Par quart d’heure entamé', 'Frais de déplacement', '42,90\u00a0€', '46,80\u00a0€', 'Bordeaux et 20 km', '+ 50 %', 'de 20 h à 8 h', '+ 100 %', 'Ouverture de porte claquée', 'logement achevé depuis plus de deux ans', 'Devis gratuit.', 'SIRET 12345678900011', 'EI']) {
+      expect(html).toContain(attendu);
+    }
+  });
+  it('en franchise : mention 293 B, pas de « TTC »', () => {
+    const html = grilleImprimableHtml({ entreprise: ent, grille: GRILLE, franchise: true });
+    expect(html).toContain('TVA non applicable, article 293 B du CGI');
+    expect(html).not.toContain('TTC');
+    expect(html).toContain('60,00\u00a0€ / h');
+  });
+  it('échappe les saisies (contre-essai d’injection)', () => {
+    const html = grilleImprimableHtml({ entreprise: { nom: '<img src=x onerror=alert(1)>' }, grille: { tauxHoraire: 50, forfaits: [{ libelle: '<script>x</script>', prix: 10 }] } });
+    expect(html).not.toContain('<script>x');
+    expect(html).not.toContain('<img src=x');
+  });
+});
+
+describe('facture immédiate d’un devis signé sur place (règles existantes, appliquées au devis express)', () => {
+  const signe = (urgent) => ({ type: 'devis', signature: 'data:image/png;base64,x', signature_date: '2026-11-04T10:00:00Z', travaux_urgents: urgent, lignes: [] });
+  const maintenant = new Date('2026-11-04T11:00:00Z');
+  it('urgence demandée : paiement possible sur place (L221-10, 4°)', () => {
+    expect(delaiSeptJours({ devis: signe(true), client: PARTICULIER, maintenant })).toBeNull();
+  });
+  it('contre-essai sans urgence : pas de paiement avant le 8e jour (ici reporté : le 7e jour est le 11 novembre)', () => {
+    const d = delaiSeptJours({ devis: signe(false), client: PARTICULIER, maintenant });
+    expect(d.possibleLe).toBe('2026-11-13');
+    expect(echeanceApresSeptJours(d, '2026-11-04', 'Paiement à réception de facture').conditions).toMatch(/au plus tôt le 13\/11\/2026/);
+  });
+});
+
+describe('obligations affichées : recopiées mot pour mot de docs/metier-btp.md', () => {
+  // Le gras du Markdown (**…**) n'est pas du texte
+  const doc = readFileSync(fileURLToPath(new URL('../../../docs/metier-btp.md', import.meta.url)), 'utf8').replace(/\*\*/g, '');
+  it.each(OBLIGATIONS.map((o) => [o.texte]))('%s', (texte) => {
+    expect(doc).toContain(texte);
+  });
+});
+
+describe('les générateurs de PDF impriment les mentions du dépannage', async () => {
+  const { buildDevisHtml } = await import('../devisHtmlBuilder');
+  const { buildDocumentHTML } = await import('../pdfHtmlBuilder');
+  const entreprise = { nom: 'Plomberie Exemple', formeJuridique: 'EI', siret: '12345678900011', adresse: '1 rue A, 33000 Bordeaux' };
+  const { lignes, sections } = lignesDevisExpress({ grille: GRILLE, heures: 1, pieces: [{ libelle: 'Siphon PVC', quantite: 1, prix: 12 }], conserverPieces: false });
+  const doc = { type: 'devis', numero: 'DEV-2026-00001', date: '2026-11-04', statut: 'brouillon', lignes, sections, total_ht: 111, tva: 11.1, total_ttc: 122.1 };
+  it.each([
+    ['devisHtmlBuilder (page de signature, envoi)', () => buildDevisHtml({ doc, client: PARTICULIER, entreprise, couleur: '#12336F' })],
+    ['pdfHtmlBuilder (envois rapides)', () => buildDocumentHTML(doc, PARTICULIER, null, entreprise)],
+  ])('%s', (_nom, produire) => {
+    const html = produire();
+    expect(html).toContain(MENTION_DEVIS_GRATUIT);
+    expect(html).toContain(QUESTION_PIECES);
+    expect(html).toMatch(/✕<\/span>Non/);
+    expect(html).toContain('Siphon PVC');
+  });
+  it('contre-essai : devis ordinaire, aucun générateur ne les imprime', () => {
+    const ordinaire = { ...doc, lignes: [{ description: 'Peinture', quantite: 1, prixUnitaire: 100 }], sections: [] };
+    expect(buildDevisHtml({ doc: ordinaire, client: PARTICULIER, entreprise, couleur: '#12336F' })).not.toContain(QUESTION_PIECES);
+    expect(buildDocumentHTML(ordinaire, PARTICULIER, null, entreprise)).not.toContain(QUESTION_PIECES);
+  });
+});
