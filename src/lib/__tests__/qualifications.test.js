@@ -5,7 +5,6 @@ import { buildDocumentHTML } from '../pdfHtmlBuilder';
 import { prepareModeleLignes, getModele } from '../data/modeles';
 import { TRADE_LIBRARY } from '../templates/trade-library';
 import { ALL_OUVRAGES } from '../data/bibliotheque';
-import { ALL_ARTICLES_BTP } from '../data';
 
 // Recherche « métiers » du 3 nov. 2026 (docs/metiers/synthese.md § 2) : le RGE saisi dans Paramètres (`rge`,
 // `rgeOrganisme`) n'était imprimé par aucun générateur, qui lisaient `labels`, jamais écrit. L'aperçu de DevisPage.jsx
