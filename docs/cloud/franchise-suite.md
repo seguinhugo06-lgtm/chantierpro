@@ -25,7 +25,7 @@ Une seule règle : `estFranchiseTva` pour l'entreprise et `franchiseAppliquee` p
 
 Nouveaux fichiers :
 - `src/lib/exportsCsv.js` : les tableaux des deux exports, sortis des écrans pour être testés.
-- Migration **114** (ex-107, renumérotée le 4 nov.) `supabase/migrations/114_forme_juridique_sur_la_page_de_paiement.sql` + `scripts/banc/114.mjs`. La page de paiement ne recevait pas la forme juridique : impossible d'appliquer la règle. 114 ajoute la clé `forme_juridique` à `get_facture_for_payment` et retire le prix d'achat des lignes (corps de 106 recopié à l'identique sinon). **Sans 114 appliquée, la page garde « TTC »** (testé).
+- Migration **114** (ex-107, renumérotée le 4 nov.) `supabase/migrations/114_forme_juridique_sur_la_page_de_paiement.sql` + `scripts/banc/114.mjs`. La page de paiement ne recevait pas la forme juridique : impossible d'appliquer la règle. 114 ajoute la clé `forme_juridique` à `get_facture_for_payment` et retire le prix d'achat des lignes, enregistrées en tableau ou en texte JSON (corps de 106 recopié à l'identique sinon). La première version du filtre (`b110ed4`, `62d8fd5`) ne traitait que le tableau : voir « Correction du filtre `prixAchat` » à la fin. **Sans 114 appliquée, la page garde « TTC »** (testé).
 
 Défaut trouvé en route et corrigé : la page de paiement ne reçoit pas le type de la pièce ; sans lui, une facture émise avec TVA aurait été lue comme un brouillon et aurait perdu son « TTC ».
 
@@ -87,30 +87,32 @@ Session cloud de correction du 4 nov. 2026. Branche `cloud/franchise-suite`. `or
 | # | Point | Fait | Commit | Preuve |
 |---|---|---|---|---|
 | 1 | Numéro 107 en double | Renuméroté **114** : fichier, en-tête, `scripts/banc/114.mjs` (chemin et libellés), commentaire de `PublicPaymentPage.jsx`, intitulé du test (« avant 114 »), tâche 28, ce rapport. **Garde-fou** dans `scripts/banc-migrations.mjs` : deux migrations au même numéro font échouer le banc. | `b110ed4` | Banc vert, 662 vérifications. Contre-essai du garde-fou : une copie temporaire `106_zz…sql` donne « ✗ numéros de migration en double : 106 ». |
-| — | Filtre `prixAchat` (consigne) | `get_facture_for_payment` (114) retire `prixAchat` et `prix_achat` de chaque ligne vue par un visiteur. La ligne enregistrée ne change pas. Ordre et prix de vente gardés. `null`, `[]`, texte et éléments qui ne sont pas des objets sont rendus tels quels. | `b110ed4`, `62d8fd5` | Banc : 6 vérifications nouvelles. Contre-essai : avec l'ancienne ligne `'lignes', v_facture.lignes`, « ✗ 114 : un visiteur ne lit pas le prix d'achat des lignes ». |
+| — | Filtre `prixAchat` (consigne) | `get_facture_for_payment` (114) retire `prixAchat` et `prix_achat` de chaque ligne vue par un visiteur. La ligne enregistrée ne change pas. Ordre et prix de vente gardés. **Faux pour le texte** (contrôle local du 4 nov.) : le filtre n'agissait que sur un tableau JSON. Des lignes enregistrées en texte JSON, la forme qu'écrit l'app, ressortaient telles quelles, prix d'achat compris. Corrigé dans `0b31ce3` (dernière section). | `b110ed4`, `62d8fd5` | Banc : 6 vérifications nouvelles, toutes sur des lignes en tableau. Contre-essai : avec l'ancienne ligne `'lignes', v_facture.lignes`, « ✗ 114 : un visiteur ne lit pas le prix d'achat des lignes ». Il ne couvrait pas le texte. |
 | 2 | Parcours lettre et paiement | Deux scénarios dans `scripts/parcours/documents.cjs`. (1) Une facture en retard de 45 jours, en micro et en SARL : clic sur « Mise en demeure », lecture du HTML remis à l'impression. (2) `/pay/:token` avec un faux `get_facture_for_payment` : micro, SARL, et micro avec une facture émise avec `total_tva` > 0. | `e89b2cf` | `npm run parcours -- "mise en demeure"` : 1 vert (9 vérifications). `npm run parcours -- "page de paiement en ligne"` : 1 vert (7 vérifications). Contre-essai (règle franchise neutralisée dans `miseEnDemeureBuilder.js:80` et `PublicPaymentPage.jsx:173`) : les deux échouent, « Montant : 1 000,00 € TTC » et « Total TTC 300,00 € ». |
 | 3 | Tests qui recopiaient la règle | Le drapeau de l'export est calculé dans `exportsCsv.js` (`exportDocumentsEnFranchise(docs, entreprise)`). `DevisPage` ne passe plus que l'entreprise. Le HTML du portail est sorti dans `src/components/portal/documentImprimePortail.js`. L'import d'une ligne du catalogue est sorti dans `articleDepuisLigneCsv` (`src/lib/csvImport.js`). Tests : export avec une micro et une facture émise avec TVA ; HTML du portail en micro, en SARL, et pour une pièce émise avec TVA ; import en franchise, où la colonne TVA ne change rien. | `d3a91ed` | 20 tests dans `libellesFranchiseRestes.test.jsx`. Contre-essais, chacun fait échouer son test : drapeau d'export sans la vérification par pièce ; colonne TVA lue en franchise ; portail sans franchise. **Non fait** : le passage des props Bibliotheque → OuvragesList et RelanceConfigTab → VariablesCard n'a pas de test (hors de la correction demandée, budget). |
 | 4 | « Prix d’achat » non reconnu à l'import | `sansAccent` lit les deux apostrophes comme une espace. Ajout de « prix d achat » et « prix unitaire » aux indices. **`prixAchat` est maintenant associé avant `prix`** : sinon le mot « prix » prenait la colonne « Prix d’achat » quand aucune autre colonne de prix n'existait (constaté par le test). | `d3a91ed` | Test d'aller-retour export → import en micro et en SARL : prix d'achat 10 relu. Contre-essai : sans le changement d'apostrophes, le test échoue. |
 | 5 | Rapport inexact | Corrigé plus haut : la copie `claude/franchise-suite-ipay8p` n'est pas identique ; le contre-essai date d'avant `1d03f276` et n'est pas rejouable avec `main` ; chaque vérification est rattachée à un SHA ci-dessous. | (ce commit) | — |
 | 6 | Tâche 28 et Pilote | Réécrite pendant la fusion, avec le seul reste (a, b, c), au format fixe : Critère, Vérification, « Taille S. » en fin de ligne. | `29b0c22` | `grep '^28\.' docs/feuille-de-route.md` se termine par « Taille S. », que le motif de `preparer.mjs` lit. |
 | 7 | Commentaire déplacé | `libelleTotalImprime` est placée au-dessus du commentaire de `lignesTotauxHtml`. | `d3a91ed` | Relu. |
-| 8 | `etat-production.md` | **Non fait, comme demandé** : la session locale l'ajoute à la fusion. Il y a maintenant **trois** requêtes dans l'en-tête de 114 (forme renvoyée, droits, prix d'achat filtré), attendu `true`, `true`, `true`. | — | — |
+| 8 | `etat-production.md` | **Non fait, comme demandé** : la session locale l'ajoute à la fusion. Il y a maintenant **trois** requêtes dans l'en-tête de 114 (forme renvoyée, droits, prix d'achat filtré sous les deux formes depuis `0b31ce3`), attendu `true`, `true`, `true`. | — | — |
 
 ### Vérifications rattachées à un SHA
 
-- `62d8fd5` (dernier commit de code) : `npm run banc:migrations` vert, 662 vérifications.
+Elles portent sur le premier filtre (tableau seulement). Celles de la correction sont dans la dernière section.
+
+- `62d8fd5` (dernier commit de code avant la correction) : `npm run banc:migrations` vert, 662 vérifications.
 - `e89b2cf` : `npm run verifier` (standard) vert. 1318 tests sur 123 fichiers, lint 0 erreur (241 avertissements), smoke, build.
-- `npm run verifier -- --complet` sur `62d8fd5` : **tout vert**. Tests 1318, lint 0 erreur, smoke, build, banc, parcours navigateur (2399 s), audit d’interface (386 s). Les commits suivants ne touchent que ce rapport.
+- `npm run verifier -- --complet` sur `62d8fd5` : **tout vert**. Tests 1318, lint 0 erreur, smoke, build, banc, parcours navigateur (2399 s), audit d’interface (386 s). Les commits suivants, jusqu'à `be6c591`, ne touchent que ce rapport.
 
 ### Relectures
 
-- `gardien-securite` (114 avec le filtre, banc, garde-fou) : **applicable, rien de bloquant**. Le corps est identique à 106, à deux ajouts près. Droits et attributs inchangés. Le filtre ne peut pas planter. Le contre-essai du banc est réel. Ses mineurs : cas de lignes mal formées au banc (fait, `62d8fd5`) ; l'en-tête disait à tort que 110 filtrait déjà (corrigé, `62d8fd5`).
-- **Important, hors de cette branche** : `get_devis_for_signature` (108 et 110 de `cloud/metier-qualifications`) renvoie toujours `lignes` **et `sections[].lignes`** bruts, avec le prix d'achat, à tout destinataire d'un lien de signature. Il faut la même expression dans 110, sur `lignes` et sur les lignes de chaque section, avec son banc (aucune clé `prixAchat` à aucun niveau, contre-essai sur la ligne enregistrée).
+- `gardien-securite` (114 avec le filtre, banc, garde-fou) : **applicable, rien de bloquant**. Le corps est identique à 106, à deux ajouts près. Droits et attributs inchangés. Le filtre ne peut pas planter. Le contre-essai du banc est réel. Ses mineurs : cas de lignes mal formées au banc (fait, `62d8fd5`) ; l'en-tête disait à tort que 110 filtrait déjà (corrigé, `62d8fd5`). Cette relecture n'a pas vu la forme texte. **La correction `0b31ce3` n'a pas été relue par `gardien-securite`** (session sans sous-agent) : à faire avant d'appliquer 114.
+- **Important, hors de cette branche** : `get_devis_for_signature` (108 et 110 de `cloud/metier-qualifications`) renvoie toujours `lignes` **et `sections[].lignes`** bruts, avec le prix d'achat, à tout destinataire d'un lien de signature. Il faut la même expression dans 110, sur `lignes` et sur les lignes de chaque section, avec son banc (aucune clé `prixAchat` à aucun niveau, contre-essai sur la ligne enregistrée). **Dépassé** : depuis `71ad6e0`, la 110 filtre par sa propre fonction `lignes_pour_le_client`. La 106 et la 108 restent brutes. État relevé dans la dernière section.
 - `juriste-btp` : pas relancé. Aucun texte affiché ou imprimé n'a changé dans cette session : seuls des tests, des parcours, le SQL et du code sont déplacés. Les sorties (export, portail, import) sont identiques, et les tests le vérifient.
 
 ### Ce qui reste
 
-- Session locale : ajouter 114 à `etat-production.md`, puis l'appliquer après livraison (trois requêtes, attendu `true` ×3). Mettre le filtre `prixAchat` dans 110 (voir plus haut). Lancer `/sonde` en micro sur les écrans listés par la relecture.
+- Session locale : ajouter 114 à `etat-production.md`, puis l'appliquer après livraison (trois requêtes, attendu `true` ×3). Rapprocher le filtre de 114 et `lignes_pour_le_client` de 110 (dernière section). Lancer `/sonde` en micro sur les écrans listés par la relecture.
 - Tests des props Bibliotheque → OuvragesList et RelanceConfigTab → VariablesCard (point 3, non fait).
 - Hors périmètre, relevé par la relecture : l'export CSV du volet « Trier » n'est pas filtré par `canViewPrices` (`DevisPage.jsx`). À ouvrir en tâche.
 
@@ -118,7 +120,7 @@ Session cloud de correction du 4 nov. 2026. Branche `cloud/franchise-suite`. `or
 
 - **Portail client** (éteint) : servir le vrai PDF de la facture, ou intituler son document « Récapitulatif » ? Le juriste recommande le vrai PDF.
 - **Lettre de mise en demeure** : ajouter la mention 293 B, alors qu'elle n'est pas obligatoire ? Le juriste recommande non.
-- Proposition du gardien, à trancher : la page de paiement ne lit pas les lignes. Faut-il les réserver au serveur (aucune ligne pour un visiteur) plutôt que de les filtrer clé par clé ? C'est plus sûr pour un futur champ interne. Le filtre est gardé ici pour avoir le même corps que 110, comme demandé.
+- Proposition du gardien, à trancher : la page de paiement ne lit pas les lignes. Faut-il les réserver au serveur (aucune ligne pour un visiteur) plutôt que de les filtrer clé par clé ? C'est plus sûr pour un futur champ interne. Le filtre est gardé ici. Il n'a plus le même corps que 110 (dernière section).
 
 ### Risques
 
@@ -129,10 +131,49 @@ Session cloud de correction du 4 nov. 2026. Branche `cloud/franchise-suite`. `or
 
 - `main` fusionné ; conflits de la feuille de route et des imports réglés en gardant les deux côtés.
 - Migration renumérotée 114 ; le banc refuse désormais deux migrations au même numéro (contre-essai fait).
-- 114 retire le prix d'achat des lignes vues par un visiteur (banc et contre-essai).
+- 114 retire le prix d'achat des lignes vues par un visiteur (banc et contre-essai). En tableau seulement : la forme texte est corrigée dans `0b31ce3`.
 - Deux parcours navigateur : lettre de mise en demeure, page de paiement ; micro et SARL ; contre-essais qui échouent.
 - Export, portail et import testés par leur vrai code, sans recopier la règle.
 - « Prix d’achat » se réimporte ; aller-retour testé.
-- Complète verte sur `62d8fd5`, dernier commit de code : 1318 tests, banc 662, parcours et audit d’interface.
-- Sécurité : 114 applicable. À faire ailleurs : le même filtre dans 110 (page de signature).
+- Complète verte sur `62d8fd5`, dernier commit de code avant la correction : 1318 tests, banc 662, parcours et audit d’interface.
+- Sécurité : 114 jugée applicable avant la correction ; la correction `0b31ce3` reste à relire. Page de signature : dernière section.
 - Deux décisions d'Hugo inchangées ; une proposition du gardien à trancher.
+
+## Correction du filtre `prixAchat` (contrôle local du 4 nov.)
+
+Branche locale `corr-114`, partie de `origin/cloud/franchise-suite` (`be6c591`). Rien n'est poussé, fusionné ni appliqué.
+
+**Défaut.** Le filtre de 114 n'agissait que si `lignes` était un tableau JSON (`jsonb_typeof(...) = 'array'`). Or l'app enregistre `lignes: JSON.stringify(allLignes)` (`src/hooks/useSupabaseSync.js:215`) : la colonne `jsonb` reçoit une chaîne. L'app relit les deux formes (`useSupabaseSync.js:284`, `DevisSignaturePage.jsx:93-94`). La chaîne ressortait telle quelle : le client qui paie lisait le prix d'achat dans la réponse. Ce rapport disait le contraire : il rangeait « texte … rendus tels quels » parmi les cas sans risque.
+
+**Correction (`0b31ce3`).**
+- Une chaîne est décodée (`(lignes #>> '{}')::jsonb`), filtrée comme le tableau, puis réécrite en texte (`114…sql:142-160`).
+- Forme renvoyée : **celle qui est enregistrée** (tableau → tableau, texte → texte). Raison : la page `/pay/:token` (`PublicPaymentPage.jsx`) et la fonction `create-invoice-payment` ne lisent pas les lignes (aucune occurrence de `lignes` dans leurs fichiers). La forme ne change donc rien pour elles. Gardée, elle ne fait différer la réponse de celle de 106 que par les clés retirées, et l'app relit déjà les deux formes.
+- Chaîne qui n'est pas du JSON valide : **tableau vide**, écrit en texte (`"[]"`) comme les autres lignes en texte. La fonction n'échoue jamais : `EXCEPTION WHEN others`, car un texte qui contient `\u0000` lève l'erreur 22P05 et non 22P02 (constaté dans PGlite, PostgreSQL 16.4).
+- Ce qui n'est pas un tableau (objet, texte d'un objet, texte encodé deux fois) ressort en tableau vide, dans la même forme. Avant, un objet sortait tel quel, prix compris. `useSupabaseSync.js` n'écrit aucune de ces formes.
+- `null` reste `null`. La ligne enregistrée ne change pas.
+- En-tête de 114 corrigé. Sa troisième requête vérifie aussi le décodage (`position('#>> ''{}''' in prosrc) > 0`), attendu `true`.
+
+**Preuves.**
+- `npm run banc:migrations` sur `0b31ce3` : vert, 675 vérifications (662 avant), dont 26 pour 114.
+- Cas ajoutés au banc : lignes en texte JSON écrites comme par l'app (prix d'achat absent, texte gardé, ordre, désignation, quantité et prix de vente gardés, ligne enregistrée inchangée) ; texte illisible (JSON tronqué qui contient un prix), texte vide, `\u0000`, texte d'un objet, texte encodé deux fois, objet seul. Le cas qui validait le passage d'une chaîne telle quelle (`"texte"` → `"texte"`) attend maintenant `"[]"`.
+- Contre-essai 1 : le nouveau banc avec l'ancien CASE (fichier de `be6c591`) donne 9 échecs sur 675, dont « ✗ 114 : un visiteur ne lit pas le prix d'achat des lignes enregistrées en texte JSON » (la réponse contenait `"prixAchat":180,"prix_achat":180`).
+- Contre-essai 2 : avec `WHEN invalid_text_representation` au lieu de `WHEN others`, 1 échec : le texte `\u0000` fait échouer la fonction (« unsupported Unicode escape sequence »).
+- `npm run verifier` (standard) sur `0b31ce3` : vert. 1318 tests, lint 0 erreur (241 avertissements), smoke, build.
+
+**Même défaut ailleurs, non modifié ici.**
+
+| Fonction | Fichier:ligne | Branche (SHA) | État |
+|---|---|---|---|
+| `get_devis_for_signature` | `106_pages_publiques_par_l_organisation_de_la_piece.sql:283` | `main` (`4da7322`) et cette branche | `lignes` et `sections` renvoyées telles qu'enregistrées (`sections` aussi en texte : `useSupabaseSync.js:216`), prix d'achat compris. `docs/etat-production.md` note 106 appliquée le 25 oct. (non vérifié en base : aucune requête dans cette session). |
+| `get_facture_for_payment` | `106_…sql:162` | `main` (`4da7322`) | lignes brutes, jusqu'à l'application de 114. |
+| `get_devis_for_signature` | `108_rge_sur_la_page_de_signature.sql:118` | `cloud/metiers` (`53c8727`) | brutes. Même défaut à la ligne 114 du même fichier sur `cloud/metier-qualifications` (`71ad6e0`), où 110 la remplace (110 doit être appliquée après 108). |
+| `get_devis_for_signature` | `110_metiers_et_qualifications.sql:192` | `cloud/metier-qualifications` (`71ad6e0`) | filtrées par `lignes_pour_le_client` (l. 66-97) : le texte est décodé, `WHEN others` donne `[]`. Ce n'est pas le même défaut. Différences avec 114 : rend toujours un tableau, retire aussi `marge`, descend dans les `lignes` des sections. Les deux filtres sont à rapprocher après les deux fusions. |
+| `get_devis_for_signature` | `110_metiers_et_qualifications.sql:149` | copie `claude/metier-qualifications-dngbo4` (`acd1f2a`) | brutes (ancienne version de 110 : ne pas livrer depuis cette copie). |
+| `get_facture_for_payment` | `107_forme_juridique_sur_la_page_de_paiement.sql:139` | copie `claude/franchise-suite-ipay8p` (`caa36fc`) | brutes (déjà signalée : ne pas livrer depuis cette copie). |
+
+La copie `claude/franchise-suite-fixes-yzuvqu` est identique à `be6c591` : elle a le défaut corrigé ici.
+
+**Non fait.**
+- Relecture `gardien-securite` de `0b31ce3` (session sans sous-agent) : à faire avant d'appliquer 114.
+- `get_devis_for_signature` : non modifiée (consigne).
+- `docs/etat-production.md` : non modifié (la session locale l'ajoute à la fusion).
