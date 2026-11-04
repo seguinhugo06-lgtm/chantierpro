@@ -29,6 +29,8 @@ Pièges appris :
 
 | Faille | Gravité | Statut |
 |---|---|---|
-| Cron (ramonage l. 518, entretien l. 655 de send-scheduled-relances/index.ts) : une seule fiche entreprise par organisation, prise au hasard ; tout membre peut créer sa fiche dans l'organisation (policies 084 « Org members can insert entreprise ») avec envoi auto → rappels aux clients du patron sous son nom et son reply_to, rappel du patron marqué fait | MAJEURE | ouverte (héritée de 104) |
-| Écriture d'app = ligne entière : un `rappel_fait_le` local périmé (null) efface la prise du cron → second e-mail (entretiens et ramonages) | MINEURE | ouverte |
-| Banc 113 : ne prouve pas qu'un jeton de ramonage marche encore avec la 113 ; l'appel visiteur est masqué par un appel serveur (l. 89) | MINEURE (preuve) | ouverte |
+| M1 — Cron (ramonage, entretien de send-scheduled-relances/index.ts) : fiche prise au hasard par organisation ; la fiche d'un membre envoyait aux clients du patron sous son nom | MAJEURE | corrigée (fichesQuiEnvoient : fiche du propriétaire seule, filtrée d'abord par ficheValable, commits 25f9222/4bf7ea2), fonction non déployée |
+| M1 bis — Reliquat : fiche personnelle d'un membre (`organization_id` NULL, envoi auto) → `dansOrgR`/`dansOrgE` (index.ts l. 538, 680) filtrent sur `user_id` seul et ramassent les ramonages/entretiens/clients qu'il a saisis DANS l'organisation → rappels aux clients de l'organisation sous son identité | IMPORTANTE | ouverte : ajouter `.is('organization_id', null)` dans la branche sans organisation (+ test) |
+| m1 — Écriture d'app = ligne entière : `rappel_fait_le` local périmé efface la prise du cron → second e-mail | MINEURE | corrigée pour les entretiens (figer_entretien, 113, banc 6 ter) ; ramonages (104) à vérifier |
+| m2 — Banc 113 : appel visiteur masqué par un appel serveur ; jeton de ramonage non prouvé | MINEURE (preuve) | corrigée (banc 113 : refus lu dans la transaction du visiteur, entretien et ramonage) |
+| F1/F2 (113) — figer_entretien laissait `client_id`, `remplace_id`, `updated_at` modifiables par un compte (vider remplace_id libère l'index unique et efface « annule et remplace ») | ÉLEVÉE | corrigée dans 113 (4bf7ea2, banc 6 quinquies), non appliquée |
