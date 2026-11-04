@@ -1,7 +1,7 @@
 /**
  * MetiersSection — « Votre métier est déjà chiffré » (spec de la refonte, section 4, `id="metiers"`).
  *
- * L'explorateur : les 17 métiers de la bibliothèque en pastilles (Électricité choisi d'abord) ; pour le métier
+ * L'explorateur : les 20 métiers de la bibliothèque en pastilles (Électricité choisi d'abord) ; pour le métier
  * choisi, ses trois premiers lots types en cartes (nom, résumé, « N lignes · HT », total HT arrondi à l'euro, trois
  * premières lignes avec leur montant). Tout est lu dans la bibliothèque des métiers, chargée à la demande et une
  * seule fois pour la page (`site/bibliotheque.js`, partagé avec le devis vivant) ; la logique est dans `metiers.js`.

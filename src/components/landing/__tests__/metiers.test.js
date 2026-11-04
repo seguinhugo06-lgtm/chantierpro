@@ -3,9 +3,9 @@ import { TRADE_LIBRARY } from '../../../lib/templates/trade-library.js';
 import { METIER_INITIAL, apercuDuLot, lotsMontres, metiersDeLaBibliotheque, metierVoisin } from '../metiers.js';
 
 describe('explorateur des métiers — logique', () => {
-  it('liste les 17 métiers de la bibliothèque, dans son ordre', () => {
+  it('liste les 20 métiers de la bibliothèque, dans son ordre', () => {
     const metiers = metiersDeLaBibliotheque(TRADE_LIBRARY);
-    expect(metiers).toHaveLength(17);
+    expect(metiers).toHaveLength(20);
     expect(metiers.map((m) => m.id)).toEqual(Object.keys(TRADE_LIBRARY));
     expect(metiers.find((m) => m.id === 'electricite')).toEqual({ id: 'electricite', nom: 'Électricité' });
   });

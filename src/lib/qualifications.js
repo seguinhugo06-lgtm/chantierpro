@@ -55,21 +55,120 @@ export function raisonRgeNonImprime(entreprise, aujourdhui = jourLocal()) {
   return null;
 }
 
+// ─── « Mes qualifications » (lot 1, docs/metiers/synthese.md § 3.7) ─────────────────────────────────────────────
+// Le champ RGE unique devient une liste, rangée dans `settings_json.reglages.qualifications` :
+//   { id, type, intitule, organisme, numero, fin, imprimer, motsCles }
+// Règles communes : jamais imprimée sans numéro ; jamais le mot « certifié » ; validité jugée à la date du document ;
+// date de fin exigée (lisible, non passée) sauf pour la déclaration de services à la personne, qui n'en a pas.
+// RGE : les règles du lot 0 ci-dessus (intitulé, organisme RGE, numéro, date), toujours sur tous les documents (une
+// mention exigée par l'Anah ne disparaît pas parce qu'un mot manque dans une ligne : avis critique-produit du 4 nov.).
+// Autres : intitulé, organisme, numéro et date exigés ; « Seulement si une ligne contient… » est possible.
+
+/** Les types proposés, dans cet ordre. `prefixe` ouvre la ligne imprimée ; les textes sont relus par juriste-btp. */
+export const TYPES_QUALIFICATION = [
+  { id: 'rge', nom: 'RGE (Reconnu garant de l’environnement)', exemple: 'QualiPAC chauffage et eau chaude sanitaire', motsCles: '' },
+  { id: 'irve', nom: 'IRVE (bornes de recharge)', prefixe: 'Qualification IRVE', exemple: 'IRVE P1', organismes: ['Qualifelec', 'AFNOR Certification'], motsCles: 'borne, recharge, IRVE' },
+  { id: 'fluides', nom: 'Attestation de capacité (fluides frigorigènes)', prefixe: 'Attestation de capacité à manipuler les fluides frigorigènes', exemple: 'Catégorie I', motsCles: 'climatisation, pompe à chaleur, PAC, frigorifique' },
+  { id: 'pg_gaz', nom: 'Professionnel du gaz (PG)', prefixe: 'Appellation Professionnel du gaz (PG)', exemple: 'PG installation', organismes: ['Qualigaz'], motsCles: 'gaz' },
+  { id: 'certibiocide', nom: 'Certibiocide', prefixe: 'Certificat individuel biocides (Certibiocide)', exemple: 'Traitement des bois', motsCles: 'traitement, termites, insectes, xylophages' },
+  { id: 'certiphyto', nom: 'Certiphyto', prefixe: 'Certificat individuel produits phytopharmaceutiques (Certiphyto)', exemple: 'Décideur en entreprise soumise à agrément', motsCles: 'désherbage, traitement' },
+  { id: 'sap', nom: 'Services à la personne (déclaration)', exemple: '', sansDate: true, motsCles: '' },
+  { id: 'autre', nom: 'Autre qualification', prefixe: '', exemple: 'Qualibat 5111', motsCles: '' },
+];
+const TYPE_PAR_ID = Object.fromEntries(TYPES_QUALIFICATION.map((t) => [t.id, t]));
+
+/** Une qualification lue (champ importable) : chaînes nettoyées, type connu sinon « autre ». */
+function normaliser(q, i) {
+  const o = q && typeof q === 'object' ? q : {};
+  return {
+    id: texte(o.id) || `q${i + 1}`,
+    type: TYPE_PAR_ID[texte(o.type)] ? texte(o.type) : 'autre',
+    intitule: texte(o.intitule), organisme: texte(o.organisme), numero: texte(o.numero), fin: texte(o.fin),
+    imprimer: o.imprimer !== false,
+    motsCles: texte(o.motsCles),
+  };
+}
+
+/**
+ * La liste des qualifications de l'entreprise. Une fiche d'avant la liste (champs `rge*` du lot 0) donne une
+ * qualification RGE ; dès que la liste existe (même vide), elle seule compte.
+ */
+export function qualificationsDe(entreprise) {
+  const e = entreprise || {};
+  if (Array.isArray(e.qualifications)) return e.qualifications.filter((q) => q && typeof q === 'object').map(normaliser);
+  if (!texte(e.rge)) return [];
+  return [normaliser({ id: 'rge', type: 'rge', intitule: e.rgeDomaine, organisme: e.rgeOrganisme, numero: e.rge, fin: e.rgeValidite }, 0)];
+}
+
+/**
+ * Les anciens champs RGE recopiés depuis la liste (premier RGE), pour la page de signature d'avant la migration 110
+ * (qui ne lit que `rge*`, migration 108) ; tout vide sans RGE dans la liste.
+ */
+export function champsRgeDeLaListe(qualifications) {
+  const rge = (qualifications || []).map(normaliser).find((q) => q.type === 'rge' && q.imprimer);
+  return { rge: rge?.numero || '', rgeOrganisme: rge?.organisme || '', rgeDomaine: rge?.intitule || '', rgeValidite: rge?.fin || '' };
+}
+
+/** Pourquoi cette qualification n'est pas imprimée (texte pour l'écran), ou null si elle l'est. */
+export function raisonNonImprimee(q, aujourdhui = jourLocal()) {
+  const x = normaliser(q, 0);
+  const t = TYPE_PAR_ID[x.type];
+  if (!x.imprimer) return 'Vous avez choisi de ne pas l’imprimer.';
+  if (!x.numero) return 'Ajoutez le numéro : sans numéro, rien n’est imprimé.';
+  if (x.type === 'rge') return raisonRgeNonImprime({ rge: x.numero, rgeOrganisme: x.organisme, rgeDomaine: x.intitule, rgeValidite: x.fin }, aujourdhui);
+  if (x.type === 'sap') return null;
+  if (!x.intitule) return 'Ajoutez l’intitulé, tel qu’il figure sur votre certificat.';
+  if (!x.organisme) return 'Ajoutez l’organisme qui l’a délivrée.';
+  if (ORGANISMES_REFUSES.includes(x.organisme)) return 'Qualiopi certifie les organismes de formation : choisissez l’organisme qui a délivré cette qualification.';
+  if (!t.sansDate) {
+    if (!x.fin) return 'Ajoutez la date de fin de validité indiquée sur votre certificat : sans elle, rien n’est imprimé.';
+    if (!jourValide(x.fin)) return 'La date de fin n’est pas lisible : ressaisissez-la.';
+    if (expiree(x.fin, aujourdhui)) return 'La date de fin est passée : elle n’est plus imprimée sur vos documents.';
+  }
+  return null;
+}
+
+/** La ligne imprimée d'une qualification valide (texte brut). */
+export function ligneImprimee(q) {
+  const x = normaliser(q, 0);
+  if (x.type === 'rge') return `Entreprise RGE (Reconnu garant de l'environnement) — Qualification : ${x.intitule} — ${x.organisme} — N° ${x.numero} — Valide jusqu'au ${dateFr(x.fin)}`;
+  if (x.type === 'sap') return `Services à la personne : organisme déclaré n° ${x.numero}`;
+  const prefixe = TYPE_PAR_ID[x.type].prefixe;
+  return `${prefixe ? `${prefixe} : ` : ''}${x.intitule} — ${x.organisme} — N° ${x.numero} — Valide jusqu'au ${dateFr(x.fin)}`;
+}
+
+const sansAccent = (v) => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+/** Les mots de « Seulement si une ligne contient… » (séparés par des virgules). */
+export const motsDe = (motsCles) => String(motsCles || '').split(/[,;]/).map((m) => sansAccent(m).trim()).filter(Boolean);
+/** Les textes des lignes d'un document (lignes et sections). */
+function textesDuDocument(doc) {
+  const lignes = [...(Array.isArray(doc?.lignes) ? doc.lignes : []),
+    ...(Array.isArray(doc?.sections) ? doc.sections.flatMap((s) => (Array.isArray(s?.lignes) ? s.lignes : [])) : [])];
+  return lignes.map((l) => sansAccent(`${l?.description || ''} ${l?.designation || ''}`));
+}
+/** La qualification vise-t-elle ce document ? Sans mots (ou RGE, ou sans document connu) : oui. */
+export function viseLeDocument(q, doc) {
+  const x = normaliser(q, 0);
+  const mots = motsDe(x.motsCles);
+  if (x.type === 'rge' || !mots.length || !doc) return true;
+  return textesDuDocument(doc).some((t) => mots.some((m) => t.includes(m)));
+}
+
 /**
  * Les lignes de qualification à imprimer, en texte brut (chaque générateur échappe).
  * @param {object} entreprise
- * @param {string} [aujourdhui] « AAAA-MM-JJ »
+ * @param {string} [aujourdhui] « AAAA-MM-JJ » (date du document)
+ * @param {object} [doc] le document : ses lignes décident des qualifications « seulement si une ligne contient… »
  * @returns {string[]}
  */
-export function lignesQualifications(entreprise, aujourdhui = jourLocal()) {
+export function lignesQualifications(entreprise, aujourdhui = jourLocal(), doc = null) {
   const e = entreprise || {};
   if (e.mentionRGE === false) return [];
   const lignes = [];
-
-  const numero = texte(e.rge);
-  if (numero && raisonRgeNonImprime(e, aujourdhui) === null) {
-    const organisme = texte(e.rgeOrganisme);
-    lignes.push(`Entreprise RGE (Reconnu garant de l'environnement) — Qualification : ${texte(e.rgeDomaine)} — ${organisme} — N° ${numero} — Valide jusqu'au ${dateFr(e.rgeValidite)}`);
+  for (const q of qualificationsDe(e)) {
+    if (raisonNonImprimee(q, aujourdhui) !== null || !viseLeDocument(q, doc)) continue;
+    const l = ligneImprimee(q);
+    if (!lignes.includes(l)) lignes.push(l);
   }
 
   // Ancien format (`labels`), gardé pour une fiche qui en aurait : mêmes règles
@@ -84,6 +183,19 @@ export function lignesQualifications(entreprise, aujourdhui = jourLocal()) {
   return lignes;
 }
 
+/**
+ * Les qualifications dont la fin approche ou est passée (alerte de Paramètres, comme la décennale) :
+ * { id, nom, fin, jours } triées par date ; seulement celles qui ont un numéro et une date lisible.
+ */
+export function echeancesQualifications(entreprise, aujourdhui = jourLocal(), horizonJours = 60) {
+  const t0 = dateLue(aujourdhui).getTime();
+  return qualificationsDe(entreprise)
+    .filter((q) => q.numero && q.imprimer && jourValide(q.fin))
+    .map((q) => ({ id: q.id, nom: q.intitule || TYPE_PAR_ID[q.type].nom, type: q.type, fin: q.fin, jours: Math.round((dateLue(q.fin).getTime() - t0) / 86400000) }))
+    .filter((x) => x.jours <= horizonJours)
+    .sort((a, b) => a.jours - b.jours);
+}
+
 /** Le jour d'un document (« AAAA-MM-JJ »), sinon aujourd'hui : la validité s'apprécie à la date d'émission. */
 export function jourDuDocument(doc) {
   const d = texte(doc?.date);
@@ -91,7 +203,7 @@ export function jourDuDocument(doc) {
 }
 
 /** Le bloc HTML (précédé d'un saut de ligne) pour le pied de page, ou ''. */
-export function qualificationsHtml(entreprise, echapper, aujourdhui = jourLocal()) {
-  const lignes = lignesQualifications(entreprise, aujourdhui);
+export function qualificationsHtml(entreprise, echapper, aujourdhui = jourLocal(), doc = null) {
+  const lignes = lignesQualifications(entreprise, aujourdhui, doc);
   return lignes.length ? `<br>${lignes.map(echapper).join('<br>')}` : '';
 }

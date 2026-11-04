@@ -1690,7 +1690,7 @@ export default function DevisPage({ clients, addClient, devis, setDevis, chantie
       ${E?.decennaleAssureur && E?.decennaleNumero ? `Assurance décennale: ${E.decennaleAssureur}${E.decennaleAssureurAdresse ? ` (${E.decennaleAssureurAdresse})` : ''} N°${E.decennaleNumero}${E.decennaleValidite ? ` (Valide jusqu'au ${dateLue(E.decennaleValidite).toLocaleDateString('fr-FR')})` : ''}${E.decennaleZone ? ` — Zone : ${E.decennaleZone}` : ''}${E.decennaleActivites ? ` — Activités : ${E.decennaleActivites}` : ''}` : ''}
       ${E?.decennaleAssureur && E?.decennaleNumero && E?.rcProAssureur ? '<br>' : ''}
       ${E?.rcProAssureur ? `RC Pro: ${E.rcProAssureur}${E.rcProNumero ? ` N°${E.rcProNumero}` : ''}${E.rcProValidite ? ` (Valide jusqu'au ${dateLue(E.rcProValidite).toLocaleDateString('fr-FR')})` : ''}${E.rcProMontantGarantie ? ` — Garantie: ${E.rcProMontantGarantie} €` : ''}${E.rcProZone ? ` — Zone: ${E.rcProZone}` : ''}` : ''}
-      ${qualificationsHtml(entreprise, echap, jourDuDocument(doc))}
+      ${qualificationsHtml(entreprise, echap, jourDuDocument(doc), doc)}
     </div>
     ${piedDePageHtml({ nature: natureDuDocument(doc), client })}
   </div>

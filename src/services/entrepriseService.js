@@ -5,6 +5,7 @@
  * Supports demo mode (localStorage fallback).
  */
 
+import { normaliserMetiers } from '../lib/metiers';
 import { scopeToOrg, withOrgScope } from '../lib/queryHelper';
 import { captureException } from '../lib/sentry';
 import { COULEUR_DOCUMENTS_DEFAUT } from '../lib/theme';
@@ -56,7 +57,23 @@ export const REGLAGES_SANS_COLONNE = {
   ramonageRappelJours: 30,
   ramonageEnvoiAuto: false,
   ramonageTarifs: {},
+  // « Mes qualifications » (lot 1, src/lib/qualifications.js) : la liste qui remplace le champ RGE unique. null tant
+  // qu'elle n'a jamais été enregistrée : les anciens champs rge* valent alors une qualification RGE.
+  qualifications: null,
 };
+
+/**
+ * Métiers de l'entreprise (src/lib/metiers.js) : colonne `entreprise.metiers` (migration 110). Tant que la colonne
+ * manque en production, l'enregistrement se replie dans `settings_json.reglages.metiers` (repris par la migration).
+ */
+function metiersDe(row) {
+  if (Array.isArray(row?.metiers)) return normaliserMetiers(row.metiers);
+  return normaliserMetiers(row?.settings_json?.reglages?.metiers);
+}
+/** L'erreur dit-elle que la colonne `metiers` n'existe pas encore (PostgREST PGRST204, PostgreSQL 42703) ? */
+export function colonneMetiersAbsente(error) {
+  return !!error && ['PGRST204', '42703'].includes(error.code) && /metiers/.test(String(error.message || ''));
+}
 
 function reglagesDe(row) {
   const enregistres = (row?.settings_json && typeof row.settings_json === 'object' && row.settings_json.reglages) || {};
@@ -101,6 +118,7 @@ export function fromSupabase(row) {
     delaiPaiement: row.delai_paiement ?? 30,
     // Réglages sans colonne (settings_json.reglages) : banque, RCS, RGE, médiateur, pénalités, acompte…
     ...reglagesDe(row),
+    metiers: metiersDe(row),
     tauxFraisStructure: row.taux_frais_structure != null ? parseFloat(row.taux_frais_structure) : 15,
 
     // NEW multi-entreprise fields
@@ -255,6 +273,8 @@ export function toSupabase(data) {
   // CGU acceptance (LEGAL-001)
   if (data.cguAcceptedAt !== undefined) result.cgu_accepted_at = data.cguAcceptedAt;
   if (data.cguVersion !== undefined) result.cgu_version = data.cguVersion;
+
+  if (data.metiers !== undefined) result.metiers = normaliserMetiers(data.metiers);
 
   // Réglages sans colonne : regroupés ici, fusionnés dans settings_json.reglages par updateEntreprise
   const reglages = {};
@@ -450,11 +470,19 @@ export async function createEntreprise(supabase, { data, userId, orgId } = {}) {
     }, userId, orgId),
   };
 
-  const { data: created, error } = await supabase
+  let { data: created, error } = await supabase
     .from('entreprise')
     .insert(row)
     .select()
     .single();
+
+  // Migration 110 pas encore appliquée : le métier va dans settings_json.reglages.metiers (repris par la migration)
+  if (error && row.metiers !== undefined && colonneMetiersAbsente(error)) {
+    const { metiers, ...sansMetiers } = row;
+    const settings = sansMetiers.settings_json || {};
+    sansMetiers.settings_json = { ...settings, reglages: { ...(settings.reglages || {}), metiers } };
+    ({ data: created, error } = await supabase.from('entreprise').insert(sansMetiers).select().single());
+  }
 
   if (error) {
     console.error('[entrepriseService] createEntreprise error:', error);
@@ -506,11 +534,24 @@ export async function updateEntreprise(supabase, { id, data } = {}) {
 
   // Par la fiche seule : la base décide qui la modifie (gérants de son organisation, ou auteur d'une fiche sans
   // organisation). Filtrer aussi par auteur empêchait le patron de modifier une fiche créée par un autre membre.
-  const { data: ecrites, error } = await supabase
+  let { data: ecrites, error } = await supabase
     .from('entreprise')
     .update(dbUpdates)
     .eq('id', id)
     .select('id');
+
+  // Migration 110 pas encore appliquée : le métier va dans settings_json.reglages.metiers (repris par la migration)
+  if (error && dbUpdates.metiers !== undefined && colonneMetiersAbsente(error)) {
+    const { metiers, ...sansMetiers } = dbUpdates;
+    let settings = sansMetiers.settings_json;
+    if (!settings) {
+      const lu = await supabase.from('entreprise').select('settings_json').eq('id', id).maybeSingle();
+      if (lu.error) throw new Error('Métier non enregistré : ' + lu.error.message);
+      settings = (lu.data?.settings_json && typeof lu.data.settings_json === 'object') ? lu.data.settings_json : {};
+    }
+    sansMetiers.settings_json = { ...settings, reglages: { ...(settings.reglages || {}), metiers } };
+    ({ data: ecrites, error } = await supabase.from('entreprise').update(sansMetiers).eq('id', id).select('id'));
+  }
 
   if (error) {
     console.error('[entrepriseService] updateEntreprise error:', error);

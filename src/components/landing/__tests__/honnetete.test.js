@@ -228,11 +228,11 @@ function controlerTextes(textes, exceptions = EXCEPTIONS_BIBLIOTHEQUE) {
 describe('honnêteté des textes de la bibliothèque affichés par le site', () => {
   const textes = textesDeLaBibliothequeAffiches(TRADE_LIBRARY);
 
-  it('relève les textes de l\'explorateur (17 métiers), du devis vivant et des fonctionnalités en action', () => {
+  it('relève les textes de l\'explorateur (20 métiers), du devis vivant et des fonctionnalités en action', () => {
     const lieux = new Set(textes.map((t) => t.ou.split(' — ')[0]));
-    expect(lieux.size).toBe(20); // 17 métiers + le devis vivant + le document et la signature + le métré
+    expect(lieux.size).toBe(23); // 20 métiers + le devis vivant + le document et la signature + le métré
     expect(textes.some((t) => t.ou.startsWith('Serrurerie') && t.ou.endsWith('résumé'))).toBe(true);
-    expect(textes.filter((t) => t.ou.endsWith('pastille du métier'))).toHaveLength(17);
+    expect(textes.filter((t) => t.ou.endsWith('pastille du métier'))).toHaveLength(20);
     expect(textes.some((t) => t.ou.startsWith('Fonctionnalités, métré'))).toBe(true);
   });
 

@@ -1740,7 +1740,7 @@ function QuickStart({ templates, articles, persoTemplates = [], onApplyTemplate,
           ))}
         </div>
 
-        {/* Accès aux 17 métiers CHIFFRÉS : c'est la vraie valeur, on l'annonce
+        {/* Accès aux 20 métiers CHIFFRÉS : c'est la vraie valeur, on l'annonce
             explicitement plutôt que de la cacher derrière « Tous les métiers ». */}
         <button type="button" onClick={onOpenLibrary}
           className={`mt-2 inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg border transition-all border-bord text-encre-2 hover:bg-surface-2`}>

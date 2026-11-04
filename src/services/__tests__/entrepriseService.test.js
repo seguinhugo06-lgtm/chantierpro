@@ -112,3 +112,38 @@ describe('entreprise : une écriture refusée par la base ne s\'affiche pas comm
     await expect(archiveEntreprise(fauxSupabase({ lignesEcrites: [], liste }), { id: 'e1', userId: 'u1', orgId: 'o1' })).rejects.toThrow(/Archivage refusé/);
   });
 });
+
+// Lot 1 « métiers » : colonne entreprise.metiers (migration 110), repli dans settings_json.reglages tant qu'elle manque
+describe('entreprise : le métier choisi', () => {
+  it('relu depuis la colonne, sinon depuis le repli ; valeurs inconnues écartées', () => {
+    expect(fromSupabase({ id: 'e', metiers: ['plombier', 'electricien'] }).metiers).toEqual(['electricien', 'plombier']);
+    expect(fromSupabase({ id: 'e', settings_json: { reglages: { metiers: ['ramoneur', 'x'] } } }).metiers).toEqual(['ramoneur']);
+    expect(fromSupabase({ id: 'e' }).metiers).toEqual([]);
+    expect(toSupabase({ metiers: ['peintre', 'x'] }).metiers).toEqual(['peintre']);
+    expect(toSupabase({ metiers: ['peintre'] }).__reglages).toBeUndefined();
+  });
+
+  it('migration 110 pas encore appliquée : l’écriture se replie dans les réglages, sans perdre les autres', async () => {
+    const ecrits = [];
+    const faux = {
+      from: () => ({
+        select: () => ({ eq: () => ({ maybeSingle: () => Promise.resolve({ data: { settings_json: { relanceConfig: { enabled: true }, reglages: { mediateur: 'CNPM' } } }, error: null }) }) }),
+        update: (ligne) => {
+          ecrits.push(ligne);
+          const erreur = 'metiers' in ligne ? { code: 'PGRST204', message: "Could not find the 'metiers' column of 'entreprise' in the schema cache" } : null;
+          return { eq: () => ({ select: () => Promise.resolve(erreur ? { data: null, error: erreur } : { data: [{ id: 'e1' }], error: null }) }) };
+        },
+      }),
+    };
+    await updateEntreprise(faux, { id: 'e1', data: { metiers: ['electricien'], nom: 'Élec' } });
+    expect(ecrits).toHaveLength(2);
+    expect(ecrits[1]).not.toHaveProperty('metiers');
+    expect(ecrits[1].nom).toBe('Élec');
+    expect(ecrits[1].settings_json).toEqual({ relanceConfig: { enabled: true }, reglages: { mediateur: 'CNPM', metiers: ['electricien'] } });
+  });
+
+  it('une autre erreur n’est pas maquillée en succès', async () => {
+    const faux = { from: () => ({ update: () => ({ eq: () => ({ select: () => Promise.resolve({ data: null, error: { code: '42501', message: 'denied' } }) }) }) }) };
+    await expect(updateEntreprise(faux, { id: 'e1', data: { metiers: ['electricien'] } })).rejects.toThrow(/denied/);
+  });
+});

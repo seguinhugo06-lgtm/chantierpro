@@ -307,7 +307,7 @@ export function buildDocumentHTML(doc, client, chantier, entreprise, options = {
       ${entreprise?.decennaleAssureur && entreprise?.decennaleNumero ? `Assurance décennale: ${entreprise.decennaleAssureur} N°${entreprise.decennaleNumero}${entreprise.decennaleValidite ? ` (Valide jusqu'au ${dateLue(entreprise.decennaleValidite).toLocaleDateString('fr-FR')})` : ''}` : ''}
       ${entreprise?.decennaleAssureur && entreprise?.decennaleNumero && entreprise?.rcProAssureur ? '<br>' : ''}
       ${entreprise?.rcProAssureur ? `RC Pro: ${entreprise.rcProAssureur}${entreprise.rcProNumero ? ` N°${entreprise.rcProNumero}` : ''}${entreprise.rcProValidite ? ` (Valide jusqu'au ${dateLue(entreprise.rcProValidite).toLocaleDateString('fr-FR')})` : ''}` : ''}
-      ${qualificationsHtml(entreprise, echapperHtml, jourDuDocument(doc))}
+      ${qualificationsHtml(entreprise, echapperHtml, jourDuDocument(doc), doc)}
     </div>
     ${piedDePageHtml({ nature: natureDuDocument(doc), client })}
   </div>
