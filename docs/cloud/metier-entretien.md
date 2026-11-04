@@ -104,14 +104,14 @@ Session cloud de correction (consigne metier-entretien-v3). `origin/main` fusion
 
 | # | Point | Fait | Commit |
 |---|---|---|---|
-| 1 | Vérification sur le dernier commit de code | `npm ci` puis `npm run verifier -- --complet` sur `f4bfff3` (voir « Preuves » ci-dessous) | — |
+| 1 | Vérification sur le dernier commit de code | `npm ci` puis `npm run verifier -- --complet`, vert sur `ed21da3` (voir « Preuves ») | — |
 | 2 | Appareils de mesure inventés pour le poêle | `manquants()` : exigés pour la chaudière et la PAC seulement ; 113 : colonne sans NOT NULL et contrainte `entretiens_appareils_mesure` conditionnelle à la catégorie ; champ « facultatif » à la saisie d'un poêle ; pas de bloc « Mesures » vide sur l'attestation ; aide de Paramètres corrigée | `ca408c7` |
 | 3 | Obligation PAC et poêle dans l'e-mail | `phraseObligation` et `phraseObligationServeur` ne rendent la phrase que pour la chaudière ; les formules du juriste sont gardées, non utilisées (`PHRASES_OBLIGATION_EN_ATTENTE`). Question posée à Hugo : `Q-entretien-obligation` dans `docs/decisions.md` | `ca408c7`, `docs` |
 | 4 | Lien `/rappel-entretien/…` sans preuve | Deux parcours `reel: true` dans `scripts/parcours/entretien.cjs` : rien à l'ouverture, refus au bouton avec le jeton, « C'est noté » ; contre-essai jeton refusé → pas de « C'est noté » | `27a6cdd` |
 | 5 | Fiche du propriétaire choisie avant le filtre | `fichesQuiEnvoient(fiches, proprietaires, valable)` : parmi les fiches du propriétaire, la première qui a le module actif et un e-mail ; si aucune, la première (pour consigner la raison). Test ajouté | `ca408c7` |
 | 6 | TVA proposée en franchise | `estFranchiseTva(entreprise)` passé à `tauxPropose` ; case « logement de plus de deux ans » et 5,5 % masquées en franchise ; libellé « Prix (€) » et « TVA non applicable (article 293 B du CGI) » | `ca408c7` |
 | 7 | Banc 113 : appel serveur masquant le visiteur | Appel serveur supprimé ; le refus est relu dans la transaction du visiteur (`commeAnonyme` annule sa transaction : relu après coup, on ne voyait rien). Fait pour l'entretien ET le ramonage. Mémoire du gardien mise à jour | `ca408c7`, `27a6cdd` |
-| 8 | « Rappel noté » avant l'écriture | `noterRappel()` (`actionsRamonage.js`) : l'état ne change qu'après l'écriture, rien si elle rend `false`. Entretien et ramonage. Test avec contre-essai | `ca408c7` |
+| 8 | « Rappel noté » avant l'écriture | `noterRappel()` (`src/lib/noterRappel.js`) : l'état ne change qu'après l'écriture, rien si elle rend `false`. Entretien et ramonage. Test avec contre-essai. Placée d'abord dans `actionsRamonage.js`, elle tirait le générateur de devis dans le paquet chargé au démarrage : le parcours « site : fonctionnalités en action » échouait (constaté sur `f4bfff3`, vert sur `main`) ; déplacée dans un module sans dépendance | `ca408c7`, `ed21da3` |
 | 9 | 5,5 % PAC air/air au-delà de 12 kW | Phrase ajoutée (145 % / 250 %) | `ca408c7` |
 | 10 | Seconde relecture | juriste-btp et gardien-securite relancés sur les textes, la 113 et la fonction finales (résultats ci-dessous). Erratum 5 : `Q-entretien-reseau` dans `docs/decisions.md` | `docs`, `f4bfff3` |
 
@@ -139,7 +139,7 @@ Non appliqué (à décider) : le devis préalable (point « à décider » 1).
 | `npx vitest run` (fichiers entretien, rappels, noterRappel) | entretien 37, attestation 6, rappels serveur 9, noterRappel 2 : verts. Contre-essais : phrase PAC/poêle vide mais conditions connues ; fiche du propriétaire sans filtre = fiche invalide choisie ; écriture `false` = état inchangé |
 | `npm run banc:migrations` | **665 vérifications, tout vert** (19 pour 113). Contre-essai du point 7 : avant la correction de la lecture, les deux contrôles de refus visiteur échouaient (« rien posé ») |
 | `npm run parcours -- entretien` | **3 parcours verts** (27 + 4 + 1 vérifications). Contre-essai : route `/rappel-entretien` retirée de `main.jsx` → le parcours du lien échoue |
-| `npm run verifier -- --complet` sur `f4bfff3` | RESULTAT_VERIFIER |
+| `npm ci` puis `npm run verifier -- --complet` | Sur `f4bfff3` : **échec**, 1 parcours (« site : fonctionnalités en action »), causé par ce lot (voir point 8), corrigé. Sur **`ed21da3`** (dernier commit de code, arbre propre) : **vert d'un seul tenant** — 1348 tests, lint 0 erreur, smoke, build, banc, parcours (navigateur, 2313 s), audit d'interface. Enregistré dans `audit-ui/derniere-verification.json` (`reussi: true`). Les commits suivants ne touchent que ce rapport |
 
 ### Ce qui reste (session locale)
 
@@ -183,5 +183,5 @@ Paramètres › Entretien (obligation chaudière seulement ; appareils de mesure
 6. Franchise de TVA : aucun taux proposé ; 10 textes du juriste appliqués.
 7. 113 : `figer_entretien` aligné sur 111 ; banc 665 vérifications vertes.
 8. Seconde relecture : juriste « applicable », gardien « 113 applicable, fonction déployable ».
-9. À vérifier en local : `entreprise.created_at` en production, suppression d'un client (pas de policy DELETE au banc).
-10. Push refusé dans cette session : commits à pousser.
+9. Vérification complète verte sur `ed21da3`, le dernier commit de code.
+10. À vérifier en local : `entreprise.created_at` en production, suppression d'un client (pas de policy DELETE au banc) ; push refusé ici, commits à pousser.
