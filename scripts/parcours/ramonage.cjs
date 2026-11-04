@@ -121,6 +121,101 @@ module.exports = [
       verifier(!r.dessous, `${nomPage} : le dernier élément « ${r.libelle} » n’est couvert par rien${r.dessous ? ` (couvert par ${r.dessous})` : ''}`);
     },
   })),
+  // Contrôle local du 3 nov. 2026 (relecture 6) : la marge posée sur body ne déplace pas une vue à hauteur fixe. Deux cas :
+  // le panneau de détail d'une tâche (fixe, pleine hauteur, défilement interne, TaskDetail.jsx) et la grille semaine du
+  // planning (cadre limité à min(500px, 55vh) au téléphone, min(600px, 60vh) au-delà, Planning.jsx). Carte affichée, agent Safari iPhone, 375 px : on défile
+  // jusqu'en bas et le dernier élément n'est couvert par rien.
+  {
+    nom: 'carte « Installer » affichée : le panneau d’une tâche défile jusqu’à son dernier élément, couvert par rien (Safari iPhone, 375 px)',
+    reel: true,
+    async executer({ ouvrir, attendre, verifier, sessionFactice }) {
+      const MEMO = { id: 'f0f0f0f0-0000-4000-8000-000000000091', text: 'Tirer le câble du tableau', status: 'a_faire', is_done: false, due_date: new Date().toLocaleDateString('sv-SE'), notes: 'Prévoir la gaine ICTA.', created_at: '2026-10-01T08:00:00Z' };
+      const base = creerBase({ memos: [MEMO] });
+      const { page } = await ouvrir({ reel: true, largeur: 375, page: 'tasks', session: sessionFactice(UID), supabase: base.reponse, avantChargement: commeSafariIphone });
+      await attendre(3800); // la carte s'affiche après 3 s
+      const carte = await page.evaluate(() => {
+        const c = document.querySelector('[data-invite-pwa]');
+        return c ? Math.round(c.getBoundingClientRect().height) : 0;
+      });
+      verifier(carte > 100, `tâches : la carte « Installer » est affichée (${carte} px)`);
+      const ouverte = await page.evaluate(() => {
+        const el = [...document.querySelectorAll('main *')].find((e) => e.childElementCount === 0 && e.textContent.trim() === 'Tirer le câble du tableau');
+        el?.click();
+        return !!el;
+      });
+      verifier(ouverte, 'la tâche est dans la liste');
+      await attendre(1200);
+      const r = await page.evaluate(() => {
+        const panneau = document.querySelector('[role="dialog"][aria-label="Détail de la tâche"]');
+        if (!panneau) return { panneau: false };
+        const defile = panneau.querySelector('.overflow-y-auto');
+        if (defile) defile.scrollTop = defile.scrollHeight;
+        const champs = [...panneau.querySelectorAll('a[href], button, input, select, textarea')]
+          .filter((e) => e.getClientRects().length && getComputedStyle(e).visibility !== 'hidden');
+        const dernier = champs.sort((x, y) => x.getBoundingClientRect().bottom - y.getBoundingClientRect().bottom).pop();
+        if (!dernier) return { panneau: true, aucun: true };
+        const b = dernier.getBoundingClientRect();
+        const dessus = document.elementFromPoint(b.left + b.width / 2, Math.min(b.top + b.height / 2, innerHeight - 1));
+        return {
+          panneau: true,
+          libelle: (dernier.innerText || dernier.getAttribute('aria-label') || dernier.placeholder || dernier.tagName).trim().slice(0, 40),
+          dessous: dessus === dernier || dernier.contains(dessus) ? '' : `${dessus?.tagName} « ${(dessus?.innerText || '').trim().slice(0, 40)} »`,
+        };
+      });
+      verifier(r.panneau, 'le panneau de détail de la tâche s’ouvre');
+      verifier(!r.aucun, 'un élément utilisable dans le panneau');
+      verifier(!r.dessous, `panneau de la tâche : le dernier élément « ${r.libelle} » n’est couvert par rien${r.dessous ? ` (couvert par ${r.dessous})` : ''}`);
+    },
+  },
+  {
+    nom: 'carte « Installer » affichée : la grille semaine du planning défile jusqu’à sa dernière heure, couverte par rien (Safari iPhone, 375 px)',
+    async executer({ ouvrir, attendre, verifier }) {
+      // Astuces fermées : la grille est alors le dernier bloc de la page, le cas le plus serré
+      // eslint-disable-next-line no-new-func
+      const avantChargement = new Function(`${commeSafariIphone.toString().replace(/^[^{]*\{|\}$/g, '')}; try { localStorage.setItem('cp_planning_tips_dismissed', 'true'); } catch { /* */ }`);
+      const { page } = await ouvrir({ page: 'planning', largeur: 375, avantChargement });
+      await attendre(3800);
+      verifier(await page.evaluate(() => !document.body.innerText.includes('Votre planning')), 'astuces du planning fermées');
+      const carte = await page.evaluate(() => Math.round(document.querySelector('[data-invite-pwa]')?.getBoundingClientRect().height || 0));
+      verifier(carte > 100, `planning : la carte « Installer » est affichée (${carte} px)`);
+      const semaine = await page.evaluate(() => {
+        const b = [...document.querySelectorAll('button, [role="radio"], [role="tab"]')].find((x) => x.innerText.trim() === 'Semaine');
+        b?.click();
+        return !!b;
+      });
+      verifier(semaine, 'bouton « Semaine »');
+      await attendre(800);
+      // La grille d'abord (défilement interne), puis la page, à la molette
+      const grille = await page.evaluate(() => {
+        const g = [...document.querySelectorAll('main .overflow-y-auto')].find((e) => /max-height: min\(\d+px, \d+vh\)/.test(e.getAttribute('style') || '') && e.getBoundingClientRect().height > 0);
+        if (g) g.scrollTop = g.scrollHeight;
+        return !!g;
+      });
+      verifier(grille, 'la grille semaine est affichée');
+      // La page défile jusqu'à poser le bas de la grille juste au-dessus de la carte (ce que fait l'artisan pour voir la
+      // dernière heure) : il faut que la page puisse aller jusque-là, et que rien ne couvre alors le bas de la grille
+      const r = await page.evaluate(async () => {
+        const g = [...document.querySelectorAll('main .overflow-y-auto')].find((e) => /max-height: min\(\d+px, \d+vh\)/.test(e.getAttribute('style') || '') && e.getBoundingClientRect().height > 0);
+        const carte = document.querySelector('[data-invite-pwa]').getBoundingClientRect();
+        const voulu = Math.max(0, g.getBoundingClientRect().bottom - (carte.top - 8));
+        const avant = scrollY;
+        window.scrollTo({ top: avant + voulu, behavior: 'instant' });
+        await new Promise((ok) => setTimeout(ok, 300));
+        const b = g.getBoundingClientRect();
+        const y = b.bottom - 6; // la dernière rangée d'heure, juste au-dessus du bord bas de la grille
+        const dessus = document.elementFromPoint(b.left + b.width / 2, Math.min(Math.max(y, 0), innerHeight - 1));
+        return {
+          finGrille: Math.round(g.scrollHeight - g.clientHeight - g.scrollTop),
+          manque: Math.round(voulu - (scrollY - avant)),
+          visible: y > 0 && y < innerHeight,
+          dessous: g.contains(dessus) ? '' : `${dessus?.tagName} « ${(dessus?.innerText || '').trim().slice(0, 40)} »`,
+        };
+      });
+      verifier(r.finGrille <= 1, `la grille est défilée jusqu’à la dernière heure (reste ${r.finGrille} px)`);
+      verifier(r.manque <= 1, `la page défile assez pour poser le bas de la grille au-dessus de la carte (manque ${r.manque} px)`);
+      verifier(r.visible && !r.dessous, `planning semaine : le bas de la grille est visible et couvert par rien${r.dessous ? ` (couvert par ${r.dessous})` : ''}`);
+    },
+  },
   ...[375, 1440].map((largeur) => ({
     nom: `ramonage : Paramètres › Ramonage défile jusqu’au dernier champ, visible et utilisable, carte « Installer » affichée (${largeur} px)`,
     async executer({ ouvrir, attendre, verifier }) {
