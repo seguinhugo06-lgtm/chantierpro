@@ -57,6 +57,8 @@ export const REGLAGES_SANS_COLONNE = {
   ramonageRappelJours: 30,
   ramonageEnvoiAuto: false,
   ramonageTarifs: {},
+  // Conseils (R. 1331-77) imprimés sur l'attestation par défaut ; décochables à chaque attestation (retour nov. 2026)
+  ramonageConseils: true,
   // « Mes qualifications » (lot 1, src/lib/qualifications.js) : la liste qui remplace le champ RGE unique. null tant
   // qu'elle n'a jamais été enregistrée : les anciens champs rge* valent alors une qualification RGE.
   qualifications: null,

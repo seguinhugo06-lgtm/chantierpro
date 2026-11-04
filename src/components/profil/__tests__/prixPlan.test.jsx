@@ -25,8 +25,11 @@ const rendre = (abonnement) => {
 describe('Mon plan : prix en franchise de TVA', () => {
   const texte = rendre(null);
 
-  it('le plan en cours et les plans payants : prix de prixAbonnement et mention D-19', () => {
-    expect(texte).toContain(lu(`${prixAbonnement(PLANS.artisan)} par mois, ${MENTION_TVA_ABONNEMENT}`));
+  // Retour d'Hugo du 26 oct. 2026 (avis juriste du 3 nov.) : la mention de franchise ne s'affiche plus à côté des prix ;
+  // elle reste dans les CGV (art. 4) et la FAQ, et doit figurer sur les factures Stripe (attente 7). Chaque prix garde sa période.
+  it('le plan en cours et les plans payants : prix de prixAbonnement avec sa période, sans la mention de franchise', () => {
+    expect(texte).toContain(lu(`${prixAbonnement(PLANS.artisan)} par mois`));
+    expect(texte).not.toContain(MENTION_TVA_ABONNEMENT);
     expect(texte).toContain(lu(`${prixAbonnement(PLANS.equipe)} par mois`));
   });
 
@@ -40,12 +43,12 @@ describe('Mon plan : prix en franchise de TVA', () => {
 describe('Mon plan : un abonné annuel lit son prix annuel', () => {
   const texte = rendre({ plan: 'artisan', status: 'active', billing_interval: 'yearly' });
 
-  it('son plan : le prix annuel de PLANS, « par an », avec la mention D-19', () => {
-    expect(texte).toContain(lu(`${prixAbonnement(PLANS.artisan, 'an')} par an, ${MENTION_TVA_ABONNEMENT}`));
+  it('son plan : le prix annuel de PLANS, « par an »', () => {
+    expect(texte).toContain(lu(`${prixAbonnement(PLANS.artisan, 'an')} par an`));
   });
 
   it('jamais « par mois » sur la ligne de son plan', () => {
-    expect(texte).not.toContain(lu(`${prixAbonnement(PLANS.artisan)} par mois, ${MENTION_TVA_ABONNEMENT}`));
+    expect(texte).not.toContain(lu(`${prixAbonnement(PLANS.artisan)} par mois`));
   });
 });
 

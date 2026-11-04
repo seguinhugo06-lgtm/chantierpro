@@ -31,11 +31,12 @@ const LEGENDE_CAPTURES = "Captures de l’application, données fictives.";
 
 // Textes exacts de la spec, section « Les fonctionnalités en action »
 const TITRE_FONCTIONNALITES = "Essayez, c’est l’application.";
-const INTRO_FONCTIONNALITES = "Des exemples à manipuler, sur des données fictives. Le document, le métré et les relances sortent du code même de l’application.";
+const INTRO_FONCTIONNALITES = "Des exemples à manipuler, sur des données fictives. Le métré et les relances sortent du code même de l’application.";
 const ECHEC_MONTANTS_SIGNATURE = "Les montants n’ont pas pu être chargés. Rechargez la page pour les voir.";
-const ONGLETS = ['Le document que reçoit votre client', 'Signature en ligne', 'Métré express', 'Relances', 'Encaissements'];
+// Retour d'Hugo du 26 oct. 2026 : l'onglet « Le document que reçoit votre client » répétait le devis vivant du premier
+// écran ; il est retiré (le parcours vérifie qu'aucun second devis n'est affiché, voir « un seul devis »).
+const ONGLETS = ['Signature en ligne', 'Métré express', 'Relances', 'Encaissements'];
 const LEGENDES = {
-  'Le document que reçoit votre client': 'Exemple fictif généré par Mallettico.',
   'Signature en ligne': 'Démonstration : votre signature ne quitte pas cette page.',
   Relances: "Vous réglez les délais et les messages ; l’envoi automatique est une option.",
   // La règle « payée au solde » est le titre d'une carte de la fiabilité : la légende dit autre chose (relecture DA-7)
@@ -487,23 +488,13 @@ module.exports = [
         });
         verifier(m.titre && m.puces === 0 && !m.attente && m.message.length > 0, `bibliothèque introuvable : l'explorateur des métiers le dit à ${largeur} px (${JSON.stringify(m)})`);
 
-        // « Les fonctionnalités en action » : le document, la signature et le métré le disent aussi, sans cases vides
+        // « Les fonctionnalités en action » : la signature et le métré le disent aussi, sans cases vides
         await page.evaluate(() => document.querySelector('#fonctionnalites').scrollIntoView());
         let onglets = false;
         for (let i = 0; i < 40 && !onglets; i++) {
           await attendre(200);
-          onglets = await page.evaluate(() => !!document.querySelector('#panneau-document [data-document-echec]'));
+          onglets = await page.evaluate(() => !!document.querySelector('#panneau-signature [data-signature-echec]'));
         }
-        const docEchec = await page.evaluate(() => {
-          const p = document.querySelector('#panneau-document');
-          return {
-            message: p?.querySelector('[data-document-echec]')?.textContent.trim() || '',
-            cadre: !!p?.querySelector('iframe'),
-            legende: !!p?.querySelector('[data-legende]'),
-            bouton: [...(p?.querySelectorAll('button') || [])].some((b) => b.innerText.includes('en grand')),
-          };
-        });
-        verifier(docEchec.message.length > 0 && !docEchec.cadre && !docEchec.legende && !docEchec.bouton, `bibliothèque introuvable : le document le dit, sans cadre, légende ni bouton à ${largeur} px (${JSON.stringify(docEchec)})`);
         await page.evaluate(() => document.querySelector('#onglet-signature').click());
         await attendre(600);
         const sigEchec = await page.evaluate(() => {
@@ -809,8 +800,8 @@ module.exports = [
     },
   },
   {
-    // « Les fonctionnalités en action » (#fonctionnalites) : cinq onglets, chaque exemple utilisable, le vrai générateur
-    // de devis chargé à la demande, rien qui quitte la page pendant la signature.
+    // « Les fonctionnalités en action » (#fonctionnalites) : quatre onglets, chaque exemple utilisable, aucun second
+    // devis (celui du premier écran suffit), rien qui quitte la page pendant la signature.
     nom: 'site : fonctionnalités en action',
     reel: true,
     async executer({ ouvrir, cliquer, attendre, verifier, RACINE }) {
@@ -829,15 +820,21 @@ module.exports = [
         });
         const generateur = () => fichiersDemandes.some((p) => /\/devisHtmlBuilder-[^/]*\.js$/.test(p));
 
-        // ── Le générateur de devis n'est pas chargé par le premier écran : seulement quand la section approche
-        verifier(!generateur(), `générateur de devis non chargé à l'arrivée ${a}`);
         await page.evaluate(() => document.querySelector('#fonctionnalites')?.scrollIntoView());
-        let cadre = false;
-        for (let i = 0; i < 40 && !cadre; i++) {
+        let pret = false;
+        for (let i = 0; i < 40 && !pret; i++) {
           await attendre(200);
-          cadre = await page.evaluate((s) => !!document.querySelector(`${s} iframe`), PANNEAU);
+          pret = await page.evaluate((s) => !!document.querySelector(`${s} canvas`), PANNEAU);
         }
-        verifier(cadre && generateur(), `section à l'écran : générateur chargé et document affiché ${a}`);
+        // ── Un seul devis sur la page (retour d'Hugo du 26 oct. 2026) : le devis vivant du premier écran. La section
+        // ne montre plus de second devis (le document fictif) : ni cadre de document, ni générateur de devis chargé.
+        const secondDevis = await page.evaluate(() => ({
+          cadres: document.querySelectorAll('#fonctionnalites iframe').length,
+          ongletDocument: !!document.querySelector('#onglet-document, #panneau-document'),
+          enGrand: [...document.querySelectorAll('#fonctionnalites button')].some((b) => b.innerText.includes('document en grand')),
+        }));
+        verifier(pret && secondDevis.cadres === 0 && !secondDevis.ongletDocument && !secondDevis.enGrand && !generateur(),
+          `un seul devis : la section ne répète pas le devis du premier écran (ni document, ni générateur chargé) ${a} (${JSON.stringify({ pret, ...secondDevis, generateur: generateur() })})`);
 
         // ── Titre, texte, onglets
         const entete = await page.evaluate(() => ({
@@ -847,121 +844,11 @@ module.exports = [
         verifier(entete.titre === TITRE_FONCTIONNALITES, `titre « ${TITRE_FONCTIONNALITES} » ${a} (« ${entete.titre} »)`);
         verifier(entete.intro === INTRO_FONCTIONNALITES, `texte d'introduction exact ${a} (« ${entete.intro} »)`);
         const depart = await lireOnglets(page);
-        verifier(JSON.stringify(depart.titres) === JSON.stringify(ONGLETS), `cinq onglets aux titres de la spec ${a} (${depart.titres.join(' | ')})`);
+        verifier(JSON.stringify(depart.titres) === JSON.stringify(ONGLETS), `quatre onglets aux titres de la spec ${a} (${depart.titres.join(' | ')})`);
         verifier(depart.choisi === ONGLETS[0] && depart.nbChoisis === 1 && depart.tabulables === 1, `premier onglet choisi, seul dans l'ordre de tabulation ${a} (${JSON.stringify(depart)})`);
         verifier(depart.panneauLie, `un seul panneau visible, lié à l'onglet choisi ${a}`);
         const hauteurs = await page.evaluate(() => [...document.querySelectorAll('#fonctionnalites [role="tab"]')].map((o) => o.getBoundingClientRect().height));
         verifier(Math.min(...hauteurs) >= 44, `onglets d'au moins 44 px ${a} (${Math.min(...hauteurs)})`);
-
-        // ── Le document : le vrai générateur, dans un cadre sans script ; les mentions lues dans le HTML produit
-        const doc = await page.evaluate((s) => {
-          const f = document.querySelector(`${s} iframe`);
-          const srcdoc = f?.getAttribute('srcdoc') || '';
-          const texte = new DOMParser().parseFromString(srcdoc, 'text/html').body.textContent.replace(/\s+/g, ' ');
-          const r = f?.getBoundingClientRect();
-          return {
-            sandbox: f?.getAttribute('sandbox'),
-            titre: f?.getAttribute('title') || '',
-            texte,
-            visible: !!r && r.width > 100 && r.height > 100,
-            mentions: [...document.querySelectorAll(`${s} [data-mention]`)].map((m) => m.textContent.trim()),
-            legende: document.querySelector(`${s} [data-legende]`)?.textContent.replace(/\s+/g, ' ').trim(),
-          };
-        }, PANNEAU);
-        verifier(doc.sandbox === '' && doc.visible && doc.titre.length > 10, `document dans un cadre sans script (sandbox vide), visible et nommé ${a}`);
-        verifier(doc.texte.includes('DEVIS') && doc.texte.includes('Élec Exemple') && doc.texte.includes('M. Martin'), `le cadre contient « DEVIS », « Élec Exemple » et « M. Martin » ${a}`);
-        verifier(doc.mentions.includes('Assurance décennale') && doc.mentions.some((m) => m.includes('TVA')) && doc.mentions.some((m) => m.includes('rétractation')),
-          `mentions affichées : assurance décennale, TVA, rétractation ${a} (${doc.mentions.join(' | ')})`);
-        const absentes = doc.mentions.filter((m) => !doc.texte.toLowerCase().includes(m.toLowerCase()));
-        verifier(absentes.length === 0, `chaque mention affichée est dans le document ${a} (absentes : ${absentes.join(', ')})`);
-        verifier(doc.legende === LEGENDES[ONGLETS[0]], `légende « ${LEGENDES[ONGLETS[0]]} » ${a} (« ${doc.legende} »)`);
-        await attendre(300);
-        await capturerSection(page, RACINE, '#fonctionnalites', `fonctionnalites-${largeur}-1-document`);
-
-        // ── « Voir le document en grand » : visible à toutes les largeurs ; au téléphone, le document s'y lit (police du
-        // corps ≥ 10 px CSS), la fenêtre garde le focus, la page derrière ne défile plus, Échap ferme et rend le focus
-        const grand = await page.evaluate((s) => {
-          const b = [...document.querySelectorAll(`${s} button`)].find((x) => x.innerText.trim() === 'Voir le document en grand');
-          const r = b?.getBoundingClientRect();
-          return { present: !!b, hauteur: r?.height || 0, actif: !!b && !b.disabled };
-        }, PANNEAU);
-        verifier(grand.present && grand.actif && grand.hauteur >= 44, `bouton « Voir le document en grand » visible, actif, 44 px ${a} (${JSON.stringify(grand)})`);
-        const cGrand = await page.evaluate((s) => {
-          const b = [...document.querySelectorAll(`${s} button`)].find((x) => x.innerText.trim() === 'Voir le document en grand');
-          b.setAttribute('data-parcours-grand', '');
-          return true;
-        }, PANNEAU) && await contrasteDe(page, '[data-parcours-grand]');
-        verifier(cGrand >= 4.5, `contraste du bouton « Voir le document en grand » ≥ 4,5 ${a} (${cGrand.toFixed(2)})`);
-        if (!auBureau) {
-          await page.focus('[data-parcours-grand]');
-          await page.keyboard.press('Enter');
-          await attendre(600);
-          const fenetre = await page.evaluate(() => {
-            const d = document.querySelector('[role="dialog"][aria-modal="true"]');
-            const f = d?.querySelector('iframe');
-            const r = f?.getBoundingClientRect();
-            const defile = d?.querySelector('[data-defilement-document]');
-            const titre = d && document.getElementById(d.getAttribute('aria-labelledby'));
-            return {
-              ouverte: !!d,
-              titre: titre?.textContent.trim() || '',
-              focusDedans: !!d && d.contains(document.activeElement),
-              focus: document.activeElement?.innerText?.trim() || document.activeElement?.tagName,
-              pageBloquee: document.body.style.overflow === 'hidden',
-              pageInerte: !!document.querySelector('#root')?.hasAttribute('inert'),
-              sandbox: f?.getAttribute('sandbox'),
-              echelle: f ? r.width / f.offsetWidth : 0,
-              largeurPage: f?.offsetWidth || 0,
-              defileEnLargeur: !!defile && defile.scrollWidth > defile.clientWidth,
-              memeHtml: f?.getAttribute('srcdoc') === document.querySelector('#panneau-document iframe')?.getAttribute('srcdoc'),
-            };
-          });
-          verifier(fenetre.ouverte && fenetre.titre.length > 0, `la fenêtre s'ouvre, nommée par son titre ${a} (${JSON.stringify(fenetre)})`);
-          verifier(fenetre.focusDedans && fenetre.focus === 'Fermer', `le focus va à « Fermer » dans la fenêtre ${a} (${fenetre.focus})`);
-          verifier(fenetre.pageBloquee && fenetre.pageInerte, `la page derrière ne défile plus et devient inerte ${a}`);
-          verifier(fenetre.sandbox === '' && fenetre.memeHtml && Math.abs(fenetre.echelle - 1) < 0.001 && fenetre.largeurPage === 794 && fenetre.defileEnLargeur,
-            `le même document, sans script, à l'échelle 1 et à la largeur d'une page (794 px), qui défile en largeur ${a} (${JSON.stringify(fenetre)})`);
-          // Taille de police calculée du corps du document, lue dans le cadre
-          const cadreGrand = await (await page.$('[role="dialog"] iframe')).contentFrame();
-          const police = await cadreGrand.evaluate(() => parseFloat(getComputedStyle(document.body).fontSize)).catch((e) => `illisible : ${e.message}`);
-          verifier(typeof police === 'number' && police * fenetre.echelle >= 10, `police du corps du document ≥ 10 px CSS dans la fenêtre ${a} (${police} px × ${fenetre.echelle})`);
-          await capturer(page, RACINE, `fonctionnalites-${largeur}-1-document-en-grand`);
-          // Tab ne sort pas de la fenêtre
-          for (let i = 0; i < 4; i++) await page.keyboard.press('Tab');
-          const resteDedans = await page.evaluate(() => {
-            const d = document.querySelector('[role="dialog"]');
-            return !!d && (d.contains(document.activeElement) || document.activeElement?.tagName === 'IFRAME');
-          });
-          verifier(resteDedans, `Tab reste dans la fenêtre ${a}`);
-          await page.focus('[role="dialog"] button');
-          await page.keyboard.press('Escape');
-          await attendre(400);
-          const fermee = await page.evaluate(() => ({
-            ouverte: !!document.querySelector('[role="dialog"][aria-modal="true"]'),
-            focusBouton: document.activeElement?.hasAttribute('data-parcours-grand') || false,
-            pageBloquee: document.body.style.overflow === 'hidden',
-            pageInerte: !!document.querySelector('#root')?.hasAttribute('inert'),
-          }));
-          verifier(!fermee.ouverte && fermee.focusBouton && !fermee.pageBloquee && !fermee.pageInerte, `Échap ferme la fenêtre, le focus revient au bouton, la page revit ${a} (${JSON.stringify(fermee)})`);
-        } else {
-          // Au bureau, la fenêtre laisse voir le voile : un clic dessus la ferme et rend le focus au bouton d'ouverture
-          // (fermeture au « click », après le focus que le navigateur pose au « mousedown »). Les sentinelles qui
-          // gardent le focus dans la fenêtre sont focalisables, donc jamais cachées aux lecteurs d'écran.
-          await page.focus('[data-parcours-grand]');
-          await page.keyboard.press('Enter');
-          await attendre(600);
-          const sentinelles = await page.evaluate(() => [...document.querySelectorAll('[role="dialog"] [data-sentinelle]')]
-            .map((s) => ({ tab: s.tabIndex, cache: s.closest('[aria-hidden="true"]') !== null })));
-          verifier(sentinelles.length === 2 && sentinelles.every((s) => s.tab === 0 && !s.cache), `sentinelles focalisables et non cachées ${a} (${JSON.stringify(sentinelles)})`);
-          await page.mouse.click(8, 8);
-          await attendre(500);
-          const parLeVoile = await page.evaluate(() => ({
-            ouverte: !!document.querySelector('[role="dialog"][aria-modal="true"]'),
-            focusBouton: document.activeElement?.hasAttribute('data-parcours-grand') || false,
-            pageInerte: !!document.querySelector('#root')?.hasAttribute('inert'),
-          }));
-          verifier(!parLeVoile.ouverte && parLeVoile.focusBouton && !parLeVoile.pageInerte, `un clic sur le voile ferme la fenêtre et rend le focus au bouton ${a} (${JSON.stringify(parLeVoile)})`);
-        }
 
         // ── Au clavier : flèche droite passe à l'onglet suivant (choisi, focalisé, son panneau affiché)
         await page.focus('#fonctionnalites [role="tab"][aria-selected="true"]');
@@ -976,13 +863,13 @@ module.exports = [
         verifier((await lireOnglets(page)).choisi === ONGLETS[0], `flèche droite après le dernier : retour au premier ${a}`);
         await page.keyboard.press('End');
         await attendre(250);
-        verifier((await lireOnglets(page)).choisi === ONGLETS[4], `Fin : dernier onglet ${a}`);
+        verifier((await lireOnglets(page)).choisi === ONGLETS[3], `Fin : dernier onglet ${a}`);
         await page.keyboard.press('ArrowUp');
         await attendre(250);
-        verifier((await lireOnglets(page)).choisi === ONGLETS[3], `flèche haut : onglet précédent ${a}`);
+        verifier((await lireOnglets(page)).choisi === ONGLETS[2], `flèche haut : onglet précédent ${a}`);
         await page.keyboard.press('ArrowDown');
         await attendre(250);
-        verifier((await lireOnglets(page)).choisi === ONGLETS[4], `flèche bas : onglet suivant ${a}`);
+        verifier((await lireOnglets(page)).choisi === ONGLETS[3], `flèche bas : onglet suivant ${a}`);
         await page.keyboard.press('Home');
         await attendre(250);
         verifier((await lireOnglets(page)).choisi === ONGLETS[0], `Début : premier onglet ${a}`);
@@ -1039,7 +926,10 @@ module.exports = [
         verifier(SIGNE_LE.test(tampon) && tampon.includes(aujourdhui), `tampon « Signé le ${aujourdhui} à HH:MM » ${a} (« ${tampon} »)`);
         const legendeSignature = await page.evaluate((s) => document.querySelector(`${s} [data-legende]`)?.textContent.replace(/\s+/g, ' ').trim(), PANNEAU);
         verifier(legendeSignature === LEGENDES['Signature en ligne'], `légende « ${LEGENDES['Signature en ligne']} » ${a}`);
-        verifier(fichiersDemandes.length === avant.fichiers && appelsBase.length === avant.base, `signer n'envoie rien ${a} (${fichiersDemandes.length - avant.fichiers} fichier(s), ${appelsBase.length - avant.base} appel(s) à la base)`);
+        // Une capture du site (`/site/*.webp`, chargement différé de la section suivante) peut arriver quand le cadre de
+        // signature défile au centre : c'est une image lue, rien n'est envoyé. Tout autre fichier compte.
+        const demandesDuTrace = fichiersDemandes.slice(avant.fichiers).filter((f) => !/^\/site\/[^/]+\.(webp|png|jpg|svg)$/.test(f));
+        verifier(demandesDuTrace.length === 0 && appelsBase.length === avant.base, `signer n'envoie rien ${a} (${demandesDuTrace.length} fichier(s) ${demandesDuTrace.join(' ')}, ${appelsBase.length - avant.base} appel(s) à la base)`);
         await capturerSection(page, RACINE, '#fonctionnalites', `fonctionnalites-${largeur}-2-signature-signee`);
         // Au clavier : « Recommencer », puis « Signer avec mon nom » et « Valider la signature » avec Entrée
         await cliquer(page, 'Recommencer', { dans: '#fonctionnalites' });
@@ -1162,7 +1052,7 @@ module.exports = [
         verifier(r2.statut === 'Payée en partie' && Math.abs(r2.reste - f0.reste) < 0.001, `« Recommencer l'exemple » rend la facture de départ ${a}`);
         verifier(Math.abs(r1.barre - r2.barre) <= 1 && Math.abs(r2.barre - f0.barre) <= 1, `la barre revient d'un coup, sans animation arrière ${a} (${r1.barre} → ${r2.barre}, départ ${f0.barre})`);
 
-        // ── La barre du cadre n'est coupée sur aucun onglet ; au bureau, le cadre a la même hauteur pour les cinq (facture
+        // ── La barre du cadre n'est coupée sur aucun onglet ; au bureau, le cadre a la même hauteur pour les quatre (facture
         // soldée comprise, elle est la plus haute)
         const cadres = [];
         for (const onglet of ONGLETS) {
@@ -1179,7 +1069,7 @@ module.exports = [
         verifier(cadres.every((c) => !c.coupe), `barre du cadre jamais coupée ${a} (${cadres.map((c) => `${c.titre}${c.coupe ? ' [coupée]' : ''}`).join(' | ')})`);
         if (auBureau) {
           const hauteursCadre = [...cadres.map((c) => c.hauteur), hauteurCadreSoldee];
-          verifier(hauteursCadre.every((x) => Math.abs(x - hauteursCadre[0]) <= 1), `même hauteur de cadre pour les cinq onglets ${a} (${hauteursCadre.join(', ')})`);
+          verifier(hauteursCadre.every((x) => Math.abs(x - hauteursCadre[0]) <= 1), `même hauteur de cadre pour les quatre onglets ${a} (${hauteursCadre.join(', ')})`);
         }
 
         // ── Aucun défilement horizontal ; rien ne sort de l'écran hors de la rangée de pastilles (qui défile)
@@ -1200,7 +1090,7 @@ module.exports = [
         const selecteurs = [
           '#fonctionnalites h2', '#fonctionnalites [data-intro]',
           `#fonctionnalites [role="tab"][aria-selected="true"] ${titreOnglet}`, `#fonctionnalites [role="tab"][aria-selected="false"] ${titreOnglet}`,
-          `${PANNEAU} [data-legende]`, `${PANNEAU} [data-mention]`, '#fonctionnalites [data-cadre-titre]',
+          `${PANNEAU} [data-legende]`, '#fonctionnalites [data-cadre-titre]',
         ];
         if (auBureau) selecteurs.push('#fonctionnalites [role="tab"][aria-selected="false"] [data-phrase]', '#fonctionnalites [role="tab"][aria-selected="true"] [data-phrase]');
         for (const s of selecteurs) {
@@ -1221,9 +1111,8 @@ module.exports = [
         await page.evaluate(() => document.querySelector('#fonctionnalites').scrollIntoView());
         for (let i = 0, pret = false; i < 40 && !pret; i++) {
           await attendre(200);
-          pret = await page.evaluate((s) => !!document.querySelector(`${s} iframe`), PANNEAU);
+          pret = await page.evaluate((s) => !!document.querySelector(`${s} canvas`), PANNEAU);
         }
-        await capturerSection(page, RACINE, '#fonctionnalites', `fonctionnalites-${largeur}-1-document-reduit`);
         await choisirOnglet(page, 'Signature en ligne', attendre);
         await capturerSection(page, RACINE, '#fonctionnalites', `fonctionnalites-${largeur}-2-signature-reduit`);
         await choisirOnglet(page, 'Métré express', attendre);
@@ -1258,14 +1147,16 @@ module.exports = [
       const prix = (n) => (Number.isInteger(n) ? `${n} €` : euros(n));
       const prixDuPlan = (id) => prix(PLANS[id].priceMonthly);
       const plansALAnnee = PLAN_ORDER.filter((id) => PLANS[id].priceYearly > 0);
-      const texteAnnuel = `Aussi à l’année : ${plansALAnnee.map((id) => `${prix(PLANS[id].priceYearly)} pour ${PLANS[id].name}`).join(', ')}. ${MENTION_TVA}.`;
+      // Retour d'Hugo du 26 oct. 2026 (avis juriste du 3 nov.) : la mention de franchise n'accompagne plus les prix du site ;
+      // chaque prix garde sa période. Elle reste dans les CGV (art. 4) et la réponse de la FAQ sur la facturation.
+      const texteAnnuel = `Aussi à l’année : ${plansALAnnee.map((id) => `${prix(PLANS[id].priceYearly)} par an pour ${PLANS[id].name}`).join(', ')}.`;
       verifier(
         JSON.stringify(PLAN_ORDER.map(prixDuPlan)) === JSON.stringify(['0 €', '9,90 €', '19,90 €']),
         `les prix de PLANS au format de la spec (${PLAN_ORDER.map(prixDuPlan).join(' | ')})`,
       );
       verifier(MENTION_TVA_ABONNEMENT === MENTION_TVA, `la mention de l'outil de prix est celle de D-19 (« ${MENTION_TVA_ABONNEMENT} »)`);
       verifier(
-        texteAnnuel === `Aussi à l’année : 99 € pour Artisan, 199 € pour Équipe. ${MENTION_TVA}.`,
+        texteAnnuel === 'Aussi à l’année : 99 € par an pour Artisan, 199 € par an pour Équipe.',
         `la ligne de l'offre annuelle lue dans PLANS (« ${texteAnnuel} »)`,
       );
       const tousLesLibelles = [...new Set(PLAN_ORDER.flatMap((id) => PLANS[id].featureLabels.map((f) => f.name)))];
@@ -1397,8 +1288,9 @@ module.exports = [
           note: document.querySelector('#pricing [data-note-inscription]')?.textContent.replace(/\s+/g, ' ').trim(),
           bascule: !!document.querySelector('#pricing [role="switch"], #pricing [aria-label*="annuel" i]'),
         }));
-        verifier(NORMALISER(textes.intro).includes(`Prix par mois — ${MENTION_TVA}.`), `#pricing : l'introduction dit la franchise de TVA ${a} (« ${textes.intro} »)`);
-        verifier(NORMALISER(textes.annuel) === texteAnnuel, `#pricing : ligne de l'offre annuelle, lue dans PLANS, suivie de la mention ${a} (« ${textes.annuel} »)`);
+        verifier(NORMALISER(textes.intro) === 'Commencez gratuitement, passez à un plan payant quand vous en avez besoin.', `#pricing : l'introduction, sans « Prix par mois — TVA non applicable » ${a} (« ${textes.intro} »)`);
+        verifier(!NORMALISER(texte).includes(MENTION_TVA), `#pricing : la mention de franchise n'accompagne plus les prix ${a}`);
+        verifier(NORMALISER(textes.annuel) === texteAnnuel, `#pricing : ligne de l'offre annuelle, lue dans PLANS, chaque prix avec sa période ${a} (« ${textes.annuel} »)`);
         verifier(!textes.bascule, `#pricing : pas de bascule mensuel / annuel ${a}`);
         verifier(textes.note.includes('depuis « Mon plan »'), `#pricing : le plan payant se prend depuis « Mon plan » ${a} (« ${textes.note} »)`);
         await capturerSection(page, RACINE, '#pricing', `tarifs-${largeur}-replie`);
@@ -1551,7 +1443,7 @@ module.exports = [
         const garantie = public_.cartes[2].texte;
         verifier(garantie.includes(GARANTIE_FONDATEUR) && garantie.includes('tarif fondateur'), `#early-adopters : la garantie du tarif dit D-08, ${GARANTIE_FONDATEUR} ${a} (« ${garantie} »)`);
         verifier(public_.cartes[0].texte.includes('bouton de retours') && !public_.cartes[0].texte.includes('Un bug ? Une idée ?'), `#early-adopters : « le bouton de retours », pas le libellé qui n'est qu'une icône entre 768 et 1279 px ${a} (« ${public_.cartes[0].texte} »)`);
-        verifier(public_.cartes[2].complet.includes(MENTION_TVA) && !/\bHT\b/.test(public_.texteComplet), `#early-adopters : la mention de franchise de TVA, aucun « HT » ${a}`);
+        verifier(!public_.cartes[2].complet.includes(MENTION_TVA) && !/\bHT\b/.test(public_.texteComplet), `#early-adopters : ni mention de franchise à côté des prix, ni « HT » ${a}`);
         verifier(public_.cartes[2].complet.includes(`Artisan ${prixDuPlan('artisan')} par mois`) && public_.cartes[2].complet.includes(`Équipe ${prixDuPlan('equipe')} par mois`), `#early-adopters : les prix du tarif fondateur lus dans PLANS ${a}`);
         const enTrop = ['Réponse rapide', "file d'attente", 'Zéro risque', 'premiers artisans', "n'augmentera pas", 'logiciel établi', 'maintenant'].filter((t) => public_.texteComplet.replace(/’/g, "'").includes(t));
         verifier(enTrop.length === 0, `#early-adopters : aucune affirmation sans source de l'ancienne version ${a} (${enTrop.join(', ')})`);
@@ -1583,7 +1475,7 @@ module.exports = [
         for (const selecteur of [
           '#pricing h2', '#pricing [data-intro]', '#pricing [data-plan] h3', '#pricing [data-prix]', '#pricing [data-unite]',
           '#pricing [data-plan] li', '#pricing [data-fondateur]', '#pricing [data-badge]', '#pricing [data-plan="gratuit"] button',
-          '#pricing [data-plan="artisan"] button', '#pricing [data-note-inscription]', '#pricing [data-annuel]', '#pricing [data-sans-limite]', '#early-adopters [data-carte-public] ul + p',
+          '#pricing [data-plan="artisan"] button', '#pricing [data-note-inscription]', '#pricing [data-annuel]', '#pricing [data-sans-limite]',
           '[data-rendu-visible] [data-entete]', '[data-rendu-visible] [data-libelle]', '[data-rendu-visible] [data-case]', '[data-rendu-visible] [data-groupe-titre]', '#pricing [data-note-tableau]',
           '#early-adopters h2', '#early-adopters [data-intro]', '#early-adopters h3', '#early-adopters [data-carte-public] p', '#early-adopters button',
         ]) {
@@ -1745,7 +1637,7 @@ module.exports = [
         const { devis, clients, chantiers } = PLANS.gratuit.limits;
         verifier(ouverte.texte.includes(`${devis} devis par mois`) && ouverte.texte.includes(`${clients} clients`) && ouverte.texte.includes(`${chantiers} chantiers`) && !/actifs/.test(ouverte.texte),
           `#faq : limites du plan Gratuit lues dans PLANS, « ${chantiers} chantiers » sans « actifs » ${a}`);
-        verifier(ouverte.texte.includes(MENTION_TVA) && !/\bHT\b/.test(ouverte.texte), `#faq : prix avec la mention de franchise de TVA, jamais « HT » ${a}`);
+        verifier(!ouverte.texte.includes(MENTION_TVA) && !/\bHT\b/.test(ouverte.texte), `#faq : « Puis-je essayer » dit les prix sans la mention (dite dans la réponse sur la facturation), jamais « HT » ${a}`);
         await capturerSection(page, RACINE, '#faq', `faq-${largeur}`);
 
         // Filtre par catégorie : boutons aria-pressed, une seule catégorie pressée

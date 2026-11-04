@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   appareilsDuClient, rappelsDus, nbDansAnnee, prochainParDefaut, horsDelaiDouzeMois, manquants, nouveauBrouillon,
   texteSms, lienSms, ligneFacture, conseilsExiges, estFoyerFermeSolide, ramonagePrecedent, jourDuRappel, tarifPour,
-  descriptionAppareil,
+  descriptionAppareil, conseilsImprimes, conseilsAEnregistrer,
 } from '../ramonage';
 
 // Données fictives seulement
@@ -113,6 +113,16 @@ describe('ramonage — avant d’enregistrer', () => {
     expect(conseilsExiges({ combustible: 'gaz', appareil_type: 'autre' })).toBe(false);
     expect(conseilsExiges({ combustible: 'bois', appareil_type: 'chaudiere' })).toBe(false);
     expect(conseilsExiges({ combustible: 'granules', appareil_type: 'poele_granules' })).toBe(true);
+  });
+
+  it('conseils facultatifs sur l’attestation : non imprimés, ils ne sont plus exigés ni gardés ; défaut du réglage : imprimés', () => {
+    expect(manquants({ ...complet, conseils: { choix: [], texte: '', imprimes: false } })).toEqual([]);
+    expect(manquants({ ...complet, conseils: { choix: [], texte: '', imprimes: true } }).map((m) => m.champ)).toEqual(['conseils']);
+    expect(conseilsImprimes({ conseils: { choix: ['usage'] } })).toBe(true); // attestation d'avant ce choix
+    expect(conseilsAEnregistrer({ conseils: { choix: ['usage'], texte: 'x', imprimes: false } })).toEqual({ choix: [], texte: '', imprimes: false });
+    expect(conseilsAEnregistrer({ conseils: { choix: ['usage'], texte: 'x' } })).toEqual({ choix: ['usage'], texte: 'x', imprimes: true });
+    expect(nouveauBrouillon({ client, entreprise: {} }).conseils.imprimes).toBe(true);
+    expect(nouveauBrouillon({ client, entreprise: { ramonageConseils: false } }).conseils.imprimes).toBe(false);
   });
 
   it('refuse un prochain ramonage qui n’est pas après le passage', () => {

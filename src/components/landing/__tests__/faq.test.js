@@ -44,11 +44,11 @@ describe('FAQ du site', () => {
     expect(fictif).toContain('3 chantiers');
   });
 
-  it('les prix passent par prixAbonnement, avec la mention de franchise de TVA (D-19), jamais « HT »', () => {
+  it('les prix passent par prixAbonnement, jamais « HT » ; la mention de franchise est dite une fois, dans la réponse sur la facturation (retour du 26 oct. 2026)', () => {
     const essai = reponse(items, 'Puis-je essayer');
     expect(essai).toContain(`${prixAbonnement(PLANS.artisan)} par mois`);
     expect(essai).toContain(`${prixAbonnement(PLANS.equipe)} par mois`);
-    expect(essai).toContain(MENTION_TVA_ABONNEMENT);
+    expect(essai).not.toContain(MENTION_TVA_ABONNEMENT);
     expect(toutLeTexte(items)).not.toMatch(/\bHT\b/);
 
     const fictif = reponse(questionsFaq(PLANS_FICTIFS), 'Puis-je essayer');

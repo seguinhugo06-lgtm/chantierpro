@@ -11,6 +11,7 @@ import { echeance } from './paiementsFacture';
 import { dateLue } from './dates';
 import { qualificationsHtml, jourDuDocument } from './qualifications';
 import { echapperHtml } from './echapperHtml';
+import { mentionImmatriculation } from './immatriculation';
 import { estFranchiseTva, tauxTvaDocument } from './franchiseTva';
 import { estSociete } from './mentionsFacture';
 import { marquerDocumentFictif } from './donneesFictives';
@@ -30,13 +31,12 @@ export function getEntrepriseFromStorage() {
 }
 
 /**
- * Format RCS complet string
+ * Immatriculation imprimée (RCS ou RNE), lib/immatriculation
  * @param {Object} entreprise
  * @returns {string}
  */
 function getRCSComplet(entreprise) {
-  if (!entreprise?.rcsVille || !entreprise?.rcsNumero) return '';
-  return `RCS ${entreprise.rcsVille} ${entreprise.rcsType || 'B'} ${entreprise.rcsNumero}`;
+  return mentionImmatriculation(entreprise);
 }
 
 /**

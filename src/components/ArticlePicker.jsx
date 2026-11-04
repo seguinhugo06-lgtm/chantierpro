@@ -24,6 +24,15 @@ import { CATEGORIES_METIERS, getSousCategories, getArticlesBySousCategorie, sear
 const CONSIGNES = { 1: 'Sélectionnez votre type d\'activité', 2: 'Sélectionnez une sous-catégorie', 3: 'Sélectionnez un article', 4: 'Ajustez les prix et la quantité' };
 const ETIQUETTES_ETAPES = ['Catégorie', 'Type', 'Article', 'Config'];
 
+/**
+ * Taux proposé quand l'artisan choisit un article du référentiel : 0 % en franchise en base (art. 293 B du CGI), le taux
+ * imposé par l'article s'il en a un (chaudière gaz ou fioul à 20 %, CGI 279-0 bis, 2 bis, c), sinon 10 %.
+ */
+export function tvaArticleReferentiel(article, franchiseTva = false) {
+  if (franchiseTva) return '0';
+  return String(Number.isFinite(article?.tva) ? article.tva : 10);
+}
+
 export default function ArticlePicker({ isOpen, onClose, onSelect, franchiseTva = false, metiers = [] }) {
   // Les catégories des métiers choisis en premier (src/lib/metiers.js), toutes restent affichées
   const categories = useMemo(() => {
@@ -78,6 +87,7 @@ export default function ArticlePicker({ isOpen, onClose, onSelect, franchiseTva 
     setSelectedArticle(article);
     setCustomPrix(article.prixDefaut);
     setCustomPrixAchat('');
+    setTva(tvaArticleReferentiel(article, franchiseTva));
     setStep(4);
   };
 
