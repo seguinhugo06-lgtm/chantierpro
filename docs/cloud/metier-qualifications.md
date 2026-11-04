@@ -102,7 +102,10 @@ Les libellés corrigés après la relecture n'ont pas été relus une seconde fo
 
 ## Vérification finale
 
-(complétée ci-dessous)
+- Branche fusionnée avec `origin/main` le 4 nov. après-midi (deux fois : `a1c5463`, puis `9b5bc62`, 57 commits des autres sessions). `origin/cloud/metiers` : déjà contenue. Conflits résolus en gardant les deux côtés (modèles de devis en franchise, mention d'immatriculation, conseils de ramonage, taux du référentiel).
+- **`npm run verifier -- --complet` sur `9b5bc62`, arbre propre : tout vert.** Tests 1338/1338, lint 0 erreur (241 avertissements déjà présents), smoke, build, banc de migrations, parcours navigateur (tous, 40 min), audit d'interface (375 / 768 / 1024 / 1440 px) sans défaut.
+- Deux échecs trouvés en route et corrigés : le parcours du site comptait encore 17 métiers (20 maintenant) ; « Mes qualifications » utilisait deux listes déroulantes natives, interdites dans les Paramètres (remplacées par la liste de choix de l'app, `ChampChoix`).
+- Un premier essai de vérification complète a été arrêté à la limite de 30 min de la session (pendant les parcours) ; il a été relancé avec une limite plus longue.
 
 ## Résumé
 
@@ -114,5 +117,5 @@ Les libellés corrigés après la relecture n'ont pas été relus une seconde fo
 - « Mes qualifications » remplace le champ RGE : 8 types, jamais sans numéro, alerte avant l'échéance.
 - Imprimées par les deux générateurs et la page de signature (après les migrations 108 et 110).
 - Juriste : la fourniture de climatisation passe à 20 % (bloquant corrigé, ligne existante comprise).
-- Banc 670 vérifications, 5 parcours à 375 px, contre-essais faits.
+- Vérification complète verte (banc 670, tous les parcours, audit sans défaut) ; contre-essais faits.
 - À décider : SAP, climatisation, prix indicatifs, réseau pour relire au texte.
