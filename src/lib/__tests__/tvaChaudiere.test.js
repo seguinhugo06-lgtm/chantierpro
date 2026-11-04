@@ -4,6 +4,7 @@ import { TRADE_LIBRARY } from '../templates/trade-library';
 import { ALL_OUVRAGES } from '../data/bibliotheque';
 import { ALL_ARTICLES_BTP, searchAllArticles, articlesAImporterDuReferentiel } from '../data';
 import { tvaArticleReferentiel } from '../../components/ArticlePicker';
+import { FIELD_MAPPINGS } from '../../hooks/useSupabaseSync';
 
 // Chaudière gaz ou fioul, fourniture et pose : 20 % depuis le 1er mars 2025, même dans un logement de plus de deux ans.
 // CGI 279-0 bis, 2 bis, c) : « Les travaux comprenant la fourniture ou l'installation d'une chaudière susceptible
@@ -61,27 +62,53 @@ describe('sélecteur du référentiel du catalogue (ArticlePicker)', () => {
   });
 });
 
-// Import en masse du référentiel (Catalogue › premier usage, importerReferentiel) : avant le 4 nov. 2026, les articles
-// partaient sans taux ; la base leur mettait 20 % à tous (useSupabaseSync, « ?? 20 »), même à la dépose d'une chaudière.
+// Import en masse du référentiel (Catalogue › premier usage, importerReferentiel). Seul un article qui porte un taux le
+// transmet (chaudières gaz et fioul : 20 %). Les autres partent sans taux, comme avant cette branche : l'écriture en base leur
+// met son défaut (useSupabaseSync, « ?? 20 »). Contrôle local du 4 nov. 2026 : `620b737` leur imposait 10 %, dont aux
+// 9 articles « Espaces verts » du paysagisme, que la recherche donne à 20 % (docs/metiers/paysagiste.md § 5).
 describe('import en masse du référentiel (Catalogue)', () => {
   const parNom = (liste, id) => {
     const article = articlesBtp().find((a) => a.id === id);
     return liste.find((l) => l.nom === article.nom);
   };
+  // Le taux que la base reçoit pour un article importé (correspondance de la table catalogue)
+  const tauxEnBase = (ligne) => FIELD_MAPPINGS.catalogue.toSupabase(ligne).tva_rate;
+  const espacesVerts = () => ALL_ARTICLES_BTP.paysagisme.sousCategories.espaces.articles;
 
-  it('chaudière gaz et fioul à 20 % ; dépose et chaudière granulés à 10 %', () => {
-    const importes = articlesAImporterDuReferentiel(Object.keys(ALL_ARTICLES_BTP));
-    expect(importes.length).toBeGreaterThan(0);
-    for (const id of ['chaud-gaz-mur', 'chaud-gaz-sol', 'chaud-fioul']) expect(parNom(importes, id)?.tva).toBe(20);
-    expect(parNom(importes, 'depose-chaud')?.tva).toBe(10);
-    expect(parNom(importes, 'chaud-granules')?.tva).toBe(10);
-    expect(importes.every((l) => Number.isFinite(l.tva))).toBe(true);
+  it('un article d’espaces verts importé ne prend pas 10 % : il part sans taux, la base pose son défaut (20 %)', () => {
+    const importes = articlesAImporterDuReferentiel(['paysagisme']);
+    expect(espacesVerts()).toHaveLength(9);
+    for (const article of espacesVerts()) {
+      const ligne = importes.find((l) => l.nom === article.nom);
+      expect(ligne, article.nom).toBeDefined();
+      expect(ligne.tva, article.nom).toBeUndefined();
+      expect(tauxEnBase(ligne), article.nom).toBe(20);
+    }
   });
 
-  it('contre-essai : en franchise en base, tout article importé est à 0 %', () => {
+  it('une chaudière gaz ou fioul importée prend 20 %, le taux qu’elle porte', () => {
+    const importes = articlesAImporterDuReferentiel(['chauffage']);
+    for (const id of ['chaud-gaz-mur', 'chaud-gaz-sol', 'chaud-fioul']) {
+      expect(parNom(importes, id)?.tva, id).toBe(20);
+      expect(tauxEnBase(parNom(importes, id)), id).toBe(20);
+    }
+  });
+
+  it('seuls les articles qui portent un taux en transmettent un (ni la dépose ni la chaudière granulés)', () => {
+    const importes = articlesAImporterDuReferentiel(Object.keys(ALL_ARTICLES_BTP));
+    const avecTaux = articlesBtp().filter((a) => Number.isFinite(a.tva)).map((a) => a.nom).sort();
+    expect(avecTaux).toHaveLength(3);
+    expect(importes.filter((l) => l.tva !== undefined).map((l) => l.nom).sort()).toEqual(avecTaux);
+    expect(parNom(importes, 'depose-chaud')?.tva).toBeUndefined();
+    expect(parNom(importes, 'chaud-granules')?.tva).toBeUndefined();
+  });
+
+  it('en franchise en base, tout article importé est à 0 %, espaces verts et chaudières compris', () => {
     const importes = articlesAImporterDuReferentiel(Object.keys(ALL_ARTICLES_BTP), true);
     expect(importes.length).toBeGreaterThan(0);
-    expect(importes.every((l) => l.tva === 0)).toBe(true);
+    expect(importes.every((l) => l.tva === 0 && tauxEnBase(l) === 0)).toBe(true);
+    expect(parNom(importes, 'gazon-semis')?.tva).toBe(0);
+    expect(parNom(importes, 'chaud-gaz-mur')?.tva).toBe(0);
   });
 
   it('un métier inconnu n’importe rien', () => {

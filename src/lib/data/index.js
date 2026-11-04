@@ -99,18 +99,22 @@ export function getArticlesBySousCategorie(categorieId, sousCategorieId) {
 }
 
 /**
- * Taux proposé pour un article du référentiel : 0 % en franchise en base (art. 293 B du CGI), le taux imposé par l'article
- * s'il en a un (chaudière gaz ou fioul à 20 %, CGI 279-0 bis, 2 bis, c), sinon 10 %. Rendu en texte (valeur d'un <select>).
+ * Taux que transmet un article du référentiel, ou null s'il n'en porte aucun : 0 % en franchise en base (art. 293 B du CGI),
+ * sinon le taux que porte l'article (seules les chaudières gaz et fioul en portent un : 20 %, CGI 279-0 bis, 2 bis, c).
+ * Aucun taux n'est inventé ici : sans taux propre, l'import laisse l'écriture en base poser son défaut (useSupabaseSync) et
+ * le sélecteur (ArticlePicker) propose le sien, modifiable.
  */
-export function tvaArticleReferentiel(article, franchiseTva = false) {
-  if (franchiseTva) return '0';
-  return String(Number.isFinite(article?.tva) ? article.tva : 10);
+export function tauxPropreArticle(article, franchiseTva = false) {
+  if (franchiseTva) return 0;
+  return Number.isFinite(article?.tva) ? article.tva : null;
 }
 
 /**
- * Articles à créer par l'import en masse du référentiel (Catalogue, premier usage), pour les métiers cochés. Chaque article
- * porte son taux (tvaArticleReferentiel) : sans lui, la base mettait 20 % à tout (useSupabaseSync) et la démo le taux de
- * l'entreprise. La franchise est appliquée ensuite à la création (Catalogue.creerArticle), par quelque chemin que ce soit.
+ * Articles à créer par l'import en masse du référentiel (Catalogue, premier usage), pour les métiers cochés. Seul un article
+ * qui porte un taux le transmet (tauxPropreArticle). Les autres partent sans taux, comme avant le 4 nov. 2026 : l'écriture
+ * en base leur met son défaut (useSupabaseSync). Leur imposer 10 % mettait les 9 articles « Espaces verts » du paysagisme à
+ * 10 %, que la recherche donne à 20 % (docs/metiers/paysagiste.md § 5). La franchise est appliquée ensuite à la création
+ * (Catalogue.creerArticle), par quelque chemin que ce soit.
  */
 export function articlesAImporterDuReferentiel(metierIds, franchiseTva = false) {
   const aImporter = [];
@@ -120,10 +124,11 @@ export function articlesAImporterDuReferentiel(metierIds, franchiseTva = false) 
     const meta = CATEGORIES_METIERS.find((c) => c.id === catId);
     Object.values(cat.sousCategories).forEach((sousCat) => {
       sousCat.articles.forEach((article) => {
+        const taux = tauxPropreArticle(article, franchiseTva);
         aImporter.push({
           nom: article.nom, prix: article.prixDefaut, prixAchat: null, // le référentiel ne connaît pas votre prix d'achat : inconnu, pas déduit du prix de vente
           unite: article.unite, categorie: meta?.nom || 'Autre', favori: false,
-          tva: Number(tvaArticleReferentiel(article, franchiseTva)),
+          ...(taux === null ? {} : { tva: taux }),
           reference: `REF-${article.id.toUpperCase().slice(0, 10)}`,
         });
       });
@@ -139,6 +144,6 @@ export default {
   searchAllArticles,
   getSousCategories,
   getArticlesBySousCategorie,
-  tvaArticleReferentiel,
+  tauxPropreArticle,
   articlesAImporterDuReferentiel,
 };

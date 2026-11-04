@@ -267,7 +267,8 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
   const importerReferentiel = useCallback(async (metierIds) => {
     setEtapeDemarrage('importing');
     setProgression(0);
-    const aImporter = articlesAImporterDuReferentiel(metierIds, franchiseTva); // chacun avec son taux (chaudière gaz ou fioul : 20 %)
+    // Seul l'article qui porte un taux le transmet (chaudière gaz ou fioul : 20 %) ; les autres, aucun : la base pose son défaut
+    const aImporter = articlesAImporterDuReferentiel(metierIds, franchiseTva);
     let importes = 0;
     for (let i = 0; i < aImporter.length; i++) {
       if (!(await creerArticle(aImporter[i]))) break; // refus : DataContext l'a dit, on s'arrête
