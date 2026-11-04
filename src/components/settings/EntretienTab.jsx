@@ -82,7 +82,12 @@ export default function EntretienTab({ entreprise, setEntreprise }) {
                   Ajoutez votre e-mail dans Paramètres → Mon entreprise : vos clients doivent pouvoir vous répondre. Sans lui, aucun rappel automatique ne part.
                 </p>
               )}
-              <p className="text-sm text-encre-3">La date conseillée est la vôtre (douze mois après la visite par défaut). Le rappel cite l’obligation d’entretien et son article seulement quand la puissance de l’appareil la rend certaine : chaudière de 4 à 400 kW (une fois par année civile), pompe à chaleur de 4 à 70 kW (au moins tous les deux ans), poêle ou insert (au moins tous les douze mois s’il est utilisé).</p>
+              {/* D-33 : l'obligation ne s'écrit que dans le rappel d'une chaudière. Texte du juriste (4 nov. 2026, point 9) à
+                  reprendre si Hugo l'étend à la PAC et au poêle : « … seulement quand les données de l'appareil la rendent
+                  certaine : chaudière de 4 à 400 kW (une fois par année civile), pompe à chaleur ou climatisation de 4 à 70 kW
+                  hors contrat de performance énergétique (au moins tous les deux ans), poêle ou insert à bois ou à granulés
+                  (au moins tous les douze mois s'il est utilisé). » */}
+              <p className="text-sm text-encre-3">La date conseillée est la vôtre (douze mois après la visite par défaut). Le rappel cite l’obligation d’entretien et son article seulement pour une chaudière dont les données la rendent certaine : de 4 à 400 kW, une fois par année civile.</p>
             </div>
           </Carte>
 
@@ -90,9 +95,9 @@ export default function EntretienTab({ entreprise, setEntreprise }) {
             <h3 className="text-lg font-semibold text-encre mb-3">Pour vos attestations</h3>
             <div className="space-y-4">
               <Champ libelle="Appareils de mesure (marque et référence)" facultatif value={mesure} onChange={(e) => setMesure(e.target.value)}
-                onBlur={() => enregistrerTexte('entretienAppareilsMesure', mesure)} aide="Proposés sur chaque nouvelle attestation : l’annexe de l’arrêté exige leur marque et leur référence." />
+                onBlur={() => enregistrerTexte('entretienAppareilsMesure', mesure)} aide="Proposés sur chaque nouvelle attestation : leur marque et leur référence sont exigées pour la chaudière et la pompe à chaleur (facultatives pour un poêle ou un insert)." />
               <Champ libelle="Attestation de capacité (fluides frigorigènes) : numéro et organisme" facultatif value={capacite} onChange={(e) => setCapacite(e.target.value)}
-                onBlur={() => enregistrerTexte('entretienAttestationCapacite', capacite)} aide="Exigée pour intervenir sur le circuit d’une pompe à chaleur au R32, R410A ou autre HFC (articles R. 543-76 et R. 543-99 du code de l’environnement)." />
+                onBlur={() => enregistrerTexte('entretienAttestationCapacite', capacite)} aide="Exigée pour un contrôle d’étanchéité ou une intervention sur le circuit d’une pompe à chaleur ou d’une climatisation au R32, au R410A ou à un autre fluide HFC (hors HFO), HCFC, CFC ou PFC (articles R. 543-75, R. 543-76 et R. 543-99 du code de l’environnement). Pas pour le R290, le R744 ou un HFO." />
             </div>
           </Carte>
 

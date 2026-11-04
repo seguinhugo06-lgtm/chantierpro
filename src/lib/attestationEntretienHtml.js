@@ -196,8 +196,8 @@ export function buildAttestationEntretienHtml({ entretien: e, entreprise, rempla
 
   ${appareils.map(identification).join('')}
 
-  <h2>Mesures</h2>
-  <table>${mesures.join('')}</table>
+  ${mesures.join('') ? `<h2>Mesures</h2>
+  <table>${mesures.join('')}</table>` : ''}
   ${co ? `<div class="co ${co}">${h(PHRASES_CO[co])}</div>` : ''}
 
   ${e.categorie === 'chaudiere' ? `

@@ -217,12 +217,12 @@ export const CHAUFFAGE_MODELES = {
         { description: 'Vérification et nettoyage brûleur', quantite: 1, unite: 'forfait', prixUnitaire: 50, prixAchat: 15 },
         { description: 'Analyse de combustion', quantite: 1, unite: 'forfait', prixUnitaire: 40, prixAchat: 12 },
         { description: 'Contrôle sécurité', quantite: 1, unite: 'forfait', prixUnitaire: 35, prixAchat: 10 },
-        { description: 'Attestation d\'entretien', quantite: 1, unite: 'forfait', prixUnitaire: 25, prixAchat: 8 },
+        { description: 'Établissement et remise de l’attestation d’entretien (due à chaque entretien)', quantite: 1, unite: 'forfait', prixUnitaire: 25, prixAchat: 8 },
       ]
     },
     {
       id: 'entretien-pac',
-      nom: 'Entretien annuel PAC',
+      nom: 'Entretien PAC (au moins tous les deux ans)',
       description: '~4 lignes | ~150 – 250 € HT | ~65% marge',
       prixMin: 150,
       prixMax: 250,
@@ -231,7 +231,7 @@ export const CHAUFFAGE_MODELES = {
         { description: 'Vérification fluide frigorigène', quantite: 1, unite: 'forfait', prixUnitaire: 65, prixAchat: 22 },
         { description: 'Nettoyage échangeurs', quantite: 1, unite: 'forfait', prixUnitaire: 55, prixAchat: 18 },
         { description: 'Contrôle performances', quantite: 1, unite: 'forfait', prixUnitaire: 50, prixAchat: 16 },
-        { description: 'Attestation', quantite: 1, unite: 'forfait', prixUnitaire: 30, prixAchat: 10 },
+        { description: 'Établissement et remise de l’attestation d’entretien (due à chaque entretien)', quantite: 1, unite: 'forfait', prixUnitaire: 30, prixAchat: 10 },
       ]
     },
     {

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { suivreAvecEtat } from '../../lib/suiviRappel';
 import { MessageCircle, Phone, BellOff, BellRing } from 'lucide-react';
 import { Bouton } from '../ui/Bouton';
 import { texteSms, descriptionAppareil } from '../../lib/entretien';
@@ -19,8 +20,9 @@ export default function RappelEntretien({ rappel, entreprise, suivreEntretien, r
   const [fait, setFait] = useState(null);
   const sms = lienSms(client?.telephone, texteSms({ entreprise, entretien }));
   const appel = estClientPro(client) ? lienAppel(client?.telephone) : '';
-  const noter = (canal) => { setFait(canal); suivreEntretien(entretien.id, { rappel_fait_le: new Date().toISOString(), rappel_canal: canal }); };
-  const annuler = () => { setFait(null); suivreEntretien(entretien.id, { rappel_fait_le: null, rappel_canal: null }); };
+  // « Noté » seulement après l'écriture : si elle échoue (false), la carte revient à son état (relecture du 4 nov. 2026, 8)
+  const noter = (canal) => suivreAvecEtat(suivreEntretien, entretien.id, { rappel_fait_le: new Date().toISOString(), rappel_canal: canal }, setFait, canal);
+  const annuler = () => suivreAvecEtat(suivreEntretien, entretien.id, { rappel_fait_le: null, rappel_canal: null }, setFait, null);
 
   return (
     <div data-testid="rappel-entretien" className="rounded-2xl border border-alerte-texte/30 bg-alerte-fond p-4">

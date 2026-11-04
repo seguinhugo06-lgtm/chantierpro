@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { suivreAvecEtat } from '../../lib/suiviRappel';
 import { MessageCircle, Phone, BellOff, BellRing } from 'lucide-react';
 import { Bouton } from '../ui/Bouton';
 import { texteSms, lienSms, lienAppel, descriptionAppareil } from '../../lib/ramonage';
@@ -27,14 +28,9 @@ export default function RappelRamonage({ rappel, entreprise, suivreRamonage, ref
   const sms = lienSms(client?.telephone, texteSms({ entreprise, ramonage }));
   const appel = estClientPro(client) ? lienAppel(client?.telephone) : '';
 
-  const noter = (canal) => {
-    setFait(canal);
-    suivreRamonage(ramonage.id, { rappel_fait_le: new Date().toISOString(), rappel_canal: canal });
-  };
-  const annuler = () => {
-    setFait(null);
-    suivreRamonage(ramonage.id, { rappel_fait_le: null, rappel_canal: null });
-  };
+  // « Noté » seulement après l'écriture : si elle échoue (false), la carte revient à son état (relecture du 4 nov. 2026, 8)
+  const noter = (canal) => suivreAvecEtat(suivreRamonage, ramonage.id, { rappel_fait_le: new Date().toISOString(), rappel_canal: canal }, setFait, canal);
+  const annuler = () => suivreAvecEtat(suivreRamonage, ramonage.id, { rappel_fait_le: null, rappel_canal: null }, setFait, null);
 
   return (
     <div data-testid="rappel-ramonage" className="rounded-2xl border border-alerte-texte/30 bg-alerte-fond p-4">

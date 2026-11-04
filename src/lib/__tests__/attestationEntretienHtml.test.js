@@ -20,6 +20,12 @@ function attestation(categorieValeur, o = {}) {
 }
 
 describe('attestation d’entretien — trois documents distincts', () => {
+  it('poêle sans appareil de mesure ni résultat : pas de bloc « Mesures » vide (annexe 3, arrêté du 20 juil. 2023)', () => {
+    const vide = buildAttestationEntretienHtml({ entretien: attestation('poele', { appareils_mesure: '', mesures: {} }), entreprise });
+    expect(vide).not.toContain('<h2>Mesures</h2>');
+    // Contre-essai : avec un appareil saisi, le bloc revient
+    expect(buildAttestationEntretienHtml({ entretien: attestation('poele'), entreprise })).toContain('<h2>Mesures</h2>');
+  });
   it('un titre et un pied propres à chaque appareil', () => {
     const ch = buildAttestationEntretienHtml({ entretien: attestation('chaudiere'), entreprise });
     const pac = buildAttestationEntretienHtml({ entretien: attestation('pac'), entreprise });

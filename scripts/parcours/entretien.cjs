@@ -5,6 +5,7 @@
 // Données fictives seulement.
 const fs = require('fs');
 const path = require('path');
+const { json } = require('../lib/fauxSupabase.cjs');
 
 const AN = new Date().getFullYear();
 const sansInstallation = () => { try { localStorage.setItem('pwa-install-dismissed', String(Date.now())); } catch { /* */ } };
@@ -166,6 +167,47 @@ module.exports = [
       const sms = decodeURIComponent(await page.evaluate(() => document.querySelector('[role="dialog"] a[href^="sms:"]')?.getAttribute('href') || ''));
       verifier(sms.includes('art. R. 224-41-7') && sms.includes('répondez STOP') && !/obligatoire/i.test(sms), `le SMS cite l'article et l'opposition STOP (${sms.slice(0, 160)}…)`);
       await page.screenshot({ path: path.join(RACINE, 'audit-ui', 'entretien-rappel-375.png') });
+    },
+  },
+  // Lien de désinscription des rappels d'entretien (CPCE L. 34-5), en mode réel simulé : copié du parcours ramonage
+  // (relecture du 4 nov. 2026, point 4), avec un contre-essai sur un jeton que la base ne reconnaît pas
+  {
+    nom: 'entretien : le lien « ne plus recevoir de rappel » n’agit qu’au bouton, sans compte',
+    reel: true,
+    async executer({ ouvrir, cliquer, attendre, verifier }) {
+      const JETON = 'a0a0a0a0-0000-4000-8000-000000000113';
+      const appels = [];
+      const { page } = await ouvrir({
+        reel: true, largeur: 375, chemin: `/rappel-entretien/${JETON}`,
+        supabase: (req, u) => {
+          if (u.pathname === '/rest/v1/rpc/refuser_rappels_ramonage') { appels.push(req.postData()); return json(true); }
+          return json([]);
+        },
+      });
+      await attendre(800);
+      const avant = await page.evaluate(() => document.body.innerText);
+      verifier(appels.length === 0, 'rien n’est fait à l’ouverture du lien (les messageries ouvrent les liens)');
+      verifier(avant.includes('prochain entretien'), 'la page parle de l’entretien, pas du ramonage');
+      await cliquer(page, 'Ne plus recevoir de rappel');
+      await attendre(800);
+      const t = await page.evaluate(() => document.body.innerText);
+      verifier(appels.length === 1 && JSON.parse(appels[0]).p_jeton === JETON, 'le refus est envoyé avec le jeton du lien');
+      verifier(t.includes('C’est noté'), 'confirmation affichée');
+    },
+  },
+  {
+    nom: 'entretien : un jeton non reconnu n’affiche pas « C’est noté » (contre-essai)',
+    reel: true,
+    async executer({ ouvrir, cliquer, attendre, verifier }) {
+      const { page } = await ouvrir({
+        reel: true, largeur: 375, chemin: '/rappel-entretien/a0a0a0a0-0000-4000-8000-0000000001ff',
+        supabase: (req, u) => (u.pathname === '/rest/v1/rpc/refuser_rappels_ramonage' ? json(false) : json([])),
+      });
+      await attendre(800);
+      await cliquer(page, 'Ne plus recevoir de rappel');
+      await attendre(800);
+      const t = await page.evaluate(() => document.body.innerText);
+      verifier(!t.includes('C’est noté') && t.includes('Lien non reconnu'), 'jeton refusé : « Lien non reconnu », jamais « C’est noté »');
     },
   },
 ];
