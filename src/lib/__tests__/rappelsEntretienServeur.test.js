@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  rappelsAEnvoyerEntretien, emailRappelEntretien, phraseObligationServeur, obligationConnueServeur, fichesQuiEnvoient, ficheValable, fichesSansEmail,
+  rappelsAEnvoyerEntretien, emailRappelEntretien, phraseObligationServeur, obligationConnueServeur, fichesQuiEnvoient, ficheValable, fichesSansEmail, dansPortee,
 } from '../../../supabase/functions/send-scheduled-relances/entretien.ts';
 import { phraseObligation, obligationConnue } from '../entretien';
 
@@ -95,6 +95,20 @@ describe('fiche entreprise qui envoie les rappels (gardien-securite, 4 nov. 2026
     const seule = [fiches[0]];
     expect(fichesQuiEnvoient(seule, proprietaires, ficheValable('ramonageActif'))).toEqual([]);
     expect(fichesSansEmail(seule, proprietaires, 'ramonageActif', []).map((f) => f.id)).toEqual(['f-sans-email']);
+  });
+  it('fiche sans organisation : seulement les lignes de son auteur hors de toute organisation (reste de M1)', () => {
+    const espion = () => {
+      const appels = [];
+      const r = { eq: (c, v) => { appels.push(['eq', c, v]); return r; }, is: (c, v) => { appels.push(['is', c, v]); return r; }, appels };
+      return r;
+    };
+    const perso = espion();
+    dansPortee(perso, { user_id: 'membre', organization_id: null });
+    expect(perso.appels).toEqual([['eq', 'user_id', 'membre'], ['is', 'organization_id', null]]);
+    const org = espion();
+    dansPortee(org, { user_id: 'patron', organization_id: 'org1' });
+    // Contre-essai : une fiche d'organisation lit toute l'organisation, sans filtre sur l'auteur
+    expect(org.appels).toEqual([['eq', 'organization_id', 'org1']]);
   });
   it('« climatisation » dans l’objet pour un appareil en froid seul', () => {
     const { objet } = emailRappelEntretien({ entreprise, client, entretien: e({ categorie: 'pac', appareils: [{ type: 'clim' }] }), lien: 'x' });

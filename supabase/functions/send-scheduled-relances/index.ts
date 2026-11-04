@@ -24,7 +24,7 @@ import { estClientPro, creditsParFacture, paiementsParDocument, resteDu, relanca
 // Rappels du prochain ramonage (migration 104, D-30) : règles et e-mail sans import distant, testés sous vitest
 import { rappelsAEnvoyer, emailRappelRamonage, jourParis } from './ramonage.ts';
 // Rappels du prochain entretien (migration 113, D-33) : même mécanique, testée sous vitest
-import { rappelsAEnvoyerEntretien, emailRappelEntretien, fichesQuiEnvoient, ficheValable, fichesSansEmail } from './entretien.ts';
+import { rappelsAEnvoyerEntretien, emailRappelEntretien, fichesQuiEnvoient, ficheValable, fichesSansEmail, dansPortee } from './entretien.ts';
 import { nomImprime } from '../_shared/identite.ts';
 // Adresse complète sans répéter « code postal ville » (Paramètres l'enregistre en trois champs depuis le 26 oct. 2026)
 import { adresseComplete } from '../_shared/adresseEntreprise.ts';
@@ -535,7 +535,7 @@ serve(async (req) => {
       organisationsVues.add(serie);
       ramonage.entreprises++;
 
-      const dansOrgR = (requete: any) => (ent.organization_id ? requete.eq('organization_id', ent.organization_id) : requete.eq('user_id', ent.user_id));
+      const dansOrgR = (requete: any) => dansPortee(requete, ent);
       // Lecture complète, page par page : PostgREST s'arrête à 1 000 lignes, et une liste tronquée ferait prendre un
       // ancien passage pour le dernier (relecture verificateur du 24 oct. 2026). Seules les échéances à venir comptent
       // (pas d'e-mail après la date) : un passage plus récent du même appareil a une échéance plus tardive, il est lu aussi.
@@ -677,7 +677,7 @@ serve(async (req) => {
       organisationsVuesE.add(serie);
       entretien.entreprises++;
 
-      const dansOrgE = (requete: any) => (ent.organization_id ? requete.eq('organization_id', ent.organization_id) : requete.eq('user_id', ent.user_id));
+      const dansOrgE = (requete: any) => dansPortee(requete, ent);
       const toutLireE = async (fabrique: (de: number, a: number) => any) => {
         const lignes: any[] = [];
         for (let de = 0; ; de += 1000) {

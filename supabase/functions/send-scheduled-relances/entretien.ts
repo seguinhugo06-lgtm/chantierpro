@@ -176,3 +176,20 @@ export function fichesSansEmail<T extends { user_id: string; organization_id?: s
     return true;
   });
 }
+
+/**
+ * Lignes lues pour une fiche : celles de son organisation ; sans organisation, celles de son auteur QUI NE SONT DANS
+ * AUCUNE organisation (gardien-securite, 4 nov. 2026, reste de M1 : sinon la fiche personnelle d'un membre lisait les
+ * clients qu'il a saisis chez son patron et leur écrivait sous son nom).
+ */
+export function porteeFiche(ent: { user_id: string; organization_id?: string | null }):
+  { colonne: 'organization_id'; valeur: string } | { colonne: 'user_id'; valeur: string; horsOrganisation: true } {
+  return ent.organization_id
+    ? { colonne: 'organization_id', valeur: ent.organization_id }
+    : { colonne: 'user_id', valeur: ent.user_id, horsOrganisation: true };
+}
+/** Applique porteeFiche à une requête PostgREST. */
+export function dansPortee(requete: any, ent: { user_id: string; organization_id?: string | null }): any {
+  const p = porteeFiche(ent);
+  return 'horsOrganisation' in p ? requete.eq('user_id', p.valeur).is('organization_id', null) : requete.eq('organization_id', p.valeur);
+}
