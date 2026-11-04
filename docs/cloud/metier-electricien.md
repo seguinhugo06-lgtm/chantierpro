@@ -182,7 +182,7 @@ Points du juriste (à corriger 1 à 3) : appliqués mot pour mot, tests et parco
 | `npm run banc:migrations` | vert, 674 vérifications. Contre-essai : contre l'ancienne 111, 4 échouent (tailles, colonne `signature`, `readonly`, oracle) |
 | `npm run parcours -- électricien` | 4 parcours verts (démo à 375 px ; base : numéro, facture, annulation, Consuel ; droits ; deux générateurs). Contre-essai : sans `voitPrix` ni la condition sur « Annuler », le parcours des droits échoue (« la saisie ne montre aucun prix au chef de chantier ») |
 | `npm run verifier` (standard) sur `073a768` | vert : 1 325 tests, lint 0 erreur, smoke, build |
-| `npm run verifier -- --complet` sur `f3d2e19` | en cours au moment de ce commit : résultat dans le commit suivant |
+| `npm run verifier -- --complet` sur `f3d2e19` (dernier commit de code), machine au repos | **vert** : 1 325 tests, lint 0 erreur, smoke, build, banc, parcours (tous verts, 2 584 s), audit d'interface. Les commits suivants ne touchent que ce rapport : la session locale rejoue la vérification sur le commit qu'elle livre |
 
 ### Relectures de cette session
 
@@ -235,5 +235,5 @@ Points du juriste (à corriger 1 à 3) : appliqués mot pour mot, tests et parco
 6. Migration 111 : tout borné, plus de colonne signature, plus d'oracle ; banc vert (674), contre-essai rouge.
 7. 3 parcours en base simulée et un parcours des deux générateurs, avec contre-essais.
 8. Avis du juriste versé dans `docs/metiers/` ; metier-btp.md et electricien.md alignés.
-9. Vérification complète sur le commit final : voir « Preuves ».
+9. Vérification complète verte sur le dernier commit de code (`f3d2e19`), tous parcours compris.
 10. Tes 10 décisions sont listées ci-dessus ; la n° 3 est reposée avec la règle exacte (devis obligatoire, sans seuil).
