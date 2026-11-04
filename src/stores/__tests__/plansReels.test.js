@@ -14,6 +14,8 @@ describe('plans : l\'offre réelle (D-29)', () => {
       '10 clients',
       '2 chantiers',
       '50 photos de chantier',
+      // Dictée allumée (D-32, 4 nov. 2026)
+      '5 dictées par mois',
       'Vous + 1 collaborateur',
       'Signature en ligne des devis',
       'Relances automatiques',
@@ -23,8 +25,10 @@ describe('plans : l\'offre réelle (D-29)', () => {
 
   it('Artisan annonce l\'illimité pour un seul utilisateur', () => {
     expect(noms('artisan')).toEqual([
-      'Tout le plan Gratuit, sans limite',
+      // Avec la dictée limitée à 100, plus de « sans limite » (juriste-btp du 4 nov. 2026)
+      'Tout le plan Gratuit',
       'Devis, clients, chantiers et photos illimités',
+      '100 dictées par mois',
       'Vous + 1 collaborateur',
     ]);
   });
@@ -33,6 +37,7 @@ describe('plans : l\'offre réelle (D-29)', () => {
     expect(noms('equipe')).toEqual([
       'Tout le plan Artisan',
       'Vous + 10 collaborateurs, chacun avec son rôle',
+      'Dictées sans limite mensuelle (100 par jour et par personne au plus)',
     ]);
     // Les rôles et le pointage ne sont verrouillés par aucun plan : ils ne figurent pas comme fonctions d'Équipe
     for (const nom of noms('equipe')) expect(nom).not.toMatch(/pointage|accès/i);

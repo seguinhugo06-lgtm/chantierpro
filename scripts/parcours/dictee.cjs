@@ -143,8 +143,19 @@ module.exports = [
     },
   },
   {
-    nom: 'dictée : avec l’IA éteinte (build livré), rien n’annonce Anthropic ni la dictée',
+    nom: IA_ALLUMEE
+      ? 'dictée : IA allumée (build livré) : la politique et les CGU déclarent Anthropic, avec la nouvelle version'
+      : 'dictée : avec l’IA éteinte (build livré), rien n’annonce Anthropic ni la dictée',
     async executer({ ouvrir, verifier }) {
+      if (IA_ALLUMEE) {
+        // Allumage (commit B, D-32) : le build livré est celui de la dictée ; la clause de sous-traitance est sans condition.
+        const t = await texteDe((await ouvrir({ chemin: '/confidentialite', largeur: 375 })).page);
+        verifier(t.includes('Anthropic') && t.includes('Dictée vocale (analyse par intelligence artificielle).'), 'politique : la dictée et Anthropic');
+        const c = await texteDe((await ouvrir({ chemin: '/cgu', largeur: 375 })).page);
+        verifier(c.includes(`Version du ${CGU_VERSION_DATE}`) && c.includes('sous-traitants ultérieurs') && c.includes('exécuter le contrat qui le lie à Mallettico'),
+          'CGU : nouvelle version, clause de sous-traitance et base légale du contrat');
+        return;
+      }
       const conf = await ouvrir({ chemin: '/confidentialite', largeur: 375 });
       const t = await texteDe(conf.page);
       verifier(t.includes('Article 4') && !t.includes('Anthropic') && !t.includes('Dictée vocale'), 'politique sans la dictée');

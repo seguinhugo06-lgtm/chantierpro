@@ -33,7 +33,7 @@
  * pas les y affecter. À rallumer avec l'affectation d'un sous-traitant à un chantier (décision d'Hugo).
  */
 export const FONCTIONS = Object.freeze({
-  ia: false,
+  ia: true,
   facturesSituation: false,
   portailClient: false,
   receptionChantier: false,

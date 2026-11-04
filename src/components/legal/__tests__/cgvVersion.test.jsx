@@ -78,9 +78,10 @@ describe('CGV : la dictée (FONCTIONS.ia) dans l\'article 4', () => {
 describe('CGV : version et page', () => {
   afterEach(() => { vi.useRealTimers(); });
 
-  it('la version est 2026-10-24 et s\'écrit « Version du 24 octobre 2026 »', () => {
-    expect(CGV_VERSION).toBe('2026-10-24');
-    expect(libelleVersionCgv()).toBe('Version du 24 octobre 2026');
+  it('la version (2026-10-24 sans la dictée) s\'écrit « Version du … »', () => {
+    // Dictée allumée (D-32) : la version de l'allumage, vérifiée plus haut ; sans elle, celle du 24 oct. 2026
+    if (!FONCTIONS.ia) expect(CGV_VERSION).toBe('2026-10-24');
+    expect(libelleVersionCgv('2026-10-24')).toBe('Version du 24 octobre 2026');
     expect(libelleVersionCgv('2027-01-01')).toBe('Version du 1er janvier 2027');
     expect(libelleVersionCgv('2026-12-31')).toBe('Version du 31 décembre 2026');
     expect(() => libelleVersionCgv('24/10/2026')).toThrow(/illisible/);
@@ -89,8 +90,9 @@ describe('CGV : version et page', () => {
 
   it('la page affiche la version en tête, avant l\'article 1, et plus de « Dernière mise à jour »', () => {
     const texte = lu(pageCgv());
-    expect(texte).toContain('Version du 24 octobre 2026');
-    expect(texte.indexOf('Version du 24 octobre 2026')).toBeLessThan(texte.indexOf('Article 1 - Éditeur'));
+    const version = libelleVersionCgv(CGV_VERSION);
+    expect(texte).toContain(version);
+    expect(texte.indexOf(version)).toBeLessThan(texte.indexOf('Article 1 - Éditeur'));
     expect(texte).not.toMatch(/Dernière mise à jour/);
   });
 
