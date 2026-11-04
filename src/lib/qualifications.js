@@ -59,7 +59,7 @@ export function raisonRgeNonImprime(entreprise, aujourdhui = jourLocal()) {
 // Le champ RGE unique devient une liste, rangée dans `settings_json.reglages.qualifications` :
 //   { id, type, intitule, organisme, numero, fin, imprimer, motsCles }
 // Règles communes : jamais imprimée sans numéro ; jamais le mot « certifié » ; validité jugée à la date du document ;
-// date de fin exigée (lisible, non passée) sauf pour la déclaration de services à la personne, qui n'en a pas.
+// date de fin exigée (lisible, non passée) ; la déclaration de services à la personne porte sa date, pas une échéance.
 // RGE : les règles du lot 0 ci-dessus (intitulé, organisme RGE, numéro, date), toujours sur tous les documents (une
 // mention exigée par l'Anah ne disparaît pas parce qu'un mot manque dans une ligne : avis critique-produit du 4 nov.).
 // Autres : intitulé, organisme, numéro et date exigés ; « Seulement si une ligne contient… » est possible.
@@ -67,12 +67,15 @@ export function raisonRgeNonImprime(entreprise, aujourdhui = jourLocal()) {
 /** Les types proposés, dans cet ordre. `prefixe` ouvre la ligne imprimée ; les textes sont relus par juriste-btp. */
 export const TYPES_QUALIFICATION = [
   { id: 'rge', nom: 'RGE (Reconnu garant de l’environnement)', exemple: 'QualiPAC chauffage et eau chaude sanitaire', motsCles: '' },
-  { id: 'irve', nom: 'IRVE (bornes de recharge)', prefixe: 'Qualification IRVE', exemple: 'IRVE P1', organismes: ['Qualifelec', 'AFNOR Certification'], motsCles: 'borne, recharge, IRVE' },
-  { id: 'fluides', nom: 'Attestation de capacité (fluides frigorigènes)', prefixe: 'Attestation de capacité à manipuler les fluides frigorigènes', exemple: 'Catégorie I', motsCles: 'climatisation, pompe à chaleur, PAC, frigorifique' },
+  { id: 'irve', nom: 'IRVE (bornes de recharge)', prefixe: 'IRVE (infrastructures de recharge)', exemple: 'IRVE P1', organismes: ['Qualifelec', 'AFNOR Certification'], motsCles: 'borne, recharge, IRVE' },
+  { id: 'fluides', nom: 'Attestation de capacité (fluides frigorigènes)', prefixe: 'Attestation de capacité à manipuler les fluides frigorigènes', exemple: 'Telle qu’indiquée sur votre attestation', motsCles: 'climatisation, pompe à chaleur, PAC, frigorifique' },
   { id: 'pg_gaz', nom: 'Professionnel du gaz (PG)', prefixe: 'Appellation Professionnel du gaz (PG)', exemple: 'PG installation', organismes: ['Qualigaz'], motsCles: 'gaz' },
-  { id: 'certibiocide', nom: 'Certibiocide', prefixe: 'Certificat individuel biocides (Certibiocide)', exemple: 'Traitement des bois', motsCles: 'traitement, termites, insectes, xylophages' },
-  { id: 'certiphyto', nom: 'Certiphyto', prefixe: 'Certificat individuel produits phytopharmaceutiques (Certiphyto)', exemple: 'Décideur en entreprise soumise à agrément', motsCles: 'désherbage, traitement' },
-  { id: 'sap', nom: 'Services à la personne (déclaration)', exemple: '', sansDate: true, motsCles: '' },
+  { id: 'certibiocide', nom: 'Certibiocide', prefixe: 'Certificat individuel biocides (Certibiocide) détenu par', exemple: 'Nom du titulaire, catégorie', aideIntitule: 'Nom du titulaire et catégorie, tels qu’ils figurent sur le certificat (certificat individuel).', motsCles: 'traitement, termites, insectes, xylophages' },
+  { id: 'certiphyto', nom: 'Certiphyto', prefixe: 'Certificat individuel produits phytopharmaceutiques (Certiphyto) détenu par', exemple: 'Nom du titulaire, catégorie', aideIntitule: 'Nom du titulaire et catégorie, tels qu’ils figurent sur le certificat (certificat individuel). L’agrément de l’entreprise se saisit dans « Autre qualification ».', motsCles: 'désherbage, traitement' },
+  // SAP : numéro ET date de la déclaration (C. trav. D7233-1, à relire au texte ; juriste-btp, 4 nov. 2026). `fin` porte
+  // ici la date de la déclaration (pas une échéance). Ajoutée sans impression : sur d'autres travaux, la mention
+  // laisserait croire à un crédit d'impôt (décision d'Hugo attendue).
+  { id: 'sap', nom: 'Services à la personne (déclaration)', exemple: '', dateDeclaration: true, motsCles: '' },
   { id: 'autre', nom: 'Autre qualification', prefixe: '', exemple: 'Qualibat 5111', motsCles: '' },
 ];
 const TYPE_PAR_ID = Object.fromEntries(TYPES_QUALIFICATION.map((t) => [t.id, t]));
@@ -112,15 +115,18 @@ export function champsRgeDeLaListe(qualifications) {
 /** Pourquoi cette qualification n'est pas imprimée (texte pour l'écran), ou null si elle l'est. */
 export function raisonNonImprimee(q, aujourdhui = jourLocal()) {
   const x = normaliser(q, 0);
-  const t = TYPE_PAR_ID[x.type];
   if (!x.imprimer) return 'Vous avez choisi de ne pas l’imprimer.';
   if (!x.numero) return 'Ajoutez le numéro : sans numéro, rien n’est imprimé.';
   if (x.type === 'rge') return raisonRgeNonImprime({ rge: x.numero, rgeOrganisme: x.organisme, rgeDomaine: x.intitule, rgeValidite: x.fin }, aujourdhui);
-  if (x.type === 'sap') return null;
+  if (x.type === 'sap') {
+    if (!x.fin) return 'Ajoutez la date de la déclaration : elle s’imprime avec son numéro.';
+    if (!jourValide(x.fin)) return 'La date de la déclaration n’est pas lisible : ressaisissez-la.';
+    return null;
+  }
   if (!x.intitule) return 'Ajoutez l’intitulé, tel qu’il figure sur votre certificat.';
   if (!x.organisme) return 'Ajoutez l’organisme qui l’a délivrée.';
   if (ORGANISMES_REFUSES.includes(x.organisme)) return 'Qualiopi certifie les organismes de formation : choisissez l’organisme qui a délivré cette qualification.';
-  if (!t.sansDate) {
+  {
     if (!x.fin) return 'Ajoutez la date de fin de validité indiquée sur votre certificat : sans elle, rien n’est imprimé.';
     if (!jourValide(x.fin)) return 'La date de fin n’est pas lisible : ressaisissez-la.';
     if (expiree(x.fin, aujourdhui)) return 'La date de fin est passée : elle n’est plus imprimée sur vos documents.';
@@ -132,7 +138,7 @@ export function raisonNonImprimee(q, aujourdhui = jourLocal()) {
 export function ligneImprimee(q) {
   const x = normaliser(q, 0);
   if (x.type === 'rge') return `Entreprise RGE (Reconnu garant de l'environnement) — Qualification : ${x.intitule} — ${x.organisme} — N° ${x.numero} — Valide jusqu'au ${dateFr(x.fin)}`;
-  if (x.type === 'sap') return `Services à la personne : organisme déclaré n° ${x.numero}`;
+  if (x.type === 'sap') return `Prestation de services à la personne — organisme déclaré n° ${x.numero} du ${dateFr(x.fin)}`;
   const prefixe = TYPE_PAR_ID[x.type].prefixe;
   return `${prefixe ? `${prefixe} : ` : ''}${x.intitule} — ${x.organisme} — N° ${x.numero} — Valide jusqu'au ${dateFr(x.fin)}`;
 }
@@ -190,7 +196,7 @@ export function lignesQualifications(entreprise, aujourdhui = jourLocal(), doc =
 export function echeancesQualifications(entreprise, aujourdhui = jourLocal(), horizonJours = 60) {
   const t0 = dateLue(aujourdhui).getTime();
   return qualificationsDe(entreprise)
-    .filter((q) => q.numero && q.imprimer && jourValide(q.fin))
+    .filter((q) => q.numero && q.imprimer && q.type !== 'sap' && jourValide(q.fin))
     .map((q) => ({ id: q.id, nom: q.intitule || TYPE_PAR_ID[q.type].nom, type: q.type, fin: q.fin, jours: Math.round((dateLue(q.fin).getTime() - t0) / 86400000) }))
     .filter((x) => x.jours <= horizonJours)
     .sort((a, b) => a.jours - b.jours);

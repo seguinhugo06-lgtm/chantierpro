@@ -31,7 +31,8 @@ export default function MesQualifications({ entreprise, updateEntreprise }) {
   const modifier = (id, champs, cle) => enregistrer((l) => l.map((q) => (q.id === id ? { ...q, ...champs } : q)), cle);
   const ajouter = () => {
     const t = typeDe(typeAjout);
-    enregistrer((l) => [...l, { id: nouvelId(), type: t.id, intitule: '', organisme: '', numero: '', fin: '', imprimer: true, motsCles: '' }], 'qualifications');
+    // Services à la personne : ajoutée sans impression, l'artisan choisit où (avis juriste-btp du 4 nov. 2026)
+    enregistrer((l) => [...l, { id: nouvelId(), type: t.id, intitule: '', organisme: '', numero: '', fin: '', imprimer: t.id !== 'sap', motsCles: '' }], 'qualifications');
   };
   const retirer = (id) => enregistrer((l) => l.filter((q) => q.id !== id), 'qualifications');
 
@@ -60,7 +61,7 @@ export default function MesQualifications({ entreprise, updateEntreprise }) {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {q.type !== 'sap' && (
-                <ChampParam id={`${pref}-intitule`} cle={`${pref}-intitule`} libelle="Intitulé" aide="Tel qu’il figure sur votre certificat.">
+                <ChampParam id={`${pref}-intitule`} cle={`${pref}-intitule`} libelle="Intitulé" aide={t.aideIntitule || 'Tel qu’il figure sur votre certificat.'}>
                   <DebouncedInput id={`${pref}-intitule`} placeholder={t.exemple} value={q.intitule}
                     onChange={(v) => modifier(q.id, { intitule: v }, `${pref}-intitule`)} />
                 </ChampParam>
@@ -85,8 +86,9 @@ export default function MesQualifications({ entreprise, updateEntreprise }) {
               <ChampParam id={`${pref}-numero`} cle={`${pref}-numero`} libelle={q.type === 'sap' ? 'Numéro de déclaration' : 'Numéro'}>
                 <DebouncedInput id={`${pref}-numero`} value={q.numero} onChange={(v) => modifier(q.id, { numero: v }, `${pref}-numero`)} />
               </ChampParam>
-              {!t.sansDate && (
-                <ChampParam id={`${pref}-fin`} cle={`${pref}-fin`} libelle="Fin de validité" aide="Date indiquée sur votre certificat. En cas de suspension, retirez la qualification.">
+              {(
+                <ChampParam id={`${pref}-fin`} cle={`${pref}-fin`} libelle={t.dateDeclaration ? 'Date de la déclaration' : 'Fin de validité'}
+                  aide={t.dateDeclaration ? 'Imprimée avec le numéro de déclaration.' : 'Date indiquée sur votre certificat. En cas de suspension, retirez la qualification.'}>
                   <input id={`${pref}-fin`} type="date" className={CLASSE_CHAMP} value={q.fin}
                     onChange={(e) => modifier(q.id, { fin: e.target.value }, `${pref}-fin`)} />
                 </ChampParam>
@@ -117,7 +119,8 @@ export default function MesQualifications({ entreprise, updateEntreprise }) {
                   onChange={() => modifier(q.id, { imprimer: false }, `${pref}-ou`)} />
                 <span className="text-sm text-encre">Ne pas l’imprimer</span>
               </label>
-              {q.type === 'rge' && <p className="text-sm text-encre-3">Le RGE s’imprime sur tous vos documents : l’Anah exige la mention sur les devis et factures des travaux aidés.</p>}
+              {q.type === 'rge' && <p className="text-sm text-encre-3">Imprimé, le RGE figure sur tous vos documents : l’Anah exige la mention sur les devis et factures des travaux aidés.</p>}
+              {q.type === 'sap' && <p className="text-sm text-alerte-texte">À n’imprimer que sur les prestations de services à la personne : sur d’autres travaux, elle laisserait croire à un crédit d’impôt.</p>}
             </fieldset>
 
             {raison ? (

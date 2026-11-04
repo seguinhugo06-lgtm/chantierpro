@@ -8,7 +8,7 @@ const AUJ = '2026-11-04';
 const RGE = { id: 'a', type: 'rge', intitule: 'QualiPAC chauffage et eau chaude sanitaire', organisme: 'Qualit\'EnR', numero: 'QPAC-1', fin: '2027-06-30' };
 const IRVE = { id: 'b', type: 'irve', intitule: 'IRVE P1', organisme: 'Qualifelec', numero: 'IRVE-22', fin: '2027-03-31' };
 const LIGNE_RGE = 'Entreprise RGE (Reconnu garant de l\'environnement) — Qualification : QualiPAC chauffage et eau chaude sanitaire — Qualit\'EnR — N° QPAC-1 — Valide jusqu\'au 30/06/2027';
-const LIGNE_IRVE = 'Qualification IRVE : IRVE P1 — Qualifelec — N° IRVE-22 — Valide jusqu\'au 31/03/2027';
+const LIGNE_IRVE = 'IRVE (infrastructures de recharge) : IRVE P1 — Qualifelec — N° IRVE-22 — Valide jusqu\'au 31/03/2027';
 
 describe('Mes qualifications', () => {
   it('couvre RGE, IRVE, capacité fluides, PG gaz, Certibiocide, Certiphyto, SAP (et « autre »)', () => {
@@ -34,8 +34,16 @@ describe('Mes qualifications', () => {
     expect(lignesQualifications({ qualifications: [{ ...IRVE, fin: '' }] }, AUJ)).toEqual([]);
     expect(lignesQualifications({ qualifications: [{ ...IRVE, fin: '31/03/2027' }] }, AUJ)).toEqual([]);
     expect(lignesQualifications({ qualifications: [{ ...IRVE, fin: '2026-11-03' }] }, AUJ)).toEqual([]);
-    expect(lignesQualifications({ qualifications: [{ ...IRVE, fin: '2026-11-03' }] }, '2026-10-01')).toEqual(['Qualification IRVE : IRVE P1 — Qualifelec — N° IRVE-22 — Valide jusqu\'au 03/11/2026']);
-    expect(lignesQualifications({ qualifications: [{ type: 'sap', numero: 'SAP123456789' }] }, AUJ)).toEqual(['Services à la personne : organisme déclaré n° SAP123456789']);
+    expect(lignesQualifications({ qualifications: [{ ...IRVE, fin: '2026-11-03' }] }, '2026-10-01')).toEqual(['IRVE (infrastructures de recharge) : IRVE P1 — Qualifelec — N° IRVE-22 — Valide jusqu\'au 03/11/2026']);
+    // SAP : numéro ET date de la déclaration (C. trav. D7233-1, avis juriste du 4 nov. 2026), jamais une échéance
+    expect(lignesQualifications({ qualifications: [{ type: 'sap', numero: 'SAP123456789', fin: '2019-03-01' }] }, AUJ)).toEqual(['Prestation de services à la personne — organisme déclaré n° SAP123456789 du 01/03/2019']);
+    expect(lignesQualifications({ qualifications: [{ type: 'sap', numero: 'SAP123456789' }] }, AUJ)).toEqual([]);
+    expect(raisonNonImprimee({ type: 'sap', numero: 'SAP1' }, AUJ)).toMatch(/date de la déclaration/);
+  });
+
+  it('certificats individuels : « détenu par » le titulaire (avis juriste du 4 nov. 2026)', () => {
+    expect(lignesQualifications({ qualifications: [{ ...IRVE, type: 'certibiocide', intitule: 'Jean Exemple, TP8' }] }, AUJ)[0])
+      .toBe('Certificat individuel biocides (Certibiocide) détenu par : Jean Exemple, TP8 — Qualifelec — N° IRVE-22 — Valide jusqu\'au 31/03/2027');
   });
 
   it('hors RGE : intitulé et organisme exigés ; Qualiopi refusé', () => {
@@ -86,8 +94,8 @@ describe('Mes qualifications', () => {
     const doc = { type: 'devis', numero: 'DEV-1', date: AUJ, lignes: [{ description: 'Pose de borne', quantite: 1, unite: 'u', prixUnitaire: 1000, tva: 5.5 }], total_ht: 1000, tva: 55, total_ttc: 1055 };
     const e = { nom: 'Élec', siret: '12345678900011', qualifications: [{ ...IRVE, intitule: 'IRVE <P1>' }] };
     const html = buildDevisHtml({ doc, client: { nom: 'X' }, entreprise: e });
-    expect(html).toContain('Qualification IRVE : IRVE &lt;P1&gt; — Qualifelec — N° IRVE-22');
+    expect(html).toContain('IRVE (infrastructures de recharge) : IRVE &lt;P1&gt; — Qualifelec — N° IRVE-22');
     const rapide = buildDocumentHTML(doc, { nom: 'X' }, null, e);
-    expect(rapide).toContain('Qualification IRVE : IRVE &lt;P1&gt;');
+    expect(rapide).toContain('IRVE (infrastructures de recharge) : IRVE &lt;P1&gt;');
   });
 });

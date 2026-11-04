@@ -54,6 +54,7 @@ export async function verifier({ db, q, en, commeAnonyme, verifier }) {
     { type: 'rge', intitule: 'QualiPAC', organisme: 'Qualit\'EnR', numero: 'QPAC-1', fin: '2099-12-31', imprimer: true, secret: 'ne sort pas' },
     { type: 'irve', intitule: 'IRVE P1', organisme: 'Qualifelec', numero: 'IRVE-2', fin: '2099-06-30', motsCles: 'borne' },
     'pas un objet',
+    { type: 'pg_gaz', intitule: 'PG', organisme: 'Qualigaz', numero: 'CACHE-1', fin: '2099-01-01', imprimer: false },
   ];
   const fiche = (await q(`INSERT INTO entreprise (user_id, nom, is_default, settings_json) VALUES ($1, 'Qualifs 110', true, $2) RETURNING id`,
     [SOLO, JSON.stringify({ reglages: { qualifications: quals, banque: 'secret' } })])).rows[0].id;
@@ -70,6 +71,7 @@ export async function verifier({ db, q, en, commeAnonyme, verifier }) {
       `110 : un visiteur reçoit les qualifications, dans l'ordre (${JSON.stringify(liste)})`);
     verifier(liste.every((x) => !('secret' in x)) && ent.banque === undefined && ent.settings_json === undefined,
       '110 : rien d\'autre ne sort, ni des réglages ni des qualifications (champs fermés)');
+    verifier(!JSON.stringify(liste).includes('CACHE-1'), '110 : une qualification « ne pas imprimer » ne sort pas');
 
     await q(`UPDATE entreprise SET settings_json = '{"reglages": {"qualifications": "texte"}}' WHERE id = $1`, [fiche]);
     const mal = await commeAnonyme(async () => (await q('SELECT get_devis_for_signature($1) AS j', [jeton])).rows[0].j || {});

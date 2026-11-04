@@ -606,7 +606,7 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
         devisChoisi={devisChoisi} setDevisChoisi={setDevisChoisi} onFermer={fermerAjoutDevis} onAjouter={ajouterAuDevis}
         onCreerDevis={() => { fermerAjoutDevis(); setPage?.('devis'); }} enCours={ajoutEnCours}
       />
-      {showArticlePicker && <ArticlePicker isOpen={showArticlePicker} onClose={() => setShowArticlePicker(false)} onSelect={ajouterDepuisReferentiel} franchiseTva={franchiseTva} />}
+      {showArticlePicker && <ArticlePicker isOpen={showArticlePicker} onClose={() => setShowArticlePicker(false)} onSelect={ajouterDepuisReferentiel} franchiseTva={franchiseTva} metiers={entreprise?.metiers} />}
     </>
   );
 

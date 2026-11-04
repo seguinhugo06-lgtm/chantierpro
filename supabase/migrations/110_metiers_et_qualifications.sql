@@ -19,8 +19,9 @@
 --     src/lib/qualifications.js (jamais sans numéro, date de fin exigée et non passée…).
 --   - Droits : la colonne suit les policies existantes de la table entreprise (aucune nouvelle policy) ; la fonction
 --     reste exécutable par un visiteur (page publique, règle de 092).
--- Numéros : 107 (cloud/ia-socle), 108 (cloud/metiers), 109 (cloud/ia-allumage) sont pris. Suppose 108 (même fonction,
---   remplacée en entier : appliquer 110 après 108, ou 110 seule, donne le même résultat).
+-- Numéros : 107 (cloud/ia-socle), 108 (cloud/metiers), 109 (cloud/ia-allumage) sont pris. 110 contient toute la
+--   fonction de 108 : appliquer 108 PUIS 110 (ou 110 seule). JAMAIS 108 après 110 : la clé « qualifications »
+--   disparaîtrait sans erreur (relecture gardien-securite du 4 nov. 2026).
 --
 -- ─── Vérification après application (éditeur SQL) ───────────────────────────
 --   SELECT (SELECT data_type FROM information_schema.columns
@@ -191,7 +192,8 @@ BEGIN
                    'imprimer', CASE WHEN jsonb_typeof(x.q -> 'imprimer') = 'boolean' THEN x.q -> 'imprimer' END,
                    'motsCles', x.q ->> 'motsCles')) ORDER BY x.n)
           FROM jsonb_array_elements(r -> 'qualifications') WITH ORDINALITY AS x(q, n)
-          WHERE jsonb_typeof(x.q) = 'object' AND x.n <= 20) END,
+          -- Une qualification que l'artisan a choisi de ne pas imprimer ne sort pas (relecture gardien-securite du 4 nov.)
+          WHERE jsonb_typeof(x.q) = 'object' AND x.n <= 20 AND COALESCE(x.q ->> 'imprimer', 'true') <> 'false') END,
         'donneesFictives', CASE WHEN r ->> 'donneesFictives' = 'true' THEN true END
       ))
     )::json

@@ -62,3 +62,28 @@ describe('métiers', () => {
     expect(changementsDuChoix({}, ['electricien'])).toEqual({ metiers: ['electricien'] });
   });
 });
+
+// Garde-fous de TVA proposée par ligne (synthèse § 3.6 ; avis juriste du 4 nov. 2026) : une suggestion, jamais un
+// taux réduit là où le texte l'exclut
+describe('bibliothèque : taux proposés', () => {
+  const lignes = Object.values(TRADE_LIBRARY).flatMap((t) => [...t.lots.flatMap((l) => l.lignes), ...t.prestations]);
+  it('chaudière gaz ou fioul : jamais à taux réduit (20 % depuis le 1er mars 2025)', () => {
+    const chaudieres = lignes.filter((l) => /chaudière (gaz|fioul)/i.test(l.designation) && /fourniture|remplacement/i.test(l.designation));
+    expect(chaudieres.length).toBeGreaterThan(0);
+    for (const l of chaudieres) expect(l.tva, l.designation).toBe(20);
+  });
+  it('fourniture d’une climatisation : 20 % (CGI 279-0 bis, 1), la pose peut rester à 10 %', () => {
+    const fournitures = lignes.filter((l) => /^Fourniture/i.test(l.designation) && /climatisation|multisplit|liaisons? frigorifique|unité (intérieure|extérieure)|condensats/i.test(l.designation));
+    expect(fournitures.length).toBeGreaterThan(3);
+    for (const l of fournitures) expect(l.tva, l.designation).toBe(20);
+  });
+  it('aucun 5,5 % pour du carrelage ou une douche (pas de taux « handicap » pour les travaux)', () => {
+    const carrelage = [...TRADE_LIBRARY.carrelage.lots.flatMap((l) => l.lignes), ...TRADE_LIBRARY.carrelage.prestations];
+    for (const l of carrelage) expect(l.tva, l.designation).not.toBe(5.5);
+  });
+  it('les trois nouveaux métiers ne proposent jamais 5,5 %', () => {
+    for (const k of ['ramonage', 'froid', 'multiservice']) {
+      for (const l of [...TRADE_LIBRARY[k].lots.flatMap((x) => x.lignes), ...TRADE_LIBRARY[k].prestations]) expect([10, 20], l.designation).toContain(l.tva);
+    }
+  });
+});
