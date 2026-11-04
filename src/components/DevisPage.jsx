@@ -2389,7 +2389,7 @@ export default function DevisPage({ clients, addClient, devis, setDevis, chantie
     // Hors ligne, l'écriture attend sur l'appareil : la base n'a ni accepté l'émission ni attribué le numéro, et
     // « Pas de connexion » est déjà affiché (relecture du 3 nov. 2026 : deux messages contraires)
     if (resultat === ECRITURE_EN_ATTENTE) {
-      if (choix.geste === 'emettre') showToast('Émission gardée sur cet appareil : la facture sera émise au retour du réseau, si la base l’accepte.', 'info');
+      if (choix.geste === 'emettre') showToast('Émission gardée sur cet appareil : la facture sera émise dès que l’envoi aura réussi, si la base l’accepte.', 'info');
       return;
     }
     showToast(choix.geste === 'emettre' ? 'Facture émise' : `Statut enregistré : ${choix.libelle}`, 'success');

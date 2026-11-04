@@ -129,6 +129,9 @@ module.exports = [
       const nomPastille = await page.evaluate(() => (document.querySelector('button[data-changer-statut]')?.innerText || '').replace(/\s+/g, ' ').trim());
       // Nom accessible (relecture du 3 nov., WCAG 2.5.3) : le statut affiché reste lu, suivi de l'action
       verifier(/^Statut : .+\. Changer le statut$/.test(nomPastille), `la pastille garde le statut dans son nom (« ${nomPastille} »)`);
+      // innerText n'est le nom accessible que sans aria-label : un aria-label remplacerait le statut pour un lecteur d'écran
+      const ariaPastille = await page.evaluate(() => document.querySelector('button[data-changer-statut]')?.getAttribute('aria-label'));
+      verifier(ariaPastille === null, `la pastille n'a pas d'aria-label (${JSON.stringify(ariaPastille)})`);
       const pastille = await page.evaluate(() => { const b = document.querySelector('button[data-changer-statut]'); b?.click(); return !!b; });
       verifier(pastille, 'la pastille de la fiche ouvre « Changer le statut »');
       await attendre(500);
@@ -200,7 +203,7 @@ module.exports = [
         window.__messagesStatut = [];
         new MutationObserver(() => {
           const t = document.body.innerText;
-          for (const m of ['Facture émise', 'Émission gardée sur cet appareil', 'Pas de connexion']) {
+          for (const m of ['Facture émise', 'Émission gardée sur cet appareil', 'dès que l’envoi aura réussi', 'au retour du réseau, si la base', 'Pas de connexion']) {
             if (t.includes(m) && !window.__messagesStatut.includes(m)) window.__messagesStatut.push(m);
           }
         }).observe(document.body, { childList: true, subtree: true, characterData: true });
@@ -215,6 +218,10 @@ module.exports = [
       const messages = await page.evaluate(() => window.__messagesStatut || []);
       verifier(messages.includes('Émission gardée sur cet appareil') && !messages.includes('Facture émise'),
         `sans réseau : « Émission gardée sur cet appareil », jamais « Facture émise » (${JSON.stringify(messages)})`);
+      // Le message ne promet pas « au retour du réseau » : l'écriture attend aussi sur « Serveur indisponible » ou
+      // « Session expirée », réseau présent (contrôle local du 3 nov.)
+      verifier(messages.includes('dès que l’envoi aura réussi') && !messages.includes('au retour du réseau, si la base'),
+        `message hors ligne : « dès que l’envoi aura réussi », pas « au retour du réseau » (${JSON.stringify(messages)})`);
       horsLigne = false;
 
       // 3. « Payée » : encaissement refusé par la base → aucune réussite, la facture reste à encaisser
