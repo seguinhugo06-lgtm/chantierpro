@@ -80,7 +80,7 @@ Corrections appliquées mot pour mot :
 
 ## Ce qui reste
 
-1. **Relire les sources sur les pages officielles.** Ni moi ni le juriste n'avons pu ouvrir impots.gouv.fr, urssaf.fr, autoentrepreneur.urssaf.fr, service-public.fr, net-entreprises.fr ou legifrance : le réseau de la session les bloque.
+1. **Dépassé (mis à jour le 4 nov.)** : le 3 nov., la relecture juriste-btp faite en local a relu les sources sur les pages officielles. Elle a remplacé urssaf.fr et autoentrepreneur.urssaf.fr, injoignables, par Légifrance, net-entreprises.fr et service-public. `CONSULTE` vaut `2026-11-03` (voir « Corrections du 3 nov. », points 1 à 8 du juriste). Texte d'origine, conservé pour l'historique : **Relire les sources sur les pages officielles.** Ni moi ni le juriste n'avons pu ouvrir impots.gouv.fr, urssaf.fr, autoentrepreneur.urssaf.fr, service-public.fr, net-entreprises.fr ou legifrance : le réseau de la session les bloque.
    - Les dates viennent d'extraits de moteur de recherche, recoupés avec `docs/metier-btp.md` (§5 et §8, déjà vérifiés par le juriste en octobre).
    - La session locale doit relire chaque URL de `SOURCES` et confirmer en priorité :
      - la date limite de mensualisation de la CFE 2027 (15 déc.) ;
@@ -95,13 +95,13 @@ Corrections appliquées mot pour mot :
 
 1. **Où garder les réponses** (impôt, salariés, rythme Urssaf) ? Aujourd'hui, sur l'appareil seulement : sur un autre téléphone, les questions reviennent. Les garder dans la fiche entreprise demande une migration (colonnes `entreprises`). Pour la TVA, un réglage existe déjà en base (`tresorerie_settings.regime_tva`, Trésorerie) : depuis le 3 nov., son choix explicite (franchise, mensuel) est lu ; aligner les deux réglages relève des tâches `tva-encaissements` et `franchise-reglage`.
 2. **EI ou société en franchise de TVA** (non micro) : la question TVA n'a pas de réponse « Je ne facture pas de TVA ». Faut-il l'ajouter ? (question du juriste)
-3. **Déclaration 1330-CVAE**, si le chiffre d'affaires dépasse 152 500 € HT : le juriste suggère de l'ajouter. Elle n'y est pas, faute d'une source officielle lue.
+3. **Déclaration 1330-CVAE**, si le chiffre d'affaires dépasse 152 500 € HT : le juriste a écrit la ligne le 3 nov. (voir « Corrections du 3 nov. », décision 3). Elle n'est pas ajoutée : c'est à Hugo de décider.
 4. **Vrais rappels par e-mail** : à décider plus tard. Il faudrait une fonction planifiée côté serveur. Pour l'instant, rien n'est promis.
 
 ## Risques
 
-- **Dates non relues au texte officiel** : voir « Ce qui reste », point 1. L'écran demande de vérifier chaque date sur le site indiqué, et met un lien sous chaque échéance du calendrier.
-- **Micro = franchise de TVA** dans l'app (`estFranchiseTva`) : une micro qui facture la TVA ne voit pas ses CA3. Ce n'est pas un cas rare (relecture juriste du 3 nov.) : voir « Décisions d'Hugo », point 1, des corrections du 3 nov.
+- **Dates** (mis à jour le 4 nov.) : relues au texte officiel le 3 nov. par le juriste, en local. L'écran met toujours un lien vers la source sous chaque échéance du calendrier.
+- **Micro = franchise de TVA** dans l'app (`estFranchiseTva`). Texte du juriste (décision 1 du 3 nov.), mot pour mot : « Une micro-entreprise n’est pas toujours en franchise de TVA : au-delà de 37 500 € de services (41 250 € dans l’année) ou de 85 000 € de ventes (93 500 € dans l’année), ou sur option, elle facture la TVA et dépose des CA3. Dans l’app, elle ne voit pas ces échéances. »
 - **Exercice clos le 31 décembre supposé** pour les liasses, l'IS et la CA12. Ces échéances affichent donc « Selon votre situation ».
 - **DSN** : un 15 qui tombe un dimanche s'affiche tel quel. C'est la date la plus tôt, donc sans risque.
 
@@ -138,7 +138,7 @@ Tous les autres parcours réussissent, dont les deux de l'Administratif.
 - Les alertes par e-mail n'envoyaient rien : le réglage est retiré, l'écran dit « rappel dans l'application seulement ».
 - Toutes les corrections du juriste sont appliquées mot pour mot.
 - Parcours navigateur réussi ; le contre-essai échoue bien sans la correction.
-- Limite : les sites officiels étaient bloqués, les dates viennent d'extraits de recherche et sont à relire en local.
+- Limite (dépassée : les sources ont été relues au texte le 3 nov.) : les sites officiels étaient bloqués, les dates venaient d'extraits de recherche.
 - Décision pour Hugo : garder les réponses dans la fiche entreprise (migration) ou sur l'appareil.
 
 ## Corrections du 3 nov.
@@ -165,7 +165,7 @@ Appliquées sur `cloud/administratif`, après la fusion de `origin/main` (`a9b2e
 10. **FAQ TVA en rénovation** : texte recopié mot pour mot — `e6c504a`.
 11. **`dateFin: '2027-06-30'`** sur la déclaration de revenus. `prochainesEcheances` filtre sur `(dateFin || dateTri) >= jour`, ce qui sert aussi aux 90 jours du calendrier. Test aux 20 mai, 4 juin et 1er juillet 2027 — `e6c504a`.
 12. **Question « Votre société est soumise à… »** : texte recopié mot pour mot — `e6c504a`.
-13. **Modèle chaudière gaz** à 20 % et `metier-btp.md` §4 — `686bc53`. **Hugo : tout devis déjà émis à partir de ce modèle est à revoir** (5,5 % facturé, 20 % dû).
+13. **Modèle chaudière gaz** à 20 % et `metier-btp.md` §4 — `686bc53`. Ce commit ne corrigeait que la bibliothèque des métiers du composeur « Nouveau devis » (`trade-library.js`). Les trois autres sources sont corrigées le 4 nov. (voir « Corrections du contrôle local »). **Hugo doit revoir tout devis ou facture déjà émis avec une chaudière gaz ou fioul à 5,5 % ou 10 %, quelle que soit la source.**
 
 ### Défauts de la relecture de code
 
@@ -237,7 +237,7 @@ Je n'ai pas lancé d'agent juriste dessus : tous les autres textes sont recopié
 
 - Les 13 corrections du juriste sont appliquées mot pour mot, sources comprises.
 - Les 13 défauts de relecture sont corrigés ; pour 7 et 8, c'est la version du juriste qui s'applique.
-- Bug réel hors branche : le modèle de devis chaudière gaz appliquait 5,5 % au lieu de 20 %. Il est corrigé. **Hugo doit revoir les devis déjà émis avec ce modèle.**
+- Bug réel hors branche : une chaudière gaz ou fioul sortait à 5,5 % ou 10 % au lieu de 20 %. Le 3 nov., c'est corrigé dans la bibliothèque des métiers du composeur « Nouveau devis » seulement (`trade-library.js`). Le 4 nov., c'est corrigé aussi dans le modèle « Remplacement chaudière gaz (condensation) » de Devis Express, les ouvrages PL_02_01_001 et PL_02_01_002 de la Bibliothèque, et le sélecteur du référentiel du catalogue. Ces lignes sont reprises de `cloud/metiers` (voir « Corrections du contrôle local »). **Hugo doit revoir tout devis ou facture déjà émis avec une chaudière gaz ou fioul à 5,5 % ou 10 %, quelle que soit la source.**
 - La déclaration de revenus reste affichée jusqu'au 30 juin 2027.
 - « Changer mes réponses » ramène aux questions (parcours, avec contre-essai).
 - Un choix explicite de la Trésorerie (franchise, mensuel) n'est plus redemandé.
