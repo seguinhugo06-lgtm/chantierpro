@@ -10,6 +10,7 @@
  */
 
 import TvaBorne from './devis/TvaBorne';
+import { estLigneBorne } from '../lib/electricite';
 import { useState, useMemo, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import {
@@ -382,6 +383,8 @@ export default function DevisComposer({
     if (l.id !== id) return l;
     const suivante = { ...l, [field]: value };
     if (field === 'tva' && Number(value) !== 5.5) delete suivante.regimeTva;
+    // …comme une désignation qui ne parle plus d'une borne (relecture gardien-securite, F5)
+    if (field === 'description' && !estLigneBorne(value)) delete suivante.regimeTva;
     return suivante;
   }) }));
   const removeLigne = (id) => setForm(p => ({ ...p, lignes: p.lignes.filter(l => l.id !== id) }));

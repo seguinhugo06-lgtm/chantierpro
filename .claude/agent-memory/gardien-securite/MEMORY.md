@@ -22,3 +22,17 @@ Pièges appris :
 - Ne pas retirer à `anon` le SELECT sur `organization_members` : des policies d'autres tables (066, 067, 068, 073) y font une sous-requête ; sans le droit, un visiteur aurait une erreur au lieu de zéro ligne.
 - Le banc réaccorde tous les droits de table après les migrations (`banc-migrations.mjs`) : un droit par colonne ne se vérifie qu'après un rejeu de la migration dans les vérifications (voir `scripts/banc/078.mjs`).
 - Une policy qui refuse une écriture ne lève pas d'erreur (0 ligne) : l'app doit relire les lignes modifiées (`.select()`), sinon elle annonce un succès.
+
+## Comptes rendus d'électricité, migration 111 (relecture du 4 nov. 2026, branche `cloud/metier-electricien`, `12547fc`)
+
+Jamais appliquée. Banc vert (665 vérifications). Applicable : rien de critique ni de moyen.
+
+| Faille | Gravité | Statut |
+|---|---|---|
+| F1 `figer_compte_rendu` laisse un compte connecté vider `client_id`, `chantier_id`, `remplace_id` à volonté (casse « annule et remplace », libère l'index unique) ; inutile : l'action ON DELETE SET NULL s'exécute en propriétaire de la table et passe déjà la garde `current_user` | FAIBLE | ouverte (même design que 104) |
+| F2 `updated_at` réécrivable par le client, jamais remis à `now()` à la mise à jour | FAIBLE | ouverte (idem 104) |
+| F3 `signature`, `mesures`, textes sans borne de taille | FAIBLE | ouverte |
+| F4 rôle `readonly`/ouvrier crée, annule, lie une facture (pas de `mon_role_organisation`) | FAIBLE | ouverte → tâche `org-droits` |
+| F5 `regimeTva` (mentionTvaReduite.js) : marque gardée si la désignation change (seul un changement de taux l'efface) ; comparaison `Number(l.tva)` sur `doc.lignes` (et non sur les montants de `tvaDetails`) → certification 278-0 bis A supprimée à tort. Pas exploitable par un tiers (lignes écrites par les membres, jamais imprimée) | FAIBLE (fiscal) | ouverte |
+
+Sain : RLS par organisation (salarié sorti 0 ligne), REVOKE ALL + GRANT S/I/U, aucune DELETE, `anon` rien ; `sceller` SECURITY DEFINER search_path fixé, non exécutable, numéro sous verrou consultatif par série/année Paris ; contrôles chantier/client/facture/remplacé dans la série (pas d'oracle : même message pour inconnu et étranger) ; découverte par 105 (index unique sur expression ignoré) et 072 ; HTML du PDF échappé, signature validée `data:image`, iframes `sandbox=""` ; `updateItem` en `.select().single()`.

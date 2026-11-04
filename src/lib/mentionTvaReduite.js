@@ -69,7 +69,10 @@ export function tauxReduitsPresents(tvaDetails = {}, { lignes, tauxDefaut } = {}
   const valides = Array.isArray(lignes) ? filterValidLignes(lignes) : null;
   if (valides && valides.some((l) => l.regimeTva === REGIME_BORNE)) {
     const tauxDe = (l) => Number(l.tva !== undefined && l.tva !== null && l.tva !== '' ? l.tva : tauxDefaut);
-    const autre = (t) => valides.some((l) => l.regimeTva !== REGIME_BORNE && tauxDe(l) === t && totalLigne(l) > 0);
+    // Exclue seulement à 5,5 % : une ligne marquée mais passée à un autre taux reste dans la certification (juriste-btp,
+    // 4 nov. 2026 : sinon la certification 10 % disparaissait, avec un risque de rappel à 20 %)
+    const estPoseBorne = (l) => l.regimeTva === REGIME_BORNE && tauxDe(l) === 5.5;
+    const autre = (t) => valides.some((l) => !estPoseBorne(l) && tauxDe(l) === t && totalLigne(l) > 0);
     presents.dix = presents.dix && autre(10);
     presents.cinqCinq = presents.cinqCinq && autre(5.5);
   }

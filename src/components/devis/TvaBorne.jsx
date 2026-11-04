@@ -59,9 +59,13 @@ export default function TvaBorne({ ligne, onUpdate }) {
           <Case libelle="La borne est destinée aux résidents du logement" valeur={reponses.residents} onChange={(v) => repondre('residents', v)} />
           <Choix libelle="Point de charge" options={POINTS_DE_CHARGE} valeur={reponses.pointDeCharge} onChange={(v) => repondre('pointDeCharge', v)} />
           <Case libelle="J’ai l’habilitation et, au-delà de 3,7 kW, la qualification IRVE (décret n° 2017-26, art. 22)" valeur={reponses.installateurQualifie} onChange={(v) => repondre('installateurQualifie', v)} />
+          <Case libelle="Cette ligne ne comprend que la pose (la fourniture est sur une autre ligne)" valeur={reponses.poseSeule} onChange={(v) => repondre('poseSeule', v)} />
           <p role="status" className={`text-sm ${s.taux ? 'text-succes-texte' : 'text-encre-2'}`}>{s.texte}</p>
           <p className="text-sm text-encre-3">{TEXTE_FOURNITURE}</p>
-          {s.taux && !marquee && (
+          {s.taux && !marquee && reponses.poseSeule !== true && (
+            <p className="text-sm text-alerte-texte">Pour appliquer 5,5 %, la ligne ne doit comprendre que la pose : mettez la fourniture sur une autre ligne, puis cochez la case ci-dessus.</p>
+          )}
+          {s.taux && !marquee && reponses.poseSeule === true && (
             <Bouton variante="secondaire" taille="compacte" onClick={() => { onUpdate('tva', s.taux); onUpdate('regimeTva', REGIME_BORNE); }}>
               Appliquer 5,5 % à cette ligne (pose)
             </Bouton>

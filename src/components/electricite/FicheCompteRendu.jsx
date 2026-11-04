@@ -6,6 +6,7 @@ import Champ from '../ui/Champ';
 import Pastille from '../ui/Pastille';
 import { htmlCompteRendu, remettreCompteRendu, donneesFactureCompteRendu } from './actionsCompteRendu';
 import { captureException } from '../../lib/sentry';
+import { TAUX_A_VERIFIER, TEXTE_TAUX_A_VERIFIER } from '../../lib/electricite';
 
 /**
  * Un compte rendu enregistré : le document, son PDF (partage ou téléchargement), la facture tirée du compte rendu
@@ -46,6 +47,7 @@ export default function FicheCompteRendu({
       if (!creee) return; // refus déjà dit (limite, droits, base)
       const lie = await suivreCompteRendu(cr.id, { facture_id: creee.id });
       if (lie === false) showToast?.('La facture est créée, mais son lien avec le compte rendu n’a pas été enregistré.', 'error');
+      else if (TAUX_A_VERIFIER.includes(cr.nature)) showToast?.(TEXTE_TAUX_A_VERIFIER, 'warning');
       onOuvrirFacture(creee);
     } finally {
       setAction(null);

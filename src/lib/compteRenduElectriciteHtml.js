@@ -104,8 +104,8 @@ export function buildCompteRenduElectriciteHtml({ compteRendu: r, entreprise, re
   <h2>Travaux réalisés</h2>
   <div class="bloc">${h(r.travaux)}</div>
 
-  <h2>Autocontrôle réalisé le ${jourFr(jourDe(r.realise_le))} : résultats ci-dessous</h2>
-  ${mesures ? `<table>${mesures}</table>` : '<p>Aucune mesure relevée sur ce compte rendu.</p>'}
+  ${mesures ? `<h2>Autocontrôle réalisé le ${jourFr(jourDe(r.realise_le))} : résultats ci-dessous</h2>
+  <table>${mesures}</table>` : ''}
 
   ${r.reserves ? `<h2>Réserves et points à reprendre</h2><div class="bloc">${h(r.reserves)}</div>` : ''}
   ${r.observations ? `<h2>Observations</h2><div class="bloc">${h(r.observations)}</div>` : ''}

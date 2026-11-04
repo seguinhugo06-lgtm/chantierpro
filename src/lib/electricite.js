@@ -32,8 +32,9 @@ export const CONSUEL_DELAI_JOURS = 20;
 /** Une aide en une phrase (D342-19 ; décret n° 2017-26, art. 23 pour les bornes) : l'artisan décide. */
 export const AIDE_CONSUEL = 'L’attestation Consuel est due notamment pour une installation neuve raccordée au réseau, une '
   + 'installation de production (photovoltaïque) qui modifie l’installation intérieure, une installation entièrement rénovée '
-  + 'après coupure du réseau à la demande du client, et une borne de plus de 36 kW ou en immeuble collectif (code de '
-  + 'l’énergie, art. D342-19). Elle est à envoyer au Consuel au moins 20 jours avant la mise en service.';
+  + 'après mise hors tension par le gestionnaire de réseau à la demande du client (code de l’énergie, art. D342-19), et une '
+  + 'borne de plus de 36 kW ou en immeuble collectif (décret n° 2017-26, art. 23). Elle est à envoyer au Consuel au moins '
+  + '20 jours avant la mise en service.';
 
 /** Date limite d'envoi de la demande au Consuel : mise en service − 20 jours. */
 export const limiteEnvoiConsuel = (miseEnService) => (miseEnService ? ajouterJours(miseEnService, -CONSUEL_DELAI_JOURS) : '');
@@ -72,7 +73,8 @@ export const estFichierConsuel = (doc) => /consuel/i.test(String(doc?.nom || '')
 
 /** L'état Consuel d'un chantier, en une ligne (onglet Électricité). */
 export function etatConsuel({ tache = null, documents = [] } = {}, { aujourdhui = jourLocal() } = {}) {
-  if ((documents || []).some(estFichierConsuel)) return { ton: 'succes', texte: 'Attestation Consuel jointe aux fichiers du chantier.' };
+  // Un nom de fichier ne prouve rien : l'app dit ce qu'elle voit (juriste-btp, 4 nov. 2026)
+  if ((documents || []).some(estFichierConsuel)) return { ton: 'succes', texte: 'Un fichier « Consuel » est joint aux fichiers du chantier.' };
   if (!tache) return { ton: 'neutre', texte: 'Aucun rappel Consuel pour ce chantier.' };
   if (tache.is_done) return { ton: 'info', texte: 'Demande envoyée au Consuel : joignez l’attestation visée quand vous la recevez.' };
   return String(tache.due_date || '') < aujourdhui
@@ -100,13 +102,14 @@ export const MESURES = [
 
 /** Mention imprimée sous la déclaration : ce que le compte rendu n'est pas. */
 export const MENTION_PORTEE = 'Ce compte rendu est établi par l’entreprise qui a réalisé les travaux. Il ne remplace pas '
-  + 'l’attestation visée par le Consuel lorsqu’elle est due (code de l’énergie, art. D342-19), ni le diagnostic de '
-  + 'l’installation intérieure d’électricité réalisé par un diagnostiqueur pour une vente ou une location.';
+  + 'l’attestation visée par le Consuel lorsqu’elle est due (code de l’énergie, art. D342-19), ni l’état de l’installation '
+  + 'intérieure d’électricité établi par un diagnostiqueur pour une vente ou une location.';
 
-/** La déclaration de l'intervenant. */
+/** La déclaration de l'intervenant ; sans mesure saisie, elle ne parle pas d'autocontrôle (juriste-btp, 4 nov. 2026). */
 export function phraseCompteRendu(cr, nomEntreprise) {
-  return `Je soussigné(e) ${cr?.intervenant_nom || ''}, pour ${nomEntreprise || ''}, déclare avoir réalisé le `
-    + `${dateFr(jourDe(cr?.realise_le))} les travaux décrits ci-dessus, puis un autocontrôle dont les résultats sont relevés ci-dessus.`;
+  const debut = `Je soussigné(e) ${cr?.intervenant_nom || ''}, pour ${nomEntreprise || ''}, déclare avoir réalisé le `
+    + `${dateFr(jourDe(cr?.realise_le))} les travaux décrits ci-dessus`;
+  return mesuresImprimees(cr?.mesures).length ? `${debut}, puis un autocontrôle dont les résultats sont relevés ci-dessus.` : `${debut}.`;
 }
 
 /** Les mesures saisies, prêtes à imprimer : [{ libelle, valeur }] (vides exclues). */
@@ -204,7 +207,13 @@ export const POINTS_DE_CHARGE = liste([
 export const LOCAUX = liste([['habitation', 'Local à usage d’habitation'], ['autre', 'Autre local (commerce, bureaux…)']]);
 
 export const TEXTE_FOURNITURE = 'Si la ligne comprend aussi la fourniture de la borne, mettez la fourniture sur une ligne à part : '
-  + 'son taux n’a pas été vérifié (à vérifier au BOFiP), Mallettico n’en suggère aucun.';
+  + 'le 5,5 % de l’art. 278-0 bis, N du CGI vise la pose, l’installation et l’entretien. Le taux de la fourniture reste votre '
+  + 'choix ; Mallettico n’en suggère aucun.';
+
+/** Natures dont le taux par défaut de l'entreprise (souvent 10 %) est à revoir sur la facture tirée du compte rendu. */
+export const TAUX_A_VERIFIER = ['neuf', 'borne'];
+export const TEXTE_TAUX_A_VERIFIER = 'Vérifiez le taux de TVA de la facture : le 10 % ne vaut que pour un logement achevé '
+  + 'depuis plus de deux ans ; pour une borne, voir la ligne de pose.';
 
 /**
  * TVA suggérée pour la pose, l'installation et l'entretien d'une borne (CGI art. 278-0 bis, N, relu au texte le 3 nov.

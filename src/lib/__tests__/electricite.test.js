@@ -231,3 +231,24 @@ describe('Générateur de la page de signature (devisHtmlBuilder) : une pose de 
     expect(buildDevisHtml({ doc: doc(false), client, entreprise: ent })).toContain('CERTIFICATION DU CLIENT');
   });
 });
+
+describe('Corrections de juriste-btp (4 nov. 2026)', () => {
+  it('une ligne marquée « borne » mais au taux de l’entreprise (10 %) garde la certification 10 % (risque de rappel à 20 %)', () => {
+    const ligne = { description: 'Pose borne', quantite: 1, prixUnitaire: 600, regimeTva: REGIME_BORNE };
+    expect(tauxReduitsPresents({ 10: { base: 600, montant: 60 } }, { lignes: [ligne], tauxDefaut: 10 }).dix).toBe(true);
+    expect(tauxReduitsPresents({ 10: { base: 600, montant: 60 } }, { lignes: [{ ...ligne, tva: 10 }], tauxDefaut: 20 }).dix).toBe(true);
+  });
+
+  it('sans mesure saisie, le compte rendu ne parle pas d’autocontrôle', () => {
+    const sans = { intervenant_nom: 'Paul', realise_le: '2026-11-04T10:00:00', mesures: {}, nature: 'depannage', travaux: 'Remplacement d’un disjoncteur', client_nom: 'C', adresse_intervention: 'A' };
+    expect(phraseCompteRendu(sans, 'X')).not.toMatch(/autocontrôle/);
+    expect(buildCompteRenduElectriciteHtml({ compteRendu: sans, entreprise })).not.toMatch(/Autocontrôle réalisé/);
+    const avec = { ...sans, mesures: { terre_ohms: '30' } };
+    expect(phraseCompteRendu(avec, 'X')).toMatch(/autocontrôle dont les résultats/);
+  });
+
+  it('le texte de l’aide Consuel cite le décret des bornes, et un fichier « Consuel » est dit tel quel', () => {
+    expect(AIDE_CONSUEL).toContain('décret n° 2017-26, art. 23');
+    expect(etatConsuel({ documents: [{ nom: 'Consuel.pdf' }] }).texte).toBe('Un fichier « Consuel » est joint aux fichiers du chantier.');
+  });
+});

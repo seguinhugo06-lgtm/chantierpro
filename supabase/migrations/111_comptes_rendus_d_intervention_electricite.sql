@@ -16,9 +16,10 @@
 --   2. numéro attribué par la base, sous verrou, à l'insertion : CRI-AAAA-NNNNN, série par organisation et par année
 --      (Paris), à la suite du plus grand, la proposition de l'app ignorée ; unique ;
 --   3. contenu figé dès l'insertion pour un compte connecté : seuls changent ensuite la facture liée (une facture de la
---      même organisation), l'annulation (une fois, motivée, datée par la base ; « Refaire » crée un compte rendu qui
---      « annule et remplace »), et les liens au client et au chantier quand leur fiche est supprimée (vidés, jamais
---      remplacés) ;
+--      même organisation) et l'annulation (une fois, motivée, datée par la base ; « Refaire » crée un compte rendu qui
+--      « annule et remplace »). Les liens au client, au chantier et au compte rendu remplacé ne bougent plus pour un
+--      compte connecté ; la suppression d'une fiche les vide (action de la clé étrangère, exécutée par le propriétaire de
+--      la table) ; tailles bornées (relecture gardien-securite du 4 nov. 2026, F1 à F3) ;
 --   4. chantier, client, facture et compte rendu remplacé : de la même organisation (contrôlés à l'insertion).
 --   Un membre qui quitte l'équipe : ses comptes rendus passent au propriétaire (105, `tables_rendues_au_depart`
 --   découvre la table : elle porte user_id et organization_id).
@@ -56,11 +57,13 @@ CREATE TABLE IF NOT EXISTS public.comptes_rendus_electricite (
   reserves TEXT,
   observations TEXT,
   prix_ht NUMERIC(10, 2) CHECK (prix_ht IS NULL OR prix_ht >= 0),
-  signature TEXT,
+  signature TEXT CHECK (signature IS NULL OR length(signature) <= 300000),
   annulee_le TIMESTAMPTZ,
   annulation_motif TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT comptes_rendus_tailles CHECK (pg_column_size(mesures) <= 20000 AND length(travaux) <= 20000
+    AND length(coalesce(reserves, '')) <= 20000 AND length(coalesce(observations, '')) <= 20000),
   CONSTRAINT comptes_rendus_annulation_motivee CHECK (annulee_le IS NULL OR length(btrim(coalesce(annulation_motif, ''))) > 0)
 );
 
@@ -166,18 +169,9 @@ BEGIN
   IF current_user NOT IN ('authenticated', 'anon') THEN
     RETURN NEW;
   END IF;
-  NEW := jsonb_populate_record(NEW, to_jsonb(OLD)
-    - ARRAY['facture_id', 'client_id', 'chantier_id', 'remplace_id', 'annulee_le', 'annulation_motif', 'updated_at']);
-  -- Client, chantier, compte rendu remplacé : seulement vidés, jamais remplacés
-  IF NEW.client_id IS NOT NULL AND NEW.client_id IS DISTINCT FROM OLD.client_id THEN
-    NEW.client_id := OLD.client_id;
-  END IF;
-  IF NEW.chantier_id IS NOT NULL AND NEW.chantier_id IS DISTINCT FROM OLD.chantier_id THEN
-    NEW.chantier_id := OLD.chantier_id;
-  END IF;
-  IF NEW.remplace_id IS NOT NULL AND NEW.remplace_id IS DISTINCT FROM OLD.remplace_id THEN
-    NEW.remplace_id := OLD.remplace_id;
-  END IF;
+  -- Tout reprend sa valeur (client, chantier et compte rendu remplacé compris : F1), sauf la facture et l'annulation
+  NEW := jsonb_populate_record(NEW, to_jsonb(OLD) - ARRAY['facture_id', 'annulee_le', 'annulation_motif']);
+  NEW.updated_at := now();
   -- L'annulation : une fois, définitive, à la date du jour (la date envoyée est ignorée)
   IF OLD.annulee_le IS NOT NULL THEN
     NEW.annulee_le := OLD.annulee_le;

@@ -131,6 +131,7 @@ export default function OngletElectricite({
 
       {saisie && (
         <SaisieCompteRendu chantier={chantier} client={client} entreprise={entreprise} remplace={saisie.remplace}
+          intervenantDefaut={entreprise?.nomEntrepreneur || comptesRendus.find((r) => r.intervenant_nom)?.intervenant_nom || ''}
           onEnregistrer={enregistrer} onFermer={() => setSaisie(null)} />
       )}
       {fiche && !saisie && (

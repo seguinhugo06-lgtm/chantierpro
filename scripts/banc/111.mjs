@@ -106,6 +106,23 @@ export async function verifier({ db, q, en, commeAnonyme, verifier }) {
   const reste = (await q('SELECT chantier_id, travaux FROM comptes_rendus_electricite WHERE id = $1', [t.id])).rows[0];
   verifier(reste.chantier_id === null && reste.travaux === 'Remplacement du tableau', '111 : le chantier supprimé laisse le compte rendu');
 
+  // 9 bis. Relecture gardien-securite (F1, F2) : un compte ne vide pas les liens ; la suppression d'une fiche par un
+  //        compte connecté les vide quand même (action de la clé étrangère) ; updated_at posé par la base
+  const remplacant = (await q(`SELECT id FROM comptes_rendus_electricite WHERE remplace_id = $1`, [b.id])).rows[0].id;
+  await en(SOLO, () => q(`UPDATE comptes_rendus_electricite SET remplace_id = NULL, client_id = NULL, chantier_id = NULL, updated_at = '2000-01-01' WHERE id = $1`, [remplacant]));
+  const liens = (await q(`SELECT remplace_id, client_id, chantier_id, updated_at FROM comptes_rendus_electricite WHERE remplace_id = $1`, [b.id])).rows[0];
+  verifier(liens?.remplace_id === b.id && liens.client_id === clientSolo && liens.chantier_id === chantierSolo && new Date(liens.updated_at).getFullYear() >= 2026,
+    `111 : un compte ne vide ni le remplacé, ni le client, ni le chantier ; updated_at posé par la base (${JSON.stringify(liens)})`);
+  const chTemp2 = (await q(`INSERT INTO chantiers (user_id, organization_id, nom) VALUES ($1, $2, 'Temp bis 111') RETURNING id`, [SOLO, ORG_SOLO])).rows[0].id;
+  const t2 = await creer({ chantier: chTemp2 });
+  const supChantier = await refus(() => en(SOLO, () => q('DELETE FROM chantiers WHERE id = $1', [chTemp2])));
+  const vide = (await q('SELECT chantier_id FROM comptes_rendus_electricite WHERE id = $1', [t2.id])).rows[0].chantier_id;
+  const chantierParti = (await q('SELECT count(*)::int AS n FROM chantiers WHERE id = $1', [chTemp2])).rows[0].n;
+  verifier(supChantier === false && chantierParti === 0 && vide === null, `111 : un compte connecté supprime son chantier, le lien se vide (${supChantier || 'ok'}, ${chantierParti}, ${vide})`);
+  const tropGros = await refus(() => en(SOLO, () => q(`INSERT INTO comptes_rendus_electricite (user_id, realise_le, intervenant_nom, client_nom,
+    adresse_intervention, nature, travaux) VALUES ($1, now(), 'I', 'C', 'A', 'autre', repeat('x', 20001))`, [SOLO])));
+  verifier(!!tropGros, '111 : la taille des textes est bornée (F3)');
+
   // 10. Départ d'un membre (105) : ses comptes rendus passent au propriétaire ; la table est découverte
   const decouverte = (await q(`SELECT count(*)::int AS n FROM public.tables_rendues_au_depart() t WHERE t = 'comptes_rendus_electricite'`)).rows[0].n;
   const ex = '11100000-0000-4000-8000-0000000000ee';

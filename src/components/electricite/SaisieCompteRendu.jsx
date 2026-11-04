@@ -44,13 +44,13 @@ function Section({ titre, children }) {
  * Saisie d'un compte rendu d'intervention et d'autocontrôle, en plein écran au téléphone, puis aperçu avant
  * l'enregistrement (après lequel la base le numérote et le fige). `remplace` : compte rendu annulé à refaire.
  */
-export default function SaisieCompteRendu({ chantier, client, entreprise, remplace = null, onEnregistrer, onFermer }) {
+export default function SaisieCompteRendu({ chantier, client, entreprise, remplace = null, intervenantDefaut = '', onEnregistrer, onFermer }) {
   const [form, setForm] = useState(() => {
     if (remplace) {
       const { id, numero, annulee_le, annulation_motif, created_at, user_id, facture_id, emetteur, ...reste } = remplace; // eslint-disable-line no-unused-vars
       return { ...reste, remplace_id: remplace.id };
     }
-    return nouveauCompteRendu({ chantier, client, entreprise });
+    return nouveauCompteRendu({ chantier, client, entreprise, intervenant: intervenantDefaut });
   });
   const [etape, setEtape] = useState('saisie');
   const [erreurs, setErreurs] = useState([]);
