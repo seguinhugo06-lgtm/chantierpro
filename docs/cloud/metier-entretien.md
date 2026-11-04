@@ -148,7 +148,7 @@ Non appliqué (à décider) : le devis préalable (point « à décider » 1).
 - Suppression d'un client : policy DELETE absente du banc (voir ci-dessus).
 - `articles-btp-suite.js:315` garde « Entretien annuel PAC » (bibliothèque d'articles, hors des corrections demandées) : à soumettre au juriste.
 - `figer_ramonage` (m1 côté ramonage) : migration à part, inchangé.
-- Push : `git push origin cloud/metier-entretien` a été **refusé** dans cette session (permission). Les commits sont sur la branche locale ; voir la fin du rapport.
+- Push : `git push origin cloud/metier-entretien` a été **refusé** dans cette session (permission). Les commits sont poussés sur la branche de la session, **`claude/metier-entretien-i7mzce`** (même historique) : la session locale les récupère depuis là, ou pousse elle-même sur `cloud/metier-entretien`.
 
 ### Décisions d'Hugo
 
@@ -184,4 +184,4 @@ Paramètres › Entretien (obligation chaudière seulement ; appareils de mesure
 7. 113 : `figer_entretien` aligné sur 111 ; banc 665 vérifications vertes.
 8. Seconde relecture : juriste « applicable », gardien « 113 applicable, fonction déployable ».
 9. Vérification complète verte sur `ed21da3`, le dernier commit de code.
-10. À vérifier en local : `entreprise.created_at` en production, suppression d'un client (pas de policy DELETE au banc) ; push refusé ici, commits à pousser.
+10. À vérifier en local : `entreprise.created_at` en production, suppression d'un client (pas de policy DELETE au banc) ; commits sur `claude/metier-entretien-i7mzce` (push vers `cloud/metier-entretien` refusé).
