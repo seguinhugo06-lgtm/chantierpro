@@ -7,10 +7,20 @@
 --   get_facture_for_payment (106) ne renvoie pas sa forme juridique (règle unique : estFranchiseTva, src/lib/franchiseTva.js).
 -- Effet : la fonction renvoie aussi entreprise.forme_juridique (information déjà imprimée sur la facture remise au
 --   client, et déjà renvoyée par get_devis_for_signature). Elle retire aussi des lignes le prix d'achat de l'artisan
---   (clés prixAchat et prix_achat), que 106 renvoyait à tout visiteur muni du lien. La même expression est à reprendre
---   dans get_devis_for_signature (migration 110 de cloud/metier-qualifications, qui ne filtre pas encore, ni dans
---   lignes ni dans sections[].lignes). Rien d'autre ne change : même corps que 106, mêmes droits
+--   (clés prixAchat et prix_achat), que 106 renvoyait à tout visiteur muni du lien, sous les deux formes que peut avoir
+--   la colonne lignes : un tableau JSON, ou un texte JSON (l'app enregistre JSON.stringify(lignes) :
+--   src/hooks/useSupabaseSync.js ; la colonne jsonb reçoit alors une chaîne). Le texte est décodé, filtré comme le
+--   tableau, puis réécrit en texte : la réponse garde la forme enregistrée, que l'app relit déjà sous les deux formes
+--   (la page de paiement, elle, ne lit pas les lignes). Un texte illisible ou qui ne contient pas un tableau, et toute
+--   autre valeur qu'un tableau, ressortent en tableau vide, dans la même forme : rien de ce qui ne peut être filtré ne
+--   sort. Une facture sans lignes renvoie toujours null. Rien d'autre ne change : même corps que 106, mêmes droits
 --   (CREATE OR REPLACE garde les droits d'exécution).
+-- Correction du 4 nov. 2026 (contrôle local) : la première version de 114 ne filtrait que le tableau ; le texte JSON,
+--   forme écrite par l'app, sortait tel quel, prix d'achat compris.
+-- Hors de cette migration : get_devis_for_signature renvoie toujours lignes et sections telles qu'enregistrées (106 sur
+--   main et sur cette branche). La 110 de cloud/metier-qualifications la réécrit avec sa propre fonction
+--   lignes_pour_le_client (texte décodé puis rendu en tableau, marge retirée, sections comprises) : deux filtres à
+--   rapprocher quand les deux branches seront fusionnées.
 -- Attention : toute migration qui réécrit à nouveau get_facture_for_payment repart du corps de 114 (sinon la forme
 --   juridique disparaît ; relecture gardien-securite du 4 nov. 2026).
 --
@@ -19,8 +29,9 @@
 --   → true
 --   SELECT has_function_privilege('anon', 'public.get_facture_for_payment(text)', 'execute');
 --   → true (inchangé)
---   SELECT position('prixAchat' in prosrc) > 0 AS prix_achat_filtre FROM pg_proc WHERE proname = 'get_facture_for_payment';
---   → true
+--   SELECT position('prixAchat' in prosrc) > 0 AND position('#>> ''{}''' in prosrc) > 0 AS prix_achat_filtre_deux_formes
+--   FROM pg_proc WHERE proname = 'get_facture_for_payment';
+--   → true (filtre présent, et décodage de la forme texte présent)
 -- ============================================================
 
 CREATE OR REPLACE FUNCTION public.get_facture_for_payment(p_token text)
@@ -42,6 +53,8 @@ DECLARE
   v_serveur BOOLEAN := false;
   v_org UUID;
   v_beneficiaire UUID;
+  v_lignes JSONB;
+  v_lignes_texte BOOLEAN := false;
 BEGIN
   -- Rôle de l'appelant, sous ses deux formes (claims complets, ou ancien réglage `request.jwt.claim.role`)
   v_serveur := COALESCE(
@@ -122,6 +135,30 @@ BEGIN
   FROM stripe_config
   WHERE user_id = v_beneficiaire;
 
+  -- 114 : les lignes sans le prix d'achat de l'artisan (prixAchat, prix_achat) : un visiteur muni du lien ne doit pas
+  --   lire le coût ni la marge. Deux formes enregistrées : tableau JSON, ou texte JSON (JSON.stringify de l'app), décodé
+  --   puis réécrit en texte après le filtre. Un texte illisible (le décodage ne fait jamais échouer la fonction), ou tout
+  --   ce qui n'est pas un tableau, ressort en tableau vide. La page ne lit pas les lignes.
+  v_lignes := v_facture.lignes;
+  IF jsonb_typeof(v_lignes) = 'string' THEN
+    v_lignes_texte := true;
+    BEGIN
+      v_lignes := (v_lignes #>> '{}')::jsonb;
+    EXCEPTION WHEN others THEN
+      v_lignes := '[]'::jsonb;
+    END;
+  END IF;
+  IF v_lignes IS NOT NULL THEN
+    v_lignes := CASE WHEN jsonb_typeof(v_lignes) = 'array' THEN (
+        SELECT COALESCE(jsonb_agg(CASE WHEN jsonb_typeof(l.v) = 'object' THEN l.v - 'prixAchat' - 'prix_achat' ELSE l.v END
+                                  ORDER BY l.n), '[]'::jsonb)
+        FROM jsonb_array_elements(v_lignes) WITH ORDINALITY AS l(v, n)
+      ) ELSE '[]'::jsonb END;
+    IF v_lignes_texte THEN
+      v_lignes := to_jsonb(v_lignes::text);
+    END IF;
+  END IF;
+
   RETURN jsonb_build_object(
     'facture', jsonb_build_object(
       'id', CASE WHEN v_serveur THEN v_facture.id END,
@@ -141,13 +178,8 @@ BEGIN
       'payment_status', v_facture.payment_status,
       'payment_completed_at', v_facture.payment_completed_at,
       'stripe_session_id', CASE WHEN v_serveur THEN v_facture.stripe_session_id END,
-      -- 114 : les lignes sans le prix d'achat de l'artisan (prixAchat, prix_achat) : un visiteur muni du lien ne doit pas
-      --   lire le coût ni la marge. Expression à reprendre telle quelle dans get_devis_for_signature (110). La page ne lit pas les lignes.
-      'lignes', CASE WHEN jsonb_typeof(v_facture.lignes) = 'array' THEN (
-        SELECT COALESCE(jsonb_agg(CASE WHEN jsonb_typeof(l.v) = 'object' THEN l.v - 'prixAchat' - 'prix_achat' ELSE l.v END
-                                  ORDER BY l.n), '[]'::jsonb)
-        FROM jsonb_array_elements(v_facture.lignes) WITH ORDINALITY AS l(v, n)
-      ) ELSE v_facture.lignes END,
+      -- 114 : sans le prix d'achat, sous la forme enregistrée (calculées plus haut)
+      'lignes', v_lignes,
       'user_id', CASE WHEN v_serveur THEN v_facture.user_id END,
       'beneficiaire_id', CASE WHEN v_serveur THEN v_beneficiaire END
     ),
