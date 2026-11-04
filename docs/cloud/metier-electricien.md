@@ -144,3 +144,96 @@ Tous dans `src/lib/electricite.js`, `src/lib/compteRenduElectriciteHtml.js` et `
 8. Relectures : critique-produit (cadrage réduit), juriste-btp (2 points bloquants corrigés), gardien-securite (applicable).
 9. Qualification IRVE : point d'accroche seulement (`cloud/metier-qualifications` absente).
 10. Tes 5 décisions sont au § 6 ; restent à relire au texte : D342-19 et la TVA de la fourniture.
+
+## Corrections de la relecture du 4 nov.
+
+Session cloud de correction, le 4 nov. au soir. `origin/main` (à `4da7322`) fusionné d'abord dans la branche (`ee5f6af`) : un seul conflit, `src/services/entrepriseService.js`, résolu en gardant les deux clés (`ramonageConseils` de main et `electriciteActif`). Commits : `f7677cf` (code, migration, parcours), `073a768` (avis du juriste, documents, parcours des deux générateurs), `f3d2e19` (texte corrigé par le juriste, banc).
+
+### Défauts de la relecture
+
+| # | Point | Fait | Commit, ou pourquoi non |
+|---|---|---|---|
+| 1 | Vérification complète rouge sur `cee017c` | Rejouée sur le commit final, machine au repos : voir « Preuves » | — |
+| 2 | Aucun parcours `reel: true` | 3 parcours en base simulée : numéro donné par la base et repris à l'écran, relecture, facture puis lien, annulation, tâche Consuel ; droits (chef de chantier, lecture seule, contre-essai patron) ; deux générateurs | `f7677cf`, `073a768` |
+| 3 | Prix visible sans `canViewPrices` | `voitPrix` passé à l'onglet puis à la saisie ; sans ce droit, champ masqué et prix non recopié par « Refaire » | `f7677cf`. **Pas fait dans `SaisieRamonage`** (même défaut sur main, hors de cette branche ; il reprend aussi les prix des tarifs et du dernier passage : à traiter à part) |
+| 4 | Annuler, Refaire, « J'ai envoyé la demande » sans droit | Annuler et Refaire sous `peutModifier` ; « J'ai envoyé la demande » sous `canPerform('memo', 'edit')` ; côté base, 111 refuse l'écriture d'un membre `readonly` | `f7677cf` |
+| 5 | Certification retirée pour une pose de borne, sans décision | Relu par juriste-btp au texte (local) : « confirmé ». **Code laissé tel quel, en attente de la décision n° 6 d'Hugo** ; `electricien.md` l. 109 dit maintenant cet état | `073a768`. Si Hugo refuse : retirer le bloc `REGIME_BORNE` de `tauxReduitsPresents` (`mentionTvaReduite.js`) |
+| 6 | Avis du juriste non versé | Avis versé : `docs/metiers/avis-juriste-2026-11-04-electricien.md` (les 7 points, sources et citations de la relecture locale) ; les 3 « à corriger » appliqués mot pour mot (vérifié par juriste-btp) | `f7677cf`, `073a768` |
+| 7 | Décision n° 3 mal posée ; rappel absent de Paramètres › Électricité | Décision reposée ci-dessous ; rappel ajouté, avec l'exception du dépannage urgent (L221-10, 4°) demandée par juriste-btp | `f7677cf`, `f3d2e19` |
+| 8 | Accroche IRVE incompatible avec « Mes qualifications » | `qualificationIrve` lit la forme de la migration 110 (`type: 'irve'`, intitulé, organisme, numéro, `fin`, `imprimer`), juge la validité à la date de l'intervention, et la ligne imprimée est figée dans `emetteur` ; le PDF ne lit plus la fiche du jour. Règles **recopiées** de `qualifications.js` (absent de main) : à la fusion, importer `raisonNonImprimee` et `ligneImprimee` à la place | `f7677cf` |
+| 9 | Envoi au client absent | **Non fait** : c'est la décision n° 8 d'Hugo | — |
+| 10 | Rappel Consuel par tâche au lieu de `rappelsDus` | **Non changé** : écart à la consigne, à valider (décision n° 7) | — |
+| 11 | Titre « … et d'autocontrôle » sans mesure | Sans mesure : « Compte rendu d'intervention » (titre, `<title>`, nom de partage) | `f7677cf` |
+| 12 | « bornes » au pluriel, bornes d'éclairage | Pluriel reconnu ; borne d'éclairage, lumineuse, de jardin… écartée, sauf si la ligne parle de recharge ; tests | `f7677cf` |
+| 13 | Photovoltaïque sans avertissement de taux | `photovoltaique` ajouté à `TAUX_A_VERIFIER` ; texte complété, relu « exact » par juriste-btp (sur pièces) | `f7677cf` |
+| 14 | Générateur de DevisPage non vérifié | Parcours : aperçu (DevisPage) et page de signature (devisHtmlBuilder) d'un devis avec pose marquée à 5,5 % et ligne à 10 % ; contre-essai sans la marque | `073a768` |
+| 15 | Boutons de TVA globale gardent la marque | La marque est retirée par ces boutons ; le titre du volet suit le taux réel de la ligne | `f7677cf` |
+| 16 | Tailles de 111, colonne `signature` | Tous les champs bornés ; colonne `signature` retirée (et de l'envoi) | `f7677cf` |
+| 17 | Mémoire du gardien | F1 à F3 « corrigée », F4 et F6 corrigées dans 111, F5 en partie ; note pour la fusion avec metier-entretien (pas de fusion faite ici) | `073a768` |
+| 18 | « décision d'Hugo n° 22 » | Remplacé par D-36 | `f7677cf` |
+
+Points du juriste (à corriger 1 à 3) : appliqués mot pour mot, tests et parcours mis à jour. Points du gardien (1 à 3) : appliqués à 111 (tailles, refus « Organisation interdite » avant le verrou, `readonly` sans écriture). **Pas reportés dans 104 ni 113** (hors de cette branche).
+
+### Preuves
+
+| Contrôle | Résultat |
+|---|---|
+| `src/lib/__tests__/electricite.test.js` | 31 tests verts. Contre-essai : avec l'ancien `estLigneBorne`, l'ancien `TAUX_A_VERIFIER`, l'ancien générateur et l'ancienne IRVE, 5 tests échouent |
+| `npm run banc:migrations` | vert, 674 vérifications. Contre-essai : contre l'ancienne 111, 4 échouent (tailles, colonne `signature`, `readonly`, oracle) |
+| `npm run parcours -- électricien` | 4 parcours verts (démo à 375 px ; base : numéro, facture, annulation, Consuel ; droits ; deux générateurs). Contre-essai : sans `voitPrix` ni la condition sur « Annuler », le parcours des droits échoue (« la saisie ne montre aucun prix au chef de chantier ») |
+| `npm run verifier` (standard) sur `073a768` | vert : 1 325 tests, lint 0 erreur, smoke, build |
+| `npm run verifier -- --complet` sur `f3d2e19` | en cours au moment de ce commit : résultat dans le commit suivant |
+
+### Relectures de cette session
+
+- **juriste-btp** : Légifrance injoignable depuis la session, avis sur pièces. Rappel de Paramètres › Électricité : corrigé (exception du dépannage urgent, L221-10, 4°) ; `TEXTE_TAUX_A_VERIFIER` et titre sans mesure : exacts ; textes de l'avis du 4 nov. : recopiés mot pour mot. Reste à confirmer au texte : L221-10 et l'arrêté du 24 janv. 2017.
+- **gardien-securite** : rien de bloquant ; banc vert. Son trou de banc (un `readonly` qui n'envoie pas d'organisation) est comblé (`f3d2e19`). Deux points faibles laissés :
+  - un `readonly` qui tente une écriture lit « Cet élément n'existe plus ou ne vous appartient pas » (bouton masqué : sans effet) ;
+  - la base ne distingue pas l'ouvrier du chef de chantier : un ouvrier peut annuler un compte rendu par la console, et un chef de chantier lit `prix_ht` par un `select('*')`. Même règle que les autres tables (tâche `org-droits`).
+
+### Décisions d'Hugo (non appliquées)
+
+1. Imprimer ou non une mention propre à la borne : « TVA à 5,5 % : pose d'une infrastructure de recharge dans un local à usage d'habitation, destinée aux résidents (CGI art. 278-0 bis, N) ».
+2. Garder la case obligatoire « la ligne ne comprend que la pose » (recommandé par le juriste, par prudence), ou un simple avertissement.
+3. **(reposée)** Facture tirée d'un compte rendu de dépannage, sans devis. L'arrêté du 24 janv. 2017 impose un devis détaillé avant **tout** dépannage chez un particulier, **sans seuil** (metier-btp.md § 2, D-30) ; hors établissement, aucun paiement avant sept jours (L221-10), sauf dépannage urgent demandé. Bloquer, avertir (recommandé par le juriste), ou laisser avec le rappel de Paramètres ? Attention : le texte proposé renvoie à « Dépannage express », écran qui n'existe pas sur main (`cloud/metier-depannage`) ; sinon écrire « depuis « Devis » ».
+4. Garder le compte rendu éteint tant que toi ou un testeur n'a pas dit que vous remettriez ce papier, et sous quelle forme.
+5. Signature tracée au doigt : la colonne a été **retirée** de 111 ; elle reviendra avec son écran si tu la veux.
+6. Retirer la certification du client pour une pose de borne à 5,5 % : relu « juste » par le juriste au texte, mais c'est à toi de trancher (aujourd'hui le code la retire).
+7. Rappel Consuel par une tâche datée, au lieu du moteur `rappelsDus` demandé par la consigne.
+8. Envoyer le compte rendu par e-mail comme l'attestation de ramonage, ou s'en tenir au partage depuis le téléphone.
+9. (à la fusion avec metier-qualifications) Le choix « Électricien » à l'inscription allume-t-il le réglage Électricité ? Seulement une fois 111 en production.
+10. (juriste) Ajouter l'exception du dépannage urgent au rappel de Paramètres › Ramonage aussi, pour garder les deux écrans alignés ?
+
+### Textes nouveaux soumis au juriste
+
+- Paramètres › Électricité : le rappel (devis obligatoire, sept jours, exception d'urgence) — corrigé par lui, sur pièces.
+- `TEXTE_TAUX_A_VERIFIER` (photovoltaïque) — exact, sur pièces.
+- `TITRE_SANS_MESURE` — exact.
+
+### Ce qui reste
+
+- Relire au texte (réseau à ouvrir : legifrance.gouv.fr) L221-10 et l'arrêté du 24 janv. 2017, pour le rappel de Paramètres › Électricité.
+- `SaisieRamonage` : même défaut de prix (point 3), sur main.
+- Gardes du gardien (tailles, oracle, `readonly`) à reporter dans 104 et 113.
+- À la fusion avec metier-qualifications : remplacer la copie des règles IRVE par l'import de `qualifications.js`, et pré-cocher la case « qualification » du volet borne.
+- Libellés « HT » de la saisie sans `estFranchiseTva` (conflit signalé avec franchise-suite) : non traité ici.
+- Migration 111 à inscrire dans `docs/etat-production.md` à la livraison (fichier commun, non touché).
+
+### Risques
+
+- La copie des règles IRVE peut diverger de `qualifications.js` d'ici la fusion.
+- La base laisse un ouvrier annuler un compte rendu hors de l'écran (voir gardien).
+- Le retrait de la certification (décision n° 6) est dans le code : ne pas livrer avant la décision.
+
+### Résumé (10 lignes)
+
+1. main fusionnée ; 18 points de la relecture traités : 15 corrigés, 3 laissés à tes décisions (n° 6, 7 et 8).
+2. Droits : prix masqué sans le droit, Annuler, Refaire et « J'ai envoyé la demande » sous droit ; `readonly` refusé en base.
+3. Textes Consuel du juriste au texte : « mise sous tension », « à faire parvenir », arrêté du 17 oct. 1973.
+4. Qualification de l'installateur : code de l'énergie D. 353-2 (l'art. 22 du décret 2017-26 est abrogé).
+5. IRVE : validité à la date du document, case « imprimer » respectée, ligne figée dans le compte rendu.
+6. Migration 111 : tout borné, plus de colonne signature, plus d'oracle ; banc vert (674), contre-essai rouge.
+7. 3 parcours en base simulée et un parcours des deux générateurs, avec contre-essais.
+8. Avis du juriste versé dans `docs/metiers/` ; metier-btp.md et electricien.md alignés.
+9. Vérification complète sur le commit final : voir « Preuves ».
+10. Tes 10 décisions sont listées ci-dessus ; la n° 3 est reposée avec la règle exacte (devis obligatoire, sans seuil).
