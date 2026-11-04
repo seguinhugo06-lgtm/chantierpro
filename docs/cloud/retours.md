@@ -248,7 +248,22 @@ Session cloud du 4 nov. 2026, branche `cloud/retours`. Rien sur `main`, aucune m
 - **critique-produit** : réglage des conseils, **garder tel quel**. Statut direct, **simplifier** : retirer l'entrée « Changer le statut » du menu « ⋯ » de la fiche (doublon de la pastille) et « Refusé » sur un brouillon de devis (un client ne refuse pas ce qu'il n'a pas reçu). Non appliqué (hors consigne) : à décider par Hugo.
 
 ### Vérifications
-`npm run verifier -- --complet` en cours sur `2459bd4` (dernier commit de code, fusion de `main` comprise) : résultat recopié ici à la fin.
+- `npm ci` : OK. Chrome (puppeteer) fonctionne ici.
+- `npm run verifier -- --complet` sur `2459bd4`, mot pour mot. Ce commit contient tout le code de cette session et la fusion de `main` ; les commits suivants ne touchent que ce rapport.
+
+```
+Vérification « complet » de 2459bd4
+
+  ✓ Tests (46.9 s) — 1237 passed (1237)
+  ✓ Lint (0 erreur) (6.1 s) — 241 problems (0 errors, 241 warnings)
+  ✓ Smoke (30.3 s)
+  ✓ Build (30.4 s)
+  ✓ Banc de migrations (5.8 s)
+  ✓ Parcours (navigateur) (2287.8 s)
+  ✓ Audit d’interface (385.6 s)
+
+✓ Tout est vert — niveau « complet ».
+```
 
 ### Ce qui reste
 - Décision 5 d'Hugo (ancien champ libre « RM »), inchangée.
@@ -274,4 +289,4 @@ Session cloud du 4 nov. 2026, branche `cloud/retours`. Rien sur `main`, aucune m
 6. Panneau d'une tâche couvert par la carte « Installer » : corrigé. Grille semaine : rien à corriger.
 7. Contre-essais rejoués : registre (1 parcours, 4 tests), statut direct (3 parcours sur 4).
 8. Ancien champ « RM » non touché (décision 5).
-9. Vérification complète : en cours au moment de ce commit.
+9. `npm run verifier -- --complet` vert sur `2459bd4` (tout le code, fusion de `main` comprise).
