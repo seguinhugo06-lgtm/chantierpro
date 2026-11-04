@@ -37,6 +37,7 @@ import { formatMoney } from '../../lib/formatters';
 import { DEFAULT_DEVIS_STEPS, DEFAULT_FACTURE_STEPS } from '../../lib/scenariosRelance';
 import { cn } from '../../lib/utils';
 import Pastille from '../ui/Pastille';
+import { estFranchiseTva } from '../../lib/franchiseTva';
 
 // ============ DEFAULT SCENARIOS ============
 // Dans src/lib/scenariosRelance.js (lus aussi par le site public sans charger cet écran) ; réexportés ici.
@@ -501,7 +502,18 @@ function ScenarioCard({
 /**
  * Variables reference card
  */
-function VariablesCard() {
+// Franchise en base de TVA (art. 293 B du CGI, estFranchiseTva) : descriptions sans « TTC » (D-31). {{montant_ttc}} reste lue
+// par les anciens modèles : elle vaut {{montant}}.
+const DESCRIPTIONS_FRANCHISE = {
+  '{{montant_ttc}}': 'Comme {{montant}} (anciens modèles)',
+  '{{total_facture}}': 'Total de la facture',
+};
+
+export function variablesDisponibles(franchise) {
+  return franchise ? AVAILABLE_VARIABLES.map((v) => ({ ...v, description: DESCRIPTIONS_FRANCHISE[v.key] || v.description })) : AVAILABLE_VARIABLES;
+}
+
+function VariablesCard({ franchise = false }) {
   const [expanded, setExpanded] = useState(true);
   const textPrimary = 'text-encre';
   const textMuted = 'text-encre-3';
@@ -536,7 +548,7 @@ function VariablesCard() {
 
       {expanded && (
         <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
-          {AVAILABLE_VARIABLES.map(v => (
+          {variablesDisponibles(franchise).map(v => (
             <div
               key={v.key}
               className={cn(
@@ -895,7 +907,7 @@ export default function RelanceConfigTab({
       </div>
 
       {/* Variables reference */}
-      <VariablesCard isDark={isDark} couleur={couleur} />
+      <VariablesCard franchise={estFranchiseTva(entreprise)} />
 
       {/* Exclusions */}
       {exclusions && exclusions.length > 0 && (

@@ -111,6 +111,15 @@ export function libellesColonnesPrix(isMicro = false) {
  * En franchise (isMicro) : ni « HT » ni « TTC » — « Total avant remise / Total après remise » avec une remise, et
  * sans remise le seul total final (« Total HT » serait le même montant), comme la fiche de devis à l'écran.
  */
+/** Libellé du dernier total d'une pièce imprimée (D-31 (1)) : « Total TTC » hors franchise ; en franchise, « Net à payer
+ * (hors taxes et toutes taxes comprises) » sur une facture, « Total (hors taxes et toutes taxes comprises) » sur un devis,
+ * « Total de l’avoir » sur un avoir. Partagé par les générateurs et le document imprimé du portail client. */
+export function libelleTotalImprime(doc, isMicro = false) {
+  if (!isMicro) return 'Total TTC';
+  if (doc?.facture_type === 'avoir') return 'Total de l’avoir';
+  return doc?.type === 'facture' ? 'Net à payer (hors taxes et toutes taxes comprises)' : 'Total (hors taxes et toutes taxes comprises)';
+}
+
 export function lignesTotauxHtml(doc, { isMicro = false, tauxDefaut = 10 } = {}) {
   const t = totauxDocument(doc, { tauxDefaut, isMicro });
   const ligne = (libelle, valeur, style = '') => `<div class="row sub"${style ? ` style="${style}"` : ''}><span>${libelle}</span><span>${valeur}</span></div>`;
@@ -134,9 +143,7 @@ export function lignesTotauxHtml(doc, { isMicro = false, tauxDefaut = 10 } = {})
   // (arrêté n° 83-50/A du 3 oct. 1983, art. 3) ; « la somme globale à payer hors taxes et toutes taxes comprises »
   // (arrêté du 24 janv. 2017, art. 4, I). La mention 293 B, juste en dessous, précise le taux. Décision d'Hugo du
   // 3 nov. 2026 (avis juriste-btp du même jour). L'avoir ne change pas. Les écrans restent sans « HT » ni « TTC ».
-  const libelleTotal = !isMicro ? 'Total TTC'
-    : doc?.facture_type === 'avoir' ? 'Total de l’avoir'
-      : doc?.type === 'facture' ? 'Net à payer (hors taxes et toutes taxes comprises)' : 'Total (hors taxes et toutes taxes comprises)';
+  const libelleTotal = libelleTotalImprime(doc, isMicro);
   html.push(`<div class="row total"><span>${libelleTotal}</span><span>${euros(t.totalTTC)}</span></div>`);
   return html.join('\n    ');
 }

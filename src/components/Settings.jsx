@@ -1104,7 +1104,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               <div className="flex flex-wrap items-center gap-2 text-sm">
                 <span className="px-3 py-1.5 rounded-lg font-semibold bg-encre text-surface">Marge réelle</span>
                 <span className="text-lg font-bold text-encre-3" aria-hidden="true">=</span>
-                <span className="px-3 py-1.5 rounded-lg font-medium bg-surface text-encre border border-bord">CA HT</span>
+                <span className="px-3 py-1.5 rounded-lg font-medium bg-surface text-encre border border-bord">{franchiseTva ? 'Chiffre d’affaires' : 'CA HT'}</span>
                 <span className="text-lg font-bold text-encre-3" aria-hidden="true">+</span>
                 <span className="px-3 py-1.5 rounded-lg font-medium bg-surface text-encre border border-bord">Ajustements de revenus</span>
               </div>

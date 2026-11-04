@@ -29,6 +29,7 @@ export default function SnapshotViewer({
   onRestore,
   onClose,
   onCompare,
+  franchise = false, // franchise en base de TVA appliquée au document (franchiseAppliquee) : « Total » sans « HT » (D-31)
 }) {
   const textPrimary = 'text-encre';
   const textSecondary = 'text-encre-2';
@@ -123,7 +124,7 @@ export default function SnapshotViewer({
                 </tbody>
                 <tfoot>
                   <tr className={`border-t-2 ${borderColor}`}>
-                    <td colSpan={3} className={`px-3 py-2 text-right font-medium ${textSecondary}`}>Total HT</td>
+                    <td colSpan={3} className={`px-3 py-2 text-right font-medium ${textSecondary}`}>{franchise ? 'Total' : 'Total HT'}</td>
                     <td className={`px-3 py-2 text-right font-bold ${textPrimary}`}>{fmt(totalHt)}</td>
                   </tr>
                 </tfoot>
