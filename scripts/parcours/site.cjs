@@ -543,7 +543,7 @@ module.exports = [
         const a = `à ${largeur} px`;
         const auBureau = largeur >= 1024;
 
-        // ── Métiers : 17 pastilles, Électricité d'abord
+        // ── Métiers : 20 pastilles, Électricité d'abord
         await page.evaluate(() => document.querySelector('#metiers')?.scrollIntoView());
         await attendre(800);
         const puces = await page.evaluate(() => [...document.querySelectorAll('#metiers button[aria-pressed]')].map((b) => ({
@@ -551,7 +551,7 @@ module.exports = [
           presse: b.getAttribute('aria-pressed'),
           hauteur: b.getBoundingClientRect().height,
         })));
-        verifier(puces.length === 17, `#metiers : 17 boutons de métiers ${a} (${puces.length})`);
+        verifier(puces.length === 20, `#metiers : 20 boutons de métiers ${a} (${puces.length})`);
         verifier(JSON.stringify(puces.map((p) => p.nom)) === JSON.stringify(metiers), `#metiers : les métiers de la bibliothèque, dans son ordre ${a}`);
         verifier(puces.filter((p) => p.presse === 'true').map((p) => p.nom).join() === 'Électricité', `#metiers : Électricité pressé d'abord ${a}`);
         verifier(Math.min(...puces.map((p) => p.hauteur)) >= 44, `#metiers : pastilles d'au moins 44 px ${a} (${Math.min(...puces.map((p) => p.hauteur))})`);
@@ -601,7 +601,7 @@ module.exports = [
           const t = document.querySelector('#metiers [role="toolbar"]');
           return { label: t?.getAttribute('aria-label') || '', puces: t?.querySelectorAll('button[aria-pressed]').length || 0 };
         });
-        verifier(barre.label.length > 0 && barre.puces === 17, `pastilles dans une barre d'outils nommée ${a} (${JSON.stringify(barre)})`);
+        verifier(barre.label.length > 0 && barre.puces === 20, `pastilles dans une barre d'outils nommée ${a} (${JSON.stringify(barre)})`);
         await page.focus('#metiers button[aria-pressed="true"]');
         await page.keyboard.down('Alt');
         await page.keyboard.press('ArrowRight');
