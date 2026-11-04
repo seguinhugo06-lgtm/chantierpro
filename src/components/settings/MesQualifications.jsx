@@ -2,9 +2,9 @@ import { useState } from 'react';
 import { AlertTriangle, Check, Plus, Trash2 } from 'lucide-react';
 import { Bouton } from '../ui/Bouton';
 import ChampChoix from '../ui/ChampChoix';
-import { ChampParam, DebouncedInput, CLASSE_CHAMP } from './champsParametres';
+import { ChampParam, DebouncedInput, CLASSE_CHAMP, EtatEnregistrement } from './champsParametres';
 import {
-  TYPES_QUALIFICATION, ORGANISMES_RGE, qualificationsDe, raisonNonImprimee, ligneImprimee, champsRgeDeLaListe, motsDe,
+  TYPES_QUALIFICATION, ORGANISMES_RGE, qualificationsDe, raisonNonImprimee, ligneImprimee, champsRgeDeLaListe,
 } from '../../lib/qualifications';
 import { qualificationsDes } from '../../lib/metiers';
 
@@ -33,7 +33,7 @@ export default function MesQualifications({ entreprise, updateEntreprise }) {
   const ajouter = () => {
     const t = typeDe(typeAjout);
     // Services à la personne : ajoutée sans impression, l'artisan choisit où (avis juriste-btp du 4 nov. 2026)
-    enregistrer((l) => [...l, { id: nouvelId(), type: t.id, intitule: '', organisme: '', numero: '', fin: '', imprimer: t.id !== 'sap', motsCles: '' }], 'qualifications');
+    enregistrer((l) => [...l, { id: nouvelId(), type: t.id, intitule: '', organisme: '', numero: '', fin: '', imprimer: t.id !== 'sap', ou: t.id === 'sap' ? 'non' : 'tous', motsCles: '' }], 'qualifications');
   };
   const retirer = (id) => enregistrer((l) => l.filter((q) => q.id !== id), 'qualifications');
 
@@ -50,7 +50,7 @@ export default function MesQualifications({ entreprise, updateEntreprise }) {
         const t = typeDe(q.type);
         const raison = raisonNonImprimee(q);
         const pref = `qualif-${q.id}`;
-        const surCertaines = q.type !== 'rge' && motsDe(q.motsCles).length > 0;
+        // Le choix « où » est gardé à part des mots (src/lib/qualifications.js) : « seulement si » reste coché sans mot
         return (
           <div key={q.id} className="rounded-2xl border border-bord bg-surface p-4 space-y-3" data-testid="qualification">
             <div className="flex items-start justify-between gap-2">
@@ -86,8 +86,8 @@ export default function MesQualifications({ entreprise, updateEntreprise }) {
                 <DebouncedInput id={`${pref}-numero`} value={q.numero} onChange={(v) => modifier(q.id, { numero: v }, `${pref}-numero`)} />
               </ChampParam>
               {(
-                <ChampParam id={`${pref}-fin`} cle={`${pref}-fin`} libelle={t.dateDeclaration ? 'Date de la déclaration' : 'Fin de validité'}
-                  aide={t.dateDeclaration ? 'Imprimée avec le numéro de déclaration.' : 'Date indiquée sur votre certificat. En cas de suspension, retirez la qualification.'}>
+                <ChampParam id={`${pref}-fin`} cle={`${pref}-fin`} libelle={t.dateDeclaration ? 'Date d’enregistrement de la déclaration' : 'Fin de validité'}
+                  aide={t.dateDeclaration ? 'Obligatoire avec le numéro sur vos factures de services à la personne (code du travail, art. D7233-1, 2°).' : 'Date indiquée sur votre certificat. En cas de suspension, retirez la qualification.'}>
                   <input id={`${pref}-fin`} type="date" className={CLASSE_CHAMP} value={q.fin}
                     onChange={(e) => modifier(q.id, { fin: e.target.value }, `${pref}-fin`)} />
                 </ChampParam>
@@ -95,31 +95,31 @@ export default function MesQualifications({ entreprise, updateEntreprise }) {
             </div>
 
             <fieldset className="space-y-2">
-              <legend className="text-sm font-medium text-encre-2 mb-1">Où l’imprimer</legend>
+              <legend className="text-sm font-medium text-encre-2 mb-1 flex items-center gap-2">Où l’imprimer <EtatEnregistrement cle={`${pref}-ou`} /></legend>
               <label className="flex items-center gap-3 min-h-11 cursor-pointer">
-                <input type="radio" name={`${pref}-ou`} className="w-5 h-5 accent-accent" checked={q.imprimer && !surCertaines}
-                  onChange={() => modifier(q.id, { imprimer: true, motsCles: '' }, `${pref}-ou`)} />
+                <input type="radio" name={`${pref}-ou`} className="w-5 h-5 accent-accent" checked={q.ou === 'tous'}
+                  onChange={() => modifier(q.id, { imprimer: true, ou: 'tous', motsCles: '' }, `${pref}-ou`)} />
                 <span className="text-sm text-encre">Sur tous mes documents</span>
               </label>
               {q.type !== 'rge' && (
                 <label className="flex items-center gap-3 min-h-11 cursor-pointer">
-                  <input type="radio" name={`${pref}-ou`} className="w-5 h-5 accent-accent" checked={q.imprimer && surCertaines}
-                    onChange={() => modifier(q.id, { imprimer: true, motsCles: q.motsCles || t.motsCles || q.intitule }, `${pref}-ou`)} />
+                  <input type="radio" name={`${pref}-ou`} className="w-5 h-5 accent-accent" checked={q.ou === 'si'}
+                    onChange={() => modifier(q.id, { imprimer: true, ou: 'si', motsCles: q.motsCles || t.motsCles }, `${pref}-ou`)} />
                   <span className="text-sm text-encre">Seulement si une ligne contient…</span>
                 </label>
               )}
-              {q.imprimer && surCertaines && (
+              {q.ou === 'si' && (
                 <ChampParam id={`${pref}-mots`} cle={`${pref}-mots`} libelle="Mots cherchés dans les lignes" aide="Séparés par des virgules. Ex. : borne, recharge.">
                   <DebouncedInput id={`${pref}-mots`} value={q.motsCles} onChange={(v) => modifier(q.id, { motsCles: v }, `${pref}-mots`)} />
                 </ChampParam>
               )}
               <label className="flex items-center gap-3 min-h-11 cursor-pointer">
-                <input type="radio" name={`${pref}-ou`} className="w-5 h-5 accent-accent" checked={!q.imprimer}
-                  onChange={() => modifier(q.id, { imprimer: false }, `${pref}-ou`)} />
+                <input type="radio" name={`${pref}-ou`} className="w-5 h-5 accent-accent" checked={q.ou === 'non'}
+                  onChange={() => modifier(q.id, { imprimer: false, ou: 'non' }, `${pref}-ou`)} />
                 <span className="text-sm text-encre">Ne pas l’imprimer</span>
               </label>
               {q.type === 'rge' && <p className="text-sm text-encre-3">Imprimé, le RGE figure sur tous vos documents : l’Anah exige la mention sur les devis et factures des travaux aidés.</p>}
-              {q.type === 'sap' && <p className="text-sm text-alerte-texte">À n’imprimer que sur les prestations de services à la personne : sur d’autres travaux, elle laisserait croire à un crédit d’impôt.</p>}
+              {q.type === 'sap' && <p className="text-sm text-alerte-texte">À imprimer sur vos factures de services à la personne, où elle est obligatoire (code du travail, art. D7233-1, 2°) ; sur d’autres travaux, elle laisserait croire à un crédit d’impôt.</p>}
             </fieldset>
 
             {raison ? (
@@ -144,6 +144,8 @@ export default function MesQualifications({ entreprise, updateEntreprise }) {
         </div>
         <Bouton variante="secondaire" icone={Plus} onClick={ajouter}>Ajouter</Bouton>
       </div>
+      {/* Ajouter et Retirer : état visible de l'enregistrement de la liste */}
+      <p className="min-h-5" data-testid="qualifications-etat"><EtatEnregistrement cle="qualifications" /></p>
     </div>
   );
 }

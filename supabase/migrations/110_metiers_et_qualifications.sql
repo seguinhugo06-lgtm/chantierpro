@@ -14,9 +14,10 @@
 --     (un artisan qui passe la question garde l'app telle qu'elle est). Reprise des choix faits avant la migration
 --     (settings_json.reglages.metiers, repli de l'app tant que la colonne manque), valeurs inconnues écartées.
 --   - get_devis_for_signature : même fonction que 108, plus la clé « qualifications » : la liste, élément par élément
---     réduit aux sept champs imprimables (type, intitule, organisme, numero, fin, imprimer, motsCles), 20 au plus ;
+--     réduit aux huit champs imprimables (type, intitule, organisme, numero, fin, imprimer, ou, motsCles), 20 au plus ;
 --     rien d'autre des réglages ne sort. Le générateur commun (buildDevisHtml) applique les règles d'impression de
 --     src/lib/qualifications.js (jamais sans numéro, date de fin exigée et non passée…).
+--   - lignes_pour_le_client : lignes et sections du devis sans prixAchat, prix_achat ni marge, à tous les niveaux.
 --   - Droits : la colonne suit les policies existantes de la table entreprise (aucune nouvelle policy) ; la fonction
 --     reste exécutable par un visiteur (page publique, règle de 092).
 -- Numéros : 107 (cloud/ia-socle), 108 (cloud/metiers), 109 (cloud/ia-allumage) sont pris. 110 contient toute la
@@ -27,8 +28,10 @@
 --   SELECT (SELECT data_type FROM information_schema.columns
 --           WHERE table_schema = 'public' AND table_name = 'entreprise' AND column_name = 'metiers') AS colonne,
 --          position('''qualifications''' in (SELECT prosrc FROM pg_proc WHERE proname = 'get_devis_for_signature')) > 0 AS signature,
---          has_function_privilege('anon', 'public.get_devis_for_signature(uuid)', 'execute') AS public;
---   → colonne = ARRAY, signature = true, public = true
+--          position('lignes_pour_le_client' in (SELECT prosrc FROM pg_proc WHERE proname = 'get_devis_for_signature')) > 0 AS sans_prix_achat,
+--          has_function_privilege('anon', 'public.get_devis_for_signature(uuid)', 'execute') AS public,
+--          has_function_privilege('anon', 'public.lignes_pour_le_client(jsonb)', 'execute') AS interne_ouverte;
+--   → colonne = ARRAY, signature = true, sans_prix_achat = true, public = true, interne_ouverte = false
 -- ============================================================
 
 -- ─── 1. Le métier ─────────────────────────────────────────────────────────────
@@ -54,7 +57,44 @@ ALTER TABLE public.entreprise ADD CONSTRAINT entreprise_metiers_connus CHECK (
 
 COMMENT ON COLUMN public.entreprise.metiers IS 'Métiers choisis par l''artisan (src/lib/metiers.js) : ordre du catalogue et des modèles, modules allumés. Vide = aucun choix.';
 
--- ─── 2. Les qualifications sur la page de signature ─────────────────────────
+-- ─── 2. Les lignes vues par le client, sans prix d'achat ni marge ────────────
+-- Relecture gardien-securite du 4 nov. 2026 : la page de signature renvoyait les lignes telles qu'enregistrées ; or
+-- l'éditeur enregistre prixAchat sur chaque ligne (y compris dans sections[].lignes). Le client, ou quiconque reçoit
+-- le lien, lisait dans l'onglet Réseau la marge de l'artisan (déjà vrai en production depuis 106). Cette fonction
+-- retire les clés internes à tous les niveaux, pour les deux formes écrites par l'app (tableau ou texte JSON).
+-- Même corps attendu dans la migration de get_facture_for_payment (ex-107 de cloud/franchise-suite, 114 proposée).
+CREATE OR REPLACE FUNCTION public.lignes_pour_le_client(p JSONB)
+ RETURNS JSONB
+ LANGUAGE plpgsql
+ IMMUTABLE
+ SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v JSONB := p;
+BEGIN
+  IF jsonb_typeof(v) = 'string' THEN
+    BEGIN
+      v := (v #>> '{}')::jsonb;
+    EXCEPTION WHEN others THEN
+      RETURN '[]'::jsonb;
+    END;
+  END IF;
+  IF v IS NULL OR jsonb_typeof(v) <> 'array' THEN RETURN v; END IF;
+  RETURN (
+    SELECT coalesce(jsonb_agg(
+      CASE WHEN jsonb_typeof(x.l) <> 'object' THEN x.l
+           ELSE (x.l - ARRAY['prixAchat', 'prix_achat', 'marge'])
+                || CASE WHEN x.l ? 'lignes' THEN jsonb_build_object('lignes', public.lignes_pour_le_client(x.l -> 'lignes'))
+                        ELSE '{}'::jsonb END
+      END ORDER BY x.n), '[]'::jsonb)
+    FROM jsonb_array_elements(v) WITH ORDINALITY AS x(l, n)
+  );
+END
+$$;
+-- Interne : appelée par les fonctions SECURITY DEFINER (propriétaire), jamais directement
+REVOKE ALL ON FUNCTION public.lignes_pour_le_client(JSONB) FROM PUBLIC, anon, authenticated;
+
+-- ─── 3. Les qualifications sur la page de signature ─────────────────────────
 CREATE OR REPLACE FUNCTION public.get_devis_for_signature(p_token uuid)
  RETURNS json
  LANGUAGE plpgsql
@@ -146,7 +186,9 @@ BEGIN
     'devis', json_build_object(
       'id', d.id, 'numero', d.numero, 'type', d.type, 'statut', d.statut, 'date', d.date,
       'date_validite', v_fin, 'validite', d.validite_jours, 'objet', d.objet,
-      'lignes', d.lignes, 'sections', d.sections, 'conditions', d.conditions,
+      -- Sans prix d'achat ni marge (relecture gardien-securite du 4 nov. 2026)
+      'lignes', public.lignes_pour_le_client(d.lignes::jsonb), 'sections', public.lignes_pour_le_client(d.sections::jsonb),
+      'conditions', d.conditions,
       'remise_globale', d.remise_globale, 'tva_rate', d.tva_rate,
       'total_ht', d.total_ht, 'total_tva', d.total_tva, 'total_ttc', d.total_ttc,
       'acompte_pct', COALESCE(d.acompte_pct, d.acompte_percent), 'acompte_percent', d.acompte_percent,
@@ -190,10 +232,15 @@ BEGIN
                    'type', x.q ->> 'type', 'intitule', x.q ->> 'intitule', 'organisme', x.q ->> 'organisme',
                    'numero', x.q ->> 'numero', 'fin', x.q ->> 'fin',
                    'imprimer', CASE WHEN jsonb_typeof(x.q -> 'imprimer') = 'boolean' THEN x.q -> 'imprimer' END,
+                   'ou', CASE WHEN x.q ->> 'ou' IN ('tous', 'si') THEN x.q ->> 'ou' END,
                    'motsCles', x.q ->> 'motsCles')) ORDER BY x.n)
           FROM jsonb_array_elements(r -> 'qualifications') WITH ORDINALITY AS x(q, n)
           -- Une qualification que l'artisan a choisi de ne pas imprimer ne sort pas (relecture gardien-securite du 4 nov.)
-          WHERE jsonb_typeof(x.q) = 'object' AND x.n <= 20 AND COALESCE(x.q ->> 'imprimer', 'true') <> 'false') END,
+          -- Les qualifications « seulement si une ligne contient… » sortent toutes, même celles qui ne visent pas ce devis :
+          -- elles ne s'impriment pas (buildDevisHtml filtre selon les lignes), mais un visiteur peut les lire. Accepté en
+          -- attendant la décision d'Hugo (relecture du 4 nov., point 12 ; docs/cloud/metier-qualifications.md).
+          WHERE jsonb_typeof(x.q) = 'object' AND x.n <= 20 AND COALESCE(x.q ->> 'imprimer', 'true') <> 'false'
+            AND COALESCE(x.q ->> 'ou', '') <> 'non') END,
         'donneesFictives', CASE WHEN r ->> 'donneesFictives' = 'true' THEN true END
       ))
     )::json

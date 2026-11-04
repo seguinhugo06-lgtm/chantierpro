@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Briefcase } from 'lucide-react';
 import Carte from '../ui/Carte';
 import ChoixMetiers from './ChoixMetiers';
+import { EtatEnregistrement } from './champsParametres';
 import { changementsDuChoix, normaliserMetiers } from '../../lib/metiers';
 
 /**
@@ -27,7 +28,9 @@ export default function MonMetierTab({ entreprise, updateEntreprise }) {
       <Carte>
         <div className="flex items-center gap-2 mb-1 text-encre-2">
           <Briefcase size={18} aria-hidden="true" />
-          <h3 id="metier-choix-titre" className="text-lg font-semibold text-encre">Quels travaux faites-vous ?</h3>
+          <h3 id="metier-choix-titre" className="text-lg font-semibold text-encre flex-1">Quels travaux faites-vous ?</h3>
+          {/* État visible de l'enregistrement (relecture du 4 nov. : il n'était annoncé qu'aux lecteurs d'écran) */}
+          <span data-testid="metier-etat"><EtatEnregistrement cle="metiers" /></span>
         </div>
         <p className="text-sm text-encre-2 mb-4">
           Plusieurs choix possibles. Vos métiers passent en premier dans la bibliothèque de devis, les modèles et

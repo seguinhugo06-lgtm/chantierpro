@@ -46,7 +46,8 @@ export function organismeRgeRefuse(entreprise) {
 /** Pourquoi le RGE saisi n'est pas imprimé, ou null s'il l'est (ou s'il n'y a rien à imprimer). */
 export function raisonRgeNonImprime(entreprise, aujourdhui = jourLocal()) {
   if (!texte(entreprise?.rge)) return null;
-  if (organismeRgeRefuse(entreprise)) return 'Qualiopi certifie les organismes de formation, pas les entreprises RGE. Choisissez l’organisme qui a délivré votre RGE (Qualibat, Qualifelec, Qualit’EnR…).';
+  // Qualiopi est une certification (C. trav. L6316-1), pas un certificateur : juriste-btp au texte, 4 nov. 2026
+  if (organismeRgeRefuse(entreprise)) return 'Qualiopi est la certification des organismes de formation, pas une qualification RGE. Choisissez l’organisme qui a délivré votre RGE (Qualibat, Qualifelec, Qualit’EnR…).';
   if (!texte(entreprise?.rgeOrganisme) || texte(entreprise?.rgeOrganisme) === 'Autre') return 'Choisissez l’organisme qui a délivré votre RGE : l’Anah exige son nom sur les devis et factures des travaux aidés.';
   if (!texte(entreprise?.rgeDomaine)) return 'Ajoutez l’intitulé de votre qualification RGE, tel qu’il figure sur votre certificat : l’Anah l’exige sur les devis et factures des travaux aidés.';
   if (!texte(entreprise?.rgeValidite)) return 'Ajoutez la date de fin de validité indiquée sur votre certificat RGE : sans elle, le RGE n’est pas imprimé.';
@@ -57,7 +58,11 @@ export function raisonRgeNonImprime(entreprise, aujourdhui = jourLocal()) {
 
 // ─── « Mes qualifications » (lot 1, docs/metiers/synthese.md § 3.7) ─────────────────────────────────────────────
 // Le champ RGE unique devient une liste, rangée dans `settings_json.reglages.qualifications` :
-//   { id, type, intitule, organisme, numero, fin, imprimer, motsCles }
+//   { id, type, intitule, organisme, numero, fin, imprimer, ou, motsCles }
+// `ou` : 'tous' (tous les documents), 'si' (seulement si une ligne contient l'un des mots), 'non' (ne pas l'imprimer).
+// Le choix est gardé à part des mots : « seulement si » sans mot n'imprime RIEN (relecture du 4 nov. : une déclaration
+// de services à la personne, sans mots par défaut, repassait sinon sur « tous mes documents »). Une fiche d'avant
+// `ou` : `imprimer: false` vaut 'non', des mots valent 'si', sinon 'tous'.
 // Règles communes : jamais imprimée sans numéro ; jamais le mot « certifié » ; validité jugée à la date du document ;
 // date de fin exigée (lisible, non passée) ; la déclaration de services à la personne porte sa date, pas une échéance.
 // RGE : les règles du lot 0 ci-dessus (intitulé, organisme RGE, numéro, date), toujours sur tous les documents (une
@@ -72,9 +77,9 @@ export const TYPES_QUALIFICATION = [
   { id: 'pg_gaz', nom: 'Professionnel du gaz (PG)', prefixe: 'Appellation Professionnel du gaz (PG)', exemple: 'PG installation', organismes: ['Qualigaz'], motsCles: 'gaz' },
   { id: 'certibiocide', nom: 'Certibiocide', prefixe: 'Certificat individuel biocides (Certibiocide) détenu par', exemple: 'Nom du titulaire, catégorie', aideIntitule: 'Nom du titulaire et catégorie, tels qu’ils figurent sur le certificat (certificat individuel).', motsCles: 'traitement, termites, insectes, xylophages' },
   { id: 'certiphyto', nom: 'Certiphyto', prefixe: 'Certificat individuel produits phytopharmaceutiques (Certiphyto) détenu par', exemple: 'Nom du titulaire, catégorie', aideIntitule: 'Nom du titulaire et catégorie, tels qu’ils figurent sur le certificat (certificat individuel). L’agrément de l’entreprise se saisit dans « Autre qualification ».', motsCles: 'désherbage, traitement' },
-  // SAP : numéro ET date de la déclaration (C. trav. D7233-1, à relire au texte ; juriste-btp, 4 nov. 2026). `fin` porte
-  // ici la date de la déclaration (pas une échéance). Ajoutée sans impression : sur d'autres travaux, la mention
-  // laisserait croire à un crédit d'impôt (décision d'Hugo attendue).
+  // SAP : « le numéro et la date d'enregistrement de la déclaration » sur la facture (C. trav. D7233-1, 2° ; juriste-btp
+  // au texte, 4 nov. 2026). `fin` porte ici la date d'enregistrement (pas une échéance). Ajoutée sans impression : sur
+  // d'autres travaux, la mention laisserait croire à un crédit d'impôt (choix par défaut : décision d'Hugo attendue).
   { id: 'sap', nom: 'Services à la personne (déclaration)', exemple: '', dateDeclaration: true, motsCles: '' },
   { id: 'autre', nom: 'Autre qualification', prefixe: '', exemple: 'Qualibat 5111', motsCles: '' },
 ];
@@ -87,9 +92,18 @@ function normaliser(q, i) {
     id: texte(o.id) || `q${i + 1}`,
     type: TYPE_PAR_ID[texte(o.type)] ? texte(o.type) : 'autre',
     intitule: texte(o.intitule), organisme: texte(o.organisme), numero: texte(o.numero), fin: texte(o.fin),
-    imprimer: o.imprimer !== false,
+    imprimer: ouDe(o) !== 'non',
+    ou: ouDe(o),
     motsCles: texte(o.motsCles),
   };
+}
+
+/** Où imprimer : 'tous' | 'si' | 'non' (voir plus haut). Le RGE imprimé l'est toujours partout. */
+function ouDe(o) {
+  if (o.imprimer === false || o.ou === 'non') return 'non';
+  if (texte(o.type) === 'rge') return 'tous';
+  if (o.ou === 'si' || o.ou === 'tous') return o.ou;
+  return texte(o.motsCles) ? 'si' : 'tous';
 }
 
 /**
@@ -115,17 +129,18 @@ export function champsRgeDeLaListe(qualifications) {
 /** Pourquoi cette qualification n'est pas imprimée (texte pour l'écran), ou null si elle l'est. */
 export function raisonNonImprimee(q, aujourdhui = jourLocal()) {
   const x = normaliser(q, 0);
-  if (!x.imprimer) return 'Vous avez choisi de ne pas l’imprimer.';
+  if (x.ou === 'non') return 'Vous avez choisi de ne pas l’imprimer.';
+  if (x.ou === 'si' && !motsDe(x.motsCles).length) return 'Ajoutez les mots cherchés dans les lignes : tant qu’il n’y en a aucun, rien n’est imprimé.';
   if (!x.numero) return 'Ajoutez le numéro : sans numéro, rien n’est imprimé.';
   if (x.type === 'rge') return raisonRgeNonImprime({ rge: x.numero, rgeOrganisme: x.organisme, rgeDomaine: x.intitule, rgeValidite: x.fin }, aujourdhui);
   if (x.type === 'sap') {
-    if (!x.fin) return 'Ajoutez la date de la déclaration : elle s’imprime avec son numéro.';
-    if (!jourValide(x.fin)) return 'La date de la déclaration n’est pas lisible : ressaisissez-la.';
+    if (!x.fin) return 'Ajoutez la date d’enregistrement de la déclaration : elle s’imprime avec son numéro.';
+    if (!jourValide(x.fin)) return 'La date d’enregistrement de la déclaration n’est pas lisible : ressaisissez-la.';
     return null;
   }
   if (!x.intitule) return 'Ajoutez l’intitulé, tel qu’il figure sur votre certificat.';
   if (!x.organisme) return 'Ajoutez l’organisme qui l’a délivrée.';
-  if (ORGANISMES_REFUSES.includes(x.organisme)) return 'Qualiopi certifie les organismes de formation : choisissez l’organisme qui a délivré cette qualification.';
+  if (ORGANISMES_REFUSES.includes(x.organisme)) return 'Qualiopi est la certification des organismes de formation : choisissez l’organisme qui a délivré cette qualification.';
   {
     if (!x.fin) return 'Ajoutez la date de fin de validité indiquée sur votre certificat : sans elle, rien n’est imprimé.';
     if (!jourValide(x.fin)) return 'La date de fin n’est pas lisible : ressaisissez-la.';
@@ -138,7 +153,8 @@ export function raisonNonImprimee(q, aujourdhui = jourLocal()) {
 export function ligneImprimee(q) {
   const x = normaliser(q, 0);
   if (x.type === 'rge') return `Entreprise RGE (Reconnu garant de l'environnement) — Qualification : ${x.intitule} — ${x.organisme} — N° ${x.numero} — Valide jusqu'au ${dateFr(x.fin)}`;
-  if (x.type === 'sap') return `Prestation de services à la personne — organisme déclaré n° ${x.numero} du ${dateFr(x.fin)}`;
+  // Mot pour mot du juriste (C. trav. D7233-1, 2°)
+  if (x.type === 'sap') return `Services à la personne : déclaration enregistrée sous le n° ${x.numero} le ${dateFr(x.fin)}`;
   const prefixe = TYPE_PAR_ID[x.type].prefixe;
   return `${prefixe ? `${prefixe} : ` : ''}${x.intitule} — ${x.organisme} — N° ${x.numero} — Valide jusqu'au ${dateFr(x.fin)}`;
 }
@@ -152,11 +168,16 @@ function textesDuDocument(doc) {
     ...(Array.isArray(doc?.sections) ? doc.sections.flatMap((s) => (Array.isArray(s?.lignes) ? s.lignes : [])) : [])];
   return lignes.map((l) => sansAccent(`${l?.description || ''} ${l?.designation || ''}`));
 }
-/** La qualification vise-t-elle ce document ? Sans mots (ou RGE, ou sans document connu) : oui. */
+/**
+ * La qualification vise-t-elle ce document ? « Tous mes documents » (et le RGE) : oui. « Seulement si une ligne
+ * contient… » : seulement si une ligne contient l'un des mots ; sans mot, ou sans document connu : non.
+ */
 export function viseLeDocument(q, doc) {
   const x = normaliser(q, 0);
+  if (x.ou === 'non') return false;
+  if (x.ou !== 'si') return true;
   const mots = motsDe(x.motsCles);
-  if (x.type === 'rge' || !mots.length || !doc) return true;
+  if (!mots.length || !doc) return false;
   return textesDuDocument(doc).some((t) => mots.some((m) => t.includes(m)));
 }
 

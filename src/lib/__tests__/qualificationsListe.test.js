@@ -36,9 +36,9 @@ describe('Mes qualifications', () => {
     expect(lignesQualifications({ qualifications: [{ ...IRVE, fin: '2026-11-03' }] }, AUJ)).toEqual([]);
     expect(lignesQualifications({ qualifications: [{ ...IRVE, fin: '2026-11-03' }] }, '2026-10-01')).toEqual(['IRVE (infrastructures de recharge) : IRVE P1 — Qualifelec — N° IRVE-22 — Valide jusqu\'au 03/11/2026']);
     // SAP : numéro ET date de la déclaration (C. trav. D7233-1, avis juriste du 4 nov. 2026), jamais une échéance
-    expect(lignesQualifications({ qualifications: [{ type: 'sap', numero: 'SAP123456789', fin: '2019-03-01' }] }, AUJ)).toEqual(['Prestation de services à la personne — organisme déclaré n° SAP123456789 du 01/03/2019']);
+    expect(lignesQualifications({ qualifications: [{ type: 'sap', numero: 'SAP123456789', fin: '2019-03-01' }] }, AUJ)).toEqual(['Services à la personne : déclaration enregistrée sous le n° SAP123456789 le 01/03/2019']);
     expect(lignesQualifications({ qualifications: [{ type: 'sap', numero: 'SAP123456789' }] }, AUJ)).toEqual([]);
-    expect(raisonNonImprimee({ type: 'sap', numero: 'SAP1' }, AUJ)).toMatch(/date de la déclaration/);
+    expect(raisonNonImprimee({ type: 'sap', numero: 'SAP1' }, AUJ)).toMatch(/date d’enregistrement de la déclaration/);
   });
 
   it('certificats individuels : « détenu par » le titulaire (avis juriste du 4 nov. 2026)', () => {
@@ -70,6 +70,31 @@ describe('Mes qualifications', () => {
     expect(lignesQualifications(e, AUJ, borne)).toEqual([LIGNE_IRVE, LIGNE_RGE]);
     expect(lignesQualifications(e, AUJ, plomberie)).toEqual([LIGNE_RGE]);
     expect(lignesQualifications(e, AUJ, enSection)).toContain(LIGNE_IRVE);
+  });
+
+  it('« seulement si » sans mot n’imprime rien (SAP et Autre), même sur tous les documents ; contre-essai avec un mot', () => {
+    const SAP = { id: 's', type: 'sap', numero: 'SAP123456789', fin: '2019-03-01', imprimer: true, ou: 'si', motsCles: '' };
+    const AUTRE = { ...IRVE, id: 'o', type: 'autre', intitule: 'Qualibat 5111', organisme: 'Qualibat', ou: 'si', motsCles: '' };
+    const plomberie = { lignes: [{ description: 'Remplacement d\'un mitigeur' }] };
+    const menage = { lignes: [{ description: 'Ménage à domicile' }] };
+    expect(lignesQualifications({ qualifications: [SAP, AUTRE] }, AUJ, plomberie)).toEqual([]);
+    expect(lignesQualifications({ qualifications: [SAP, AUTRE] }, AUJ, menage)).toEqual([]);
+    expect(raisonNonImprimee(SAP, AUJ)).toMatch(/mots cherchés/);
+    expect(raisonNonImprimee(AUTRE, AUJ)).toMatch(/mots cherchés/);
+    const sapMenage = { ...SAP, motsCles: 'ménage' };
+    expect(lignesQualifications({ qualifications: [sapMenage] }, AUJ, plomberie)).toEqual([]);
+    expect(lignesQualifications({ qualifications: [sapMenage] }, AUJ, menage)).toHaveLength(1);
+    // sans document connu, « seulement si » n'imprime rien
+    expect(lignesQualifications({ qualifications: [sapMenage] }, AUJ)).toEqual([]);
+  });
+
+  it('le choix « où » est gardé à part des mots ; une fiche d’avant `ou` est lue comme avant', () => {
+    expect(qualificationsDe({ qualifications: [{ ...IRVE, motsCles: 'borne' }] })[0].ou).toBe('si');
+    expect(qualificationsDe({ qualifications: [{ ...IRVE }] })[0].ou).toBe('tous');
+    expect(qualificationsDe({ qualifications: [{ ...IRVE, imprimer: false, motsCles: 'borne' }] })[0].ou).toBe('non');
+    expect(qualificationsDe({ qualifications: [{ ...IRVE, ou: 'tous', motsCles: 'borne' }] })[0].ou).toBe('tous');
+    expect(qualificationsDe({ qualifications: [{ ...RGE, ou: 'si', motsCles: 'pompe' }] })[0].ou).toBe('tous');
+    expect(qualificationsDe({ qualifications: [{ ...IRVE, ou: 'non' }] })[0].imprimer).toBe(false);
   });
 
   it('une fiche d’avant la liste : ses champs rge* valent une qualification RGE ; la liste, même vide, l’emporte', () => {
