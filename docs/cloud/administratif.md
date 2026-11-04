@@ -243,3 +243,61 @@ Je n'ai pas lancé d'agent juriste dessus : tous les autres textes sont recopié
 - Un choix explicite de la Trésorerie (franchise, mensuel) n'est plus redemandé.
 - `npm run verifier -- --complet` : tout vert sur `a8b3d02`.
 - Trois décisions attendent Hugo : franchise pour toutes les formes, « pas encore », CVAE.
+
+## Corrections du contrôle local (3 nov. au soir)
+
+Appliquées le 4 nov. sur `cloud/administratif`. Aucune migration, aucune requête en production, rien sur `main`.
+
+### Défauts relevés par le contrôle
+
+1. **[important] Correctif chaudière partiel** — `2e0a11a`. J'ai repris les lignes de `cloud/metiers` à l'identique, partie chaudière seulement, sans RGE ni Qualiopi :
+   - `modeles/chauffage.js` : `tva: 20` sur `chaudiere-gaz` ;
+   - `modeles/index.js` : `prepareModeleLignes` lit `modele.tva` ;
+   - `articles-btp-suite.js` : `tva: 20` sur `chaud-gaz-mur`, `chaud-gaz-sol` et `chaud-fioul` ;
+   - `data/index.js` : `createCatalogueItem` lit `article.tva` ;
+   - lot 08 : PL_02_01_001 et 002 à `tva: 20`.
+
+   En plus, j'ai corrigé le chemin que les deux branches avaient oublié (correction 4 du vérificateur). `ArticlePicker.jsx` présélectionne maintenant le taux de l'article (`tvaArticleReferentiel`) : 20 % pour une chaudière fossile, 10 % sinon, 0 % en franchise. Le correctif 686bc53 est gardé. `createCatalogueItem` n'a toujours aucun appelant. Je ne l'ai pas supprimé, car `cloud/metiers` modifie la même ligne et la suppression créerait un conflit à la fusion. L'entretien de chaudière n'est pas touché (§ 230).
+2. **[mineur] Conflit à venir sur `docs/metier-btp.md` l. 70** : non résolu ici, puisque `cloud/metiers` n'est pas fusionnée. À la fusion, garder le texte de `cloud/metiers` et y ajouter « nettoyage, espaces verts, travaux comprenant la fourniture ou l'installation d'une chaudière susceptible d'utiliser des combustibles fossiles (CGI 279-0 bis, 2 bis ; 278-0 bis A, III bis, depuis le 1er mars 2025) ». Dans la colonne Source, écrire « CGI art. 278 et 279-0 bis, 2 et 2 bis ; 278-0 bis A, III bis ». Le reste du recouvrement (`trade-library.js`, les cinq fichiers ci-dessus) est fait de lignes identiques : git les fusionnera sans conflit. Seul `tvaChaudiere.test.js` double les tests de chaudière de `qualifications.test.js`, sans conflit.
+3. **[mineur] Régime de TVA lu dans la Trésorerie, sans constat** — `a6649dd`. Nouveau parcours en démo « le régime de TVA de la Trésorerie est suivi » (8 vérifications) :
+   - avec `franchise` : pas de question de TVA, la ligne « Régime de TVA : celui réglé dans la Trésorerie (Franchise en base) » s'affiche, aucune ligne `ca3-`, et le bouton n'annonce plus « TVA » ;
+   - avec `mensuel` : une CA3 chaque mois sur 90 jours ;
+   - « Ouvrir la Trésorerie » ouvre bien la Trésorerie.
+
+   **Contre-essai** : sans le 3e argument de `profilAdmin`, le parcours échoue (« Vérification échouée : franchise : la question de TVA n'est pas posée »).
+4. **[mineur] `compteARebours` sans test** — `a6649dd`. Ajout de `src/components/admin-help/__tests__/compteARebours.test.jsx` : `{ enVigueur: true, joursRestants: -63 }` donne « En vigueur », et `{ joursRestants: -3 }` donne « Dépassée de 3 j ». **Contre-essai** : sans la ligne `enVigueur`, le premier test échoue (1 échec sur 5).
+5. **[mineur] Question de TVA disparue sans explication** — `a6649dd`. La ligne vient de `tvaRegleeDansLaTresorerie`. Elle n'apparaît que pour un régime venu de la Trésorerie, jamais pour une micro-entreprise. Le bouton « Ouvrir la Trésorerie » mène à Finances › Trésorerie, où le régime se règle dans « Paramètres de trésorerie ». Le bouton du calendrier devient « Changer mes réponses (rythme Urssaf, impôt, salariés) ». Le juriste a relu le texte : « OK, exact et sans promesse ».
+
+### Écarts du rapport
+
+- Les sections anciennes sont marquées « dépassé » ou mises à jour (`7aceae8`) : « Ce qui reste » § 1, le 1er point de « Risques », la décision 3 et la limite du premier « Résumé ».
+- Le texte exact du juriste (décision 1) est recopié dans « Risques ».
+- La phrase « Bug réel hors branche… Il est corrigé » et le point 13 disent maintenant ce qui a été corrigé, et quand. Le recouvrement avec `cloud/metiers` est décrit au point 2 ci-dessus.
+- Vérification : voir plus bas.
+
+### Tests de chaudière (`src/lib/__tests__/tvaChaudiere.test.js`, 6 tests)
+
+Ils reprennent les tests de `qualifications.test.js` sans importer `qualifications.js`, avec en plus le sélecteur du référentiel. **Contre-essai** : sur le code d'avant `2e0a11a`, 4 tests échouent : le modèle, le lot 08 et les deux tests du sélecteur. Celui de `trade-library.js` passe, puisqu'il était déjà corrigé.
+
+### Relecture du juriste (4 nov.)
+
+- Le texte de la ligne de la Trésorerie est OK.
+- Les citations du test, du lot 08, d'`ArticlePicker` et de `data/index.js` sont OK.
+- Une erreur dans le commentaire de `modeles/chauffage.js` (l. 77-79), venu de `cloud/metiers` : il renvoie à `docs/metiers/chauffagiste.md § 5`, fichier absent de cette branche. Il cite aussi « loi de finances pour 2025 » sans article. **Non corrigé ici**, pour que la fusion reste sans conflit. À appliquer sur `cloud/metiers`, ou après la fusion, mot pour mot :
+  ```
+  // Chaudière à combustibles fossiles : TVA à 20 % depuis le 1er mars 2025, fourniture et pose
+  // (CGI 279-0 bis, 2 bis, c ; 278-0 bis A, III bis ; BOI-TVA-LIQ-30-20-90-20 § 200).
+  // L'entretien d'une chaudière fossile n'est pas visé par l'exclusion : 10 % (même BOI, § 230).
+  ```
+  Le juriste retire la mention « 5,5 % pour une chaudière THPE (BOI-TVA-LIQ-30-20-95 § 35) » : il n'a pas pu la vérifier, le BOFiP était injoignable.
+
+### Décisions pour Hugo
+
+- **Dépose de l'ancienne chaudière** : dans le modèle chaudière gaz, elle passe à 20 % avec le reste. Le juriste juge cela défendable, puisque ce sont des « travaux comprenant » la pose d'une chaudière fossile. Mais l'article seul `depose-chaud` du catalogue reste à 10 %. Ce découpage est-il voulu ?
+- La livraison de la partie chaudière avant la décision sur le lot 0 de `cloud/metiers` : faite ici, comme la consigne le demandait. Si Hugo préfère attendre, il suffit de ne pas livrer `2e0a11a`.
+
+### Vérification
+
+- `npm run verifier` (standard) sur `a6649dd`, dernier commit de code avant la fusion : Tests ✓ 1238 réussis, Lint ✓ 0 erreur, Smoke ✓, Build ✓, « Tout est vert ».
+- Parcours `administratif` sur le build de `a6649dd` : 3 parcours réussis (15, 8 et 4 vérifications).
+- Fusion de `origin/main` (`6b34c8e`) sans conflit. Résultat de `npm run verifier -- --complet` sur ce commit : ci-dessous.
