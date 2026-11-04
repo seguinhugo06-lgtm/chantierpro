@@ -5,7 +5,8 @@
  *
  * Mêmes questions qu'avant la refonte, réponses relues le 20 oct. 2026 (tâche 7) : chaque affirmation gardée a sa preuve
  * en commentaire ; toute limite, tout prix et les mois offerts à l'année sont lus dans `PLANS` (décision D-29), les prix
- * par `prixAbonnement` avec la mention de franchise de TVA (D-19), jamais « HT ».
+ * par `prixAbonnement`, jamais « HT » ; la mention de franchise de TVA (D-19) n'est donnée que dans la réponse sur la
+ * facturation (retour d'Hugo du 26 oct. 2026).
  * Retirés : le format de facture électronique PDF et XML (aucun fichier validé), « nous vous préviendrons bien avant
  * l'échéance » (promesse), « 2 chantiers actifs » (l'application compte tous les chantiers, `computeLiveUsage`), les
  * exports « compatibles » avec deux logiciels de comptabilité nommés (les exports réels sont FEC, CSV et Excel),

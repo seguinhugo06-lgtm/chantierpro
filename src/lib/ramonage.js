@@ -67,8 +67,9 @@ export const conseilsExiges = (r) => estCombustibleSolide(r?.combustible) && r?.
 
 /**
  * Conseils imprimés sur l'attestation (retour des ramoneurs, nov. 2026 : « conseils à mettre en facultatif »). R. 1331-77
- * oblige à conseiller l'usager, pas à l'écrire sur l'attestation (R. 1331-75 n'exige que les conduits ramonés et la
- * vacuité). Le choix est enregistré DANS l'attestation (`conseils.imprimes`, colonne JSON figée à l'insertion) : une
+ * oblige à conseiller l'usager, pas à l'écrire sur l'attestation (R. 1331-75 cite « notamment » les conduits ramonés et
+ * la vacuité ; l'arrêté du 20 juillet 2023, pris sur R. 1331-78, ne fixe que le contenu de l'attestation d'entretien,
+ * annexe 3, à laquelle les conseils sont joints, annexe 2). Le choix est enregistré DANS l'attestation (`conseils.imprimes`, colonne JSON figée à l'insertion) : une
  * réimpression donne le même document. Attestations d'avant ce choix (clé absente) : imprimés, comme avant.
  */
 export const conseilsImprimes = (r) => r?.conseils?.imprimes !== false;

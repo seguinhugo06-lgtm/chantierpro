@@ -217,7 +217,7 @@ module.exports = [
   },
   {
     // Les abonnements sont en franchise de TVA (D-19) : jamais « HT » dans « Mon plan » ; depuis le retour d'Hugo du
-    // 26 oct. 2026 (avis juriste du 3 nov.), la mention « TVA non applicable… » n'accompagne plus les prix (CGV, FAQ, factures) ; prix lus dans PLANS. (La fenêtre d'abonnement n'a pas de chemin court en démo : elle est couverte par `prixAbonnementAffiche.test.jsx` ; la page `pricing` de l'app n'a aucun lien qui y mène : non parcourue.)
+    // 26 oct. 2026 (avis juriste du 3 nov.), la mention « TVA non applicable… » n'accompagne plus les prix ; elle reste dans les CGV (art. 4) et la FAQ, et doit figurer sur les factures Stripe (réglage à constater, attente 7) ; prix lus dans PLANS. (La fenêtre d'abonnement n'a pas de chemin court en démo : elle est couverte par `prixAbonnementAffiche.test.jsx` ; la page `pricing` de l'app n'a aucun lien qui y mène : non parcourue.)
     nom: 'abonnements : ni « HT » ni mention de franchise à côté des prix (D-19, retour du 26 oct.)',
     async executer({ ouvrir, attendre, verifier, RACINE }) {
       const { PLANS } = plansDuSite(RACINE);
