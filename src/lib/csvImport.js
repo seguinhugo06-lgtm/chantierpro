@@ -73,7 +73,8 @@ export function nombreFr(valeur) {
   return /^-?\d+(\.\d+)?$/.test(s) ? Number(s) : NaN;
 }
 
-const sansAccent = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[_-]+/g, ' ').trim();
+// Apostrophes (droite ou typographique) lues comme une espace : « Prix d’achat » (export en franchise) = « prix d achat »
+const sansAccent = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[_\-'’]+/g, ' ').replace(/\s+/g, ' ').trim();
 
 /**
  * Colonnes du fichier → champs de l'article. Égalité d'abord, puis mot entier (« u » ne reconnaît plus
@@ -83,8 +84,9 @@ export const INDICES_COLONNES = {
   designation: ['nom', 'designation', 'article', 'name', 'libelle'],
   reference: ['reference', 'ref', 'sku', 'code'],
   description: ['description', 'desc'],
-  prix: ['prix vente', 'prix vente ht', 'prix unitaire ht', 'prix ht', 'prix', 'price', 'tarif'],
-  prixAchat: ['prix achat', 'prix achat ht', 'cout', 'cost', 'pa'],
+  // prixAchat avant prix : sinon le mot « prix » prend la colonne « Prix d’achat »
+  prixAchat: ['prix achat', 'prix achat ht', 'prix d achat', 'prix d achat ht', 'cout', 'cost', 'pa'],
+  prix: ['prix vente', 'prix vente ht', 'prix unitaire', 'prix unitaire ht', 'prix ht', 'prix', 'price', 'tarif'],
   unite: ['unite', 'unit', 'u'],
   categorie: ['categorie', 'category', 'cat'],
   tva_rate: ['tva', 'tva rate', 'taux tva', 'taux de tva'],
@@ -102,4 +104,49 @@ export function associerColonnes(entetes = []) {
     if (motEntier) { correspondance[champ] = motEntier.h; prises.add(motEntier.h); }
   }
   return correspondance;
+}
+
+/**
+ * Une ligne du fichier → l'article à créer ou la mise à jour d'un article existant (même référence). Prix et TVA lus à la
+ * française (« 1 250,00 », « 5,5 ») ; un prix illisible ou nul écarte la ligne (avant : 1 €, TVA 5, articles à 0 €) ;
+ * TVA 0 % respectée. En franchise en base de TVA (art. 293 B du CGI), le champ « Taux TVA » n'est pas proposé
+ * (FenetresCatalogue.champsImport) : la colonne TVA du fichier est ignorée — un article existant garde son taux, un
+ * nouveau est créé à 0 % (Catalogue.creerArticle).
+ * Renvoie { ecartee: true } (sans nom), { prixIllisible: true }, { maj } ou { nouveau }.
+ */
+export function articleDepuisLigneCsv(row, mapping, { catalogue = [], franchise = false } = {}) {
+  const tvaDe = (v, defaut) => { const n = nombreFr(v); return Number.isFinite(n) ? n : defaut; };
+  const colTva = franchise ? undefined : mapping.tva_rate;
+  const nom = row[mapping.designation] || '';
+  if (!nom) return { ecartee: true };
+  const ref = row[mapping.reference] || '';
+  const prix = nombreFr(row[mapping.prix]);
+  const achatLu = nombreFr(row[mapping.prixAchat]);
+  const stockLu = nombreFr(row[mapping.stock]);
+  const existant = ref ? catalogue.find((c) => c.reference === ref) : null; // doublon par référence
+  if (!(prix > 0) && !existant) return { prixIllisible: true };
+  if (existant) {
+    return {
+      maj: {
+        ...existant,
+        nom: nom || existant.nom,
+        prix: prix > 0 ? prix : existant.prix,
+        prixAchat: Number.isFinite(achatLu) ? achatLu : existant.prixAchat,
+        unite: row[mapping.unite] || existant.unite,
+        categorie: row[mapping.categorie] || existant.categorie,
+        description: row[mapping.description] || existant.description,
+        tva_rate: tvaDe(row[colTva], existant.tva_rate),
+        tva: tvaDe(row[colTva], existant.tva ?? existant.tva_rate),
+        stock_actuel: Number.isFinite(stockLu) ? Math.round(stockLu) : existant.stock_actuel,
+      },
+    };
+  }
+  const tva = tvaDe(row[colTva], 20);
+  return {
+    nouveau: {
+      nom, reference: ref, description: row[mapping.description] || '', prix,
+      prixAchat: Number.isFinite(achatLu) ? achatLu : null, unite: row[mapping.unite] || 'u', categorie: row[mapping.categorie] || 'Autre',
+      tva_rate: tva, tva, favori: false, stock_actuel: Number.isFinite(stockLu) ? Math.round(stockLu) : undefined, stock_seuil_alerte: undefined,
+    },
+  };
 }

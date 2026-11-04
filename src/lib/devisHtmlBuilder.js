@@ -25,22 +25,23 @@ import { imprimerHtml } from './imprimerHtml';
 import { nomImprime, formeImprimee } from './identiteEntreprise';
 import { estSociete } from './mentionsFacture';
 import { dateLue } from './dates';
+import { qualificationsHtml, jourDuDocument } from './qualifications';
 import { signatureDuClient } from './signatureDocument';
 import { finValidite } from './validiteDevis';
 import { estClientPro } from './relanceUtils';
 import { natureDuDocument, piedDePageHtml } from './piedDePageDocument';
+import { mentionImmatriculation } from './immatriculation';
 import { blocRetractationHtml, estConcerneParRetractation, lienRetractationEnLigne, mentionsSignatureClientHtml } from './retractation';
 
 /**
- * Formatte un RCS complet
+ * Immatriculation imprimée : « RCS Paris B 123 456 789 », « Entreprise du secteur des métiers et de l’artisanat,
+ * immatriculée au RNE sous le n° 123 456 789 » ou l'ancien champ libre (lib/immatriculation, commun aux deux
+ * générateurs). RCS : C. com. R123-237. RNE : aucune mention « RM » en vigueur ; répertoire des métiers remplacé par
+ * le RNE le 1er janv. 2023 (ordonnance n° 2021-1189, art. 47 ; INPI) ; information due au consommateur : C. conso.
+ * R111-2, 3° ; mention au registre : C. com. L123-46 ; vérifié sur Légifrance le 3 nov. 2026 (juriste-btp).
  */
 function getRCSComplet(entreprise) {
-  if (!entreprise?.rcsVille && !entreprise?.rcs_ville) return '';
-  const ville = entreprise.rcsVille || entreprise.rcs_ville || '';
-  const numero = entreprise.rcsNumero || entreprise.rcs_numero || '';
-  const type = entreprise.rcsType || entreprise.rcs_type || 'B';
-  if (!ville || !numero) return '';
-  return h(`RCS ${ville} ${type} ${numero}`);
+  return h(mentionImmatriculation(entreprise));
 }
 
 /**
@@ -261,7 +262,7 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mod
       <div class="entreprise-legal">
         ${e.siret ? `SIRET: ${e.siret}` : ''}
         ${e.codeApe ? ` · APE: ${e.codeApe}` : ''}
-        ${rcsComplet ? `<br>${rcsComplet}` : (e.rcs ? `<br>RCS: ${e.rcs}` : '')}
+        ${rcsComplet ? `<br>${rcsComplet}` : ''}
         ${e.tvaIntra ? `<br>TVA Intra: ${e.tvaIntra}` : ''}
         ${isMicro ? '<br><em>TVA non applicable, article 293 B du CGI</em>' : ''}
       </div>
@@ -432,7 +433,7 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mod
   }) : ''}
 
   <!-- FOOTER -->
-  ${buildFooterHtml(e, rcsComplet, piedDePageHtml({ nature: natureDuDocument(doc), client }), isClientMode)}
+  ${buildFooterHtml(e, rcsComplet, piedDePageHtml({ nature: natureDuDocument(doc), client }), isClientMode, jourDuDocument(doc))}
 </body>
 </html>`);
 }
@@ -440,7 +441,7 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mod
 /**
  * Bloc footer réutilisable
  */
-function buildFooterHtml(e, rcsComplet, piedDePage = '', isClientMode = false) {
+function buildFooterHtml(e, rcsComplet, piedDePage = '', isClientMode = false, jour = undefined) {
   return `<div class="footer">
     <strong>${e.nom}</strong>
     ${e.formeJuridique ? ` · ${e.formeJuridique}` : ''}
@@ -454,7 +455,7 @@ function buildFooterHtml(e, rcsComplet, piedDePage = '', isClientMode = false) {
       ${e.decennaleAssureur && e.decennaleNumero ? `Assurance décennale: ${e.decennaleAssureur}${e.decennaleAssureurAdresse ? ` (${e.decennaleAssureurAdresse})` : ''} N°${e.decennaleNumero}${e.decennaleValidite ? ` (Valide jusqu'au ${dateLue(e.decennaleValidite).toLocaleDateString('fr-FR')})` : ''}${e.decennaleZone ? ` — Zone : ${e.decennaleZone}` : ''}${e.decennaleActivites ? ` — Activités : ${e.decennaleActivites}` : ''}` : ''}
       ${e.decennaleAssureur && e.decennaleNumero && e.rcProAssureur ? '<br>' : ''}
       ${e.rcProAssureur ? `RC Pro: ${e.rcProAssureur}${e.rcProNumero ? ` N°${e.rcProNumero}` : ''}${e.rcProValidite ? ` (Valide jusqu'au ${dateLue(e.rcProValidite).toLocaleDateString('fr-FR')})` : ''}` : ''}
-      ${e.mentionRGE !== false && Array.isArray(e.labels) && e.labels.filter(l => l.actif).length > 0 ? '<br>' + e.labels.filter(l => l.actif).map(l => `${l.nom}${l.numero ? ` N°${l.numero}` : ''}${l.organisme ? ` (${l.organisme})` : ''}${l.dateExpiration ? ` — Valide jusqu'au ${dateLue(l.dateExpiration).toLocaleDateString('fr-FR')}` : ''}`).join('<br>') : ''}
+      ${qualificationsHtml(e, h, jour)}
     </div>
     ${piedDePage}
   </div>`;
@@ -494,6 +495,12 @@ function buildEntrepriseFields(entreprise) {
     decennaleZone: h(entreprise?.decennaleZone),
     mediateur: h(entreprise?.mediateur),
     mediateurContact: h(entreprise?.mediateurContact),
+    // Qualifications : texte brut, échappé par `qualificationsHtml` (src/lib/qualifications.js)
+    rge: entreprise?.rge || '',
+    rgeOrganisme: entreprise?.rgeOrganisme || '',
+    rgeValidite: entreprise?.rgeValidite || '',
+    rgeDomaine: entreprise?.rgeDomaine || '',
+    mentionRGE: entreprise?.mentionRGE,
   };
 }
 
@@ -656,7 +663,7 @@ export function buildSituationFactureHtml({ situation, parentDevis, client, chan
       <div class="entreprise-legal">
         ${e.siret ? `SIRET: ${e.siret}` : ''}
         ${e.codeApe ? ` · APE: ${e.codeApe}` : ''}
-        ${e.rcs || rcsComplet ? `<br>RCS: ${rcsComplet || e.rcs}` : ''}
+        ${rcsComplet ? `<br>${rcsComplet}` : ''}
         ${e.tvaIntra ? `<br>TVA Intra: ${e.tvaIntra}` : ''}
       </div>
     </div>
@@ -741,7 +748,7 @@ export function buildSituationFactureHtml({ situation, parentDevis, client, chan
   </div>
 
   <!-- FOOTER -->
-  ${buildFooterHtml(e, rcsComplet)}
+  ${buildFooterHtml(e, rcsComplet, '', false, jourDuDocument(situation))}
 </body>
 </html>`);
 }

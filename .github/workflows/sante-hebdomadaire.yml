@@ -16,7 +16,8 @@ permissions:
 jobs:
   sante:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    # Aligné sur verifications.yml (parcours environ 41 min depuis le 4 nov. 2026), plus le banc et l'audit des dépendances
+    timeout-minutes: 65
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

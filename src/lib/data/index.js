@@ -99,27 +99,42 @@ export function getArticlesBySousCategorie(categorieId, sousCategorieId) {
 }
 
 /**
- * Créer un article catalogue à partir d'un article BTP
+ * Taux que transmet un article du référentiel, ou null s'il n'en porte aucun : 0 % en franchise en base (art. 293 B du CGI),
+ * sinon le taux que porte l'article (seules les chaudières gaz et fioul en portent un : 20 %, CGI 279-0 bis, 2 bis, c).
+ * Aucun taux n'est inventé ici : sans taux propre, l'import laisse l'écriture en base poser son défaut (useSupabaseSync) et
+ * le sélecteur (ArticlePicker) propose le sien, modifiable.
  */
-export function createCatalogueItem(articleBtp, customPrix = null) {
-  return {
-    id: crypto.randomUUID(),
-    reference: `REF-${articleBtp.id.toUpperCase()}`,
-    nom: articleBtp.nom,
-    designation: articleBtp.nom,
-    description: '',
-    unite: articleBtp.unite,
-    prixUnitaire: customPrix || articleBtp.prixDefaut,
-    prix_unitaire_ht: customPrix || articleBtp.prixDefaut,
-    prixAchat: Math.round((customPrix || articleBtp.prixDefaut) * 0.6), // 40% de marge par défaut
-    tva: 10,
-    categorie: articleBtp.categorieNom || articleBtp.categorieId,
-    favori: false,
-    actif: true,
-    sourceId: articleBtp.id,
-    prixMin: articleBtp.prixMin,
-    prixMax: articleBtp.prixMax,
-  };
+export function tauxPropreArticle(article, franchiseTva = false) {
+  if (franchiseTva) return 0;
+  return Number.isFinite(article?.tva) ? article.tva : null;
+}
+
+/**
+ * Articles à créer par l'import en masse du référentiel (Catalogue, premier usage), pour les métiers cochés. Seul un article
+ * qui porte un taux le transmet (tauxPropreArticle). Les autres partent sans taux, comme avant le 4 nov. 2026 : l'écriture
+ * en base leur met son défaut (useSupabaseSync). Leur imposer 10 % mettait les 9 articles « Espaces verts » du paysagisme à
+ * 10 %, que la recherche donne à 20 % (docs/metiers/paysagiste.md § 5). La franchise est appliquée ensuite à la création
+ * (Catalogue.creerArticle), par quelque chemin que ce soit.
+ */
+export function articlesAImporterDuReferentiel(metierIds, franchiseTva = false) {
+  const aImporter = [];
+  (metierIds || []).forEach((catId) => {
+    const cat = ALL_ARTICLES_BTP[catId];
+    if (!cat) return;
+    const meta = CATEGORIES_METIERS.find((c) => c.id === catId);
+    Object.values(cat.sousCategories).forEach((sousCat) => {
+      sousCat.articles.forEach((article) => {
+        const taux = tauxPropreArticle(article, franchiseTva);
+        aImporter.push({
+          nom: article.nom, prix: article.prixDefaut, prixAchat: null, // le référentiel ne connaît pas votre prix d'achat : inconnu, pas déduit du prix de vente
+          unite: article.unite, categorie: meta?.nom || 'Autre', favori: false,
+          ...(taux === null ? {} : { tva: taux }),
+          reference: `REF-${article.id.toUpperCase().slice(0, 10)}`,
+        });
+      });
+    });
+  });
+  return aImporter;
 }
 
 export default {
@@ -129,5 +144,6 @@ export default {
   searchAllArticles,
   getSousCategories,
   getArticlesBySousCategorie,
-  createCatalogueItem,
+  tauxPropreArticle,
+  articlesAImporterDuReferentiel,
 };

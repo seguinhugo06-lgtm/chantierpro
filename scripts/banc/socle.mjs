@@ -119,7 +119,8 @@ export const SCHEMA = `
   GRANT USAGE ON SCHEMA auth TO anon, authenticated;
   GRANT EXECUTE ON FUNCTION auth.uid() TO anon, authenticated;
   GRANT USAGE ON SCHEMA public TO anon, authenticated;
-  ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO anon, authenticated;
+  -- Comme Supabase : service_role reçoit aussi tous les droits sur une table neuve (relecture gardien-securite du 4 nov. 2026).
+  ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO anon, authenticated, service_role;
 
   -- Organisations : tables de 035 (effacée du dépôt par 227534e) ; leurs fonctions et policies plus bas.
   CREATE TYPE org_role AS ENUM ('owner','admin','comptable','chef_chantier','ouvrier','readonly');

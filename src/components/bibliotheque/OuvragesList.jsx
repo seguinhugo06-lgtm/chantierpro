@@ -44,7 +44,7 @@ function buildPageNumbers(currentPage, totalPages) {
 /**
  * List header row for list view mode
  */
-function ListHeader() {
+function ListHeader({ franchiseTva = false }) {
   const textClass = 'text-encre-3';
   return (
     <div
@@ -52,7 +52,7 @@ function ListHeader() {
     >
       <span className="w-20 shrink-0">Code</span>
       <span className="flex-1 min-w-0">Nom / Unité</span>
-      <span className="w-24 text-right shrink-0">Prix HT</span>
+      <span className="w-24 text-right shrink-0">{franchiseTva ? 'Prix' : 'Prix HT'}</span>
       <span className="w-32 shrink-0 hidden md:block">F / MO / Mat</span>
       <span className="w-14 text-center shrink-0 hidden sm:block">Temps</span>
       <span className="w-20 text-center shrink-0 hidden lg:block">Difficulté</span>
@@ -111,6 +111,7 @@ export default function OuvragesList({
   onSelectOuvrage,
   isSearching = false,
   searchQuery = '',
+  franchiseTva = false, // franchise en base de TVA (art. 293 B du CGI, estFranchiseTva) : « Prix » sans « HT »
 }) {
   const pageNumbers = useMemo(
     () => buildPageNumbers(currentPage, totalPages),
@@ -164,7 +165,7 @@ export default function OuvragesList({
         <div
           className={`rounded-xl border overflow-hidden border-bord`}
         >
-          <ListHeader />
+          <ListHeader franchiseTva={franchiseTva} />
           {ouvrages.map((ouvrage) => (
             <OuvrageCard
               key={ouvrage.id}

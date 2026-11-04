@@ -14,6 +14,7 @@ import jsPDF from 'jspdf';
 import { subscription } from '../stores/subscriptionStore';
 import { remettreFichier } from './natif';
 import { dateLue } from './dates';
+import { estFranchiseTva } from './franchiseTva';
 
 // ============ CONSTANTS ============
 
@@ -405,6 +406,8 @@ function drawProgressBar(doc, x, y, w, value, max, brandRgb) {
  * Generate Activity Report PDF
  */
 export async function generateActivityPDF(data, entreprise, options = {}) {
+  // Franchise en base de TVA (art. 293 B du CGI, estFranchiseTva) : ni « HT » ni « TTC » (D-31)
+  const franchise = estFranchiseTva(entreprise);
   const couleur = options.couleur || entreprise?.couleur || '#f97316';
   const brandRgb = hexToRgb(couleur);
   const doc = createDoc();
@@ -436,7 +439,7 @@ export async function generateActivityPDF(data, entreprise, options = {}) {
   const kh = 24;
   const { kpis, comparisons } = data;
 
-  drawKPICard(doc, m, y, kw, kh, 'Chiffre d\'affaires TTC', fmtMoney(kpis.ca), comparisons?.ca, brandRgb);
+  drawKPICard(doc, m, y, kw, kh, franchise ? 'Chiffre d\'affaires' : 'Chiffre d\'affaires TTC', fmtMoney(kpis.ca), comparisons?.ca, brandRgb);
   drawKPICard(doc, m + kw + 6, y, kw, kh, 'Taux de conversion', fmtPct(kpis.tauxConversion), comparisons?.tauxConversion, brandRgb);
   y += kh + 4;
 
@@ -469,7 +472,7 @@ export async function generateActivityPDF(data, entreprise, options = {}) {
 
   if (data.devisList && data.devisList.length > 0) {
     y = sectionHeader(doc, y, `Devis émis (${data.devisList.length})`, brandRgb);
-    const headers = ['Numéro', 'Client', 'Montant TTC', 'Statut', 'Date'];
+    const headers = ['Numéro', 'Client', franchise ? 'Montant' : 'Montant TTC', 'Statut', 'Date'];
     const widths = [35, 50, 30, 25, 30];
     const rows = data.devisList.slice(0, 15).map(d => [
       d.numero, d.client, fmtMoney2(d.montant), STATUS_LABELS[d.statut] || d.statut, fmtDate(d.date),
@@ -480,7 +483,7 @@ export async function generateActivityPDF(data, entreprise, options = {}) {
   if (data.facturesList && data.facturesList.length > 0) {
     y = checkNewPage(y, 30);
     y = sectionHeader(doc, y, `Factures émises (${data.facturesList.length})`, brandRgb);
-    const headers = ['Numéro', 'Client', 'Montant TTC', 'Statut', 'Échéance'];
+    const headers = ['Numéro', 'Client', franchise ? 'Montant' : 'Montant TTC', 'Statut', 'Échéance'];
     const widths = [35, 50, 30, 25, 30];
     const rows = data.facturesList.slice(0, 15).map(d => [
       d.numero, d.client, fmtMoney2(d.montant), STATUS_LABELS[d.statut] || d.statut, fmtDate(d.echeance || d.date),
@@ -554,6 +557,8 @@ export async function generateActivityPDF(data, entreprise, options = {}) {
  * Generate Financial Report PDF
  */
 export async function generateFinancialPDF(data, entreprise, options = {}) {
+  // Franchise en base de TVA (art. 293 B du CGI, estFranchiseTva) : ni « HT » ni « TTC » (D-31)
+  const franchise = estFranchiseTva(entreprise) || !!data?.tva?.franchise;
   const couleur = options.couleur || entreprise?.couleur || '#f97316';
   const brandRgb = hexToRgb(couleur);
   const doc = createDoc();
@@ -586,8 +591,8 @@ export async function generateFinancialPDF(data, entreprise, options = {}) {
   const { kpis } = data;
 
   // Compte de résultat hors taxes : chiffre d'affaires HT, dépenses HT (en franchise, sans TVA)
-  drawKPICard(doc, m, y, kw, kh, 'Chiffre d\'affaires HT', fmtMoney(kpis.caHT), data.comparisons?.ca, brandRgb);
-  drawKPICard(doc, m + kw + 6, y, kw, kh, data.tva?.franchise ? 'Dépenses' : 'Dépenses HT', fmtMoney(kpis.totalDepenses), null, [239, 68, 68]);
+  drawKPICard(doc, m, y, kw, kh, franchise ? 'Chiffre d\'affaires' : 'Chiffre d\'affaires HT', fmtMoney(kpis.caHT), data.comparisons?.ca, brandRgb);
+  drawKPICard(doc, m + kw + 6, y, kw, kh, franchise ? 'Dépenses' : 'Dépenses HT', fmtMoney(kpis.totalDepenses), null, [239, 68, 68]);
   drawKPICard(doc, m + (kw + 6) * 2, y, kw, kh, 'Marge brute', fmtMoney(kpis.margeBrute), null,
     kpis.margeBrute >= 0 ? [34, 197, 94] : [239, 68, 68]);
   y += kh + 4;
@@ -599,7 +604,7 @@ export async function generateFinancialPDF(data, entreprise, options = {}) {
   y += kh + 8;
 
   // === TVA === (pas de section en franchise : ni TVA facturée ni TVA déductible)
-  if (!data.tva?.franchise) {
+  if (!franchise) {
     y = checkNewPage(y, 40);
     y = sectionHeader(doc, y, 'TVA', brandRgb);
     const tvaHeaders = ['', 'Montant'];
@@ -618,7 +623,7 @@ export async function generateFinancialPDF(data, entreprise, options = {}) {
   if (data.rentabiliteChantiers && data.rentabiliteChantiers.length > 0) {
     y = checkNewPage(y, 40);
     y = sectionHeader(doc, y, 'Rentabilité par chantier', brandRgb);
-    const headers = ['Chantier', 'CA HT', 'Dépenses', 'Marge', 'Marge %'];
+    const headers = ['Chantier', franchise ? 'Chiffre d\'affaires' : 'CA HT', 'Dépenses', 'Marge', 'Marge %'];
     const widths = [50, 30, 30, 30, 30];
     const rows = data.rentabiliteChantiers.map(c => [
       (c.nom || '').substring(0, 25),
@@ -677,6 +682,8 @@ export async function generateFinancialPDF(data, entreprise, options = {}) {
  * Generate Chantier Report PDF
  */
 export async function generateChantierPDF(data, entreprise, options = {}) {
+  // Franchise en base de TVA (art. 293 B du CGI, estFranchiseTva) : ni « HT » ni « TTC » (D-31)
+  const franchise = estFranchiseTva(entreprise);
   const couleur = options.couleur || entreprise?.couleur || '#f97316';
   const brandRgb = hexToRgb(couleur);
   const doc = createDoc();
@@ -733,7 +740,7 @@ export async function generateChantierPDF(data, entreprise, options = {}) {
   const kw = (CONTENT_W - 6) / 2;
   const kh = 24;
   drawKPICard(doc, m, y, kw, kh, 'Budget prévu', fmtMoney(data.budgetPrevu), null, brandRgb);
-  drawKPICard(doc, m + kw + 6, y, kw, kh, 'Devis signés HT', fmtMoney(data.totalCA), null, brandRgb);
+  drawKPICard(doc, m + kw + 6, y, kw, kh, franchise ? 'Devis signés' : 'Devis signés HT', fmtMoney(data.totalCA), null, brandRgb);
   y += kh + 4;
 
   drawKPICard(doc, m, y, kw, kh, 'Dépenses', fmtMoney(data.totalDepenses), null, [239, 68, 68]);
@@ -783,7 +790,7 @@ export async function generateChantierPDF(data, entreprise, options = {}) {
   if (data.devisLies && data.devisLies.length > 0) {
     y = checkNewPage(y, 30);
     y = sectionHeader(doc, y, `Devis & Factures liés (${data.devisLies.length})`, brandRgb);
-    const headers = ['Numéro', 'Type', 'Montant TTC', 'Statut', 'Date'];
+    const headers = ['Numéro', 'Type', franchise ? 'Montant' : 'Montant TTC', 'Statut', 'Date'];
     const widths = [40, 25, 35, 30, 30];
     const rows = data.devisLies.map(d => [
       d.numero, d.type === 'facture' ? 'Facture' : 'Devis', fmtMoney2(d.montant),

@@ -23,7 +23,7 @@ async function ouvrirFiche(page, attendre, nom) {
 const dansDialogue = (page, fn, arg) => page.evaluate(fn, arg);
 
 /** Remplit l'attestation comme au téléphone : listes, saisies, boutons, case, signature au doigt (souris réelle). */
-async function remplirAttestation(page, attendre) {
+async function remplirAttestation(page, attendre, { conseils = true } = {}) {
   await page.select('#ramonage-appareil_type', 'poele_bois');
   await page.select('#ramonage-combustible', 'bois');
   await page.select('#ramonage-conduit', 'tube_chemise');
@@ -39,10 +39,12 @@ async function remplirAttestation(page, attendre) {
     if (!ok) throw new Error(`choix « ${t} » introuvable`);
     await attendre(120);
   }
-  await dansDialogue(page, () => {
-    const l = [...document.querySelectorAll('[role="dialog"] label')].find((x) => x.innerText.includes('Qualité et stockage du combustible'));
-    l.querySelector('input').click();
-  });
+  if (conseils) {
+    await dansDialogue(page, () => {
+      const l = [...document.querySelectorAll('[role="dialog"] label')].find((x) => x.innerText.includes('Qualité et stockage du combustible'));
+      l.querySelector('input').click();
+    });
+  }
   const prix = await page.evaluateHandle(() => {
     const l = [...document.querySelectorAll('[role="dialog"] label')].find((x) => x.innerText.startsWith('Prix'));
     return document.getElementById(l.htmlFor);
@@ -61,7 +63,261 @@ async function remplirAttestation(page, attendre) {
   }
 }
 
+// Retour de ramoneurs (nov. 2026) : « scroll bug paramètre ramonage sur navigateur et pas sur app ». Dans un navigateur
+// (jamais dans l'app installée), la carte « Installer Mallettico » est fixée en bas de l'écran ; elle couvrait les derniers
+// champs de Paramètres › Ramonage même tout en bas de la page. Ce parcours NE la masque PAS (pas de sansInstallation).
+const SAFARI_IPHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1';
+// eslint-disable-next-line no-new-func
+const commeSafariIphone = new Function(`Object.defineProperty(navigator, 'userAgent', { get: () => ${JSON.stringify(SAFARI_IPHONE)} });`);
+
+async function ouvrirReglagesRamonage(page, attendre) {
+  await page.evaluate(() => [...document.querySelectorAll('button')].filter((b) => b.getClientRects().length)
+    .find((b) => b.innerText.trim() === 'Ramonage' || b.getAttribute('aria-label') === 'Ramonage')?.click());
+  await attendre(500);
+  if (await page.$eval('#ramonage-actif', (e) => e.getAttribute('aria-checked')) !== 'true') {
+    await page.click('#ramonage-actif');
+    await attendre(800);
+  }
+}
+
+const DERNIER_CHAMP = () => {
+  const champs = [...document.querySelector('[data-testid="reglages-ramonage"]').querySelectorAll('input, button, select, textarea')];
+  return champs[champs.length - 1];
+};
+
 module.exports = [
+  // Relecture du 3 nov. 2026 (défaut 6) : la marge posée sous la carte « Installer » vaut pour toutes les pages ; elle
+  // n'était constatée que sur Paramètres › Ramonage. Accueil, liste des devis, planning, chantiers : carte affichée
+  // (agent Safari iPhone, 375 px), page défilée jusqu'en bas, le dernier élément utilisable du contenu n'est pas couvert.
+  ...['dashboard', 'devis', 'planning', 'chantiers'].map((nomPage) => ({
+    nom: `carte « Installer » affichée : ${nomPage} défile jusqu’à son dernier élément, couvert par rien (Safari iPhone, 375 px)`,
+    async executer({ ouvrir, attendre, verifier }) {
+      const { page } = await ouvrir({ page: nomPage, largeur: 375, avantChargement: commeSafariIphone });
+      await attendre(3800); // la carte s'affiche après 3 s
+      const carte = await page.evaluate(() => {
+        const c = [...document.querySelectorAll('div.fixed')].find((d) => d.innerText.includes('Mallettico') && d.getBoundingClientRect().height > 0);
+        return c ? Math.round(c.getBoundingClientRect().height) : 0;
+      });
+      verifier(carte > 100, `${nomPage} : la carte « Installer » est affichée (${carte} px)`);
+      await page.mouse.move(250, 300);
+      for (let i = 0; i < 40; i++) { await page.mouse.wheel({ deltaY: 400 }); await attendre(40); }
+      await attendre(600);
+      const r = await page.evaluate(() => {
+        const main = document.getElementById('main-content');
+        const champs = [...(main?.querySelectorAll('a[href], button, input, select, textarea') || [])]
+          .filter((e) => e.getClientRects().length && getComputedStyle(e).visibility !== 'hidden');
+        const dernier = champs.sort((x, y) => x.getBoundingClientRect().bottom - y.getBoundingClientRect().bottom).pop();
+        if (!dernier) return { aucun: true };
+        dernier.scrollIntoView({ block: 'nearest' });
+        const b = dernier.getBoundingClientRect();
+        const dessus = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2);
+        return {
+          libelle: (dernier.innerText || dernier.getAttribute('aria-label') || dernier.id || dernier.tagName).trim().slice(0, 40),
+          enBas: Math.round(document.documentElement.scrollHeight - innerHeight - scrollY),
+          dessous: dessus === dernier || dernier.contains(dessus) ? '' : `${dessus?.tagName} « ${(dessus?.innerText || '').trim().slice(0, 40)} »`,
+        };
+      });
+      verifier(!r.aucun, `${nomPage} : un élément utilisable dans le contenu`);
+      verifier(!r.dessous, `${nomPage} : le dernier élément « ${r.libelle} » n’est couvert par rien${r.dessous ? ` (couvert par ${r.dessous})` : ''}`);
+    },
+  })),
+  // Contrôle local du 3 nov. 2026 (relecture 6) : la marge posée sur body ne déplace pas une vue à hauteur fixe. Deux cas :
+  // le panneau de détail d'une tâche (fixe, pleine hauteur, défilement interne, TaskDetail.jsx) et la grille semaine du
+  // planning (cadre limité à min(500px, 55vh) au téléphone, min(600px, 60vh) au-delà, Planning.jsx). Carte affichée, agent Safari iPhone, 375 px : on défile
+  // jusqu'en bas et le dernier élément n'est couvert par rien.
+  {
+    nom: 'carte « Installer » affichée : le panneau d’une tâche défile jusqu’à son dernier élément, couvert par rien (Safari iPhone, 375 px)',
+    reel: true,
+    async executer({ ouvrir, attendre, verifier, sessionFactice }) {
+      const MEMO = { id: 'f0f0f0f0-0000-4000-8000-000000000091', text: 'Tirer le câble du tableau', status: 'a_faire', is_done: false, due_date: new Date().toLocaleDateString('sv-SE'), notes: 'Prévoir la gaine ICTA.', created_at: '2026-10-01T08:00:00Z' };
+      const base = creerBase({ memos: [MEMO] });
+      const { page } = await ouvrir({ reel: true, largeur: 375, page: 'tasks', session: sessionFactice(UID), supabase: base.reponse, avantChargement: commeSafariIphone });
+      await attendre(3800); // la carte s'affiche après 3 s
+      const carte = await page.evaluate(() => {
+        const c = document.querySelector('[data-invite-pwa]');
+        return c ? Math.round(c.getBoundingClientRect().height) : 0;
+      });
+      verifier(carte > 100, `tâches : la carte « Installer » est affichée (${carte} px)`);
+      const ouverte = await page.evaluate(() => {
+        const el = [...document.querySelectorAll('main *')].find((e) => e.childElementCount === 0 && e.textContent.trim() === 'Tirer le câble du tableau');
+        el?.click();
+        return !!el;
+      });
+      verifier(ouverte, 'la tâche est dans la liste');
+      await attendre(1200);
+      const r = await page.evaluate(() => {
+        const panneau = document.querySelector('[role="dialog"][aria-label="Détail de la tâche"]');
+        if (!panneau) return { panneau: false };
+        const defile = panneau.querySelector('.overflow-y-auto');
+        if (defile) defile.scrollTop = defile.scrollHeight;
+        const champs = [...panneau.querySelectorAll('a[href], button, input, select, textarea')]
+          .filter((e) => e.getClientRects().length && getComputedStyle(e).visibility !== 'hidden');
+        const dernier = champs.sort((x, y) => x.getBoundingClientRect().bottom - y.getBoundingClientRect().bottom).pop();
+        if (!dernier) return { panneau: true, aucun: true };
+        const b = dernier.getBoundingClientRect();
+        const dessus = document.elementFromPoint(b.left + b.width / 2, Math.min(b.top + b.height / 2, innerHeight - 1));
+        return {
+          panneau: true,
+          libelle: (dernier.innerText || dernier.getAttribute('aria-label') || dernier.placeholder || dernier.tagName).trim().slice(0, 40),
+          dessous: dessus === dernier || dernier.contains(dessus) ? '' : `${dessus?.tagName} « ${(dessus?.innerText || '').trim().slice(0, 40)} »`,
+        };
+      });
+      verifier(r.panneau, 'le panneau de détail de la tâche s’ouvre');
+      verifier(!r.aucun, 'un élément utilisable dans le panneau');
+      verifier(!r.dessous, `panneau de la tâche : le dernier élément « ${r.libelle} » n’est couvert par rien${r.dessous ? ` (couvert par ${r.dessous})` : ''}`);
+    },
+  },
+  {
+    nom: 'carte « Installer » affichée : la grille semaine du planning défile jusqu’à sa dernière heure, couverte par rien (Safari iPhone, 375 px)',
+    async executer({ ouvrir, attendre, verifier }) {
+      // Astuces fermées : la grille est alors le dernier bloc de la page, le cas le plus serré
+      // eslint-disable-next-line no-new-func
+      const avantChargement = new Function(`${commeSafariIphone.toString().replace(/^[^{]*\{|\}$/g, '')}; try { localStorage.setItem('cp_planning_tips_dismissed', 'true'); } catch { /* */ }`);
+      const { page } = await ouvrir({ page: 'planning', largeur: 375, avantChargement });
+      await attendre(3800);
+      verifier(await page.evaluate(() => !document.body.innerText.includes('Votre planning')), 'astuces du planning fermées');
+      const carte = await page.evaluate(() => Math.round(document.querySelector('[data-invite-pwa]')?.getBoundingClientRect().height || 0));
+      verifier(carte > 100, `planning : la carte « Installer » est affichée (${carte} px)`);
+      const semaine = await page.evaluate(() => {
+        const b = [...document.querySelectorAll('button, [role="radio"], [role="tab"]')].find((x) => x.innerText.trim() === 'Semaine');
+        b?.click();
+        return !!b;
+      });
+      verifier(semaine, 'bouton « Semaine »');
+      await attendre(800);
+      // La grille d'abord (défilement interne), puis la page, à la molette
+      const grille = await page.evaluate(() => {
+        const g = [...document.querySelectorAll('main .overflow-y-auto')].find((e) => /max-height: min\(\d+px, \d+vh\)/.test(e.getAttribute('style') || '') && e.getBoundingClientRect().height > 0);
+        if (g) g.scrollTop = g.scrollHeight;
+        return !!g;
+      });
+      verifier(grille, 'la grille semaine est affichée');
+      // La page défile jusqu'à poser le bas de la grille juste au-dessus de la carte (ce que fait l'artisan pour voir la
+      // dernière heure) : il faut que la page puisse aller jusque-là, et que rien ne couvre alors le bas de la grille
+      const r = await page.evaluate(async () => {
+        const g = [...document.querySelectorAll('main .overflow-y-auto')].find((e) => /max-height: min\(\d+px, \d+vh\)/.test(e.getAttribute('style') || '') && e.getBoundingClientRect().height > 0);
+        const carte = document.querySelector('[data-invite-pwa]').getBoundingClientRect();
+        const voulu = Math.max(0, g.getBoundingClientRect().bottom - (carte.top - 8));
+        const avant = scrollY;
+        window.scrollTo({ top: avant + voulu, behavior: 'instant' });
+        await new Promise((ok) => setTimeout(ok, 300));
+        const b = g.getBoundingClientRect();
+        const y = b.bottom - 6; // la dernière rangée d'heure, juste au-dessus du bord bas de la grille
+        const dessus = document.elementFromPoint(b.left + b.width / 2, Math.min(Math.max(y, 0), innerHeight - 1));
+        return {
+          finGrille: Math.round(g.scrollHeight - g.clientHeight - g.scrollTop),
+          manque: Math.round(voulu - (scrollY - avant)),
+          visible: y > 0 && y < innerHeight,
+          dessous: g.contains(dessus) ? '' : `${dessus?.tagName} « ${(dessus?.innerText || '').trim().slice(0, 40)} »`,
+        };
+      });
+      verifier(r.finGrille <= 1, `la grille est défilée jusqu’à la dernière heure (reste ${r.finGrille} px)`);
+      verifier(r.manque <= 1, `la page défile assez pour poser le bas de la grille au-dessus de la carte (manque ${r.manque} px)`);
+      verifier(r.visible && !r.dessous, `planning semaine : le bas de la grille est visible et couvert par rien${r.dessous ? ` (couvert par ${r.dessous})` : ''}`);
+    },
+  },
+  ...[375, 1440].map((largeur) => ({
+    nom: `ramonage : Paramètres › Ramonage défile jusqu’au dernier champ, visible et utilisable, carte « Installer » affichée (${largeur} px)`,
+    async executer({ ouvrir, attendre, verifier }) {
+      const { page } = await ouvrir({ page: 'settings', largeur, avantChargement: largeur < 768 ? commeSafariIphone : undefined });
+      await ouvrirReglagesRamonage(page, attendre);
+      if (largeur >= 768) {
+        // Chrome au bureau : l'invite d'installation arrive par cet évènement
+        await page.evaluate(() => {
+          const ev = new Event('beforeinstallprompt', { cancelable: true });
+          ev.prompt = () => Promise.resolve();
+          ev.userChoice = Promise.resolve({ outcome: 'dismissed' });
+          window.dispatchEvent(ev);
+        });
+      }
+      await attendre(3500); // la carte s'affiche après 3 s
+      const carte = await page.evaluate(() => {
+        const c = [...document.querySelectorAll('div.fixed')].find((d) => d.innerText.includes('Mallettico') && d.getBoundingClientRect().height > 0);
+        return c ? Math.round(c.getBoundingClientRect().height) : 0;
+      });
+      verifier(carte > 100, `la carte « Installer » est affichée, comme dans un navigateur (${carte} px)`);
+      // Défilement réel (molette) jusqu'en bas
+      await page.mouse.move(Math.round(largeur * 0.7), 300);
+      for (let i = 0; i < 30; i++) { await page.mouse.wheel({ deltaY: 400 }); await attendre(40); }
+      await attendre(600);
+      const r = await page.evaluate((code) => {
+        const dernier = (new Function(`return (${code})()`))();
+        const b = dernier.getBoundingClientRect();
+        const dessus = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2);
+        return {
+          libelle: dernier.labels?.[0]?.innerText || dernier.id,
+          bas: Math.round(b.bottom), haut: Math.round(b.top), hauteur: innerHeight,
+          enBas: Math.round(document.documentElement.scrollHeight - innerHeight - scrollY),
+          dessous: dessus === dernier || dernier.contains(dessus) ? '' : `${dessus?.tagName} « ${(dessus?.innerText || '').trim().slice(0, 40)} »`,
+        };
+      }, DERNIER_CHAMP.toString());
+      verifier(r.enBas <= 2, `la page est défilée jusqu’en bas (reste ${r.enBas} px)`);
+      verifier(r.haut >= 0 && r.bas <= r.hauteur, `le dernier champ « ${r.libelle} » est dans l’écran (${r.haut}–${r.bas} / ${r.hauteur})`);
+      verifier(!r.dessous, `le dernier champ n’est couvert par rien${r.dessous ? ` (couvert par ${r.dessous})` : ''}`);
+      // Utilisable : un vrai clic à cet endroit donne la main au champ
+      const el = await page.evaluateHandle((code) => (new Function(`return (${code})()`))(), DERNIER_CHAMP.toString());
+      const b = await el.boundingBox();
+      await page.mouse.click(b.x + b.width / 2, b.y + b.height / 2);
+      await attendre(200);
+      verifier(await el.evaluate((e) => document.activeElement === e), 'un toucher sur le dernier champ le sélectionne');
+    },
+  })),
+  {
+    nom: 'ramonage : conseils facultatifs — désactivés dans Paramètres, ni demandés ni imprimés, l’attestation s’enregistre (375 px)',
+    async executer({ ouvrir, cliquer, attendre, verifier }) {
+      const { page } = await ouvrir({ page: 'settings', largeur: 375, avantChargement: sansInstallation });
+      await ouvrirReglagesRamonage(page, attendre);
+      verifier(await page.$eval('#ramonage-conseils', (e) => e.getAttribute('aria-checked')) === 'true', 'par défaut, les conseils sont imprimés (comme avant)');
+      await page.click('#ramonage-conseils');
+      await attendre(800);
+      verifier(await page.$eval('#ramonage-conseils', (e) => e.getAttribute('aria-checked')) === 'false', 'le réglage « Imprimer les conseils sur l’attestation » est désactivé');
+
+      await page.evaluate(() => localStorage.setItem('cp_current_page', 'clients'));
+      await page.reload({ waitUntil: 'networkidle0' });
+      await attendre(1500);
+      await ouvrirFiche(page, attendre, 'Dupont');
+      await cliquer(page, 'Nouveau ramonage', { dans: '[data-testid="onglet-ramonage"]' });
+      await attendre(600);
+      await page.select('#ramonage-appareil_type', 'poele_bois');
+      await page.select('#ramonage-combustible', 'bois');
+      await attendre(200);
+      const etat = await page.evaluate(() => ({
+        coche: document.querySelector('#ramonage-conseils-imprimes')?.checked,
+        choix: [...document.querySelectorAll('[role="dialog"] label')].some((l) => l.innerText.includes('Qualité et stockage du combustible')),
+        aide: document.querySelector('#ramonage-conseils')?.innerText || '',
+      }));
+      verifier(etat.coche === false, 'à la saisie, « Imprimer les conseils sur l’attestation » est décoché (réglage de l’entreprise)');
+      verifier(!etat.choix, 'les choix de conseils ne sont pas demandés');
+      verifier(etat.aide.includes('Vous devez quand même conseiller votre client'), 'le rappel de l’obligation de conseil (R. 1331-77) est affiché');
+      await remplirAttestation(page, attendre, { conseils: false });
+      // Cocher la case pour cette attestation : les conseils redeviennent demandés
+      await page.click('#ramonage-conseils-imprimes');
+      await attendre(200);
+      await cliquer(page, 'Vérifier l’attestation', { dans: '[role="dialog"]' });
+      await attendre(300);
+      const manque = await page.evaluate(() => document.querySelector('[role="dialog"] [role="alert"]')?.innerText || '');
+      verifier(manque.includes('Les conseils donnés'), 'case cochée pour cette attestation : les conseils sont de nouveau demandés');
+      await page.click('#ramonage-conseils-imprimes');
+      await attendre(200);
+      await cliquer(page, 'Vérifier l’attestation', { dans: '[role="dialog"]' });
+      await attendre(500);
+      const apercu = await page.evaluate(() => document.querySelector('[role="dialog"] iframe')?.getAttribute('srcdoc') || '');
+      verifier(apercu.includes('Attestation de ramonage'), 'sans conseils, l’attestation passe à l’aperçu');
+      verifier(!apercu.includes('Conseils donnés') && !apercu.includes('donnés à titre indicatif'), 'l’aperçu ne porte pas les conseils');
+      for (const t of ['Vacuité du conduit sur toute sa longueur</th><td>Assurée', 'Conduits ramonés', 'ne vaut pas attestation d’entretien', 'À conserver au moins deux ans']) {
+        verifier(apercu.includes(t), `le contenu obligatoire reste : « ${t.replace(/<[^>]+>/g, ' ')} »`);
+      }
+      await cliquer(page, 'Enregistrer l’attestation', { dans: '[role="dialog"]' });
+      await attendre(1200);
+      const titre = await page.evaluate(() => document.querySelector('[role="dialog"] h2')?.innerText || '');
+      verifier(/^Attestation RAM-\d{4}-\d{5}$/.test(titre), `l’attestation sans conseils s’enregistre (${titre})`);
+      // Réimpression : la fiche de l'attestation enregistrée ne porte toujours pas les conseils
+      const html = await page.evaluate(() => document.querySelector('[role="dialog"] iframe')?.getAttribute('srcdoc') || '');
+      // Relecture du 3 nov. 2026 : sans aperçu, la vérification passait sans rien dire (panne verte)
+      verifier(html.length > 0, 'l’aperçu de l’attestation enregistrée est affiché');
+      verifier(!html.includes('Conseils donnés'), 'l’attestation enregistrée, relue, ne porte pas les conseils');
+    },
+  },
   {
     nom: 'ramonage : activer, attestation au téléphone, PDF, facture sans ressaisie, historique, puis rappel (375 px)',
     async executer({ ouvrir, cliquer, attendre, verifier, RACINE }) {

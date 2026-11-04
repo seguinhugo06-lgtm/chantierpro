@@ -3,7 +3,6 @@ import { Plus, Download, Trash2, Send, Mail, MessageCircle, Edit3, Check, X, Fil
 import supabase, { isDemo } from '../supabaseClient';
 import { useSubscriptionStore, PLANS } from '../stores/subscriptionStore';
 const PipelineKanban = lazy(() => import('./pipeline/PipelineKanban'));
-import { DEVIS_STATUS_LABELS } from '../lib/constants';
 import { ChampRecherche, BoutonVolet, Volet, GroupeChoix, ListeChoix, PucesActives, SegmentDefilant } from './ui/Filtres';
 /**
  * Éditeurs et modales chargés à la demande.
@@ -45,6 +44,8 @@ import { generateId } from '../lib/utils';
 import { mapError } from '../lib/errorMapper';
 import { formatMoney as fmtMoney, filterValidLignes, formatClientName } from '../lib/formatters';
 import { normalizeNumero } from '../lib/devis-utils';
+import { mentionImmatriculation } from '../lib/immatriculation';
+import { ECRITURE_EN_ATTENTE } from '../lib/erreursEcriture';
 import { apresPaiement, statutFacture, resteAPayer, dejaPaye, echeance, dateEcheance, joursDeRetard, paiementsDe, montantPaiement, estCorrection, correctionPossible, motifCorrection, resteSigne } from '../lib/paiementsFacture';
 import CorrectionEncaissementModal from './devis/CorrectionEncaissementModal';
 import EnTeteDocument from './devis/EnTeteDocument';
@@ -114,9 +115,13 @@ import { estOuverte, estEnRetard, aTraiter as docATraiter, devisARelancer, jours
 import { urlPublique } from '../lib/urlPublique';
 import { FONCTIONS } from '../lib/fonctions';
 import { jourLocal, dateLue } from '../lib/dates';
+import { tableauExportDocuments } from '../lib/exportsCsv';
+import { qualificationsHtml, jourDuDocument } from '../lib/qualifications';
 import { signatureDuClient } from '../lib/signatureDocument';
 import RetractationDevis from './devis/RetractationDevis';
 import ExemplaireSigne from './devis/ExemplaireSigne';
+import ChoixStatut from './devis/ChoixStatut';
+import { choixDeStatut } from '../lib/changementStatut';
 import { messageExemplaire, nomFichierExemplaire } from '../../supabase/functions/notify-signature/exemplaire.ts';
 import { finValidite, joursRestants, estExpire } from '../lib/validiteDevis';
 import { createPortal } from 'react-dom';
@@ -125,27 +130,7 @@ import { createPortal } from 'react-dom';
 // n'est pas persisté côté client → statut vide (l'onglet « Emails » reste masqué).
 const getDocumentEmailStatus = () => ({ sent: 0, records: [] });
 
-// Valid status transitions — enforced on buttons and dropdown
-const VALID_TRANSITIONS = {
-  // Devis transitions
-  brouillon: ['envoye', 'refuse'],
-  envoye: ['vu', 'accepte', 'refuse'],
-  vu: ['accepte', 'refuse'],
-  // « Acompte facturé » et « Facturé » viennent des factures créées, jamais d'un changement de statut
-  // à la main (recette du 9 oct. 2026 : un devis « Facturé » sans facture, sans retour possible).
-  accepte: [],
-  signe: [],
-  acompte_facture: [],
-  facture: [],
-  refuse: ['brouillon'],
-};
-// Facture-specific transitions (keyed by 'facture:status')
-// « Payée » vient d'un encaissement enregistré (« Encaisser »), qui compte dans l'encaissé du mois.
-const FACTURE_TRANSITIONS = {
-  brouillon: ['envoye'],
-  envoye: [],
-  payee: [],
-};
+// Statuts proposés (liste et fiche) : choixDeStatut (src/lib/changementStatut.js), avec les règles tenues par la base.
 
 // Conditions de règlement : table commune (src/lib/formatDocument.js), aussi lue par les générateurs.
 
@@ -225,11 +210,8 @@ export default function DevisPage({ clients, addClient, devis, setDevis, chantie
   const textSecondary = "text-encre-2";
   const textMuted = "text-encre-2";
 
-  // Helper for PDF - format RCS complet
-  const getRCSComplet = () => {
-    if (!entreprise?.rcsVille || !entreprise?.rcsNumero) return '';
-    return `RCS ${entreprise.rcsVille} ${entreprise.rcsType || 'B'} ${entreprise.rcsNumero}`;
-  };
+  // Immatriculation imprimée (RCS ou RNE) : même bloc que devisHtmlBuilder (lib/immatriculation)
+  const getRCSComplet = () => mentionImmatriculation(entreprise);
 
   const [mode, setMode] = useState(selectedDevis ? 'preview' : 'list');
   const [selected, setSelected] = useState(selectedDevis || null);
@@ -330,7 +312,7 @@ export default function DevisPage({ clients, addClient, devis, setDevis, chantie
   const [actionLoading, setActionLoading] = useState(null); // 'pdf' | 'duplicate' | null
   const [chantierForm, setChantierForm] = useState({ nom: '', adresse: '' });
   const [pdfContent, setPdfContent] = useState('');
-  const [voletStatut, setVoletStatut] = useState(false); // fiche : « Changer le statut » (menu ⋯)
+  const [statutDe, setStatutDe] = useState(null); // « Changer le statut » : le document (liste ou fiche), null fermé
   const [showAvoirModal, setShowAvoirModal] = useState(false);
   const [assigningClientDevisId, setAssigningClientDevisId] = useState(null); // B1: assign client to orphan devis
   const [showDevisExpressModal, setShowDevisExpressModal] = useState(false);
@@ -1678,7 +1660,7 @@ export default function DevisPage({ clients, addClient, devis, setDevis, chantie
       ${E?.decennaleAssureur && E?.decennaleNumero ? `Assurance décennale: ${E.decennaleAssureur}${E.decennaleAssureurAdresse ? ` (${E.decennaleAssureurAdresse})` : ''} N°${E.decennaleNumero}${E.decennaleValidite ? ` (Valide jusqu'au ${dateLue(E.decennaleValidite).toLocaleDateString('fr-FR')})` : ''}${E.decennaleZone ? ` — Zone : ${E.decennaleZone}` : ''}${E.decennaleActivites ? ` — Activités : ${E.decennaleActivites}` : ''}` : ''}
       ${E?.decennaleAssureur && E?.decennaleNumero && E?.rcProAssureur ? '<br>' : ''}
       ${E?.rcProAssureur ? `RC Pro: ${E.rcProAssureur}${E.rcProNumero ? ` N°${E.rcProNumero}` : ''}${E.rcProValidite ? ` (Valide jusqu'au ${dateLue(E.rcProValidite).toLocaleDateString('fr-FR')})` : ''}${E.rcProMontantGarantie ? ` — Garantie: ${E.rcProMontantGarantie} €` : ''}${E.rcProZone ? ` — Zone: ${E.rcProZone}` : ''}` : ''}
-      ${E?.mentionRGE !== false && Array.isArray(E?.labels) && E.labels.filter(l => l.actif).length > 0 ? '<br>' + E.labels.filter(l => l.actif).map(l => `${echap(l.nom)}${l.numero ? ` N°${echap(l.numero)}` : ''}${l.organisme ? ` (${echap(l.organisme)})` : ''}${l.dateExpiration ? ` — Valide jusqu'au ${dateLue(l.dateExpiration).toLocaleDateString('fr-FR')}` : ''}`).join('<br>') : ''}
+      ${qualificationsHtml(entreprise, echap, jourDuDocument(doc))}
     </div>
     ${piedDePageHtml({ nature: natureDuDocument(doc), client })}
   </div>
@@ -1772,27 +1754,10 @@ export default function DevisPage({ clients, addClient, devis, setDevis, chantie
   const exportCSV = (docs) => {
     if (docs.length === 0) return;
     const BOM = '\uFEFF'; // UTF-8 BOM for Excel
-    const headers = ['Numéro', 'Type', 'Client', 'Date', 'Objet', 'Montant HT', 'TVA', isMicro ? 'Montant' : 'Montant TTC', 'Statut', 'Date envoi', 'Date signature', 'Date paiement'];
-    const rows = docs.map(d => {
-      const client = clients.find(c => c.id === d.client_id);
-      const clientName = client ? `${client.prenom || ''} ${client.nom || ''}`.trim() : (d.client_nom || '');
-      const fmtDate = (v) => v ? dateLue(v).toLocaleDateString('fr-FR') : '';
-      return [
-        d.numero || '',
-        d.type === 'facture' ? 'Facture' : 'Devis',
-        clientName,
-        fmtDate(d.date),
-        (d.objet || '').replace(/;/g, ','),
-        (d.total_ht || 0).toFixed(2),
-        (d.tva || 0).toFixed(2),
-        (d.total_ttc || d.montant_ttc || 0).toFixed(2),
-        d.statut || '',
-        fmtDate(d.date_envoi),
-        fmtDate(d.date_signature),
-        fmtDate(d.date_paiement),
-      ];
-    });
-    const csv = BOM + [headers, ...rows].map(r => r.join(';')).join('\n');
+    // Franchise en base de TVA (art. 293 B du CGI) : une seule colonne « Montant » (tableauExportDocuments, D-31) ; sauf si
+    // une pièce exportée a été émise avec TVA : elle est due et doit rester visible (CGI art. 283, 3 ; juriste-btp, 4 nov. 2026)
+    // (règle dans exportDocumentsEnFranchise, src/lib/exportsCsv.js)
+    const csv = BOM + tableauExportDocuments(docs, { clients, entreprise }).map(r => r.join(';')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     remettreFichier(blob, `export-${jourLocal()}.csv`);
     showToast(`${docs.length} document${docs.length > 1 ? 's' : ''} exporté${docs.length > 1 ? 's' : ''} en CSV`, 'success');
@@ -2351,6 +2316,70 @@ export default function DevisPage({ clients, addClient, devis, setDevis, chantie
         </Bouton>
       </ModalFooter>
     </Modal>
+  );
+
+  // « Changer le statut » depuis la liste ou la fiche (retours d'Hugo du 3 nov. 2026). Chaque écriture est attendue :
+  // un refus de la base est dit par DataContext et l'écran revient à l'état enregistré, sans message de réussite.
+  const choixDuStatut = (doc) => (isViewOnly ? [] : choixDeStatut(doc, paiements, { peutModifier: canPerform('devis', 'edit'), peutEnvoyer: canPerform('devis', 'send') }));
+  const changerStatut = async (doc, choix) => {
+    setStatutDe(null);
+    if (!doc || !choix) return;
+    // « Payée » : la base ne l'accepte que si les encaissements soldent la facture (099). On enregistre le paiement
+    // reçu du reste dû (le flux « Encaisser », prérempli) ; la facture passe « payée » une fois la base d'accord.
+    if (choix.geste === 'encaisser') {
+      setSelected(doc); setMode('preview'); setShowPaymentModal(true);
+      return;
+    }
+    if (choix.cle === 'envoye' && doc.statut === 'brouillon') {
+      const issues = validateDevisForSend(doc);
+      if (issues.length > 0) { setSendValidationIssues({ issues, doc }); return; }
+    }
+    // « Signé » à la main : un geste depuis la carte suffisait, sans retour possible, et le lien de signature du client
+    // répond ensuite « déjà signé » (relecture gardien-securite du 3 nov. 2026, M1). On le fait confirmer, en disant
+    // que la preuve est le devis papier signé (relecture juriste-btp du 3 nov. : C. civ. 1113 et 1359 ; C. conso. L221-9 ;
+    // BOI-TVA-LIQ-30-20-90-40 § 60 et 110).
+    if (choix.cle === 'accepte') {
+      const ok = await confirm({
+        title: 'Le client a signé le devis ?',
+        message: 'Choisissez « Signé » si votre client a signé le devis sur papier. Gardez votre exemplaire signé : il prouve son accord et, pour une TVA à 10 % ou 5,5 %, porte sa certification. Le lien de signature en ligne ne servira plus et le devis ne pourra plus revenir en arrière.',
+        confirmText: 'Marquer signé',
+      });
+      if (!ok) return;
+    }
+    if (choix.geste === 'emettre') {
+      const ok = await confirm({
+        title: 'Émettre la facture ?',
+        message: 'La facture sera émise : son numéro sera définitif et elle ne pourra plus être modifiée ni supprimée, seulement corrigée par un avoir.',
+        confirmText: 'Émettre la facture',
+      });
+      if (!ok) return;
+    }
+    const maj = { statut: choix.cle, ...(choix.cle === 'envoye' && !doc.date_envoi ? { date_envoi: jourLocal() } : {}) };
+    // Le numéro d'une facture émise est celui que la base a attribué (101, 102) : DataContext le reprend de la ligne
+    // enregistrée, la fiche suit la liste
+    const resultat = await onUpdate(doc.id, maj, { silencieux: true });
+    if (!resultat) return;
+    setSelected((s) => (s?.id === doc.id ? { ...s, ...maj } : s));
+    // Hors ligne, l'écriture attend sur l'appareil : la base n'a ni accepté l'émission ni attribué le numéro, et
+    // « Pas de connexion » est déjà affiché (relecture du 3 nov. 2026 : deux messages contraires)
+    if (resultat === ECRITURE_EN_ATTENTE) {
+      // Texte de juriste-btp (4 nov. 2026) : vrai que le numéro soit déjà attribué (brouillon créé en ligne) ou seulement
+      // proposé (brouillon créé hors ligne) ; une facture transmise avant l'enregistrement casserait la séquence continue
+      // des numéros (CGI ann. II art. 242 nonies A, I, 7°). Affiché 10 s : un avertissement doit avoir le temps d'être lu.
+      if (choix.geste === 'emettre') showToast('La facture n’est pas encore émise : elle le sera, avec son numéro définitif, quand ce changement sera enregistré en ligne. D’ici là, ne la transmettez pas à votre client.', 'info', 10000);
+      return;
+    }
+    showToast(choix.geste === 'emettre' ? 'Facture émise' : `Statut enregistré : ${choix.libelle}`, 'success');
+  };
+  const fenetreStatut = (
+    <ChoixStatut
+      doc={statutDe}
+      statutAffiche={statutDe?.type === 'facture' ? statutFacture(statutDe, paiements) : statutDe?.statut}
+      choix={statutDe ? choixDuStatut(statutDe) : []}
+      voirMontants={canViewPrices && !modeDiscret}
+      onChoisir={(c) => changerStatut(statutDe, c)}
+      onFermer={() => setStatutDe(null)}
+    />
   );
 
   // « Assigner un client » : montée par la liste ET par la fiche (le bouton de la fiche n'ouvrait rien avant)
@@ -2936,7 +2965,7 @@ export default function DevisPage({ clients, addClient, devis, setDevis, chantie
           }
 
           // Tout le reste : le menu « ⋯ »
-          const transitions = (isDevis ? VALID_TRANSITIONS : FACTURE_TRANSITIONS)[selected.statut] || [];
+          const statutsPossibles = choixDuStatut(selected);
           const brouillon = selected.statut === 'brouillon';
           const envoyerPar = (fn) => () => (brouillon ? trySend(selected, fn) : fn(selected));
           const actions = [
@@ -2949,7 +2978,7 @@ export default function DevisPage({ clients, addClient, devis, setDevis, chantie
                 if (token) ouvrirLienExterne(buildSignatureUrl(token)); else showToast('Le lien de signature n\'existe pas en mode démo.', 'info');
               } catch (e) { showToast(blocageExpiration(selected) || mapError(e), 'error'); }
             } },
-            peutModifier && transitions.length > 0 && { libelle: 'Changer le statut', icone: Flag, onClick: () => setVoletStatut(true) },
+            statutsPossibles.length > 0 && { libelle: 'Changer le statut', icone: Flag, onClick: () => setStatutDe(selected) },
             peutEnvoyer && !isAvoir && { groupe: 'envoi', libelle: brouillon ? 'Envoyer par e-mail' : 'Renvoyer par e-mail', icone: Mail, onClick: envoyerPar(sendEmail) },
             peutEnvoyer && !isAvoir && !(selected.type === 'facture' && brouillon) && { groupe: 'envoi', libelle: 'Envoyer par WhatsApp', icone: MessageCircle, onClick: envoyerPar(sendWhatsApp) },
             peutEnvoyer && !isAvoir && !(selected.type === 'facture' && brouillon) && { groupe: 'envoi', libelle: 'Envoyer par SMS', icone: MessageCircle, onClick: envoyerPar(sendSMS) },
@@ -2998,7 +3027,16 @@ export default function DevisPage({ clients, addClient, devis, setDevis, chantie
               montant={canViewPrices ? (modeDiscret ? '···' : formatMoney(isAvoir ? -Math.abs(ttc) : resteEnGrand ? resteFacture : ttc)) : '—'}
               mention={canViewPrices && !modeDiscret && !franchiseAppliquee(selected, entreprise) ? 'TTC' : undefined}
               libelleMontant={resteEnGrand && canViewPrices ? 'Reste à payer' : undefined}
-              pastille={<PastilleStatut genre={selected.type === 'facture' && !isAvoir ? 'facture' : 'devis'} statut={selected.type === 'facture' && !isAvoir ? factureVue : selected.statut} taille="grande" />}
+              pastille={statutsPossibles.length > 0 ? (
+                // Le statut se change là où il se lit (retours d'Hugo du 3 nov. 2026 : il était caché dans « ⋯ »). Nom
+                // accessible : « Statut : Envoyée. Changer le statut » — le statut affiché reste lu (WCAG 2.5.3, relecture du 3 nov.)
+                <button type="button" data-changer-statut="" onClick={() => setStatutDe(selected)} className="inline-flex items-center gap-1 min-h-[44px] -my-1 pr-1 rounded-full text-encre-2 hover:text-encre">
+                  <span className="sr-only">Statut : </span>
+                  <PastilleStatut genre={selected.type === 'facture' && !isAvoir ? 'facture' : 'devis'} statut={selected.type === 'facture' && !isAvoir ? factureVue : selected.statut} taille="grande" />
+                  <ChevronDown size={18} aria-hidden="true" />
+                  <span className="sr-only">. Changer le statut</span>
+                </button>
+              ) : <PastilleStatut genre={selected.type === 'facture' && !isAvoir ? 'facture' : 'devis'} statut={selected.type === 'facture' && !isAvoir ? factureVue : selected.statut} taille="grande" />}
               contexte={contexte}
               contexteAlerte={contexteAlerte}
               alertes={alertes}
@@ -3009,25 +3047,6 @@ export default function DevisPage({ clients, addClient, devis, setDevis, chantie
             />
           );
         })()}
-
-        {/* Changer le statut : volet (bas d'écran sur téléphone) au lieu d'une liste déroulante colorée */}
-        <Volet ouvert={voletStatut} onFermer={() => setVoletStatut(false)} titre="Changer le statut" largeur={320}>
-          <ListeChoix
-            titre="Statut" rechercheAuDela={99}
-            options={[selected.statut, ...((isDevis ? VALID_TRANSITIONS : FACTURE_TRANSITIONS)[selected.statut] || [])].map((st) => ({ valeur: st, libelle: st === 'accepte' ? 'Signé' : (DEVIS_STATUS_LABELS[st] || st) }))}
-            valeur={selected.statut}
-            onChange={(nouveau) => {
-              setVoletStatut(false);
-              if (nouveau === selected.statut) return;
-              if (nouveau === 'envoye' && selected.statut === 'brouillon') {
-                const issues = validateDevisForSend(selected);
-                if (issues.length > 0) { setSendValidationIssues({ issues, doc: selected }); return; }
-              }
-              onUpdate(selected.id, { statut: nouveau });
-              setSelected((x) => ({ ...x, statut: nouveau }));
-            }}
-          />
-        </Volet>
 
         {/* Facturer : le choix (acompte, échéancier, solde, situation), en feuille du bas sur téléphone */}
         <Volet ouvert={choixFacturation && optionsFacturation.length > 1} onFermer={() => setChoixFacturation(false)} titre="Facturer ce devis" largeur={360}>
@@ -3783,6 +3802,7 @@ export default function DevisPage({ clients, addClient, devis, setDevis, chantie
         </Modal>
 
       {fenetreAssigner}
+      {fenetreStatut}
       {fenetreApercu}
       {feuilleRelance}
 
@@ -3848,6 +3868,7 @@ export default function DevisPage({ clients, addClient, devis, setDevis, chantie
             isDark={isDark}
             couleur={couleur}
             modeDiscret={modeDiscret}
+            franchise={franchiseAppliquee(selected, entreprise)}
             onClose={() => setViewingSnapshot(null)}
             // Seulement sur un document encore modifiable : une facture émise ou un devis signé se corrigent par un
             // avoir ou un avenant (la base refuse la réécriture, migrations 091 et 093)
@@ -3881,6 +3902,7 @@ export default function DevisPage({ clients, addClient, devis, setDevis, chantie
             isDark={isDark}
             couleur={couleur}
             modeDiscret={modeDiscret}
+            franchise={franchiseAppliquee(selected, entreprise)}
             onClose={() => setComparingSnapshots(null)}
           />
         )}
@@ -4397,6 +4419,11 @@ export default function DevisPage({ clients, addClient, devis, setDevis, chantie
             return null;
           };
           const qa = getQuickAction();
+          // Le statut se change depuis la carte (retours d'Hugo du 3 nov. 2026), sans ouvrir la fiche
+          const statutsCarte = choixDuStatut(d);
+          const boutonStatut = statutsCarte.length > 0 ? (
+            <Bouton taille="compacte" variante="discret" iconeFin={ChevronDown} onClick={(e) => { e.stopPropagation(); setStatutDe(d); }} aria-label={`Changer le statut de ${d.numero || (d.type === 'facture' ? 'la facture' : 'du devis')}`} className="flex-shrink-0">Statut</Bouton>
+          ) : null;
 
           // Client display
           const clientName = cleanClientName(client) || d.client_nom || '';
@@ -4438,14 +4465,17 @@ export default function DevisPage({ clients, addClient, devis, setDevis, chantie
               montant={montantCarte}
               meta={meta}
               pastille={<PastilleStatut genre={genrePastille} statut={statutPastille} />}
-              pied={qa || urgence ? (
+              pied={qa || urgence || boutonStatut ? (
                 <>
                   <span className={`text-sm font-medium truncate ${urgence?.ton || ''}`}>{urgence?.texte || ''}</span>
-                  {qa ? (
-                    <Bouton taille="compacte" variante="secondaire" icone={qa.Icon} onClick={qa.fn} className="flex-shrink-0">{qa.label}</Bouton>
-                  ) : (isOrphan || isNameless) ? (
-                    <Bouton taille="compacte" variante="secondaire" onClick={() => setAssigningClientDevisId(d.id)} className="flex-shrink-0">Assigner</Bouton>
-                  ) : null}
+                  <span className="flex items-center gap-1 flex-shrink-0">
+                    {boutonStatut}
+                    {qa ? (
+                      <Bouton taille="compacte" variante="secondaire" icone={qa.Icon} onClick={qa.fn} className="flex-shrink-0">{qa.label}</Bouton>
+                    ) : (isOrphan || isNameless) ? (
+                      <Bouton taille="compacte" variante="secondaire" onClick={() => setAssigningClientDevisId(d.id)} className="flex-shrink-0">Assigner</Bouton>
+                    ) : null}
+                  </span>
                 </>
               ) : null}
             />
@@ -4455,6 +4485,7 @@ export default function DevisPage({ clients, addClient, devis, setDevis, chantie
       <Snackbar />
 
       {fenetreAssigner}
+      {fenetreStatut}
       {fenetreApercu}
       {feuilleRelance}
       {fenetresEnvoi}

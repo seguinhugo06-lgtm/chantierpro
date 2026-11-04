@@ -6,7 +6,8 @@
  * de `featureLabels` qui ne disent pas une limite (`contenuDeCarte`, comparaisonPlans.js) : chaque libellé de `PLANS`
  * est dit, par sa ligne de limite ou tel quel, sans rien ajouter. Aucun prix, aucun
  * libellé n'est écrit ici ; le test d'honnêteté le vérifie. Les prix se lisent par `prixAbonnement` et se disent en
- * franchise de TVA (décision D-19) : « TVA non applicable, art. 293 B du CGI », jamais « HT ». Pas de prix barré,
+ * franchise de TVA (décision D-19) : jamais « HT » ni « TTC » ; la mention de franchise de TVA
+ * (`MENTION_TVA_ABONNEMENT`, art. 293 B du CGI) n'est plus à côté des prix (retour d'Hugo du 26 oct. 2026, avis juriste du 3 nov.) : les CGV et la FAQ ; elle doit figurer sur les factures Stripe (attente 7). Pas de prix barré,
  * pas de « populaire » : la carte Artisan est seulement mise en avant (bordure bleu nuit, pastille lue dans
  * `PLANS.artisan.badge`), les trois boutons mènent à la même inscription (`onSignup`, le compte commence au plan
  * Gratuit ; le plan payant se choisit dans « Mon plan »).
@@ -26,7 +27,7 @@
  */
 import { ArrowRight, Check } from 'lucide-react';
 import { PLANS, PLAN_ORDER } from '../../stores/subscriptionStore';
-import { MENTION_TVA_ABONNEMENT, prixAbonnement } from '../../stores/prixAbonnement';
+import { prixAbonnement } from '../../stores/prixAbonnement';
 import SectionSite from './site/SectionSite';
 import EnTeteSection from './site/EnTeteSection';
 import Apparition from './site/Apparition';
@@ -130,7 +131,9 @@ export default function PricingSection({ onSignup }) {
   return (
     <SectionSite id="pricing" fond="blanc">
       <EnTeteSection titre="Des prix simples, sans surprise.">
-        {`Prix par mois — ${MENTION_TVA_ABONNEMENT}. Commencez gratuitement, passez à un plan payant quand vous en avez besoin.`}
+        {/* Retour d'Hugo du 26 oct. 2026 : plus de « Prix par mois — TVA non applicable… » ici ; chaque prix porte sa
+            période, la mention de franchise reste dans les CGV (art. 4) et la FAQ ; elle doit figurer sur les factures Stripe (attente 7) (avis juriste du 3 nov.). */}
+        Commencez gratuitement, passez à un plan payant quand vous en avez besoin.
       </EnTeteSection>
 
       <Apparition delai={0.1}>
@@ -142,7 +145,7 @@ export default function PricingSection({ onSignup }) {
       </Apparition>
 
       <p data-annuel="" className="mt-8 max-w-[48em] text-sm leading-relaxed text-slate-600">
-        {`Aussi à l’année\u202f: ${PLANS_A_L_ANNEE.map((plan) => `${prixAbonnement(plan, 'an')} pour ${plan.name}`).join(', ')}. ${MENTION_TVA_ABONNEMENT}.`}
+        {`Aussi à l’année\u202f: ${PLANS_A_L_ANNEE.map((plan) => `${prixAbonnement(plan, 'an')} par an pour ${plan.name}`).join(', ')}.`}
       </p>
       <p data-note-inscription="" className="mt-2 max-w-[48em] text-sm leading-relaxed text-slate-600">
         Votre compte commence au plan Gratuit ; vous passez à un plan payant depuis « Mon plan », quand vous le

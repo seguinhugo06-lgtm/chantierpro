@@ -23,6 +23,8 @@ import { compressImage } from '../lib/image-utils';
 import { useOrg } from '../context/OrgContext';
 import TemplateManager from './settings/TemplateManager';
 import SuppressionCompte from './settings/SuppressionCompte';
+import AccordIaReglage from './settings/AccordIaReglage';
+import { isDemo } from '../supabaseClient';
 import PostChantierSettings from './settings/PostChantierSettings';
 import AssistantProfil from './settings/AssistantProfil';
 import EtatProfil from './settings/EtatProfil';
@@ -42,8 +44,11 @@ import AideMot from './ui/AideMot';
 import LigneListe, { GroupeListe } from './ui/LigneListe';
 import { EnTetePage } from './ui/EnTete';
 import { jourLocal, dateLue } from '../lib/dates';
+import { ORGANISMES_RGE, raisonRgeNonImprime } from '../lib/qualifications';
 import { estEntrepreneurIndividuel, estEirl, nomImprime } from '../lib/identiteEntreprise';
 import { estSociete } from '../lib/mentionsFacture';
+import { registreDe, libellesImmatriculation, mentionImmatriculation } from '../lib/immatriculation';
+import { Segmente } from './ui/Onglets';
 import { minimumPenalites, libelleMinimumPenalites, tauxPenalitesValide } from '../lib/tauxInteretLegal';
 import { URL_SIRENE, profilDepuisSirene } from '../lib/sirene';
 import { chiffreAffairesHT } from '../lib/ventes';
@@ -120,7 +125,7 @@ const CHAMPS_IMPORTABLES = [
   'nom', 'nomEntrepreneur', 'formeJuridique', 'capital', 'adresse', 'ville', 'codePostal', 'pays', 'tel', 'email', 'siteWeb',
   'slogan', 'siret', 'codeApe', 'tvaIntra', 'rcs', 'rcsVille', 'rcsNumero', 'rcsType', 'iban', 'bic', 'banque', 'titulaireBanque',
   'decennaleAssureur', 'decennaleNumero', 'decennaleValidite', 'decennaleActivites', 'decennaleAssureurAdresse', 'decennaleZone',
-  'rcProAssureur', 'rcProNumero', 'rcProValidite', 'rcProMontantGarantie', 'rcProZone', 'rge', 'rgeOrganisme',
+  'rcProAssureur', 'rcProNumero', 'rcProValidite', 'rcProMontantGarantie', 'rcProZone', 'rge', 'rgeOrganisme', 'rgeValidite', 'rgeDomaine',
   'mediateur', 'mediateurContact', 'cgv', 'mentionDevis', 'mentionFacture', 'tvaDefaut', 'acompteDefaut', 'validiteDevis',
   'delaiPaiement', 'tauxPenalites', 'modePaiementDefaut', 'conditionsPaiementDefaut', 'tauxFraisStructure', 'couleur',
 ];
@@ -140,7 +145,8 @@ const optionsAcompte = (valeur) => {
   return [...ACOMPTES, { valeur: n, libelle: `${String(n).replace('.', ',')} %` }].sort((a, b) => a.valeur - b.valeur);
 };
 const TYPES_RCS = [{ valeur: 'A', libelle: 'A : commerçant' }, { valeur: 'B', libelle: 'B : société commerciale' }, { valeur: 'C', libelle: 'C : GIE' }, { valeur: 'D', libelle: 'D : société civile' }];
-const ORGANISMES_RGE = ['Qualibat', 'Qualifelec', 'Qualit\'EnR', 'Qualiopi', 'Autre'].map((v) => ({ valeur: v, libelle: v }));
+// Liste unique des organismes RGE (src/lib/qualifications.js) : « Qualiopi », certification des organismes de formation, en est retiré
+const OPTIONS_ORGANISMES_RGE = ORGANISMES_RGE.map((v) => ({ valeur: v, libelle: v }));
 
 const TITRE_CARTE = 'text-lg font-semibold text-encre';
 
@@ -329,6 +335,14 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
     }, 150);
   }, [ouvrirRubrique]);
 
+  // « Renouveler » une assurance expirée ou bientôt expirée : la rubrique Assurances, sur la date de validité de CETTE
+  // assurance (retour d'Hugo du 3 nov. 2026 : le bouton ne faisait qu'ouvrir la rubrique, donc rien quand on y était
+  // déjà, et rien ne disait quoi changer). La nouvelle date s'enregistre comme toute saisie (état près du champ) ;
+  // aucune date n'est proposée d'office : seule l'attestation de l'assureur la donne.
+  const renouvelerAssurance = useCallback((type) => {
+    allerAuChamp('assurances', type === 'rc' ? 'rcProValidite' : 'decennaleValidite');
+  }, [allerAuChamp]);
+
   // Navigation demandée par une autre rubrique (ex. Facture 2026 → « Compléter »)
   useEffect(() => {
     const handleTabNav = (e) => {
@@ -415,6 +429,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
     return alerts;
   }, [entreprise.rcProValidite, entreprise.decennaleValidite]);
 
+  const bandeauAssurances = vueMobile === 'rubrique' ? (tab === 'assurances' ? 'hidden' : 'hidden md:flex') : (tab === 'assurances' ? 'md:hidden' : '');
   const hasAssuranceAlerts = alertesAssurances.some(a => a.severity === 'critical' || a.severity === 'warning');
   const TON_ALERTE = { critical: 'bg-danger-fond text-danger-texte', warning: 'bg-alerte-fond text-alerte-texte', info: 'bg-info-fond text-info-texte' };
 
@@ -431,6 +446,12 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
     setPage?.('finances');
   };
 
+  // Administratif › « Ouvrir la Trésorerie » : l'onglet Trésorerie de Finances, où se règle le régime de TVA
+  const ouvrirTresorerie = () => {
+    try { sessionStorage.setItem('cp_finances_onglet', 'tresorerie'); } catch (e) { captureException(e, { contexte: 'ouvrirTresorerie' }); }
+    setPage?.('finances');
+  };
+
   // Validation format TVA
   const validateTVA = (value) => /^FR[0-9A-Z]{2}\d{9}$/.test(value.replace(/\s/g, '').toUpperCase());
   // Validation SIRET
@@ -438,11 +459,8 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
   const telValide = (v) => /^(?:\+33|0)\s*[1-9](?:[\s.-]*\d{2}){4}$/.test((v || '').trim());
   const emailValide = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((v || '').trim());
 
-  // Formater RCS complet
-  const getRCSComplet = () => {
-    if (!entreprise.rcsVille || !entreprise.rcsNumero) return '';
-    return `RCS ${entreprise.rcsVille} ${entreprise.rcsType || 'B'} ${entreprise.rcsNumero}`;
-  };
+  // Immatriculation imprimée (RCS ou RM) : la même que les documents (lib/immatriculation)
+  const getRCSComplet = () => mentionImmatriculation(entreprise);
 
   const ouvrirAssistant = () => { setShowSetupWizard(true); setWizardStep(0); };
   // Taux de pénalités : refusé sous le minimum légal du semestre (src/lib/tauxInteretLegal.js), la saisie reste affichée
@@ -481,15 +499,15 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
         <EtatProfil jauge={jauge} onAllerAuChamp={allerAuChamp} onAssistant={ouvrirAssistant} />
       </div>
 
-      {/* Alertes assurances critiques */}
+      {/* Alertes assurances critiques (dans la rubrique Assurances, l'alerte et son « Renouveler » y sont déjà) */}
       {alertesAssurances.filter(a => a.severity === 'critical').map((alert, i) => (
-        <div key={i} className={`rounded-2xl px-4 py-3 flex flex-wrap items-center gap-3 bg-danger-fond text-danger-texte ${vueMobile === 'rubrique' ? 'hidden md:flex' : ''}`}>
+        <div key={i} className={`rounded-2xl px-4 py-3 flex flex-wrap items-center gap-3 bg-danger-fond text-danger-texte ${bandeauAssurances}`}>
           <AlertCircle size={20} aria-hidden="true" className="flex-shrink-0" />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold">{alert.message}</p>
             <p className="text-sm">Expiration le {alert.date.toLocaleDateString('fr-FR')}</p>
           </div>
-          <Bouton taille="compacte" onClick={() => ouvrirRubrique('assurances')}>Renouveler</Bouton>
+          <Bouton taille="compacte" onClick={() => renouvelerAssurance(alert.type)}>Renouveler</Bouton>
         </div>
       ))}
 
@@ -721,30 +739,54 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             </div>
           </Bloc>
 
-          {entreprise.formeJuridique !== 'Micro-entreprise' && entreprise.formeJuridique !== 'Auto-entrepreneur' ? (
-            <Bloc titre="RCS : registre du commerce" lexique={LEXIQUE.rcs} sousTitre="Format : RCS, ville du greffe, type, numéro (ex. RCS Paris B 123 456 789).">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <ChoixParam id="settings-field-rcs" cle="rcsVille" libelle="Ville du greffe" options={VILLES_RCS.map((v) => ({ valeur: v, libelle: v }))}
-                  valeur={entreprise.rcsVille || ''} onChange={maj('rcsVille')} vide="Choisir la ville" />
-                <ChoixParam id="settings-field-rcsType" cle="rcsType" libelle="Type" titre="Type d’immatriculation" options={TYPES_RCS}
-                  valeur={entreprise.rcsType || 'B'} onChange={maj('rcsType')} />
-                <ChampParam id="settings-field-rcsNumero" cle="rcsNumero" libelle="Numéro (9 chiffres)">
-                  <DebouncedInput id="settings-field-rcsNumero" inputMode="numeric" className={`${CLASSE_CHAMP} tabular-nums`} placeholder="123 456 789" maxLength={11} value={entreprise.rcsNumero || ''} onChange={maj('rcsNumero')} />
-                </ChampParam>
-              </div>
-              {getRCSComplet() && (
-                <p className="mt-4 p-3 rounded-xl text-sm bg-succes-fond text-succes-texte">Sera imprimé : <strong>{getRCSComplet()}</strong></p>
-              )}
-            </Bloc>
-          ) : (
-            <div className="rounded-2xl p-4 flex items-start gap-3 bg-info-fond text-info-texte">
-              <Info size={18} aria-hidden="true" className="flex-shrink-0 mt-0.5" />
-              <div className="text-sm">
-                <p className="font-semibold">Micro-entreprise</p>
-                <p className="mt-0.5">Le RCS ne concerne que les commerçants et les sociétés. Un artisan en micro-entreprise est inscrit au registre national des entreprises (RNE) : il n’a pas de numéro de RCS à saisir.</p>
-              </div>
-            </div>
-          )}
+          {/* Immatriculation : RNE en tant qu'entreprise du secteur des métiers et de l'artisanat (artisan) ou RCS (commerçant, société), choix guidé par la forme
+              juridique (retour d'Hugo du 3 nov. 2026 : « Type à revoir car pas commerçant »). Mêmes champs qu'avant
+              (rcsType, rcsVille, rcsNumero) ; libellés, mention et sources dans lib/immatriculation. */}
+          {(() => {
+            const registre = registreDe(entreprise);
+            const textes = libellesImmatriculation(registre);
+            const mention = mentionImmatriculation(entreprise);
+            const choisirRegistre = (r) => {
+              if (r === registre) return;
+              // La ville du greffe ne vaut que pour le RCS : on la vide à chaque changement (relecture du 3 nov. 2026 :
+              // sinon « RCS 33 A … »). Le SIREN reste.
+              updateEntreprise((p) => ({ ...p, rcsType: r === 'RM' ? 'RM' : (estSociete(p) ? 'B' : 'A'), rcsVille: '' }), 'rcsType');
+            };
+            // Le RNE (métiers et artisanat) proposé d'office à un entrepreneur individuel s'enregistre avec la première saisie :
+            // sans lui, ville et numéro se liraient « RCS » (données d'avant, lib/immatriculation)
+            const majImmat = (cle) => (val) => updateEntreprise((p) => ({ ...p, [cle]: val, ...(registre === 'RM' ? { rcsType: 'RM' } : {}) }), cle);
+            return (
+              <Bloc titre="Immatriculation" lexique={LEXIQUE.rcs} sousTitre="Le registre où votre entreprise est inscrite, imprimé sur vos devis et factures.">
+                <div id="settings-field-registre" tabIndex={-1} data-registre={registre}>
+                  <p id="settings-registre-libelle" className="block text-sm font-medium text-encre-2 mb-1.5">Votre registre</p>
+                  <Segmente pleineLargeur ariaLabel="Votre registre" valeur={registre} onChange={choisirRegistre}
+                    options={[{ valeur: 'RM', libelle: 'Métiers et artisanat (RNE)' }, { valeur: 'RCS', libelle: 'Commerce (RCS)' }]} />
+                  <p className="mt-1.5 text-sm text-encre-3">
+                    {registre === 'RM'
+                      ? 'Artisan en entreprise individuelle ou micro-entreprise, immatriculé au RNE en tant qu’entreprise du secteur des métiers et de l’artisanat. Inscrit aussi au RCS ? Choisissez Commerce (RCS).'
+                      : 'Commerçant ou société (SARL, SAS…), y compris artisanale : la mention RCS est obligatoire.'}
+                  </p>
+                </div>
+                <div className={`mt-4 grid grid-cols-1 gap-4 ${registre === 'RCS' ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
+                  {registre === 'RCS' ? (
+                    <ChoixParam id="settings-field-rcs" cle="rcsVille" libelle={textes.lieu} options={VILLES_RCS.map((v) => ({ valeur: v, libelle: v }))}
+                      valeur={entreprise.rcsVille || ''} onChange={majImmat('rcsVille')} vide={textes.lieuExemple} />
+                  ) : null}
+                  {registre === 'RCS' ? (
+                    <ChoixParam id="settings-field-rcsType" cle="rcsType" libelle="Type" titre="Type d’immatriculation" options={TYPES_RCS}
+                      valeur={TYPES_RCS.some((t) => t.valeur === entreprise.rcsType) ? entreprise.rcsType : 'B'} onChange={maj('rcsType')} />
+                  ) : null}
+                  <ChampParam id="settings-field-rcsNumero" cle="rcsNumero" libelle="Numéro SIREN (9 chiffres)">
+                    <DebouncedInput id="settings-field-rcsNumero" inputMode="numeric" className={`${CLASSE_CHAMP} tabular-nums`} placeholder="123 456 789" maxLength={11} value={entreprise.rcsNumero || ''} onChange={majImmat('rcsNumero')} />
+                  </ChampParam>
+                </div>
+                <p className="mt-3 text-sm text-encre-3">{textes.aide}</p>
+                {mention && (
+                  <p className="mt-4 p-3 rounded-xl text-sm bg-succes-fond text-succes-texte">Sera imprimé : <strong>{mention}</strong></p>
+                )}
+              </Bloc>
+            );
+          })()}
 
           {franchiseTva ? (
             <div className="rounded-2xl p-4 flex items-start gap-3 bg-info-fond text-info-texte">
@@ -767,12 +809,23 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
 
           <Bloc titre="Qualifications professionnelles">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <ChampParam id="settings-field-rge" cle="rge" libelle="Numéro RGE" facultatif aide="Reconnu garant de l’environnement.">
+              <ChampParam id="settings-field-rge" cle="rge" libelle="Numéro RGE" facultatif aide="Reconnu garant de l’environnement. Imprimé sur vos devis et factures en PDF ; il n’apparaît pas sur la page de signature en ligne ni sur l’exemplaire signé.">
                 <DebouncedInput id="settings-field-rge" placeholder="E-12345" value={entreprise.rge || ''} onChange={maj('rge')} />
               </ChampParam>
-              <ChoixParam id="settings-field-rgeOrganisme" cle="rgeOrganisme" libelle="Organisme RGE" facultatif options={ORGANISMES_RGE}
+              <ChoixParam id="settings-field-rgeOrganisme" cle="rgeOrganisme" libelle="Organisme RGE" facultatif options={OPTIONS_ORGANISMES_RGE}
                 valeur={entreprise.rgeOrganisme || ''} onChange={maj('rgeOrganisme')} vide="Choisir l’organisme" />
+              <ChampParam id="settings-field-rgeValidite" cle="rgeValidite" libelle="Fin de validité" facultatif aide="Date indiquée sur votre certificat. Après cette date, le RGE n’est plus imprimé sur vos documents. En cas de suspension, videz le numéro.">
+                <input id="settings-field-rgeValidite" type="date" className={CLASSE_CHAMP} value={entreprise.rgeValidite || ''} onChange={e => updateEntreprise(p => ({ ...p, rgeValidite: e.target.value }), 'rgeValidite')} />
+              </ChampParam>
+              <ChampParam id="settings-field-rgeDomaine" cle="rgeDomaine" libelle="Intitulé de la qualification RGE" facultatif aide="Tel qu’il figure sur votre certificat (ex. : QualiPAC chauffage et eau chaude sanitaire). Exigé par l’Anah sur les devis et factures des travaux aidés.">
+                <DebouncedInput id="settings-field-rgeDomaine" placeholder="QualiPAC" value={entreprise.rgeDomaine || ''} onChange={maj('rgeDomaine')} />
+              </ChampParam>
             </div>
+            {/* Le RGE saisi s'imprime en pied des devis et factures (les trois générateurs), sauf dans ces cas. Page de signature :
+                pas avant la migration 108 (get_devis_for_signature) ; l'aide du numéro le dit, à rétablir ensuite. */}
+            {raisonRgeNonImprime(entreprise) && (
+              <p className="mt-2 text-sm text-alerte-texte flex items-start gap-1"><AlertTriangle size={14} className="mt-0.5 shrink-0" aria-hidden="true" /> {raisonRgeNonImprime(entreprise)}</p>
+            )}
           </Bloc>
         </div>
       )}
@@ -788,7 +841,11 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                   <div className="flex-1 text-sm">
                     <p className="font-semibold">{alert.message}</p>
                     <p>Expiration le {alert.date.toLocaleDateString('fr-FR')}</p>
+                    {alert.severity !== 'info' ? <p className="mt-1">Saisissez la date de fin de votre nouvelle attestation.</p> : null}
                   </div>
+                  {alert.severity !== 'info' ? (
+                    <Bouton taille="compacte" onClick={() => renouvelerAssurance(alert.type)}>Renouveler</Bouton>
+                  ) : null}
                 </div>
               ))}
             </div>
@@ -1110,7 +1167,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               <div className="flex flex-wrap items-center gap-2 text-sm">
                 <span className="px-3 py-1.5 rounded-lg font-semibold bg-encre text-surface">Marge réelle</span>
                 <span className="text-lg font-bold text-encre-3" aria-hidden="true">=</span>
-                <span className="px-3 py-1.5 rounded-lg font-medium bg-surface text-encre border border-bord">CA HT</span>
+                <span className="px-3 py-1.5 rounded-lg font-medium bg-surface text-encre border border-bord">{franchiseTva ? 'Chiffre d’affaires' : 'CA HT'}</span>
                 <span className="text-lg font-bold text-encre-3" aria-hidden="true">+</span>
                 <span className="px-3 py-1.5 rounded-lg font-medium bg-surface text-encre border border-bord">Ajustements de revenus</span>
               </div>
@@ -1418,6 +1475,13 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             </div>
           </Bloc>
 
+          {/* Dictée (IA) : l'accord donné avant la première dictée, révocable (migration 109). Rien à montrer en démo (rien n'est envoyé). */}
+          {FONCTIONS.ia && !isDemo && (
+            <Bloc titre="Dictée par intelligence artificielle" sousTitre="Votre accord à l’analyse de vos dictées par Claude, d’Anthropic.">
+              <AccordIaReglage userId={user?.id} showToast={showToast} />
+            </Bloc>
+          )}
+
           {/* RGPD — Export données personnelles */}
           <Bloc titre="Vos droits RGPD" sousTitre="Conformément au RGPD, vous pouvez exporter ou supprimer vos données personnelles à tout moment.">
             <Bouton icone={Download} onClick={exporterDonneesRGPD}>Exporter toutes mes données</Bouton>
@@ -1452,6 +1516,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
           entreprise={entreprise}
           isDark={isDark}
           couleur={couleur}
+          onOuvrirTresorerie={setPage ? ouvrirTresorerie : undefined}
         />
       )}
         </div>

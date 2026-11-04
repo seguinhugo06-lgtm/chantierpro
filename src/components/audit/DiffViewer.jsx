@@ -26,6 +26,7 @@ export default function DiffViewer({
   couleur: _couleur,
   modeDiscret,
   onClose,
+  franchise = false, // franchise en base de TVA appliquée au document (franchiseAppliquee) : totaux sans « HT » (D-31)
 }) {
   const textPrimary = 'text-encre';
   const textSecondary = 'text-encre-2';
@@ -158,13 +159,13 @@ export default function DiffViewer({
               <div>
                 <p className={`text-xs ${textMuted}`}>V{snapshotA.version}</p>
                 <p className={`text-lg font-bold ${textPrimary}`}>
-                  {fmt(lignesA.reduce((s, l) => s + ((l.quantite || 0) * (l.prixUnitaire || 0)), 0))} HT
+                  {fmt(lignesA.reduce((s, l) => s + ((l.quantite || 0) * (l.prixUnitaire || 0)), 0))}{franchise ? '' : ' HT'}
                 </p>
               </div>
               <div>
                 <p className={`text-xs ${textMuted}`}>V{snapshotB.version}</p>
                 <p className="text-lg font-bold text-accent-texte">
-                  {fmt(lignesB.reduce((s, l) => s + ((l.quantite || 0) * (l.prixUnitaire || 0)), 0))} HT
+                  {fmt(lignesB.reduce((s, l) => s + ((l.quantite || 0) * (l.prixUnitaire || 0)), 0))}{franchise ? '' : ' HT'}
                 </p>
               </div>
             </div>

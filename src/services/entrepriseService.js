@@ -31,6 +31,9 @@ export const REGLAGES_SANS_COLONNE = {
   rcsType: '',
   rge: '',
   rgeOrganisme: '',
+  // Fin de validité de la qualification RGE : passée, elle n'est plus imprimée (src/lib/qualifications.js)
+  rgeValidite: '',
+  rgeDomaine: '',
   mediateur: '',
   mediateurContact: '',
   decennaleAssureurAdresse: '',
@@ -53,6 +56,8 @@ export const REGLAGES_SANS_COLONNE = {
   ramonageRappelJours: 30,
   ramonageEnvoiAuto: false,
   ramonageTarifs: {},
+  // Conseils (R. 1331-77) imprimés sur l'attestation par défaut ; décochables à chaque attestation (retour nov. 2026)
+  ramonageConseils: true,
   // Attestations d'entretien (D-33, migration 113) : onglet « Entretien » de la fiche client (chaudière, PAC, poêle),
   // délai du rappel, envoi automatique des rappels par e-mail, tarifs par type d'appareil, appareils de mesure repris.
   entretienActif: false,

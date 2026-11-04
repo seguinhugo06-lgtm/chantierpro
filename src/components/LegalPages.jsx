@@ -1,7 +1,9 @@
 import { ArrowLeft, Shield, FileText, Scale, Lock, Trash2 } from 'lucide-react';
-import { CGV_ARTICLE_4_PLANS, CGV_ARTICLE_4_TVA, libelleVersionCgv } from '../lib/cgv';
+import { CGV_ARTICLE_4_PLANS, CGV_ARTICLE_4_TVA, CGV_ARTICLE_4_DICTEES, libelleVersionCgv } from '../lib/cgv';
 import { COMPANY, ADRESSE } from '../lib/editeur';
 import TexteCgu from './legal/TexteCgu';
+import { FONCTIONS } from '../lib/fonctions';
+import { CGU_VERSION_DATE } from '../lib/cgu';
 
 // Identité de l'éditeur (COMPANY, ADRESSE) : src/lib/editeur.js, partagée avec le texte des CGU (TexteCgu.jsx)
 
@@ -123,6 +125,7 @@ export default function LegalPages({ page, couleur: _couleur, setPage }) {
             </tbody>
           </table>
         </div>
+        {FONCTIONS.ia && <P>{CGV_ARTICLE_4_DICTEES}</P>}
         <P>{CGV_ARTICLE_4_TVA}</P>
         {/* D-19 : la sortie de franchise doit être écrite dans les CGV (relecture juriste du 20 oct. 2026) */}
         <P>
@@ -251,7 +254,8 @@ export default function LegalPages({ page, couleur: _couleur, setPage }) {
 
   const renderConfidentialite = () => (
     <>
-      <p className={`mb-8 text-sm font-medium ${textSecondary}`}>Version du 24 octobre 2026</p>
+      {/* La version change avec la dictée (articles 2, 3 et 4) : à relever au jour réel de l'allumage (juriste-btp, 3 nov.) */}
+      <p className={`mb-8 text-sm font-medium ${textSecondary}`}>Version du {FONCTIONS.ia ? CGU_VERSION_DATE : '24 octobre 2026'}</p>
       <Section title="Article 1 - Responsable du traitement">
         <P>
           Le responsable du traitement des données à caractère personnel collectées sur Mallettico est :
@@ -329,6 +333,13 @@ export default function LegalPages({ page, couleur: _couleur, setPage }) {
         <P>
           <strong className={textPrimary}>Rappels de ramonage.</strong> Si un utilisateur active l'envoi automatique des rappels (Paramètres → Ramonage), Mallettico envoie en son nom, une seule fois par échéance, un e-mail à ses clients dont le prochain ramonage approche. Données utilisées : nom, prénom et adresse e-mail du client, date du dernier ramonage, type d'appareil et pièce, date conseillée du prochain ramonage. L'utilisateur est responsable de ce traitement ; Mallettico agit pour son compte, comme sous-traitant (RGPD, art. 28), et n'utilise ces données à aucune autre fin. Chaque e-mail contient un lien qui enregistre, sans compte, le refus du client ; la date du refus est conservée tant que le compte de l'utilisateur existe. Les e-mails sont envoyés par Resend (article 4).
         </P>
+        {/* Dictée vocale (IA) : affiché seulement quand FONCTIONS.ia est allumé (D-07). Texte de juriste-btp du 3 nov. 2026
+            (docs/cloud/ia-socle.md). */}
+        {FONCTIONS.ia && (
+          <P>
+            <strong className={textPrimary}>Dictée vocale (analyse par intelligence artificielle).</strong> La dictée est facultative : vous pouvez toujours saisir votre devis au clavier. Votre voix est transformée en texte par votre navigateur ou votre téléphone, selon les règles de leur éditeur (sur Chrome, par les serveurs de Google ; sur Safari, par Apple) : Mallettico ne reçoit jamais le son. Dès que vous arrêtez de parler, ou quand vous lancez l'analyse d'un texte tapé, ce texte est envoyé à notre serveur (Supabase, Paris), qui le transmet à Anthropic (article 4) avec les noms de vos clients déjà enregistrés (60 au plus) et les libellés de votre catalogue (80 au plus), pour rattacher la dictée à l'existant. Anthropic renvoie une proposition (client, chantiers, devis) que vous relisez et corrigez : rien n'est créé sans votre validation. Mallettico ne conserve pas le texte dicté ; seul est enregistré ce que vous validez. Pour chaque analyse, nous enregistrons votre entreprise, votre compte, la date, l'offre, le modèle utilisé, le nombre de jetons consommés, la durée et l'issue (réussie ou non) : pour appliquer le quota de votre offre (exécution du contrat, art. 6.1.b) et pour suivre le coût du service (intérêt légitime, art. 6.1.f). Les données de vos clients contenues dans une dictée (nom, coordonnées, adresse du chantier) relèvent de votre responsabilité : Mallettico agit pour votre compte comme sous-traitant (RGPD, art. 28), et Anthropic comme sous-traitant ultérieur, autorisé par les CGU (article 11). Ne dictez pas d'informations sur la santé de vos clients si elles ne sont pas nécessaires au devis. Avant votre première dictée, un écran vous explique ce traitement et vous demande votre accord : nous enregistrons votre compte, la date et la version du texte accepté, puis la date si vous retirez cet accord (Paramètres › Données), pour pouvoir prouver que vous avez été informé et que vous avez accepté ce traitement (intérêt légitime, art. 6.1.f). Sans cet accord, rien n'est envoyé.
+          </P>
+        )}
         {/* Rappels d'entretien (D-33, migration 113) : même traitement que les rappels de ramonage (avis juriste-btp du 4 nov. 2026, § 7.1, 10) */}
         <P>
           <strong className={textPrimary}>Rappels d'entretien.</strong> Si un utilisateur active l'envoi automatique des rappels d'entretien (Paramètres → Entretien), Mallettico envoie en son nom, une seule fois par échéance, un e-mail à ses clients dont le prochain entretien de chaudière, de pompe à chaleur ou de poêle approche. Données utilisées : nom, prénom et adresse e-mail du client, date du dernier entretien, type, marque, modèle, puissance et pièce de l'appareil, date conseillée du prochain entretien. L'utilisateur est responsable de ce traitement ; Mallettico agit pour son compte, comme sous-traitant (RGPD, art. 28), et n'utilise ces données à aucune autre fin. Chaque e-mail contient un lien qui enregistre, sans compte, le refus du client, valable pour tous les rappels de cet utilisateur ; la date du refus est conservée tant que le compte de l'utilisateur existe. Les e-mails sont envoyés par Resend (article 4).
@@ -342,13 +353,16 @@ export default function LegalPages({ page, couleur: _couleur, setPage }) {
           <li><strong className={textPrimary}>Factures de votre abonnement Mallettico :</strong> 10 ans à compter de la clôture de l'exercice (Code de commerce, Art. L123-22), chez notre prestataire de paiement Stripe. Les devis et factures que vous établissez pour vos clients sont les vôtres : vous devez les conserver 10 ans ; ils sont effacés avec votre compte, téléchargez-les avant</li>
           <li><strong className={textPrimary}>Données de connexion :</strong> 12 mois conformément à la législation en vigueur</li>
           <li><strong className={textPrimary}>Données de géolocalisation :</strong> 3 mois</li>
+          {FONCTIONS.ia && (
+            <li><strong className={textPrimary}>Dictée vocale :</strong> Mallettico ne reçoit pas le son et ne conserve pas le texte dicté (seul reste ce que vous validez). Le journal des analyses (entreprise, compte, date, offre, modèle, jetons, durée, issue) est conservé 12 mois, puis supprimé ; il est effacé plus tôt si vous supprimez votre compte. Chez Anthropic : supprimé sous 30 jours, sauf contenu signalé par ses contrôles de sécurité (2 ans au plus) ou obligation légale (article 4). L'accord donné avant la première dictée, et son retrait éventuel, sont conservés tant que votre compte existe</li>
+          )}
         </UL>
         <P>
           À l'expiration de ces délais, les données sont supprimées ou anonymisées de manière irréversible.
         </P>
       </Section>
 
-      <Section title="Article 4 - Sous-traitants et transferts de données">
+      <Section title="Article 4 - Sous-traitants et transferts de données" id="article-4">
         <P>
           Mallettico fait appel aux sous-traitants suivants pour le traitement des données :
         </P>
@@ -381,12 +395,25 @@ export default function LegalPages({ page, couleur: _couleur, setPage }) {
                 <td className="px-4 py-3">US</td>
                 <td className="px-4 py-3">Accord de traitement des données ; chiffrement TLS à l'envoi</td>
               </tr>
-              <tr>
+              <tr className={FONCTIONS.ia ? `border-b ${tableBorder}` : undefined}>
                 <td className={`px-4 py-3 font-medium ${textPrimary}`}>Vercel</td>
                 <td className="px-4 py-3">Hébergement de l'application web</td>
                 <td className="px-4 py-3">Global (CDN) / US</td>
                 <td className="px-4 py-3">SOC 2, SCC, chiffrement en transit</td>
               </tr>
+              {FONCTIONS.ia && (
+                <tr>
+                  {/* Sources (lues le 3 nov. 2026 par juriste-btp) : https://www.anthropic.com/legal/commercial-terms (17 juin 2025) ;
+                      https://www.anthropic.com/legal/data-processing-addendum (24 févr. 2025) ;
+                      https://privacy.claude.com/en/articles/7996866-how-long-do-you-store-my-organization-s-data (1er juil. 2026) ;
+                      https://platform.claude.com/docs/en/manage-claude/api-and-data-retention ; résidence des données : page
+                      data-residency de la documentation d'Anthropic. À relire le jour de l'allumage. */}
+                  <td className={`px-4 py-3 font-medium ${textPrimary}`}>Anthropic (Anthropic Ireland, Limited, cocontractant pour l'Union européenne)</td>
+                  <td className="px-4 py-3">Analyse des dictées vocales (intelligence artificielle), seulement quand vous utilisez la dictée</td>
+                  <td className="px-4 py-3">États-Unis (stockage) ; calcul possible dans d'autres pays</td>
+                  <td className="px-4 py-3">Accord de traitement des données d'Anthropic (version du 24 février 2025), qui fait partie de ses conditions commerciales et comprend les clauses contractuelles types de la Commission européenne (décision (UE) 2021/914 ; RGPD, art. 46) ; copie sur demande à l'adresse de l'article 1. Selon Anthropic, les données envoyées à son API ne servent pas à entraîner ses modèles (Mallettico n'a donné aucune autorisation) ; elles sont supprimées dans les 30 jours suivant leur réception ou leur génération, sauf si ses contrôles de sécurité les signalent (conservation jusqu'à 2 ans) ou si la loi impose de les garder</td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

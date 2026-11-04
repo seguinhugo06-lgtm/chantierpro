@@ -81,12 +81,42 @@ export function normaliserIntention(brut = {}) {
 // 1. Analyse
 // ─────────────────────────────────────────────────────────────────────────────
 
+/** Message montré quand l'analyse ne répond pas : court, et toujours avec la suite (saisie à la main). */
+export const MESSAGE_INDISPONIBLE = 'Dictée indisponible pour le moment. Saisissez votre devis à la main.';
+export const MESSAGE_RESEAU = "Pas de réseau : la dictée a besoin d'une connexion. Saisissez votre devis à la main.";
+
+/** Une erreur affichable telle quelle, avec le code rendu par voice-intent (QUOTA_ATTEINT, IA_INDISPONIBLE…). */
+function erreurAvecCode(message, code, extra = {}) {
+  return Object.assign(new Error(message), { code, ...extra });
+}
+
+/**
+ * Traduit l'échec d'un appel à voice-intent. Sur une réponse 4xx/5xx, supabase-js ne donne que « Edge Function
+ * returned a non-2xx status code » et range la vraie réponse dans `error.context` : on y lit le message et le code.
+ * Coupure réseau, fonction absente ou réponse illisible : « indisponible, saisissez à la main », jamais un message
+ * technique.
+ */
+export async function erreurDictee(error) {
+  const nom = error?.name || '';
+  if (nom === 'FunctionsFetchError' || /Failed to fetch|NetworkError|Load failed/i.test(error?.message || '')) {
+    return erreurAvecCode(MESSAGE_RESEAU, 'RESEAU');
+  }
+  try {
+    const corps = await error?.context?.json?.();
+    if (corps?.error) return erreurAvecCode(String(corps.error), corps.code || 'ERREUR', corps.quota ? { quota: corps.quota } : {});
+  } catch { /* corps illisible : message générique */ }
+  return erreurAvecCode(MESSAGE_INDISPONIBLE, 'IA_INDISPONIBLE');
+}
+
 /**
  * Envoie la dictée à Claude et renvoie l'intention structurée.
+ * @param {string} transcript
+ * @param {{ clients?: object[], catalogue?: object[], organisation?: string|null }} [options]
  * @returns {Promise<{intention: object, source: 'ia'|'local'}>}
- * @throws  {Error} message déjà en français, affichable tel quel
+ * @throws  {Error & { code?: string }} message déjà en français, affichable tel quel ; `code` vaut QUOTA_ATTEINT
+ *          (quota du mois atteint, côté serveur), IA_INDISPONIBLE, RESEAU, NON_TRAITEE, ILLISIBLE…
  */
-export async function analyserDictee(transcript, { clients = [], catalogue = [] } = {}) {
+export async function analyserDictee(transcript, { clients = [], catalogue = [], organisation = null } = {}) {
   const texte = (transcript || '').trim();
   if (texte.length < 3) {
     throw new Error("La dictée est vide. Appuyez sur le micro et décrivez votre besoin.");
@@ -98,32 +128,36 @@ export async function analyserDictee(transcript, { clients = [], catalogue = [] 
     return { intention: normaliserIntention(analyseLocale(texte)), source: 'local' };
   }
 
+  let reponse;
   try {
-    const { data, error } = await supabase.functions.invoke('voice-intent', {
+    reponse = await supabase.functions.invoke('voice-intent', {
       body: {
         transcript: texte,
+        organisation: organisation || null,
         contexte: {
           clients: clients.map((c) => `${c.prenom || ''} ${c.nom || ''}`.trim()).filter(Boolean),
           articles: catalogue.map((a) => a.nom).filter(Boolean),
         },
       },
     });
-
-    if (error) throw new Error(error.message || 'Analyse indisponible');
-    if (data?.error) throw new Error(data.error);
-    if (!data?.intention) throw new Error('Réponse inattendue du service de dictée.');
-
-    return { intention: normaliserIntention(data.intention), source: 'ia' };
   } catch (e) {
-    captureException(e, { context: 'analyserDictee' });
-    // On ne bascule pas silencieusement sur l'analyse locale : l'artisan doit
-    // savoir que le résultat sera moins bon, sinon il fera confiance à tort.
-    throw new Error(
-      e.message?.includes('Failed to fetch') || e.message?.includes('NetworkError')
-        ? "Pas de réseau — la dictée a besoin d'une connexion pour être analysée."
-        : e.message || "La dictée n'a pas pu être analysée."
-    );
+    reponse = { data: null, error: e };
   }
+  const { data, error } = reponse || {};
+
+  // On ne bascule pas silencieusement sur l'analyse locale : l'artisan doit savoir que l'analyse n'a pas eu lieu,
+  // sinon il ferait confiance à un résultat moins bon. Il garde son texte et peut saisir son devis à la main.
+  if (error) {
+    const e = await erreurDictee(error);
+    if (e.code !== 'QUOTA_ATTEINT') captureException(error, { context: 'analyserDictee', code: e.code });
+    throw e;
+  }
+  if (data?.error) throw erreurAvecCode(String(data.error), data.code || 'ERREUR');
+  if (!data?.intention || typeof data.intention !== 'object') {
+    captureException(new Error('voice-intent : réponse sans intention'), { context: 'analyserDictee' });
+    throw erreurAvecCode(MESSAGE_INDISPONIBLE, 'IA_INDISPONIBLE');
+  }
+  return { intention: normaliserIntention(data.intention), source: 'ia' };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

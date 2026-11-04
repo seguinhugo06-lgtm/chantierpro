@@ -18,10 +18,23 @@ import Champ from './ui/Champ';
 import { achatConnu, margeBrute, niveauMarge, CLASSES_TON_MARGE } from '../lib/margeArticle';
 import { formatMoney } from '../lib/formatters';
 import { MENTION_FRANCHISE_ARTICLE } from '../lib/franchiseTva';
-import { CATEGORIES_METIERS, getSousCategories, getArticlesBySousCategorie, searchAllArticles } from '../lib/data';
+import { CATEGORIES_METIERS, getSousCategories, getArticlesBySousCategorie, searchAllArticles, tauxPropreArticle } from '../lib/data';
 
 const CONSIGNES = { 1: 'Sélectionnez votre type d\'activité', 2: 'Sélectionnez une sous-catégorie', 3: 'Sélectionnez un article', 4: 'Ajustez les prix et la quantité' };
 const ETIQUETTES_ETAPES = ['Catégorie', 'Type', 'Article', 'Config'];
+// Taux que le sélecteur propose pour un article qui n'en porte pas : 10 %, comme avant, affiché et modifiable avant l'ajout
+const TVA_PROPOSEE = '10';
+
+/**
+ * Taux proposé quand l'artisan choisit un article du référentiel. Même règle que l'import en masse (tauxPropreArticle) :
+ * 0 % en franchise en base (art. 293 B du CGI), le taux que porte l'article s'il en a un (chaudière gaz ou fioul à 20 %,
+ * CGI 279-0 bis, 2 bis, c) ; sans taux propre, le sélecteur garde sa proposition d'avant (TVA_PROPOSEE). Rendu en texte
+ * (valeur du <select>).
+ */
+export function tvaArticleReferentiel(article, franchiseTva = false) {
+  const taux = tauxPropreArticle(article, franchiseTva);
+  return taux === null ? TVA_PROPOSEE : String(taux);
+}
 
 export default function ArticlePicker({ isOpen, onClose, onSelect, franchiseTva = false }) {
   const [step, setStep] = useState(1); // 1 : catégorie, 2 : sous-catégorie, 3 : article, 4 : prix
@@ -33,7 +46,7 @@ export default function ArticlePicker({ isOpen, onClose, onSelect, franchiseTva 
   // Prix d'achat : un texte, vide tant que l'artisan ne l'a pas saisi (inconnu, jamais déduit du prix de vente)
   const [customPrixAchat, setCustomPrixAchat] = useState('');
   // En franchise en base (art. 293 B du CGI) aucune TVA n'est facturée : l'article entre à 0 %, sans taux à choisir
-  const tvaInitiale = franchiseTva ? '0' : '10';
+  const tvaInitiale = franchiseTva ? '0' : TVA_PROPOSEE;
   const [tva, setTva] = useState(tvaInitiale);
   const [quantite, setQuantite] = useState(1);
 
@@ -72,6 +85,7 @@ export default function ArticlePicker({ isOpen, onClose, onSelect, franchiseTva 
     setSelectedArticle(article);
     setCustomPrix(article.prixDefaut);
     setCustomPrixAchat('');
+    setTva(tvaArticleReferentiel(article, franchiseTva));
     setStep(4);
   };
 

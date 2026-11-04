@@ -3,6 +3,12 @@
   "outputDirectory": "dist",
   "framework": "vite",
   "installCommand": "npm install",
+  "git": {
+    "deploymentEnabled": {
+      "cloud/**": false,
+      "claude/**": false
+    }
+  },
   "headers": [
     {
       "source": "/(.*)",
