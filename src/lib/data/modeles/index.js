@@ -107,8 +107,8 @@ export function getModele(metierId, modeleId) {
  */
 export function prepareModeleLignes(modele, tvaDefaut = 10) {
   // Un modèle peut imposer son taux (`modele.tva`) quand le taux de l'entreprise serait faux pour ces travaux : chaudière
-  // gaz ou fioul à 20 % depuis le 1er mars 2025, même dans un logement de plus de deux ans (docs/metiers/chauffagiste.md
-  // § 5, FFB et CAPEB ; à relire au texte). Une entreprise en franchise repasse ensuite les lignes à 0 % (`sansTva`).
+  // gaz ou fioul à 20 % depuis le 1er mars 2025, même dans un logement de plus de deux ans (CGI 279-0 bis, 2 bis, c ;
+  // CGI 278-0 bis A, III bis ; BOI-TVA-LIQ-30-20-90-20 § 200 ; relu au texte le 3 nov. 2026, D-32). Une entreprise en franchise repasse ensuite les lignes à 0 % (`sansTva`).
   const taux = Number.isFinite(modele.tva) ? modele.tva : tvaDefaut;
   return modele.lignes.map((ligne, index) => ({
     id: `ligne-${Date.now()}-${index}`,
