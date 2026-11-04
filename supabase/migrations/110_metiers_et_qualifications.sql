@@ -79,7 +79,9 @@ BEGIN
       RETURN '[]'::jsonb;
     END;
   END IF;
-  IF v IS NULL OR jsonb_typeof(v) <> 'array' THEN RETURN v; END IF;
+  IF v IS NULL THEN RETURN v; END IF;
+  -- Autre chose qu'une liste (jamais écrit par l'app) : rien ne sort, plutôt qu'un objet non filtré (gardien-securite)
+  IF jsonb_typeof(v) <> 'array' THEN RETURN '[]'::jsonb; END IF;
   RETURN (
     SELECT coalesce(jsonb_agg(
       CASE WHEN jsonb_typeof(x.l) <> 'object' THEN x.l

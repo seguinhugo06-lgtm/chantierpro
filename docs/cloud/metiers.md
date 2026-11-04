@@ -146,7 +146,7 @@ Preuves (les cinq premières sont rapportées par la session cloud, pour `cloud/
   ✓ Tout est vert — niveau « standard ».
   ```
 
-- `cloud/metiers` : `npm run verifier` non lancé sur sa pointe (`9f417f5`), ni par la session cloud ni ici (cette étape ne portait que sur la branche de documents) (la dernière rapportée, sur `ecf10af`, précède les corrections du 3 nov.). La session locale la lance avant de livrer, avec la vérification complète (`npm run verifier -- --complet`) des deux branches.
+- `cloud/metiers` : **`npm run verifier -- --complet` vert sur `00f0009`** (session cloud du 3 nov. au soir, commit `ddb4699` de `cloud/metiers`) : tests 1220/1220, lint 0 erreur (241 avertissements), smoke, build, banc de migrations, parcours navigateur (2114,7 s), audit d'interface (386,3 s). Un premier passage sur `9f417f5` avait un parcours RGE en échec (apostrophe échappée `&#39;`), corrigé par `00f0009` (test seulement) ; les commits suivants de `cloud/metiers` ne changent que des rapports. Cette trace avait disparu de cette version du rapport à la fusion de `main` dans `cloud/metier-qualifications` (conflit résolu avec la version de `main`) : rétablie le 4 nov. (relecture locale, point 15).
 
 ### Textes nouveaux soumis au juriste
 

@@ -1522,7 +1522,7 @@ menuiserie: {
       lignes: [
         { designation: 'Relevé de cotes et étude d\'implantation sur site', unite: 'h', quantite: 3, prixUnitaire: 55, tva: 10 },
         { designation: 'Fourniture et pose de caisson mélaminé sur mesure, hauteur sous plafond', unite: 'ml', quantite: 6, prixUnitaire: 320, tva: 10 },
-        { designation: 'Fourniture et pose d\'étagères mélaminées 19 mm sur crémaillères', unite: 'ml', quantite: 18, prixUnitaire: 46, tva: 10 },
+        { designation: 'Fourniture et pose d\'étagères mélaminées 19 mm sur crémaillères', unite: 'ml', quantite: 18, prixUnitaire: 46, tva: 20 }, // éléments mobiliers : taux normal (BOI-TVA-LIQ-30-20-90-20 § 300 et 370 ; juriste-btp, 4 nov. 2026)
         { designation: 'Fourniture et pose de penderie tube aluminium avec supports', unite: 'ml', quantite: 4, prixUnitaire: 58, tva: 10 },
         { designation: 'Fourniture et pose de façade coulissante avec rails haut et bas', unite: 'u', quantite: 4, prixUnitaire: 265, tva: 10 },
         { designation: 'Fourniture et pose de tiroirs sur coulisses à sortie totale, freinés', unite: 'u', quantite: 4, prixUnitaire: 140, tva: 10 },

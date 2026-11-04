@@ -24,7 +24,7 @@ import { buildDevisHtml } from '../lib/devisHtmlBuilder';
 import { calculerTotaux, messageLigneSansDesignation } from '../lib/totauxDocument';
 import { estFranchiseTva, premierTaux } from '../lib/franchiseTva';
 import { TRADE_LIBRARY } from '../lib/templates/trade-library';
-import { bibliothequeDes, partagerParMetier } from '../lib/metiers';
+import { bibliothequeDes, partagerParMetier, lotsAlternes } from '../lib/metiers';
 import { jourLocal } from '../lib/dates';
 import { profilManquant, enPhrase } from '../lib/profilLegal';
 import { couleurPleine } from '../lib/theme';
@@ -1716,8 +1716,8 @@ function SaveTemplateModal({ isDark: _isDark, couleur: _couleur, inputBg, textPr
 /* ── Démarrage éclair : modèles métier + articles fréquents ── */
 function QuickStart({ templates, articles, persoTemplates = [], metiersBib = [], onAppendBloc, franchise = false, onApplyTemplate, onApplyPerso, onAddArticle, onOpenLibrary, isDark: _isDark, couleur: _couleur, textPrimary, textMuted }) {
   const trades = Object.entries(TRADE_LIBRARY);
-  // Les lots chiffrés des métiers choisis (4 au plus) ; la bibliothèque complète reste à un geste
-  const lotsDuMetier = metiersBib.flatMap((k) => (TRADE_LIBRARY[k]?.lots || []).map((lot) => ({ metier: TRADE_LIBRARY[k], lot }))).slice(0, 4);
+  // Les lots chiffrés des métiers choisis (4 au plus, un de chaque métier à tour de rôle) ; la bibliothèque complète reste à un geste
+  const lotsDuMetier = lotsAlternes(metiersBib, TRADE_LIBRARY, 4).map(({ cle, lot }) => ({ metier: TRADE_LIBRARY[cle], lot }));
   const cardCls = `group flex flex-col items-center gap-1.5 p-3 rounded-xl border transition-all hover:-translate-y-0.5 hover:shadow-md active:scale-95 bg-surface border-bord hover:border-bord-fort`;
   return (
     <div className="space-y-4">
@@ -1781,7 +1781,7 @@ function QuickStart({ templates, articles, persoTemplates = [], metiersBib = [],
         {/* Accès aux 20 métiers CHIFFRÉS : c'est la vraie valeur, on l'annonce
             explicitement plutôt que de la cacher derrière « Tous les métiers ». */}
         <button type="button" onClick={onOpenLibrary}
-          className={`mt-2 inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg border transition-all border-bord text-encre-2 hover:bg-surface-2`}>
+          className={`mt-2 inline-flex items-center gap-1.5 min-h-[44px] text-xs font-semibold px-2.5 py-1.5 rounded-lg border transition-all border-bord text-encre-2 hover:bg-surface-2`}>
           <Library size={13} /> {lotsDuMetier.length > 0 ? `Afficher tous les métiers (${trades.length})` : `Parcourir les ${trades.length} métiers chiffrés`}
         </button>
       </div>

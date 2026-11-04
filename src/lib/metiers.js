@@ -91,3 +91,23 @@ export function changementsDuChoix(entreprise, metiers) {
 export function nomsDesMetiers(metiers) {
   return normaliserMetiers(metiers).map((id) => PAR_ID[id].nom).join(', ');
 }
+
+/**
+ * Les lots des métiers de la bibliothèque, un de chaque métier à tour de rôle, `max` au plus (bloc « Votre métier » de
+ * l'éditeur). Relecture du 4 nov. : prendre les premiers dans l'ordre des métiers laissait Électricien (7 lots) cacher
+ * toute la plomberie d'un Électricien + Plombier.
+ * @param {string[]} cles clés de la bibliothèque (bibliothequeDes)
+ * @param {Record<string, {lots?: object[]}>} bibliotheque
+ * @returns {{cle: string, lot: object}[]}
+ */
+export function lotsAlternes(cles, bibliotheque, max = 4) {
+  const files = (cles || []).map((cle) => ({ cle, lots: [...(bibliotheque?.[cle]?.lots || [])] })).filter((f) => f.lots.length);
+  const sortie = [];
+  while (sortie.length < max && files.some((f) => f.lots.length)) {
+    for (const f of files) {
+      if (sortie.length >= max) break;
+      if (f.lots.length) sortie.push({ cle: f.cle, lot: f.lots.shift() });
+    }
+  }
+  return sortie;
+}

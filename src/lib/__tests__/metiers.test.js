@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { METIERS, normaliserMetiers, bibliothequeDes, referentielDes, modelesDes, partagerParMetier, changementsDuChoix } from '../metiers';
+import { METIERS, normaliserMetiers, bibliothequeDes, referentielDes, modelesDes, partagerParMetier, changementsDuChoix, lotsAlternes } from '../metiers';
 import { TRADE_LIBRARY } from '../templates/trade-library';
 import { MODELES_DEVIS } from '../data/modeles';
 import { CATEGORIES_METIERS as CATEGORIES_BTP } from '../data/articles-btp';
@@ -86,11 +86,25 @@ describe('bibliothèque : taux proposés', () => {
       for (const l of [...TRADE_LIBRARY[k].lots.flatMap((x) => x.lignes), ...TRADE_LIBRARY[k].prestations]) expect([10, 20], l.designation).toContain(l.tva);
     }
   });
-  it('Multiservice : étagère, tringle à rideaux : éléments mobiliers au taux normal (BOI-TVA-LIQ-30-20-90-20 § 370)', () => {
-    // Multiservice seulement (avis du 4 nov.) ; les étagères de placard du métier Menuiserie restent à relire
-    const tout = [...TRADE_LIBRARY.multiservice.lots.flatMap((x) => x.lignes), ...TRADE_LIBRARY.multiservice.prestations];
+  it('étagère, tringle à rideaux : éléments mobiliers au taux normal (BOI-TVA-LIQ-30-20-90-20 § 370)', () => {
+    const tout = Object.values(TRADE_LIBRARY).flatMap((m) => [...(m.lots || []).flatMap((x) => x.lignes), ...(m.prestations || [])]);
     const mobiliers = tout.filter((l) => /tringle|étagère/i.test(l.designation));
     expect(mobiliers.length).toBeGreaterThan(0);
     for (const l of mobiliers) expect(l.tva, l.designation).toBe(20);
+  });
+});
+
+describe('éditeur : bloc « Votre métier »', () => {
+  it('Électricien + Plombier : un lot de chaque métier à tour de rôle (contre-essai : Électricien a assez de lots pour tout prendre)', () => {
+    const cles = bibliothequeDes(['electricien', 'plombier']);
+    expect(TRADE_LIBRARY[cles[0]].lots.length).toBeGreaterThanOrEqual(4);
+    const lots = lotsAlternes(cles, TRADE_LIBRARY, 4);
+    expect(lots).toHaveLength(4);
+    expect(lots.map((l) => l.cle)).toEqual([cles[0], cles[1], cles[0], cles[1]]);
+  });
+  it('un métier sans assez de lots laisse la place aux autres ; rien sans métier', () => {
+    const bib = { a: { lots: [1] }, b: { lots: [2, 3, 4, 5] } };
+    expect(lotsAlternes(['a', 'b'], bib, 4).map((l) => l.lot)).toEqual([1, 2, 3, 4]);
+    expect(lotsAlternes([], bib, 4)).toEqual([]);
   });
 });

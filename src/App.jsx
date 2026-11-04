@@ -159,7 +159,7 @@ export default function App() {
   const { showToast, toast, hideToast } = useToast();
 
   // RBAC: organization role + permissions
-  const { canAccess, canAccessBilling, canViewPrices, canPerform, role: userRole, loading: orgLoading, orgId } = usePermissions();
+  const { canAccess, canAccessBilling, canViewPrices, canPerform, hasFull, role: userRole, loading: orgLoading, orgId } = usePermissions();
 
   // PWA install hook
   const { canInstall, install, isInstalled } = usePWA();
@@ -2105,7 +2105,12 @@ export default function App() {
       )}
 
       {/* Onboarding Modal for first-time users */}
-      {showOnboarding && <OnboardingModal setShowOnboarding={setShowOnboarding} entreprise={entreprise} setEntreprise={setEntreprise} showToast={showToast} isDark={isDark} couleur={couleur} />}
+      {/* Après le chargement de la fiche et des droits (relecture du 4 nov.) : un métier déjà choisi sur un autre appareil
+          saute la question, et seul qui peut modifier la fiche (gérant, compte seul) la reçoit */}
+      {showOnboarding && !entrepriseLoading && !orgLoading && (
+        <OnboardingModal setShowOnboarding={setShowOnboarding} entreprise={entreprise} setEntreprise={setEntreprise} showToast={showToast}
+          peutChoisirMetier={hasFull('settings')} isDark={isDark} couleur={couleur} />
+      )}
 
       {/* Dictée vocale — client + chantier + devis en une seule prise de parole */}
       {FONCTIONS.ia && showDictee && (
@@ -2612,12 +2617,15 @@ function HelpModal({ setShowHelp, isDark: _isDark }) {
 }
 
 // Bienvenue d'un nouveau compte (première connexion, jamais en démo) : quatre écrans, sur ui/Modal et les jetons.
-function OnboardingModal({ setShowOnboarding, entreprise, setEntreprise, showToast, isDark: _isDark, couleur: _couleur }) {
+function OnboardingModal({ setShowOnboarding, entreprise, setEntreprise, showToast, peutChoisirMetier = true, isDark: _isDark, couleur: _couleur }) {
   const [step, setStep] = useState(0);
   // Lot 1 « métiers » : « Quels travaux faites-vous ? » en premier, sauf si le métier est déjà enregistré (autre
-  // appareil). Choix multiple, rien d'obligatoire : sans choix, « Passer cette question » et l'app reste telle quelle.
-  const [avecMetier] = useState(() => normaliserMetiers(entreprise?.metiers).length === 0);
-  const [metiers, setMetiers] = useState([]);
+  // appareil) ou si le compte ne peut pas modifier la fiche (membre invité non gérant : la base refuserait). Choix
+  // multiple, rien d'obligatoire : sans choix, « Passer cette question » et l'app reste telle quelle. La fenêtre n'est
+  // montée qu'une fois la fiche chargée (App) : la décision est prise sur la vraie fiche, puces préremplies.
+  const dejaChoisis = normaliserMetiers(entreprise?.metiers);
+  const [avecMetier] = useState(() => peutChoisirMetier && dejaChoisis.length === 0);
+  const [metiers, setMetiers] = useState(() => dejaChoisis);
   const [enregistrementMetier, setEnregistrementMetier] = useState(false);
 
   const tuile = 'p-4 rounded-xl text-center bg-surface-2';
@@ -2769,22 +2777,37 @@ function OnboardingModal({ setShowOnboarding, entreprise, setEntreprise, showToa
   const currentStep = steps[step];
   const surEtapeMetier = currentStep === etapeMetier;
 
-  // « Suivant » sur l'étape du métier : le choix est enregistré sur la fiche entreprise d'abord (jamais de faux succès)
-  const suivant = async () => {
-    if (surEtapeMetier && metiers.length) {
-      setEnregistrementMetier(true);
-      try {
-        const ok = await setEntreprise((p) => ({ ...p, ...changementsDuChoix(p, metiers) }));
-        if (ok === false) return;
-      } catch (e) {
-        captureException(e, { context: 'bienvenue : métier' });
-        showToast?.('Votre métier n’a pas été enregistré. Vérifiez votre connexion, ou passez cette question.', 'error');
-        return;
-      } finally {
-        setEnregistrementMetier(false);
-      }
+  // Le choix coché est enregistré sur la fiche entreprise (jamais de faux succès) : true si c'est fait ou s'il n'y a rien
+  const enregistrerMetier = async () => {
+    if (!surEtapeMetier || !metiers.length) return true;
+    setEnregistrementMetier(true);
+    try {
+      const ok = await setEntreprise((p) => ({ ...p, ...changementsDuChoix(p, metiers) }));
+      return ok !== false;
+    } catch (e) {
+      captureException(e, { context: 'bienvenue : métier' });
+      // La vraie raison : un refus de la base (droits) n'est pas une panne de connexion
+      const refus = /refusée|droit/i.test(String(e?.message || ''));
+      showToast?.(refus
+        ? 'Votre métier n’a pas été enregistré : votre compte n’a pas le droit de modifier la fiche de l’entreprise. Le gérant peut le choisir dans Paramètres › Mon métier.'
+        : 'Votre métier n’a pas été enregistré. Vérifiez votre connexion, ou décochez vos choix pour passer cette question.', 'error');
+      return false;
+    } finally {
+      setEnregistrementMetier(false);
     }
+  };
+
+  // « Suivant » sur l'étape du métier : le choix d'abord
+  const suivant = async () => {
+    if (!(await enregistrerMetier())) return;
     if (step < steps.length - 1) setStep(step + 1); else terminer();
+  };
+
+  // « Passer » et la fermeture, sur l'étape du métier : des puces cochées ne sont pas perdues sans un mot
+  const fermer = async () => {
+    if (enregistrementMetier) return;
+    if (!(await enregistrerMetier())) return;
+    terminer();
   };
 
   const terminer = () => {
@@ -2793,7 +2816,7 @@ function OnboardingModal({ setShowOnboarding, entreprise, setEntreprise, showToa
   };
 
   return (
-    <Modal isOpen onClose={terminer} size="md" closeOnBackdrop={false}>
+    <Modal isOpen onClose={fermer} size="md" closeOnBackdrop={false}>
       {/* Avancement */}
       <div className="h-1 bg-surface-2 rounded-t-3xl sm:rounded-t-2xl overflow-hidden" aria-hidden="true">
         <div className="h-full transition-all duration-300 bg-accent" style={{ width: `${((step + 1) / steps.length) * 100}%` }}></div>
@@ -2821,7 +2844,7 @@ function OnboardingModal({ setShowOnboarding, entreprise, setEntreprise, showToa
               <span key={i} className={`w-2 h-2 rounded-full transition-colors ${i === step ? 'bg-accent' : 'bg-bord-fort'}`} />
             ))}
           </div>
-          <Bouton variante="discret" taille="compacte" onClick={terminer}>Passer</Bouton>
+          <Bouton variante="discret" taille="compacte" onClick={fermer} disabled={enregistrementMetier}>Passer</Bouton>
         </div>
         <div className="flex gap-2">
           {step > 0 && (

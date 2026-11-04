@@ -120,6 +120,10 @@ module.exports = [
       await attendre(500);
       const lots = await page.evaluate(() => [...document.querySelectorAll('[data-testid="lots-du-metier"] button')].map((b) => b.innerText.split('\n').map((x) => x.trim()).filter(Boolean).join(' / ')));
       verifier(lots.length > 0 && lots.every((l) => /Plomberie|Électricité/.test(l)), `« Votre métier » : lots d’électricité et de plomberie (${lots.slice(0, 2).join(' ; ')})`);
+      // Un lot de chaque métier au moins (relecture du 4 nov. : Électricien, 7 lots, cachait toute la plomberie)
+      verifier(lots.some((l) => /Électricité/.test(l)) && lots.some((l) => /Plomberie/.test(l)), `au moins un lot de chaque métier (${lots.join(' ; ')})`);
+      const hauteur = await page.evaluate(() => [...document.querySelectorAll('button')].find((x) => /^Afficher tous les métiers \(20\)$/.test(x.innerText.trim()))?.getBoundingClientRect().height || 0);
+      verifier(hauteur >= 44, `« Afficher tous les métiers (20) » : cible de 44 px au moins (${Math.round(hauteur)} px)`);
       const ouvert = await page.evaluate(() => { const b = [...document.querySelectorAll('button')].find((x) => /^Afficher tous les métiers \(20\)$/.test(x.innerText.trim())); b?.click(); return !!b; });
       verifier(ouvert, 'bouton « Afficher tous les métiers (20) »');
       await attendre(700);
@@ -137,6 +141,8 @@ module.exports = [
         { id: 'q1', type: 'irve', intitule: 'IRVE P1', organisme: 'Qualifelec', numero: 'IRVE-375', fin: '2099-06-30', imprimer: true, motsCles: '' },
         { id: 'q2', type: 'rge', intitule: 'QualiPAC chauffage et eau chaude sanitaire', organisme: 'Qualibat', numero: 'E-375', fin: '2099-12-31', imprimer: true },
         { id: 'q3', type: 'pg_gaz', intitule: 'PG installation', organisme: 'Qualigaz', numero: '', fin: '2099-12-31', imprimer: true },
+        // « Seulement si une ligne contient… » sans mot : rien d'imprimé (relecture du 4 nov.)
+        { id: 'q4', type: 'sap', numero: 'SAP-375', fin: '2019-03-01', imprimer: true, ou: 'si', motsCles: '' },
       ];
       const ligne = { id: 'ent-qualifs', nom: 'Élec Exemple', siret: '123 456 789 00012', adresse: '15 rue des Artisans', code_postal: '75012', ville: 'Paris', tva_defaut: 20, decennale_assureur: 'AXA', decennale_numero: 'DEC-1', forme_juridique: 'SARL', capital: '10000', settings_json: { reglages: { qualifications: quals } } };
       const app = { id: 'ent-qualifs', nom: 'Élec Exemple', siret: '123 456 789 00012', adresse: '15 rue des Artisans', codePostal: '75012', ville: 'Paris', tvaDefaut: 20, decennaleAssureur: 'AXA', decennaleNumero: 'DEC-1', formeJuridique: 'SARL', capital: '10000', qualifications: quals };
@@ -169,6 +175,7 @@ module.exports = [
       verifier(html.includes('IRVE (infrastructures de recharge) : IRVE P1 — Qualifelec — N° IRVE-375 — Valide jusqu'), `IRVE imprimé (${(html.match(/.{0,5}IRVE \(infrastructures.{0,50}/) || ['aucun'])[0]})`);
       verifier(/Entreprise RGE \(Reconnu garant de l(?:'|&#39;)environnement\) — Qualification : QualiPAC chauffage et eau chaude sanitaire — Qualibat — N° E-375/.test(html), 'RGE imprimé (libellé du lot 0)');
       verifier(!html.includes('Professionnel du gaz'), 'PG gaz sans numéro : absent');
+      verifier(!html.includes('SAP-375') && !html.includes('Services à la personne'), 'services à la personne « seulement si » sans mot : absent');
     },
   },
   {
@@ -191,6 +198,141 @@ module.exports = [
       await attendre(1200);
       const html = await page.evaluate(() => [...document.querySelectorAll('iframe')].map((f) => f.getAttribute('srcdoc') || '').join(' ') + document.body.innerHTML);
       verifier(html.includes('IRVE (infrastructures de recharge) : IRVE P1 — Qualifelec — N° IRVE-SIG — Valide jusqu'), `IRVE imprimé sur le devis montré au client (${(html.match(/.{0,5}IRVE \(infrastructures.{0,40}/) || ['aucun'])[0]})`);
+    },
+  },
+  {
+    nom: 'métiers : compte neuf SANS fiche, avant la migration 110 : bienvenue avec deux métiers, fiche créée par le repli, choix relu (375 px)',
+    reel: true,
+    async executer({ ouvrir, sessionFactice, attendre, verifier }) {
+      // La base n'a pas encore la colonne metiers : toute insertion qui la porte est refusée comme PostgREST le fait
+      const sansColonne = (m, table, { corps }) => {
+        const l = Array.isArray(corps) ? corps[0] : corps;
+        return m === 'POST' && table === 'entreprise' && l && 'metiers' in l
+          ? { status: 400, body: JSON.stringify({ code: 'PGRST204', message: "Could not find the 'metiers' column of 'entreprise' in the schema cache" }) }
+          : null;
+      };
+      const base = creerBase({ entreprise: [] }, { refuser: sansColonne });
+      const { page } = await ouvrir({ reel: true, largeur: 375, page: 'dashboard', session: sessionFactice(), supabase: base.reponse, avantChargement: BIENVENUE_A_VOIR });
+      await jusqua(attendre, async () => /Quels travaux faites-vous/.test((await dialogue(page))?.texte || ''));
+      verifier(/Quels travaux faites-vous/.test((await dialogue(page))?.texte || ''), 'compte sans fiche : la question du métier est posée');
+      await cliquerDans(page, '[data-testid="choix-metiers"]', 'Électricien');
+      await cliquerDans(page, '[data-testid="choix-metiers"]', 'Plombier');
+      await attendre(300);
+      await cliquerDans(page, '[role="dialog"]', 'Suivant');
+      await jusqua(attendre, async () => (base.tables.entreprise[0]?.settings_json?.reglages?.metiers || []).length === 2);
+      const fiche = base.tables.entreprise[0] || {};
+      const refusees = base.journal.filter((j) => j.table === 'entreprise' && j.m === 'POST' && 'metiers' in ((Array.isArray(j.corps) ? j.corps[0] : j.corps) || {}));
+      verifier(base.tables.entreprise.length === 1, `une fiche créée (${base.tables.entreprise.length})`);
+      verifier(refusees.length >= 1 && !('metiers' in fiche), `1re insertion refusée (colonne absente), fiche créée sans la colonne (${refusees.length} refus)`);
+      verifier(JSON.stringify(fiche.settings_json?.reglages?.metiers) === '["electricien","plombier"]', `métiers rangés dans settings_json.reglages (${JSON.stringify(fiche.settings_json)})`);
+      verifier(/Bienvenue sur Mallettico/.test((await dialogue(page))?.texte || ''), 'puis la bienvenue continue');
+      await cliquerDans(page, '[role="dialog"]', 'Passer');
+      await attendre(500);
+      await page.evaluate(() => localStorage.setItem('cp_current_page', 'settings'));
+      await page.reload({ waitUntil: 'networkidle0' });
+      await attendre(1500);
+      await page.evaluate(() => [...document.querySelectorAll('button, a')].find((x) => x.innerText.trim() === 'Mon métier' && x.getBoundingClientRect().width > 0)?.click());
+      await attendre(800);
+      verifier(JSON.stringify(await puces(page)) === '["Électricien","Plombier"]', `le choix est relu depuis la fiche créée (${JSON.stringify(await puces(page))})`);
+    },
+  },
+  {
+    nom: 'métiers : second appareil, la fiche a déjà ses métiers : la question n’est pas reposée (375 px)',
+    reel: true,
+    async executer({ ouvrir, sessionFactice, attendre, verifier }) {
+      const base = creerBase({ entreprise: [{ ...FICHE, metiers: ['electricien'] }] });
+      const { page } = await ouvrir({ reel: true, largeur: 375, page: 'dashboard', session: sessionFactice(), supabase: base.reponse, avantChargement: BIENVENUE_A_VOIR });
+      await jusqua(attendre, async () => !!(await dialogue(page)));
+      await attendre(500);
+      const d = await dialogue(page);
+      verifier(/Bienvenue sur Mallettico/.test(d?.texte || '') && !/Quels travaux faites-vous/.test(d?.texte || ''),
+        `la bienvenue commence directement (${(d?.texte || 'aucune').slice(0, 50)})`);
+    },
+  },
+  {
+    nom: 'métiers : membre invité non gérant : la question du métier n’est pas posée (375 px)',
+    reel: true,
+    async executer({ ouvrir, sessionFactice, attendre, verifier }) {
+      const base = creerBase({ entreprise: [{ ...FICHE }] }, { role: 'chef_chantier' });
+      const { page } = await ouvrir({ reel: true, largeur: 375, page: 'dashboard', session: sessionFactice(), supabase: base.reponse, avantChargement: BIENVENUE_A_VOIR });
+      await jusqua(attendre, async () => !!(await dialogue(page)));
+      await attendre(500);
+      const d = await dialogue(page);
+      verifier(!!d && !/Quels travaux faites-vous/.test(d.texte), `pas de question du métier (${(d?.texte || 'aucune').slice(0, 50)})`);
+      const ecritures = base.journal.filter((j) => j.table === 'entreprise' && j.m !== 'GET');
+      verifier(ecritures.length === 0, `aucune écriture de la fiche (${ecritures.length})`);
+    },
+  },
+  {
+    nom: 'métiers : bienvenue, « Passer » avec deux puces cochées : le choix est enregistré, pas perdu (375 px)',
+    reel: true,
+    async executer({ ouvrir, sessionFactice, attendre, verifier }) {
+      const base = creerBase({ entreprise: [{ ...FICHE }] });
+      const { page } = await ouvrir({ reel: true, largeur: 375, page: 'dashboard', session: sessionFactice(), supabase: base.reponse, avantChargement: BIENVENUE_A_VOIR });
+      await jusqua(attendre, async () => /Quels travaux faites-vous/.test((await dialogue(page))?.texte || ''));
+      await cliquerDans(page, '[data-testid="choix-metiers"]', 'Peintre');
+      await cliquerDans(page, '[data-testid="choix-metiers"]', 'Carreleur');
+      await attendre(300);
+      verifier(await cliquerDans(page, '[role="dialog"]', 'Passer'), 'petit bouton « Passer »');
+      await jusqua(attendre, async () => (base.tables.entreprise[0].metiers || []).length === 2);
+      verifier([...(base.tables.entreprise[0].metiers || [])].sort().join(',') === 'carreleur,peintre',
+        `choix enregistré avant de fermer (${JSON.stringify(base.tables.entreprise[0].metiers)})`);
+      await attendre(500);
+      verifier(!(await dialogue(page)), 'la bienvenue est fermée');
+    },
+  },
+  {
+    nom: 'qualifications : services à la personne, « Seulement si une ligne contient… » reste choisi, champ des mots montré, rien d’imprimé sans mot (375 px)',
+    async executer({ ouvrir, attendre, verifier }) {
+      // Mode démo : la déclaration est ajoutée par l'écran lui-même (type choisi dans la liste de l'app, puis « Ajouter »)
+      const { page } = await ouvrir({ page: 'settings', largeur: 375 });
+      await attendre(800);
+      await page.evaluate(() => [...document.querySelectorAll('button, a')].find((x) => x.innerText.trim() === 'Légal' && x.getBoundingClientRect().width > 0)?.click());
+      await attendre(800);
+      const avant = await page.evaluate(() => document.querySelectorAll('[data-testid="qualification"]').length);
+      await page.evaluate(() => document.querySelector('#qualif-type-ajout')?.click());
+      await attendre(400);
+      const type = await page.evaluate(() => {
+        const o = [...document.querySelectorAll('[role="radio"]')].find((x) => x.innerText.trim().startsWith('Services à la personne'));
+        o?.click();
+        return !!o;
+      });
+      verifier(type, 'type « Services à la personne » choisi dans la liste');
+      await attendre(500);
+      await page.evaluate(() => [...document.querySelectorAll('[data-testid="mes-qualifications"] button')].find((b) => b.innerText.trim() === 'Ajouter')?.click());
+      await attendre(900);
+      const nb = await page.evaluate(() => document.querySelectorAll('[data-testid="qualification"]').length);
+      verifier(nb === avant + 1, `déclaration ajoutée (${avant} → ${nb})`);
+      const etat = () => page.evaluate(() => {
+        const q = [...document.querySelectorAll('[data-testid="qualification"]')].pop();
+        if (!q) return null;
+        const radios = [...q.querySelectorAll('input[type=radio]')].map((r) => ({ texte: r.closest('label')?.innerText.trim(), coche: r.checked }));
+        return { radios, mots: !!q.querySelector('input[id$="-mots"]'), raison: q.querySelector('[data-testid="qualification-raison"]')?.innerText || '', apercu: !!q.querySelector('[data-testid="qualification-apercu"]') };
+      });
+      const e0 = await etat();
+      verifier(e0?.radios.find((r) => r.coche)?.texte === 'Ne pas l’imprimer', `ajoutée sans impression (${e0?.radios.find((r) => r.coche)?.texte})`);
+      const clic = await page.evaluate(() => {
+        const q = [...document.querySelectorAll('[data-testid="qualification"]')].pop();
+        const l = [...(q?.querySelectorAll('label') || [])].find((x) => x.innerText.trim() === 'Seulement si une ligne contient…');
+        l?.querySelector('input')?.click();
+        return !!l;
+      });
+      verifier(clic, 'choix « Seulement si une ligne contient… »');
+      await attendre(900);
+      const e = await etat();
+      const coche = e?.radios.find((r) => r.coche)?.texte;
+      verifier(coche === 'Seulement si une ligne contient…', `le choix reste « Seulement si… » (coché : ${coche})`);
+      verifier(e?.mots, 'le champ des mots est montré dès ce choix');
+      verifier(/mots cherchés/.test(e?.raison || '') && !e?.apercu, `rien n’est imprimé tant qu’il est vide (${e?.raison})`);
+      const enregistre = await page.evaluate(() => {
+        try {
+          const fiches = JSON.parse(localStorage.getItem('mallettico_entreprises') || '[]');
+          const l = fiches.flatMap((f) => f?.settings_json?.reglages?.qualifications || []).filter((x) => x.type === 'sap');
+          return l.length ? l[l.length - 1].ou : null;
+        } catch { return null; }
+      });
+      verifier(enregistre === 'si', `choix enregistré à part des mots (ou = ${enregistre})`);
+      await page.screenshot({ path: 'audit-ui/sonde-qualif-sap-375.png', fullPage: true });
     },
   },
 ];

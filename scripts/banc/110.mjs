@@ -94,6 +94,8 @@ export async function verifier({ db, q, en, commeAnonyme, verifier }) {
     verifier(interne === false, '110 : la fonction interne lignes_pour_le_client n\'est pas exécutable par un visiteur');
     const casse = (await q(`SELECT public.lignes_pour_le_client(to_jsonb('pas du json'::text)) AS v`)).rows[0].v;
     verifier(JSON.stringify(casse) === '[]', `110 : un texte illisible donne une liste vide (${JSON.stringify(casse)})`);
+    const objet = (await q(`SELECT public.lignes_pour_le_client('{"prixAchat": 9}'::jsonb) AS v`)).rows[0].v;
+    verifier(JSON.stringify(objet) === '[]', `110 : un objet au lieu d'une liste ne sort pas (${JSON.stringify(objet)})`);
 
     await q(`UPDATE entreprise SET settings_json = '{"reglages": {"qualifications": "texte"}}' WHERE id = $1`, [fiche]);
     const mal = await commeAnonyme(async () => (await q('SELECT get_devis_for_signature($1) AS j', [jeton])).rows[0].j || {});

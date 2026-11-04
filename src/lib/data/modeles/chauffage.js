@@ -248,7 +248,7 @@ export const CHAUFFAGE_MODELES = {
     {
       id: 'gainable',
       nom: 'Installation climatisation gainable',
-      description: '~8 lignes | ~5 000 – 12 000 € HT | ~35% marge',
+      description: '~10 lignes | ~5 000 – 12 000 € HT | ~35% marge',
       prixMin: 5000,
       prixMax: 12000,
       margeCible: 35,
@@ -258,8 +258,12 @@ export const CHAUFFAGE_MODELES = {
         { description: 'Pose unité extérieure', quantite: 1, unite: 'u', prixUnitaire: 500 },
         { description: 'Fourniture unité gainable (faux plafond)', quantite: 1, unite: 'u', prixUnitaire: 2050, prixAchat: 1700, tva: 20 },
         { description: 'Pose unité gainable (faux plafond)', quantite: 1, unite: 'u', prixUnitaire: 450 },
-        { description: 'Réseau gaines', quantite: 25, unite: 'ml', prixUnitaire: 45, prixAchat: 20 },
-        { description: 'Bouches de soufflage', quantite: 6, unite: 'u', prixUnitaire: 65, prixAchat: 28 },
+        // Réseau aéraulique d'un système gainable : pièce constitutive du système, fourniture au taux normal
+        // (BOI-TVA-LIQ-30-20-90-20, d'après extrait ; juriste-btp, 4 nov. 2026, à relire au texte)
+        { description: 'Fourniture réseau gaines', quantite: 25, unite: 'ml', prixUnitaire: 25, prixAchat: 20, tva: 20 },
+        { description: 'Pose réseau gaines', quantite: 25, unite: 'ml', prixUnitaire: 20 },
+        { description: 'Fourniture bouches de soufflage', quantite: 6, unite: 'u', prixUnitaire: 35, prixAchat: 28, tva: 20 },
+        { description: 'Pose bouches de soufflage', quantite: 6, unite: 'u', prixUnitaire: 30 },
         { description: 'Raccordement et condensats', quantite: 1, unite: 'forfait', prixUnitaire: 380, prixAchat: 140 },
         { description: 'Mise en service', quantite: 1, unite: 'forfait', prixUnitaire: 280, prixAchat: 100 },
       ]

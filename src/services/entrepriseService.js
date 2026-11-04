@@ -76,6 +76,19 @@ function metiersDe(row) {
 export function colonneMetiersAbsente(error) {
   return !!error && ['PGRST204', '42703'].includes(error.code) && /metiers/.test(String(error.message || ''));
 }
+/**
+ * Schéma pas encore appliqué (règle donnees-supabase) : silencieux pour l'artisan, signalé une fois par session.
+ * Le repli coûte une requête de plus (création : 2 insertions ; modification : 2 ou 3 requêtes).
+ */
+let repliMetiersSignale = false;
+function signalerRepliMetiers(error, contexte) {
+  if (repliMetiersSignale) return;
+  repliMetiersSignale = true;
+  captureException(new Error('Colonne entreprise.metiers absente (migration 110 non appliquée) : repli dans settings_json'),
+    { context: contexte, code: error?.code });
+}
+/** Tests seulement : réarme le signalement. */
+export function _reinitialiserRepliMetiers() { repliMetiersSignale = false; }
 
 function reglagesDe(row) {
   const enregistres = (row?.settings_json && typeof row.settings_json === 'object' && row.settings_json.reglages) || {};
@@ -480,6 +493,7 @@ export async function createEntreprise(supabase, { data, userId, orgId } = {}) {
 
   // Migration 110 pas encore appliquée : le métier va dans settings_json.reglages.metiers (repris par la migration)
   if (error && row.metiers !== undefined && colonneMetiersAbsente(error)) {
+    signalerRepliMetiers(error, 'createEntreprise: repli metiers');
     const { metiers, ...sansMetiers } = row;
     const settings = sansMetiers.settings_json || {};
     sansMetiers.settings_json = { ...settings, reglages: { ...(settings.reglages || {}), metiers } };
@@ -544,6 +558,7 @@ export async function updateEntreprise(supabase, { id, data } = {}) {
 
   // Migration 110 pas encore appliquée : le métier va dans settings_json.reglages.metiers (repris par la migration)
   if (error && dbUpdates.metiers !== undefined && colonneMetiersAbsente(error)) {
+    signalerRepliMetiers(error, 'updateEntreprise: repli metiers');
     const { metiers, ...sansMetiers } = dbUpdates;
     let settings = sansMetiers.settings_json;
     if (!settings) {
