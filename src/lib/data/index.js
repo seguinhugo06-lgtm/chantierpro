@@ -99,28 +99,37 @@ export function getArticlesBySousCategorie(categorieId, sousCategorieId) {
 }
 
 /**
- * Créer un article catalogue à partir d'un article BTP
+ * Taux proposé pour un article du référentiel : 0 % en franchise en base (art. 293 B du CGI), le taux imposé par l'article
+ * s'il en a un (chaudière gaz ou fioul à 20 %, CGI 279-0 bis, 2 bis, c), sinon 10 %. Rendu en texte (valeur d'un <select>).
  */
-export function createCatalogueItem(articleBtp, customPrix = null) {
-  return {
-    id: crypto.randomUUID(),
-    reference: `REF-${articleBtp.id.toUpperCase()}`,
-    nom: articleBtp.nom,
-    designation: articleBtp.nom,
-    description: '',
-    unite: articleBtp.unite,
-    prixUnitaire: customPrix || articleBtp.prixDefaut,
-    prix_unitaire_ht: customPrix || articleBtp.prixDefaut,
-    prixAchat: Math.round((customPrix || articleBtp.prixDefaut) * 0.6), // 40% de marge par défaut
-    // Taux de l'article s'il en impose un (chaudières fossiles à 20 %, CGI 279-0 bis, 2 bis, c), sinon 10 % par défaut
-    tva: Number.isFinite(articleBtp.tva) ? articleBtp.tva : 10,
-    categorie: articleBtp.categorieNom || articleBtp.categorieId,
-    favori: false,
-    actif: true,
-    sourceId: articleBtp.id,
-    prixMin: articleBtp.prixMin,
-    prixMax: articleBtp.prixMax,
-  };
+export function tvaArticleReferentiel(article, franchiseTva = false) {
+  if (franchiseTva) return '0';
+  return String(Number.isFinite(article?.tva) ? article.tva : 10);
+}
+
+/**
+ * Articles à créer par l'import en masse du référentiel (Catalogue, premier usage), pour les métiers cochés. Chaque article
+ * porte son taux (tvaArticleReferentiel) : sans lui, la base mettait 20 % à tout (useSupabaseSync) et la démo le taux de
+ * l'entreprise. La franchise est appliquée ensuite à la création (Catalogue.creerArticle), par quelque chemin que ce soit.
+ */
+export function articlesAImporterDuReferentiel(metierIds, franchiseTva = false) {
+  const aImporter = [];
+  (metierIds || []).forEach((catId) => {
+    const cat = ALL_ARTICLES_BTP[catId];
+    if (!cat) return;
+    const meta = CATEGORIES_METIERS.find((c) => c.id === catId);
+    Object.values(cat.sousCategories).forEach((sousCat) => {
+      sousCat.articles.forEach((article) => {
+        aImporter.push({
+          nom: article.nom, prix: article.prixDefaut, prixAchat: null, // le référentiel ne connaît pas votre prix d'achat : inconnu, pas déduit du prix de vente
+          unite: article.unite, categorie: meta?.nom || 'Autre', favori: false,
+          tva: Number(tvaArticleReferentiel(article, franchiseTva)),
+          reference: `REF-${article.id.toUpperCase().slice(0, 10)}`,
+        });
+      });
+    });
+  });
+  return aImporter;
 }
 
 export default {
@@ -130,5 +139,6 @@ export default {
   searchAllArticles,
   getSousCategories,
   getArticlesBySousCategorie,
-  createCatalogueItem,
+  tvaArticleReferentiel,
+  articlesAImporterDuReferentiel,
 };

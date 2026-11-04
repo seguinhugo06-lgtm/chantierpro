@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { prepareModeleLignes, getModele } from '../data/modeles';
 import { TRADE_LIBRARY } from '../templates/trade-library';
 import { ALL_OUVRAGES } from '../data/bibliotheque';
-import { ALL_ARTICLES_BTP, searchAllArticles } from '../data';
+import { ALL_ARTICLES_BTP, searchAllArticles, articlesAImporterDuReferentiel } from '../data';
 import { tvaArticleReferentiel } from '../../components/ArticlePicker';
 
 // Chaudière gaz ou fioul, fourniture et pose : 20 % depuis le 1er mars 2025, même dans un logement de plus de deux ans.
@@ -58,5 +58,33 @@ describe('sélecteur du référentiel du catalogue (ArticlePicker)', () => {
     expect(autres).toHaveLength(2);
     for (const a of autres) expect(tvaArticleReferentiel(a)).toBe('10');
     expect(tvaArticleReferentiel(articlesBtp().find((a) => a.id === 'chaud-gaz-mur'), true)).toBe('0');
+  });
+});
+
+// Import en masse du référentiel (Catalogue › premier usage, importerReferentiel) : avant le 4 nov. 2026, les articles
+// partaient sans taux ; la base leur mettait 20 % à tous (useSupabaseSync, « ?? 20 »), même à la dépose d'une chaudière.
+describe('import en masse du référentiel (Catalogue)', () => {
+  const parNom = (liste, id) => {
+    const article = articlesBtp().find((a) => a.id === id);
+    return liste.find((l) => l.nom === article.nom);
+  };
+
+  it('chaudière gaz et fioul à 20 % ; dépose et chaudière granulés à 10 %', () => {
+    const importes = articlesAImporterDuReferentiel(Object.keys(ALL_ARTICLES_BTP));
+    expect(importes.length).toBeGreaterThan(0);
+    for (const id of ['chaud-gaz-mur', 'chaud-gaz-sol', 'chaud-fioul']) expect(parNom(importes, id)?.tva).toBe(20);
+    expect(parNom(importes, 'depose-chaud')?.tva).toBe(10);
+    expect(parNom(importes, 'chaud-granules')?.tva).toBe(10);
+    expect(importes.every((l) => Number.isFinite(l.tva))).toBe(true);
+  });
+
+  it('contre-essai : en franchise en base, tout article importé est à 0 %', () => {
+    const importes = articlesAImporterDuReferentiel(Object.keys(ALL_ARTICLES_BTP), true);
+    expect(importes.length).toBeGreaterThan(0);
+    expect(importes.every((l) => l.tva === 0)).toBe(true);
+  });
+
+  it('un métier inconnu n’importe rien', () => {
+    expect(articlesAImporterDuReferentiel(['inexistant'])).toEqual([]);
   });
 });

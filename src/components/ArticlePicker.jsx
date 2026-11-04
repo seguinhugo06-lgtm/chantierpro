@@ -18,19 +18,13 @@ import Champ from './ui/Champ';
 import { achatConnu, margeBrute, niveauMarge, CLASSES_TON_MARGE } from '../lib/margeArticle';
 import { formatMoney } from '../lib/formatters';
 import { MENTION_FRANCHISE_ARTICLE } from '../lib/franchiseTva';
-import { CATEGORIES_METIERS, getSousCategories, getArticlesBySousCategorie, searchAllArticles } from '../lib/data';
+import { CATEGORIES_METIERS, getSousCategories, getArticlesBySousCategorie, searchAllArticles, tvaArticleReferentiel } from '../lib/data';
 
 const CONSIGNES = { 1: 'Sélectionnez votre type d\'activité', 2: 'Sélectionnez une sous-catégorie', 3: 'Sélectionnez un article', 4: 'Ajustez les prix et la quantité' };
 const ETIQUETTES_ETAPES = ['Catégorie', 'Type', 'Article', 'Config'];
 
-/**
- * Taux proposé quand l'artisan choisit un article du référentiel : 0 % en franchise en base (art. 293 B du CGI), le taux
- * imposé par l'article s'il en a un (chaudière gaz ou fioul à 20 %, CGI 279-0 bis, 2 bis, c), sinon 10 %.
- */
-export function tvaArticleReferentiel(article, franchiseTva = false) {
-  if (franchiseTva) return '0';
-  return String(Number.isFinite(article?.tva) ? article.tva : 10);
-}
+// Taux proposé pour un article choisi : règle commune avec l'import en masse (src/lib/data)
+export { tvaArticleReferentiel };
 
 export default function ArticlePicker({ isOpen, onClose, onSelect, franchiseTva = false }) {
   const [step, setStep] = useState(1); // 1 : catégorie, 2 : sous-catégorie, 3 : article, 4 : prix

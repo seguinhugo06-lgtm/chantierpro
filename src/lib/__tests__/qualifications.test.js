@@ -5,7 +5,7 @@ import { buildDocumentHTML } from '../pdfHtmlBuilder';
 import { prepareModeleLignes, getModele } from '../data/modeles';
 import { TRADE_LIBRARY } from '../templates/trade-library';
 import { ALL_OUVRAGES } from '../data/bibliotheque';
-import { ALL_ARTICLES_BTP, createCatalogueItem } from '../data';
+import { ALL_ARTICLES_BTP } from '../data';
 
 // Recherche « métiers » du 3 nov. 2026 (docs/metiers/synthese.md § 2) : le RGE saisi dans Paramètres (`rge`,
 // `rgeOrganisme`) n'était imprimé par aucun générateur, qui lisaient `labels`, jamais écrit. L'aperçu de DevisPage.jsx
@@ -125,11 +125,4 @@ describe('bibliothèque des métiers : chaudière gaz', () => {
     for (const o of gaz) expect(o.tva).toBe(20);
   });
 
-  it('l’import des articles crée les chaudières gaz et fioul à 20 %, les autres articles à 10 %', () => {
-    const articles = Object.values(ALL_ARTICLES_BTP).flatMap((c) => Object.values(c.sousCategories || {}).flatMap((s) => s.articles || []));
-    const fossiles = articles.filter((a) => ['chaud-gaz-mur', 'chaud-gaz-sol', 'chaud-fioul'].includes(a.id));
-    expect(fossiles).toHaveLength(3);
-    for (const a of fossiles) expect(createCatalogueItem(a).tva).toBe(20);
-    expect(createCatalogueItem(articles.find((a) => a.id === 'chaud-granules')).tva).toBe(10);
-  });
 });
