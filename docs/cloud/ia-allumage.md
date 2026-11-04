@@ -1,7 +1,7 @@
 # Session cloud « ia-allumage » — rendre la dictée prête à être allumée
 
 Branche `cloud/ia-allumage` (copie : `claude/ia-allumage-d6x7tt`), partie de `origin/cloud/ia-socle` (`24f2f7e`), avec `origin/main` fusionné.
-Décision d'Hugo du 4 nov. 2026 : « Je veux que l'IA marche directement » (inscrite en **D-32**, `docs/decisions.md`).
+Décision d'Hugo du 4 nov. 2026 : « Je veux que l'IA marche directement » (inscrite en **D-34** et **D-35**, `docs/decisions.md`).
 Rien n'est appliqué en production, rien n'est déployé, aucune clé n'a été touchée.
 
 Deux commits finaux :

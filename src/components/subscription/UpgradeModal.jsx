@@ -16,7 +16,7 @@ import {
   useSubscriptionStore, PLANS, PLAN_ORDER,
   UPGRADE_CONTEXTS
 } from '../../stores/subscriptionStore';
-import { MENTION_TVA_ABONNEMENT, prixAbonnement, economieAnnuelle } from '../../stores/prixAbonnement';
+import { prixAbonnement, economieAnnuelle } from '../../stores/prixAbonnement';
 import { createCheckoutSession } from '../../services/subscriptionsApi';
 import { toast } from '../../stores/toastStore';
 import { isDemo } from '../../supabaseClient';
@@ -150,7 +150,6 @@ export default function UpgradeModal() {
                   </span>
                   <span className="text-sm text-encre-3">par mois</span>
                 </div>
-                <p className="text-sm text-encre-3 mt-0.5">{MENTION_TVA_ABONNEMENT}</p>
                 {plan.offreLancement && (
                   <p className="text-sm mt-1 font-medium text-encre-2">
                     {plan.offreLancement} : prix gardé tant que vous restez abonné

@@ -28,7 +28,7 @@ export const LIMITES_AFFICHEES = [
   { cle: 'chantiers', libelle: 'Chantiers', mot: /chantiers?/i },
   { cle: 'photos', libelle: 'Photos de chantier', mot: /photos?/i },
   { cle: 'equipe', libelle: 'Collaborateurs', mot: /collaborateurs?/i },
-  // Lignes de l'interrupteur des fonctions (src/lib/limitesDictees.js, décision D-32 du 4 nov. 2026)
+  // Lignes de l'interrupteur des fonctions (src/lib/limitesDictees.js, décision D-35 du 4 nov. 2026)
   ...LIMITES_IA,
 ];
 

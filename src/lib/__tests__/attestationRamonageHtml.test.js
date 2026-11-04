@@ -107,6 +107,31 @@ describe('attestation de ramonage — adresse du professionnel', () => {
     expect(html.match(/24000 Imaginaire/g).length).toBe(html.match(/3 chemin de l’Exemple, 24000 Imaginaire/g).length + 1);
   });
 
+  it('conseils facultatifs : le choix enregistré avec l’attestation décide, le contenu obligatoire reste', () => {
+    const avec = buildAttestationRamonageHtml({ ramonage: { ...ramonage, conseils: { choix: ['combustible'], texte: 'Bois sec', imprimes: true } }, entreprise });
+    const sans = buildAttestationRamonageHtml({ ramonage: { ...ramonage, conseils: { choix: [], texte: '', imprimes: false } }, entreprise });
+    // même choix décoché avec des conseils restés dans la ligne : rien d'imprimé (réimpression identique)
+    const sansMaisRemplis = buildAttestationRamonageHtml({ ramonage: { ...ramonage, conseils: { choix: ['combustible'], texte: 'Bois sec', imprimes: false } }, entreprise });
+    expect(avec).toContain('Conseils donnés (article R. 1331-77 du code de la santé publique)');
+    expect(avec).toContain('• Qualité et stockage du combustible');
+    expect(avec).toContain('Bois sec');
+    expect(avec).toContain(MENTION_CONSEILS);
+    for (const doc of [sans, sansMaisRemplis]) {
+      expect(doc).not.toContain('Conseils donnés');
+      expect(doc).not.toContain(MENTION_CONSEILS);
+      expect(doc).not.toContain('Qualité et stockage du combustible');
+      // contenu obligatoire ou déjà imprimé : inchangé
+      expect(doc).toContain('Vacuité du conduit sur toute sa longueur</th><td>Assurée');
+      expect(doc).toContain('Conduits ramonés');
+      expect(doc).toContain('et avoir assuré la vacuité du conduit sur toute sa longueur.');
+      expect(doc).toContain(MENTION_ENTRETIEN);
+      expect(doc).toContain(PIED_CONSERVATION);
+      expect(doc).toContain('Article R. 1331-75 du code de la santé publique');
+    }
+    // attestation enregistrée avant ce réglage (pas de clé « imprimes ») : imprimée comme avant
+    expect(buildAttestationRamonageHtml({ ramonage, entreprise })).toContain('Conseils donnés (article R. 1331-77');
+  });
+
   it('fiche plus ancienne (rue seule et colonnes) : lue comme avant', () => {
     const html = buildAttestationRamonageHtml({ ramonage, entreprise });
     expect(html).toContain('1 rue de l’Exemple, 24000 Imaginaire');

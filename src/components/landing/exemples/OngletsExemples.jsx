@@ -1,5 +1,5 @@
 /**
- * OngletsExemples — les cinq onglets de « Les fonctionnalités en action » et leurs exemples, dans un cadre
+ * OngletsExemples — les quatre onglets de « Les fonctionnalités en action » et leurs exemples, dans un cadre
  * d'application. Chargé à la demande par `FonctionnalitesSection.jsx` (`import()`, quand la section approche de
  * l'écran) : ni ce fichier ni les exemples ne pèsent sur le premier écran du site.
  *
@@ -14,18 +14,16 @@
  */
 import { useRef, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
-import { BellRing, FileText, PenLine, Ruler, Wallet } from 'lucide-react';
+import { BellRing, PenLine, Ruler, Wallet } from 'lucide-react';
 import { ONGLETS, ongletVoisin } from '../fonctionnalitesOnglets';
-import ExempleDocument from './ExempleDocument';
 import ExempleSignature from './ExempleSignature';
 import ExempleMetre from './ExempleMetre';
 import ExempleRelances from './ExempleRelances';
 import ExempleEncaissements from './ExempleEncaissements';
 import { FOCUS_INTERIEUR, FOCUS_SUR_GLACIER } from '../site/focus';
 
-const ICONES = { document: FileText, signature: PenLine, metre: Ruler, relances: BellRing, encaissements: Wallet };
+const ICONES = { signature: PenLine, metre: Ruler, relances: BellRing, encaissements: Wallet };
 const EXEMPLES = {
-  document: ExempleDocument,
   signature: ExempleSignature,
   metre: ExempleMetre,
   relances: ExempleRelances,
@@ -172,7 +170,7 @@ export default function OngletsExemples() {
                 tabIndex={0}
                 className={FOCUS_INTERIEUR}
               >
-                {/* Au bureau, les cinq exemples ont la même hauteur (celle du plus haut : le document, et la facture
+                {/* Au bureau, les exemples ont la même hauteur (celle du plus haut, la facture
                     soldée) : le cadre ne change pas d'un onglet à l'autre ; chacun occupe la place (`flex-1`). */}
                 {ouverts.has(onglet.id) ? (
                   <motion.div

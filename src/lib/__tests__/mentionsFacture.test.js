@@ -103,6 +103,9 @@ describe('Facture 2026 : informations à vérifier pour les factures', () => {
     expect(villeSeule.complet).toBe(false);
     expect(villeSeule.obligatoires.find((m) => m.id === 'rcs')).toMatchObject({ rempli: false, champ: 'rcsNumero' });
     expect(mentionsFacture({ ...ei, rcsNumero: '123456789' }).obligatoires.find((m) => m.id === 'rcs').champ).toBe('rcs');
+    // Société au registre « Métiers et artisanat (RNE) » : pas de champ RCS affiché → « Compléter » vise le choix du registre
+    expect(mentionsFacture({ formeJuridique: 'SARL', rcsType: 'RM', rcsNumero: '123456789' }).obligatoires.find((m) => m.id === 'rcs'))
+      .toMatchObject({ rempli: false, champ: 'registre' });
     // Micro-entreprise : pas de formulaire RCS dans les Réglages, une donnée partielle ne la bloque pas
     expect(ids(mentionsFacture({ ...MICRO, rcsVille: 'Lyon' }).obligatoires)).not.toContain('rcs');
   });
@@ -160,6 +163,7 @@ describe('Facture 2026 : informations à vérifier pour les factures', () => {
       { formeJuridique: 'SARL', rcsVille: 'Paris' },
       { formeJuridique: 'EIRL', rcsNumero: '123' },
       { formeJuridique: 'Micro-entreprise', decennaleAssureur: 'SMABTP' },
+      { formeJuridique: 'SARL', rcsType: 'RM', rcsNumero: '123456789' },
     ];
     const vus = new Set();
     for (const e of vides) {
@@ -171,7 +175,7 @@ describe('Facture 2026 : informations à vérifier pour les factures', () => {
       }
     }
     expect([...vus]).toEqual(expect.arrayContaining([
-      'legal/siret', 'legal/rcs', 'legal/rcsNumero', 'legal/tvaIntra', 'identite/adresse', 'identite/capital',
+      'legal/siret', 'legal/rcs', 'legal/rcsNumero', 'legal/registre', 'legal/tvaIntra', 'identite/adresse', 'identite/capital',
       'assurances/decennaleAssureur', 'assurances/decennaleNumero', 'banque/iban',
     ]));
   });
