@@ -106,6 +106,10 @@ export function getModele(metierId, modeleId) {
  * Préparer les lignes d'un modèle pour le formulaire de devis
  */
 export function prepareModeleLignes(modele, tvaDefaut = 10) {
+  // Un modèle peut imposer son taux (`modele.tva`) quand le taux de l'entreprise serait faux pour ces travaux : chaudière
+  // gaz ou fioul à 20 % depuis le 1er mars 2025, même dans un logement de plus de deux ans (docs/metiers/chauffagiste.md
+  // § 5, FFB et CAPEB ; à relire au texte). Une entreprise en franchise repasse ensuite les lignes à 0 % (`sansTva`).
+  const taux = Number.isFinite(modele.tva) ? modele.tva : tvaDefaut;
   return modele.lignes.map((ligne, index) => ({
     id: `ligne-${Date.now()}-${index}`,
     description: ligne.description,
@@ -113,7 +117,7 @@ export function prepareModeleLignes(modele, tvaDefaut = 10) {
     unite: ligne.unite,
     prixUnitaire: ligne.prixUnitaire,
     prixAchat: ligne.prixAchat,
-    tva: tvaDefaut,
+    tva: taux,
     total: ligne.quantite * ligne.prixUnitaire,
   }));
 }

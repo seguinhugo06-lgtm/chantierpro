@@ -648,7 +648,7 @@ export default [
     prixMin: 2200,
     prixMax: 3800,
     tempsPoseH: 10,
-    tva: 10,
+    tva: 20, // chaudière fossile : 20 % depuis le 1er mars 2025 (CGI 279-0 bis, 2 bis, c ; BOI-TVA-LIQ-30-20-90-20 § 200)
     tags: ['chauffage', 'chaudiere', 'gaz', 'condensation'],
     difficulte: 'complexe',
   },
@@ -666,7 +666,7 @@ export default [
     prixMin: 2600,
     prixMax: 4500,
     tempsPoseH: 12,
-    tva: 10,
+    tva: 20, // chaudière fossile : 20 % depuis le 1er mars 2025 (CGI 279-0 bis, 2 bis, c ; BOI-TVA-LIQ-30-20-90-20 § 200)
     tags: ['chauffage', 'chaudiere', 'gaz', 'condensation', 'mixte', 'ECS'],
     difficulte: 'complexe',
   },
