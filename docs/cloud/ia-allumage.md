@@ -141,3 +141,120 @@ Jugé sain : impossible de créer l'accord d'un autre ou de l'antidater, déclen
 8. 13 parcours de la dictée verts ; 7 contre-essais navigateur échouent comme attendu.
 9. Commit B : l'allumage seul, avec deux tests rouges voulus (date de livraison à poser).
 10. Ordre pour la suite : Hugo regarde les secrets maintenant ; puis A, 107, 109, `voice-intent`, la clé, le constat, B.
+
+## Corrections de la relecture du 4 nov.
+
+Session cloud de correction, consigne ia-allumage-v3. Tout est sur la branche **`cloud/ia-allumage-a`**, partie du commit A (`b5fc6738`). **`FONCTIONS.ia` reste à `false`** sur tous les commits de cette branche. `cloud/ia-allumage` n'a pas été touchée.
+
+### Les commits
+
+| Commit | Contenu |
+|---|---|
+| `067eea4` | Fusion d'`origin/main` dans A. `docs/decisions.md` de main gardé (D-32 à D-36). Les renvois « D-32 » de `comparaisonPlans.js:31` et `limitesDictees.js:3` deviennent « D-35 ». Ligne 4 de ce rapport : D-34 et D-35. |
+| `a32a8c9` | Migration 107 (quota par abonnement, réponse coupée décomptée, verrou par abonnement…), `voice-intent` sans nouvelle tentative, garde-fou du banc contre les numéros en double, en-tête de 109, textes du juriste (fenêtre de dictée, CGU art. 11), docs. |
+| `6b361e1` | Textes de la relecture juriste du 4 nov. (deuxième passage), message à part pour une réponse coupée, phrase de l'art. 4 des CGV sur ce qui compte comme une dictée, avis versé dans `docs/avis-juriste-2026-11-04-ia.md`. |
+| (ce commit) | Ce rapport. |
+
+Commits venus après B sur `cloud/ia-allumage` : il n'y en a qu'un, la fusion `a63f95f5`. Elle n'apporte que main (repris par ma propre fusion) et les renvois D-32 → D-35 (refaits à la main dans les deux fichiers de A ; les cinq autres sont dans des fichiers de B). Rien d'autre à reprendre.
+
+### Point par point (défauts de la relecture)
+
+1. **[important] A, decisions.md, D-32** — fait, `067eea4`. Contrôle : `grep -rn "D-32" src scripts supabase` ne trouve plus rien.
+2. **[important] site.cjs dans B** — non fait ici : le fichier ne change qu'avec l'IA allumée (B). Voir « Ce que B doit changer ».
+3. **[important] vérification** — voir « Ce qui a tourné ». La vérification de B n'est pas de mon ressort (B n'existe pas sur cette branche).
+4. **[important] le comptable ne peut pas retirer son accord** — **non fait : décision d'Hugo** (la consigne dit « Hugo décide d'abord »). Recopié dans les décisions.
+5. **[mineur] ia-socle.md** — fait, `a32a8c9` : les cinq lignes (270, 339, 355, 374, 391) sont annotées (« phrase mise sous l'interrupteur, publiée avec la `CGU_VERSION` de l'allumage ; la décision 4 n'a plus d'objet »).
+6. **[mineur] etat-production, 109** — fait : 24 vérifications (compté au banc : 24 lignes « ✓ 109 : »). La ligne 107 dit aussi le nouveau compte : 57.
+7. **[mineur] avis du juriste** — fait, `6b361e1` : `docs/avis-juriste-2026-11-04-ia.md`. Textes soumis : les sept listés par la relecture plus les miens (voir « Textes soumis »). **Légifrance et EUR-Lex ne répondent pas depuis cette session** (ENOTFOUND) : L121-2, L121-5, C. civ. 1190 et RGPD art. 28 **n'ont pas été relus au texte**. Reste à la session locale.
+8. **[mineur] démo, « rien n'est envoyé »** — fait. Texte final du juriste (deuxième passage) : « Mode démonstration : analyse simplifiée, faite sur votre appareil, sans IA. Votre texte n’est pas envoyé à Mallettico. » Et la phrase du micro : « … votre navigateur le transforme en texte, parfois sur les serveurs de son éditeur (sur Chrome, ceux de Google). »
+9. **[mineur] commentaires « éteint »** — `fonctions.js`, `vite-ia.config.mjs`, `dictee.cjs` : vrais dans A (l'IA y est éteinte), à changer dans B (voir plus bas). Le commentaire d'`App.jsx` est réécrit dès A : il renvoie aux questions 2 et 3 du juriste encore ouvertes (le juriste demande de garder une trace tant que la question 2 n'est pas tranchée).
+10. **[mineur] 109 sans organization_id** — fait, `a32a8c9` : l'en-tête explique que l'accord est personnel, et que sans cette colonne 072 et 105 ne le transfèrent pas au patron.
+
+### Juriste-btp « à corriger »
+
+1. **« Seul ce texte nous est envoyé »** — fait, texte exact de la consigne (`DicteeModal.jsx`).
+2. **CGU art. 11** — fait, puis reformulé au deuxième passage du juriste : « sauf obligation du droit de l’Union ou du droit français, dont il informe l'utilisateur avant le traitement si la loi le permet ; l'avertit immédiatement… » et « tous tenus par contrat aux mêmes obligations de protection des données que Mallettico envers l'utilisateur ; Mallettico reste pleinement responsable envers l'utilisateur de l'exécution de ces obligations par ces sous-traitants (RGPD, art. 28.4). » Sous l'interrupteur : rien ne change à l'écran avant B.
+3. **Dates d'attente** — pour B (voir plus bas).
+
+### Gardien-securite
+
+1. **Deux migrations 107** — la renumérotation de `franchise-suite` en 114 se fait sur cette autre branche (hors de mon périmètre). Fait ici : le **garde-fou du banc** (`scripts/banc-migrations.mjs`) refuse deux migrations du même numéro. Contre-essai : un fichier `107_doublon_essai.sql` → « ✗ numéros de migration en double : 107 » (fichier retiré ensuite).
+2. **Quota payant par organisation** — fait, `a32a8c9`. Colonne `payeur` (titulaire de l'abonnement retenu, NULL au gratuit) ; `abonnement_pour_usage_ia` rend le plan et le payeur (`plan_pour_usage_ia` l'enveloppe) ; aux plans payants, le décompte mensuel prend aussi toutes les lignes du même payeur. Banc : « au plan Artisan, une organisation neuve du même abonné ne rouvre pas 100 dictées ». Contre-essai : sans la clause `payeur`, la neuve repart de 1 (« ✗ … utilise: 1, autorise: true »).
+3. **Coupée et délai** — `coupee` décompte (tous plans) ; `maxRetries: 0` dans `index.ts` ; commentaires de `regles.ts` et de 107 à jour. **Le délai ne décompte toujours pas : décision d'Hugo.** Banc : « une réponse coupée décompte, un délai non ». Contre-essai : sans `coupee` dans la liste, « ✗ … (3 = 3 + celle-ci) ».
+4. **Coupe-circuit global partagé** — **non fait : les seuils sont à fixer par Hugo** (recopié dans les décisions).
+
+Seconde relecture du gardien sur ces changements : contournement fermé, rien de critique, élevé ou moyen. Trois défauts faibles et un manque, **tous corrigés** :
+- F1, appels simultanés sur un même abonnement depuis deux organisations : verrou par abonnement (compte → abonnement → organisation). Banc : la fonction contient bien ce verrou.
+- F2, passer d'Artisan au gratuit en cours de mois rouvrait 5 dictées dans une organisation neuve : au gratuit, le décompte prend aussi ce que le compte a payé lui-même. Banc + contre-essai (« ✗ … utilise: 1 » sans la correction).
+- F3, égalité de tri : l'abonnement de l'appelant d'abord, puis un ordre fixe.
+- B1 : banc « ni un utilisateur ni un visiteur ne lisent l'abonnement d'un autre ».
+
+### Juriste-btp, deuxième passage (avis versé)
+
+Appliqué (textes exacts du juriste) :
+- fenêtre de dictée, démo et micro (voir point 8) ;
+- erreur de l'écran d'accord : « Votre accord n’a pas pu être enregistré, et rien n’a été envoyé. Réessayez dans un moment, ou saisissez votre devis à la main. » ;
+- échec du retrait : « Le retrait de votre accord n’a pas pu être enregistré : votre accord reste en cours. Réessayez. » ;
+- `ACCORD_REQUIS` (`regles.ts`) : « Votre accord pour l’analyse par l’intelligence artificielle n’est pas enregistré : il a été retiré, ou le texte de l’écran d’accord a changé. Rien n’a été transmis à Anthropic. Relisez l’écran d’accord, ou saisissez votre devis à la main. » ;
+- réponse coupée, nouveau message (elle décompte, on n'invite plus à refaire la même dictée) : « Votre dictée est trop longue pour être analysée en une fois. Elle compte dans vos dictées du mois. Coupez-la en deux, ou saisissez votre devis à la main. » Test + contre-essai (« FAIL … refus du modèle ou réponse illisible » si l'on remet l'ancien message) ;
+- FAQ : « Avant votre première dictée, et de nouveau si vous retirez votre accord, un écran… » et « Une dictée trop longue ou incompréhensible compte quand même ; une panne de notre côté ne compte pas. » ;
+- CGV art. 4, sous l'interrupteur (`CGV_ARTICLE_4_DICTEES`) : « Dictées : une dictée compte dès qu’elle est analysée, y compris quand l’analyse échoue à cause de la dictée elle-même (trop longue, incompréhensible ou refusée par l’intelligence artificielle). Une panne de Mallettico ou de son prestataire ne compte pas. Le compteur repart à zéro le 1er de chaque mois, heure de Paris. » Test : présent avec l'IA, absent sans. **À revoir si Hugo décide de décompter le délai.**
+
+Non appliqué : le choix du texte « pour l'entreprise » / « par abonnement » (décision d'Hugo, voir plus bas) ; la remarque hors droit sur la fenêtre d'offre (`recommendedPlan: 'artisan'` proposé à un abonné Artisan à sa 101e dictée) : signalée, non corrigée (hors consigne).
+
+### Textes nouveaux soumis au juriste
+
+Tous ceux ci-dessus ont été relus par lui (deuxième passage). Restent à relire au texte officiel par la session locale : L121-2, L121-5, C. civ. 1190, RGPD art. 28.3 a), 28.3 dernier alinéa et 28.4. Le texte de Paramètres « Vous avez accepté… le … » est conforme **si** la date affichée est celle de l'accord en cours (à constater par la session locale).
+
+### Ce qui a tourné
+
+- `npm ci` ; `npm run banc:migrations` : **vert, 732 vérifications** (57 pour 107, 24 pour 109), avec les quatre contre-essais ci-dessus.
+- `npm run verifier` (standard) sur `067eea4` + modifications : vert (1 365 tests, lint 0 erreur, smoke, build).
+- `npx vitest run` des tests légaux et de `voice-intent` après les textes du juriste : 69 et 38 verts.
+- `npm run verifier -- --complet` sur `6b361e1`, arbre propre : **tout vert** : tests 1 365, lint 0 erreur, smoke, build, banc, parcours navigateur (2 567 s), audit d'interface (386 s). Le dernier commit (ce rapport) ne touche que `docs/`.
+- Pas de `/sonde` à 375 px dans le build IA : la consigne la place chez la session locale sur B.
+
+### Ce que B doit changer (la session locale refait B)
+
+Partir de A tel que livré, puis l'équivalent de `99b9b370` :
+1. `src/lib/fonctions.js` : `ia: true` ; l'en-tête (« Éteint tant que la fonction n'est pas prête ») devient : allumé le JJ/MM/AAAA (D-35).
+2. `src/components/legal/TexteCgu.jsx` : retirer l'enveloppe `FONCTIONS.ia` de l'art. 11 (base légale et sous-traitance). **Conflit attendu au cherry-pick** : les deux paragraphes ont changé dans A (textes du juriste). Garder les textes de A, sans l'enveloppe.
+3. `scripts/lib/vite-ia.config.mjs` (l. 2-4 et l. 17), `scripts/parcours/dictee.cjs` (l. 1-2 et l. 151) : commentaires « éteint » → allumé ; « D-32 » → « D-35 ».
+4. Tests : `src/components/landing/__tests__/comparaisonPlans.test.js:20`, `src/components/legal/__tests__/cgvVersion.test.jsx:82` (conflit possible avec l'import ajouté dans A), `src/stores/__tests__/plansReels.test.js:17` : « D-32 » → « D-35 », plus les attentes de B.
+5. `scripts/parcours/site.cjs` : les limites attendues (l. 61, contrôles l. 1350 et 1440) tirées de `LIMITES_AFFICHEES` et `valeurDeLimite` de `comparaisonPlans.js` (déjà chargé l. 1256) au lieu de la copie locale. Puis `npm run parcours -- site` sur le build de B.
+6. Dates, le jour de la livraison, la même partout : `src/lib/cgu.js:23` `CGU_VERSION = FONCTIONS.ia ? 'AAAA-MM-JJ' : '2026-10-28'` ; `src/lib/cgu.js:26` `CGU_VERSION_DATE = FONCTIONS.ia ? 'JJ mois AAAA' : '28 octobre 2026'` ; `src/lib/cgv.js:22` `CGV_VERSION = FONCTIONS.ia ? 'AAAA-MM-JJ' : '2026-10-24'`. La politique (`LegalPages.jsx`) suit `CGU_VERSION_DATE`. Ne pas toucher `ACCORD_IA_VERSION`. `cguIa.test.js` et `cgvVersion.test.jsx` sont rouges tant que ce n'est pas fait.
+7. Si Hugo tranche les questions 2 ou 3 du juriste, ou le décompte du délai : poser les textes AVANT B (sinon une version de plus des CGV). Le commentaire d'`App.jsx` (FAQ) est à mettre à jour avec la décision.
+8. `docs/decisions.md` : D-07 levée.
+
+### Décisions d'Hugo (non appliquées)
+
+- **Tout de suite** : Supabase › Edge Functions › Secrets, regarder les noms seulement. Si `ANTHROPIC_API_KEY` y figure, la retirer (la v11 en production n'a aucun quota).
+- **Le comptable** peut dicter mais ne peut pas retirer son accord (Paramètres fermés). Choisir : retrait dans la fenêtre de dictée, onglet Données ouvert au comptable, ou dictée réservée au patron et à l'admin (alors aligner `SANS_DROIT` de 107). Puis un parcours `dictee` pour ce rôle, avec contre-essai.
+- **Le délai dépassé** : le décompter ou non (aujourd'hui non). Il conditionne la phrase de l'art. 4 des CGV.
+- **Question 1 du juriste** : un abonné payant a-t-il vu la dictée annoncée « sans limite » (juillet, avant D-07) ? Si oui, e-mail 30 jours avant (CGV art. 10).
+- **Question 2** : le plafond du jour compte aussi nos pannes. Garder (et écrire « 100 analyses par jour et par personne, échecs compris ») ou ne compter que les dictées décomptées.
+- **Question 3 (ex-1-b)** : dire qui partage le quota. Fait nouveau : aux plans payants le compteur suit l'**abonnement**, pas l'entreprise ; « pour l'entreprise » n'est plus exact. Texte proposé par le juriste : « 100 dictées par mois par abonnement, partagées entre ses utilisateurs et ses entreprises » et « 5 dictées par mois, partagées entre les utilisateurs de l’entreprise » (détail dans l'avis, C.2).
+- **Coupe-circuit global** (3 000 par jour, partagé) : deux compteurs gratuits / payants et leurs seuils, plafond quotidien par abonnement, alerte à l'exploitant (gardien, point 4).
+- Restées du socle : lieu du calcul, durée du journal.
+- **Date réelle** de livraison de B.
+- À la pose de la clé : limite de dépense mensuelle (Console Anthropic), DPA accepté, liste DPF et liste des sous-traitants d'Anthropic.
+
+### Risques
+
+- Le cherry-pick de B bute sur `TexteCgu.jsx` (et peut-être `cgvVersion.test.jsx`) : à résoudre en gardant les textes de A.
+- Les citations juridiques de l'avis du 4 nov. ne sont pas lues au texte (sites inaccessibles d'ici).
+- 107 a beaucoup changé depuis la relecture locale : à relire par la session locale avant de l'appliquer (le gardien l'a relue ici, au banc).
+- La renumérotation de `franchise-suite` (114) reste à faire sur sa branche ; le banc refusera la fusion tant qu'il y a deux 107.
+
+### Résumé
+
+1. Branche `cloud/ia-allumage-a` : A + main fusionné, IA éteinte partout, D-32 → D-35.
+2. Quota payant compté par abonnement : une organisation neuve ne rouvre plus 100 dictées (banc + contre-essai).
+3. Réponse coupée décomptée, plus de seconde tentative du SDK ; le délai reste à Hugo.
+4. Seconde relecture du gardien : 3 défauts faibles et 1 manque, corrigés et prouvés au banc (732 vertes).
+5. Le banc refuse deux migrations du même numéro.
+6. Textes du juriste posés (dictée, accord, retrait, ACCORD_REQUIS, coupée, FAQ, CGV art. 4, CGU art. 11) ; avis versé dans docs/.
+7. Textes officiels non relus (Légifrance et EUR-Lex inaccessibles) : à faire par la session locale.
+8. Le comptable, le délai, le coupe-circuit et les textes « pour l'entreprise » : décisions d'Hugo.
+9. Vérification complète : verte (niveau complet) sur `6b361e1`, le dernier commit de code, arbre propre.
+10. B : liste exacte ci-dessus (fichiers, tests, site.cjs, dates de cgu.js et cgv.js).
