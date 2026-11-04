@@ -299,7 +299,8 @@ Session cloud de correction, après deux relectures locales (code, sécurité) e
 - `npm run banc:migrations` : **tout vert, 693 vérifications** (44 pour 107, dont 7 nouvelles). **Contre-essai** : en remettant `SET NULL`, sans contrôle de rôle, sans `coalesce(status, 'active')` et avec 100 par jour au gratuit, 5 vérifications passent au rouge (statut NULL, ouvrier, quota du salarié, 21e analyse, suppression de compte).
 - `npx vitest run src/lib/__tests__/voiceIntentServeur.test.js` : 30 tests verts (4 nouveaux : interrupteur fermé, SANS_DROIT, coupe-circuit, exception imprévue avec CORS ; motif `coupee`).
 - `npx vitest run src/lib/__tests__/droitsDictee.test.js` : 6 tests verts. **Contre-essai** : avec l'ancien `DicteeModal.jsx`, 2 tests sur 6 échouent (TVA par défaut, montants sans droit).
-- `npm run verifier` (standard) : résultat ci-dessous (« Vérification »).
+- `npm run verifier` (standard) sur `231bfc8` : **tout vert** (1 246 tests, lint 0 erreur, smoke, build).
+- `npm run verifier -- --complet` sur `2ebf760` : tests, lint, smoke, build et banc verts ; **parcours : « 5 parcours en échec »**, après 2 125 s, puis la passe a été arrêtée par la limite de temps de la session (l'audit d'interface n'a pas tourné). Le lanceur n'a pas affiché le nom des 5 échecs. J'ai donc rejoué un à un les parcours qui touchent ce que j'ai changé : `dictee` (6), `coque` (15), `equipe` (27), `ramonage` (8), `clients-catalogue` (19), `chantiers` (29), `documents` (16) : **120 parcours, tous verts**. Les 5 échecs restent **non identifiés** : la session locale doit relancer `npm run verifier -- --complet` avant de livrer.
 
 ### Point par point
 
@@ -388,3 +389,14 @@ Tous viennent de ses corrections exactes du 3 nov. : ligne Anthropic et conserva
 - Le coupe-circuit global protège le coût mais peut couper la dictée pour tous en cas d'abus.
 - `ON DELETE CASCADE` : un compte supprimé libère ses dictées dans le décompte de l'entreprise du patron (faible : le compte n'existe plus).
 - La phrase de l'art. 11 modifiée est visible sans nouvelle version des CGU (décision 4).
+
+### Résumé des corrections du 3 nov.
+1. Ordre de mise en production réécrit : la v11 en production n'a pas de quota. Constater la clé (la retirer si elle est posée), puis 107, puis `voice-intent`, puis la clé et sa limite de dépense, puis le constat.
+2. Serveur : interrupteur `IA_DICTEE`, rôle owner/admin/comptable, filet global avec CORS, `max_tokens` à part (non décompté), coupe-circuit global.
+3. Migration 107 : 20 analyses par jour au plan gratuit, purge chaque nuit, lignes effacées avec le compte, tri du plan corrigé, jetons inconnus à NULL. Banc vert (693), contre-essai fait.
+4. App : « Dicter » seulement avec le droit de créer un devis, montants derrière `canViewPrices`, TVA à 0 % en franchise, mention « analyse par une IA ». Tests et contre-essai faits.
+5. Textes du juriste repris mot pour mot ; trois promesses fausses retirées. Juriste : conforme.
+6. Gardien : corrections justes. Restent deux choix d'Hugo : un budget gratuit à part dans le coupe-circuit, et le décompte des réponses coupées.
+7. Vérification standard verte. Complète : 5 parcours en échec non identifiés (passe coupée) ; les 120 parcours concernés sont verts.
+8. `FONCTIONS.ia` reste éteint ; rien n'est appliqué ni déployé.
+9. Bloquants avant l'allumage : écran d'accord, décisions 1 à 17, constat des deux PDF en franchise.
