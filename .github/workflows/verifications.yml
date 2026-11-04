@@ -44,7 +44,8 @@ jobs:
 
   navigateur:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    # 60 min : les parcours prennent environ 41 min depuis le lot du 4 nov. 2026 (40 min les coupait : CI « cancelled »)
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
