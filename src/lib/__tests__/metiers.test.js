@@ -86,4 +86,11 @@ describe('bibliothèque : taux proposés', () => {
       for (const l of [...TRADE_LIBRARY[k].lots.flatMap((x) => x.lignes), ...TRADE_LIBRARY[k].prestations]) expect([10, 20], l.designation).toContain(l.tva);
     }
   });
+  it('Multiservice : étagère, tringle à rideaux : éléments mobiliers au taux normal (BOI-TVA-LIQ-30-20-90-20 § 370)', () => {
+    // Multiservice seulement (avis du 4 nov.) ; les étagères de placard du métier Menuiserie restent à relire
+    const tout = [...TRADE_LIBRARY.multiservice.lots.flatMap((x) => x.lignes), ...TRADE_LIBRARY.multiservice.prestations];
+    const mobiliers = tout.filter((l) => /tringle|étagère/i.test(l.designation));
+    expect(mobiliers.length).toBeGreaterThan(0);
+    for (const l of mobiliers) expect(l.tva, l.designation).toBe(20);
+  });
 });

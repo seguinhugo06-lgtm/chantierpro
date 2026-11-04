@@ -2004,7 +2004,7 @@ multiservice: {
   ],
   prestations: [
     { designation: 'Montage d\'un meuble en kit', unite: 'u', quantite: 1, prixUnitaire: 60, tva: 20 },
-    { designation: 'Pose d\'étagère ou de tringle à rideaux', unite: 'u', quantite: 1, prixUnitaire: 40, tva: 10 },
+    { designation: 'Pose d’étagère ou de tringle à rideaux', unite: 'u', quantite: 1, prixUnitaire: 40, tva: 20 }, // éléments mobiliers : taux normal (BOI-TVA-LIQ-30-20-90-20 § 300 et 370)
     { designation: 'Remplacement d\'un joint ou d\'un mécanisme de chasse d\'eau', unite: 'u', quantite: 1, prixUnitaire: 65, tva: 10 },
     { designation: 'Remplacement d\'une prise ou d\'un interrupteur', unite: 'u', quantite: 1, prixUnitaire: 55, tva: 10 },
     { designation: 'Rebouchage et retouche de peinture sur mur', unite: 'm²', quantite: 2, prixUnitaire: 30, tva: 10 },

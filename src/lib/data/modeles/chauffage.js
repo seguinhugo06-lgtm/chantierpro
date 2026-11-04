@@ -10,13 +10,16 @@ export const CHAUFFAGE_MODELES = {
     {
       id: 'pac-mono',
       nom: 'Installation PAC air/air monosplit (1 pièce)',
-      description: '~4 lignes | ~1 500 – 3 000 € HT | ~50% marge',
+      description: '~6 lignes | ~1 500 – 3 000 € HT | ~50% marge',
       prixMin: 1500,
       prixMax: 3000,
       margeCible: 50,
       lignes: [
-        { description: 'F&P unité intérieure + extérieure', quantite: 1, unite: 'lot', prixUnitaire: 1400, prixAchat: 850 },
-        { description: 'Liaison frigorifique', quantite: 1, unite: 'forfait', prixUnitaire: 350, prixAchat: 130 },
+        // CGI 279-0 bis, 1 : la fourniture d'un système de climatisation est exclue du 10 % ; la pose y reste (juriste-btp, 4 nov. 2026)
+        { description: 'Fourniture unité intérieure + extérieure', quantite: 1, unite: 'lot', prixUnitaire: 1050, prixAchat: 850, tva: 20 },
+        { description: 'Pose unité intérieure + extérieure', quantite: 1, unite: 'lot', prixUnitaire: 350 },
+        { description: 'Fourniture liaison frigorifique', quantite: 1, unite: 'forfait', prixUnitaire: 170, prixAchat: 130, tva: 20 },
+        { description: 'Pose liaison frigorifique', quantite: 1, unite: 'forfait', prixUnitaire: 180 },
         { description: 'Raccordement électrique', quantite: 1, unite: 'forfait', prixUnitaire: 200, prixAchat: 70 },
         { description: 'Mise en service', quantite: 1, unite: 'forfait', prixUnitaire: 150, prixAchat: 50 },
       ]
@@ -24,14 +27,18 @@ export const CHAUFFAGE_MODELES = {
     {
       id: 'pac-multi-2-3',
       nom: 'Installation PAC air/air multisplit (2-3 pièces)',
-      description: '~6 lignes | ~4 000 – 8 000 € HT | ~40% marge',
+      description: '~9 lignes | ~4 000 – 8 000 € HT | ~40% marge',
       prixMin: 4000,
       prixMax: 8000,
       margeCible: 40,
       lignes: [
-        { description: 'F&P unité extérieure', quantite: 1, unite: 'u', prixUnitaire: 2200, prixAchat: 1400 },
-        { description: 'F&P unités intérieures', quantite: 3, unite: 'u', prixUnitaire: 750, prixAchat: 450 },
-        { description: 'Liaisons frigorifiques', quantite: 3, unite: 'u', prixUnitaire: 350, prixAchat: 140 },
+        // CGI 279-0 bis, 1 : la fourniture d'un système de climatisation est exclue du 10 % ; la pose y reste (juriste-btp, 4 nov. 2026)
+        { description: 'Fourniture unité extérieure', quantite: 1, unite: 'u', prixUnitaire: 1750, prixAchat: 1400, tva: 20 },
+        { description: 'Pose unité extérieure', quantite: 1, unite: 'u', prixUnitaire: 450 },
+        { description: 'Fourniture unités intérieures', quantite: 3, unite: 'u', prixUnitaire: 550, prixAchat: 450, tva: 20 },
+        { description: 'Pose unités intérieures', quantite: 3, unite: 'u', prixUnitaire: 200 },
+        { description: 'Fourniture liaisons frigorifiques', quantite: 3, unite: 'u', prixUnitaire: 180, prixAchat: 140, tva: 20 },
+        { description: 'Pose liaisons frigorifiques', quantite: 3, unite: 'u', prixUnitaire: 170 },
         { description: 'Raccordement électrique', quantite: 1, unite: 'forfait', prixUnitaire: 350, prixAchat: 120 },
         { description: 'Mise sous vide et charge', quantite: 1, unite: 'forfait', prixUnitaire: 280, prixAchat: 100 },
         { description: 'Mise en service', quantite: 1, unite: 'forfait', prixUnitaire: 200, prixAchat: 70 },
@@ -40,14 +47,18 @@ export const CHAUFFAGE_MODELES = {
     {
       id: 'pac-multi-4-5',
       nom: 'Installation PAC air/air multisplit (4-5 pièces)',
-      description: '~6 lignes | ~7 000 – 12 000 € HT | ~35% marge',
+      description: '~9 lignes | ~7 000 – 12 000 € HT | ~35% marge',
       prixMin: 7000,
       prixMax: 12000,
       margeCible: 35,
       lignes: [
-        { description: 'F&P unité extérieure', quantite: 1, unite: 'u', prixUnitaire: 3500, prixAchat: 2400 },
-        { description: 'F&P unités intérieures', quantite: 5, unite: 'u', prixUnitaire: 750, prixAchat: 450 },
-        { description: 'Liaisons frigorifiques', quantite: 5, unite: 'u', prixUnitaire: 380, prixAchat: 150 },
+        // CGI 279-0 bis, 1 : la fourniture d'un système de climatisation est exclue du 10 % ; la pose y reste (juriste-btp, 4 nov. 2026)
+        { description: 'Fourniture unité extérieure', quantite: 1, unite: 'u', prixUnitaire: 2950, prixAchat: 2400, tva: 20 },
+        { description: 'Pose unité extérieure', quantite: 1, unite: 'u', prixUnitaire: 550 },
+        { description: 'Fourniture unités intérieures', quantite: 5, unite: 'u', prixUnitaire: 550, prixAchat: 450, tva: 20 },
+        { description: 'Pose unités intérieures', quantite: 5, unite: 'u', prixUnitaire: 200 },
+        { description: 'Fourniture liaisons frigorifiques', quantite: 5, unite: 'u', prixUnitaire: 190, prixAchat: 150, tva: 20 },
+        { description: 'Pose liaisons frigorifiques', quantite: 5, unite: 'u', prixUnitaire: 190 },
         { description: 'Raccordement électrique', quantite: 1, unite: 'forfait', prixUnitaire: 450, prixAchat: 160 },
         { description: 'Mise sous vide et charge', quantite: 1, unite: 'forfait', prixUnitaire: 350, prixAchat: 130 },
         { description: 'Mise en service', quantite: 1, unite: 'forfait', prixUnitaire: 280, prixAchat: 100 },
@@ -154,7 +165,7 @@ export const CHAUFFAGE_MODELES = {
     {
       id: 'plancher-chauffant-elec',
       nom: 'Pose plancher chauffant électrique',
-      description: '~4 lignes | ~1 500 – 3 000 € HT | ~50% marge',
+      description: '~6 lignes | ~1 500 – 3 000 € HT | ~50% marge',
       prixMin: 1500,
       prixMax: 3000,
       margeCible: 50,
@@ -237,13 +248,16 @@ export const CHAUFFAGE_MODELES = {
     {
       id: 'gainable',
       nom: 'Installation climatisation gainable',
-      description: '~6 lignes | ~5 000 – 12 000 € HT | ~35% marge',
+      description: '~8 lignes | ~5 000 – 12 000 € HT | ~35% marge',
       prixMin: 5000,
       prixMax: 12000,
       margeCible: 35,
       lignes: [
-        { description: 'F&P unité extérieure', quantite: 1, unite: 'u', prixUnitaire: 2800, prixAchat: 1900 },
-        { description: 'F&P unité gainable (faux plafond)', quantite: 1, unite: 'u', prixUnitaire: 2500, prixAchat: 1700 },
+        // CGI 279-0 bis, 1 : la fourniture d'un système de climatisation est exclue du 10 % ; la pose y reste (juriste-btp, 4 nov. 2026)
+        { description: 'Fourniture unité extérieure', quantite: 1, unite: 'u', prixUnitaire: 2300, prixAchat: 1900, tva: 20 },
+        { description: 'Pose unité extérieure', quantite: 1, unite: 'u', prixUnitaire: 500 },
+        { description: 'Fourniture unité gainable (faux plafond)', quantite: 1, unite: 'u', prixUnitaire: 2050, prixAchat: 1700, tva: 20 },
+        { description: 'Pose unité gainable (faux plafond)', quantite: 1, unite: 'u', prixUnitaire: 450 },
         { description: 'Réseau gaines', quantite: 25, unite: 'ml', prixUnitaire: 45, prixAchat: 20 },
         { description: 'Bouches de soufflage', quantite: 6, unite: 'u', prixUnitaire: 65, prixAchat: 28 },
         { description: 'Raccordement et condensats', quantite: 1, unite: 'forfait', prixUnitaire: 380, prixAchat: 140 },
