@@ -599,7 +599,7 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
       <FenetreAjoutDevis
         article={articleDevis} brouillons={devisBrouillons} clients={clients} quantite={devisQte} setQuantite={setDevisQte}
         devisChoisi={devisChoisi} setDevisChoisi={setDevisChoisi} onFermer={fermerAjoutDevis} onAjouter={ajouterAuDevis}
-        onCreerDevis={() => { fermerAjoutDevis(); setPage?.('devis'); }} enCours={ajoutEnCours}
+        onCreerDevis={() => { fermerAjoutDevis(); setPage?.('devis'); }} enCours={ajoutEnCours} franchiseTva={franchiseTva}
       />
       {showArticlePicker && <ArticlePicker isOpen={showArticlePicker} onClose={() => setShowArticlePicker(false)} onSelect={ajouterDepuisReferentiel} franchiseTva={franchiseTva} />}
     </>
@@ -751,7 +751,7 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
       <Onglets ariaLabel="Sections du catalogue" actif={ongletActif} onChange={setActiveTab} onglets={onglets} />
 
       {ongletActif === 'bibliotheque' && canViewPrices && (
-        <Bibliotheque isDark={isDark} couleur={couleur} setPage={setPage} devis={devis} updateDevis={updateDevis} clients={clients} showToast={showToast} />
+        <Bibliotheque isDark={isDark} couleur={couleur} setPage={setPage} franchiseTva={franchiseTva} devis={devis} updateDevis={updateDevis} clients={clients} showToast={showToast} />
       )}
 
       {ongletActif === 'fournisseurs' && canViewPrices && (

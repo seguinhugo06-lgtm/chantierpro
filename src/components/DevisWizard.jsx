@@ -166,17 +166,21 @@ export default function DevisWizard({
   // Totaux affichés = totaux enregistrés : mêmes lignes (signées pour un avoir) et même calcul que l'enregistrement.
   // Avant (relecture juriste-btp du 17 oct. 2026) : un avoir s'affichait en valeurs absolues, la remise ajoutée au lieu
   // d'être déduite, et l'artisan validait un total différent de celui enregistré.
+  // Franchise en base de TVA (art. 293 B du CGI) : ni « HT » ni « TTC » à l'écran, pas de taux à choisir (décision du
+  // 24 oct. 2026, docs/avis-juriste-2026-10-24-devis.md Q1). Même règle que les totaux : estFranchiseTva.
+  const franchise = estFranchiseTva(entreprise);
+
   const totals = useMemo(() => {
     const estAvoir = initialData?.facture_type === 'avoir';
     const lignes = lignesDepuisEdition(form.lignes, estAvoir);
-    const t = totauxDesLignes(lignes, estAvoir, { remisePct: Number(form.remise) || 0, tauxDefaut: form.tvaDefaut, toutesLesLignes: true, franchise: estFranchiseTva(entreprise) });
+    const t = totauxDesLignes(lignes, estAvoir, { remisePct: Number(form.remise) || 0, tauxDefaut: form.tvaDefaut, toutesLesLignes: true, franchise });
     const totalCost = form.lignes.reduce((somme, l) => somme + (Number(l.quantite) || 0) * (Number(l.prixAchat) || 0), 0);
     const htApresRemise = t.totalHT;
     const costAfterRemise = totalCost * (1 - (Number(form.remise) || 0) / 100);
     const marge = htApresRemise - costAfterRemise;
     const margePercent = htApresRemise > 0 ? (marge / htApresRemise) * 100 : 0;
     return { totalHT: t.totalLignesHT, tvaTotal: t.totalTVA, remiseAmount: t.remiseMontant, htApresRemise, tvaApresRemise: t.totalTVA, totalTTC: t.totalTTC, totalCost, marge, margePercent };
-  }, [form.lignes, form.tvaDefaut, form.remise, initialData, entreprise]);
+  }, [form.lignes, form.tvaDefaut, form.remise, initialData, franchise]);
 
   // MRU (Most Recently Used) clients
   const MRU_KEY = 'mallettico_recent_clients';
@@ -679,6 +683,7 @@ export default function DevisWizard({
                     isDark={isDark}
                     couleur={couleur}
                     tvaDefaut={form.tvaDefaut}
+                    franchise={franchise}
                   />
                 ))}
               </div>
@@ -696,6 +701,9 @@ export default function DevisWizard({
               {form.lignes.length > 0 && (
                 <div className={`p-4 rounded-xl bg-surface-2`}>
                   <div className="space-y-1">
+                    {franchise ? (
+                      <p className={`text-sm ${textMuted}`}>TVA non applicable, art. 293 B du CGI</p>
+                    ) : (<>
                     <div className="flex justify-between items-center">
                       <span className={textSecondary}>Total HT</span>
                       <span className={`font-medium ${textPrimary}`}>{totals.totalHT.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR</span>
@@ -704,8 +712,9 @@ export default function DevisWizard({
                       <span className={`text-sm ${textMuted}`}>TVA</span>
                       <span className={`text-sm ${textSecondary}`}>{totals.tvaTotal.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR</span>
                     </div>
+                    </>)}
                     <div className={`flex justify-between items-center pt-1 border-t border-bord-fort`}>
-                      <span className={`font-semibold ${textPrimary}`}>Total TTC</span>
+                      <span className={`font-semibold ${textPrimary}`}>{franchise ? 'Total' : 'Total TTC'}</span>
                       <span className="text-xl font-bold text-accent-texte">{totals.totalTTC.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR</span>
                     </div>
                   </div>
@@ -753,7 +762,8 @@ export default function DevisWizard({
                 </div>
               </div>
 
-              {/* TVA quick buttons */}
+              {/* TVA quick buttons — aucun taux à choisir en franchise */}
+              {!franchise && (
               <div>
                 <p className={`text-sm ${textMuted} mb-2`}>TVA par défaut</p>
                 <div className="flex gap-2">
@@ -773,6 +783,7 @@ export default function DevisWizard({
                   ))}
                 </div>
               </div>
+              )}
 
               {/* Remise */}
               <div>
@@ -852,22 +863,29 @@ export default function DevisWizard({
               {/* Totals */}
               <div className="p-4 rounded-xl bg-fond border border-bord">
                 <div className="space-y-2">
+                  {/* En franchise sans remise, ce total serait le même que « Total » : une seule ligne */}
+                  {!(franchise && !(form.remise > 0)) && (
                   <div className="flex justify-between">
-                    <span className={textSecondary}>Total HT</span>
+                    <span className={textSecondary}>{franchise ? 'Total avant remise' : 'Total HT'}</span>
                     <span className={textPrimary}>{totals.totalHT.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR</span>
                   </div>
+                  )}
                   {form.remise > 0 && (
                     <div className="flex justify-between text-danger-texte">
                       <span>Remise {form.remise}%</span>
                       <span>-{totals.remiseAmount.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR</span>
                     </div>
                   )}
+                  {franchise ? (
+                    <p className={`text-sm ${textSecondary}`}>TVA non applicable, art. 293 B du CGI</p>
+                  ) : (
                   <div className="flex justify-between">
                     <span className={textSecondary}>TVA {form.tvaDefaut}%</span>
                     <span className={textPrimary}>{totals.tvaApresRemise.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR</span>
                   </div>
+                  )}
                   <div className="flex justify-between pt-2 border-t border-bord">
-                    <span className={`font-bold ${textPrimary}`}>Total TTC</span>
+                    <span className={`font-bold ${textPrimary}`}>{franchise ? 'Total' : 'Total TTC'}</span>
                     <span className="text-xl font-bold tabular-nums text-encre">
                       {totals.totalTTC.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR
                     </span>
@@ -972,7 +990,7 @@ export default function DevisWizard({
 }
 
 // Ligne card component
-function LigneCard({ ligne, index, totalLignes, onUpdate, onRemove, onMoveUp, onMoveDown, isDark: _isDark, couleur: _couleur, tvaDefaut }) {
+function LigneCard({ ligne, index, totalLignes, onUpdate, onRemove, onMoveUp, onMoveDown, isDark: _isDark, couleur: _couleur, tvaDefaut, franchise = false }) {
   const textMuted = 'text-encre-2';
   const inputBg = 'bg-surface border-bord';
 
@@ -1054,7 +1072,7 @@ function LigneCard({ ligne, index, totalLignes, onUpdate, onRemove, onMoveUp, on
             value={ligne.prixUnitaire || ''}
             onChange={e => onUpdate('prixUnitaire', Math.max(0, parseFloat(e.target.value) || 0))}
             onBlur={e => { if (parseFloat(e.target.value) < 0) onUpdate('prixUnitaire', 0); }}
-            placeholder="Prix HT"
+            placeholder={franchise ? 'Prix unitaire' : 'Prix HT'}
             className={`w-full pl-3 pr-10 py-1 border rounded-lg text-sm text-right ${inputBg}`}
           />
           <span className={`absolute right-3 top-1/2 -translate-y-1/2 text-xs pointer-events-none ${textMuted}`}>EUR</span>
@@ -1065,7 +1083,8 @@ function LigneCard({ ligne, index, totalLignes, onUpdate, onRemove, onMoveUp, on
         </span>
       </div>
 
-      {/* TVA quick select */}
+      {/* TVA quick select — aucun taux à choisir en franchise */}
+      {!franchise && (
       <div className="flex gap-1 mt-2">
         {[20, 10, 5.5, 0].map(taux => (
           <button
@@ -1082,6 +1101,7 @@ function LigneCard({ ligne, index, totalLignes, onUpdate, onRemove, onMoveUp, on
           </button>
         ))}
       </div>
+      )}
     </div>
   );
 }

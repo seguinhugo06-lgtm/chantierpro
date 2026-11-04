@@ -399,7 +399,8 @@ module.exports = [
           };
         });
         verifier(tva.etape, 'étape « Documents » de l’assistant');
-        verifier(/Pas de TVA : franchise en base/.test(tva.franchise) && /TVA non applicable, art\. 293 B du CGI/.test(tva.franchise)
+        // La mention de la facture, citée mot pour mot comme sur les PDF (CGI art. 293 E, II ; contrôle du 3 nov. 2026)
+        verifier(/Pas de TVA : franchise en base/.test(tva.franchise) && /TVA non applicable, article 293 B du CGI/.test(tva.franchise)
           && /Mallettico suppose que vous êtes en franchise en base de TVA/.test(tva.franchise) && /choisissez le statut « Entreprise individuelle \(EI\) »/.test(tva.franchise),
           `franchise présumée, mention 293 B et sortie par le statut EI (R1, R2) à ${largeur} px (« ${tva.franchise.slice(0, 160)} »)`);
         verifier(!tva.choisi.some((t) => /10 %/.test(t)), `10 % n’est pas proposé ni choisi (${JSON.stringify(tva.choisi)})`);

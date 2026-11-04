@@ -2365,9 +2365,10 @@ export default function TresorerieModule({
               <Info size={20} aria-hidden="true" className="flex-shrink-0 text-encre-3" />
               <div>
                 <p className="text-sm font-semibold text-encre">Franchise en base de TVA</p>
+                {/* La mention de la facture, mot pour mot comme sur les PDF : CGI art. 293 E, II (contrôle du 3 nov. 2026) */}
                 <p className="text-sm mt-0.5 text-encre-2">
                   En franchise en base de TVA, vous n’avez pas de TVA à collecter ni à déduire.
-                  Mention obligatoire sur vos factures : « TVA non applicable, art. 293 B du CGI ».
+                  Mention obligatoire sur vos factures : « TVA non applicable, article 293 B du CGI ».
                 </p>
                 {/* Une facture émise par erreur avec de la TVA la rend due (relecture juriste-btp du 17 oct. 2026) */}
                 {(() => {

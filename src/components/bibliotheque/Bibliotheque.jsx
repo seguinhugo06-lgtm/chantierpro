@@ -50,7 +50,8 @@ function getDeptByCode(code) {
 // Bibliotheque — Main page component
 // =============================================================================
 
-export default function Bibliotheque({ setPage, devis, addDevis, updateDevis, clients, showToast }) {
+// franchiseTva : franchise en base de TVA (art. 293 B du CGI, estFranchiseTva) — « Sous-total » sans « HT » à l'ajout au devis
+export default function Bibliotheque({ setPage, devis, addDevis, updateDevis, clients, showToast, franchiseTva = false }) {
   // ── Hook state ──────────────────────────────────────────────────────────────
   const {
     selectedNodeId,
@@ -580,7 +581,7 @@ export default function Bibliotheque({ setPage, devis, addDevis, updateDevis, cl
         article={addToDevisModal ? { ...addToDevisModal, prix: addToDevisModal.prixUnitaireHT || 0 } : null}
         brouillons={devisBrouillons} clients={clients || []} quantite={addToDevisQty} setQuantite={setAddToDevisQty}
         devisChoisi={addToDevisSelected} setDevisChoisi={setAddToDevisSelected} onFermer={closeAddToDevisModal} onAjouter={handleAddToDevis}
-        onCreerDevis={() => { closeAddToDevisModal(); if (setPage) setPage('devis'); }}
+        onCreerDevis={() => { closeAddToDevisModal(); if (setPage) setPage('devis'); }} franchiseTva={franchiseTva}
       />
 
       {/* ── Ouvrage detail modal ────────────────────────────────────────── */}

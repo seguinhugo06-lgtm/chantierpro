@@ -1,6 +1,6 @@
 /**
  * Franchise en base de TVA (art. 293 B du CGI) : une micro-entreprise ne facture pas de TVA. Ses
- * documents impriment « TVA non applicable, art. 293 B du CGI » ; les montants enregistrés suivent :
+ * documents impriment « TVA non applicable, article 293 B du CGI » (CGI art. 293 E, II) ; les montants enregistrés suivent :
  * TVA 0, TTC = HT.
  *
  * Recette du 9 oct. 2026 : l'éditeur de devis et les factures d'acompte, de solde et d'échéancier
@@ -31,7 +31,7 @@ function tvaEnregistree(doc) {
 /**
  * Le document s'imprime-t-il en franchise (sans TVA) ? Oui pour une micro-entreprise, SAUF un document émis
  * (facture, avoir, devis signé) enregistré avec de la TVA : il se réimprime tel qu'il a été émis. Une facture
- * émise ne se modifie pas, elle se corrige par un avoir (CGI art. 289 I-1) ; la TVA portée par erreur est due
+ * émise ne se modifie pas, elle se corrige par un avoir (CGI art. 289, I-4, I-5 et V) ; la TVA portée par erreur est due
  * du seul fait de la facture (CGI art. 283, 3) et s'annule par une facture rectificative ou un avoir
  * (BOI-TVA-DED-40-10-10) — relecture juridique du 10 oct. 2026.
  */
