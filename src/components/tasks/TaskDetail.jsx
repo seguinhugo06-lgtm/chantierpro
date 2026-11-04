@@ -313,13 +313,15 @@ export default function TaskDetail({ memo, onUpdate, onDelete, onClose, chantier
       {/* Backdrop */}
       <div className="fixed inset-0 bg-black/30 z-40 md:hidden" onClick={onClose} />
 
-      {/* Panel */}
+      {/* Panel — au-dessus de la carte « Installer Mallettico » (z-50, PWAUpdatePrompt.jsx), comme les autres vues plein
+          écran (z-[70], SaisieRamonage.jsx) : la marge posée sur body ne déplace pas une vue fixe, et la carte couvrait le
+          bas du panneau dans un navigateur (contrôle local du 3 nov. 2026) */}
       <div
         ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-label="Détail de la tâche"
-        className={`fixed top-0 right-0 h-full w-full md:max-w-md ${tc.bg} shadow-2xl z-50 flex flex-col animate-slide-in-right`}
+        className={`fixed top-0 right-0 h-full w-full md:max-w-md ${tc.bg} shadow-2xl z-[70] flex flex-col animate-slide-in-right`}
       >
         {/* Header */}
         <div className={`flex items-center justify-between px-4 py-3 border-b ${tc.border}`}>

@@ -74,6 +74,10 @@ export const CHAUFFAGE_MODELES = {
       id: 'chaudiere-gaz',
       nom: 'Remplacement chaudière gaz (condensation)',
       description: '~5 lignes | ~3 000 – 5 500 € HT | ~40% marge',
+      // Chaudière à énergie fossile : TVA à 20 % depuis le 1er mars 2025, fourniture et pose (loi de finances pour 2025 ;
+      // docs/metiers/chauffagiste.md § 5). L'entretien d'une chaudière fossile n'est pas visé par l'exclusion :
+      // 10 %, ou 5,5 % pour une chaudière à très haute performance énergétique (BOI-TVA-LIQ-30-20-90-20 § 230 ; BOI-TVA-LIQ-30-20-95 § 35).
+      tva: 20,
       prixMin: 3000,
       prixMax: 5500,
       margeCible: 40,

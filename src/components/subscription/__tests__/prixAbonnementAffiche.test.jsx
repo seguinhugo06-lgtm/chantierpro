@@ -25,8 +25,9 @@ const lu = (html) => html.replace(/<[^>]*>/g, ' ').replace(/&#x27;/g, "'").repla
 describe('fenêtre d\'abonnement : prix en franchise de TVA', () => {
   const texte = lu(renderToStaticMarkup(<UpgradeModal />));
 
-  it('dit la mention et le prix mensuel de chaque plan payant, lus dans PLANS', () => {
-    expect(texte).toContain(MENTION_TVA_ABONNEMENT);
+  // Retour d'Hugo du 26 oct. 2026 (avis juriste du 3 nov.) : plus de mention de franchise à côté des prix.
+  it('dit le prix mensuel de chaque plan payant, lus dans PLANS, sans la mention de franchise', () => {
+    expect(texte).not.toContain(MENTION_TVA_ABONNEMENT);
     expect(texte).toContain('9,90 € par mois');
     expect(texte).toContain('19,90 € par mois');
   });

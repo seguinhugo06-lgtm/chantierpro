@@ -10,7 +10,7 @@ import { CheckCircle, ArrowRight, Check } from 'lucide-react';
 import { Bouton } from '../ui/Bouton';
 import { useSubscriptionStore, PLANS } from '../../stores/subscriptionStore';
 import { dateLue } from '../../lib/dates';
-import { MENTION_TVA_ABONNEMENT, prixAbonnement } from '../../stores/prixAbonnement';
+import { prixAbonnement } from '../../stores/prixAbonnement';
 
 // Simple confetti effect using CSS
 function Confetti() {
@@ -115,7 +115,6 @@ export default function CheckoutSuccess({ isDark: _isDark, couleur: _couleur, se
                 {price}
               </span>
             </div>
-            {plan.priceMonthly > 0 && <p className="text-sm text-right text-encre-3">{MENTION_TVA_ABONNEMENT}</p>}
             {nextBilling && (
               <div className="flex justify-between text-sm">
                 <span className="text-encre-3">Prochaine facturation</span>

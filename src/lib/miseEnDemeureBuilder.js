@@ -16,6 +16,7 @@ import { imprimerHtml } from './imprimerHtml';
 import { nomImprime, formeImprimee, estEntrepreneurIndividuel, estEirl } from './identiteEntreprise';
 import { dateLue } from './dates';
 import { franchiseAppliquee } from './franchiseTva';
+import { mentionImmatriculation } from './immatriculation';
 
 /**
  * Format a number as euros (French locale)
@@ -441,13 +442,7 @@ ${estPro ? `
  * impriment déjà et que l'onglet Facture 2026 compte comme renseigné (relecture juridique du 10 oct. 2026).
  */
 function getRCSComplet(entreprise) {
-  const ville = entreprise?.rcsVille || entreprise?.rcs_ville || '';
-  const numero = entreprise?.rcsNumero || entreprise?.rcs_numero || '';
-  const type = entreprise?.rcsType || entreprise?.rcs_type || 'B';
-  if (ville && numero) return `RCS ${ville} ${type} ${numero}`;
-  const libre = String(entreprise?.rcs || '').trim();
-  if (!libre) return '';
-  return /^rcs\b/i.test(libre) ? libre : `RCS ${libre}`;
+  return mentionImmatriculation(entreprise);
 }
 
 /**
