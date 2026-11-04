@@ -61,6 +61,8 @@ export const REGLAGES_SANS_COLONNE = {
   entretienTarifs: {},
   entretienAppareilsMesure: '',
   entretienAttestationCapacite: '',
+  // Conseils (R. 1331-77) imprimés sur l'attestation par défaut ; décochables à chaque attestation (retour nov. 2026)
+  ramonageConseils: true,
 };
 
 function reglagesDe(row) {

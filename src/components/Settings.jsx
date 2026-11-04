@@ -44,6 +44,8 @@ import { EnTetePage } from './ui/EnTete';
 import { jourLocal, dateLue } from '../lib/dates';
 import { estEntrepreneurIndividuel, estEirl, nomImprime } from '../lib/identiteEntreprise';
 import { estSociete } from '../lib/mentionsFacture';
+import { registreDe, libellesImmatriculation, mentionImmatriculation } from '../lib/immatriculation';
+import { Segmente } from './ui/Onglets';
 import { minimumPenalites, libelleMinimumPenalites, tauxPenalitesValide } from '../lib/tauxInteretLegal';
 import { URL_SIRENE, profilDepuisSirene } from '../lib/sirene';
 import { chiffreAffairesHT } from '../lib/ventes';
@@ -329,6 +331,14 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
     }, 150);
   }, [ouvrirRubrique]);
 
+  // « Renouveler » une assurance expirée ou bientôt expirée : la rubrique Assurances, sur la date de validité de CETTE
+  // assurance (retour d'Hugo du 3 nov. 2026 : le bouton ne faisait qu'ouvrir la rubrique, donc rien quand on y était
+  // déjà, et rien ne disait quoi changer). La nouvelle date s'enregistre comme toute saisie (état près du champ) ;
+  // aucune date n'est proposée d'office : seule l'attestation de l'assureur la donne.
+  const renouvelerAssurance = useCallback((type) => {
+    allerAuChamp('assurances', type === 'rc' ? 'rcProValidite' : 'decennaleValidite');
+  }, [allerAuChamp]);
+
   // Navigation demandée par une autre rubrique (ex. Facture 2026 → « Compléter »)
   useEffect(() => {
     const handleTabNav = (e) => {
@@ -415,6 +425,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
     return alerts;
   }, [entreprise.rcProValidite, entreprise.decennaleValidite]);
 
+  const bandeauAssurances = vueMobile === 'rubrique' ? (tab === 'assurances' ? 'hidden' : 'hidden md:flex') : (tab === 'assurances' ? 'md:hidden' : '');
   const hasAssuranceAlerts = alertesAssurances.some(a => a.severity === 'critical' || a.severity === 'warning');
   const TON_ALERTE = { critical: 'bg-danger-fond text-danger-texte', warning: 'bg-alerte-fond text-alerte-texte', info: 'bg-info-fond text-info-texte' };
 
@@ -431,6 +442,12 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
     setPage?.('finances');
   };
 
+  // Administratif › « Ouvrir la Trésorerie » : l'onglet Trésorerie de Finances, où se règle le régime de TVA
+  const ouvrirTresorerie = () => {
+    try { sessionStorage.setItem('cp_finances_onglet', 'tresorerie'); } catch (e) { captureException(e, { contexte: 'ouvrirTresorerie' }); }
+    setPage?.('finances');
+  };
+
   // Validation format TVA
   const validateTVA = (value) => /^FR[0-9A-Z]{2}\d{9}$/.test(value.replace(/\s/g, '').toUpperCase());
   // Validation SIRET
@@ -438,11 +455,8 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
   const telValide = (v) => /^(?:\+33|0)\s*[1-9](?:[\s.-]*\d{2}){4}$/.test((v || '').trim());
   const emailValide = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((v || '').trim());
 
-  // Formater RCS complet
-  const getRCSComplet = () => {
-    if (!entreprise.rcsVille || !entreprise.rcsNumero) return '';
-    return `RCS ${entreprise.rcsVille} ${entreprise.rcsType || 'B'} ${entreprise.rcsNumero}`;
-  };
+  // Immatriculation imprimée (RCS ou RM) : la même que les documents (lib/immatriculation)
+  const getRCSComplet = () => mentionImmatriculation(entreprise);
 
   const ouvrirAssistant = () => { setShowSetupWizard(true); setWizardStep(0); };
   // Taux de pénalités : refusé sous le minimum légal du semestre (src/lib/tauxInteretLegal.js), la saisie reste affichée
@@ -481,15 +495,15 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
         <EtatProfil jauge={jauge} onAllerAuChamp={allerAuChamp} onAssistant={ouvrirAssistant} />
       </div>
 
-      {/* Alertes assurances critiques */}
+      {/* Alertes assurances critiques (dans la rubrique Assurances, l'alerte et son « Renouveler » y sont déjà) */}
       {alertesAssurances.filter(a => a.severity === 'critical').map((alert, i) => (
-        <div key={i} className={`rounded-2xl px-4 py-3 flex flex-wrap items-center gap-3 bg-danger-fond text-danger-texte ${vueMobile === 'rubrique' ? 'hidden md:flex' : ''}`}>
+        <div key={i} className={`rounded-2xl px-4 py-3 flex flex-wrap items-center gap-3 bg-danger-fond text-danger-texte ${bandeauAssurances}`}>
           <AlertCircle size={20} aria-hidden="true" className="flex-shrink-0" />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold">{alert.message}</p>
             <p className="text-sm">Expiration le {alert.date.toLocaleDateString('fr-FR')}</p>
           </div>
-          <Bouton taille="compacte" onClick={() => ouvrirRubrique('assurances')}>Renouveler</Bouton>
+          <Bouton taille="compacte" onClick={() => renouvelerAssurance(alert.type)}>Renouveler</Bouton>
         </div>
       ))}
 
@@ -721,30 +735,54 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
             </div>
           </Bloc>
 
-          {entreprise.formeJuridique !== 'Micro-entreprise' && entreprise.formeJuridique !== 'Auto-entrepreneur' ? (
-            <Bloc titre="RCS : registre du commerce" lexique={LEXIQUE.rcs} sousTitre="Format : RCS, ville du greffe, type, numéro (ex. RCS Paris B 123 456 789).">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <ChoixParam id="settings-field-rcs" cle="rcsVille" libelle="Ville du greffe" options={VILLES_RCS.map((v) => ({ valeur: v, libelle: v }))}
-                  valeur={entreprise.rcsVille || ''} onChange={maj('rcsVille')} vide="Choisir la ville" />
-                <ChoixParam id="settings-field-rcsType" cle="rcsType" libelle="Type" titre="Type d’immatriculation" options={TYPES_RCS}
-                  valeur={entreprise.rcsType || 'B'} onChange={maj('rcsType')} />
-                <ChampParam id="settings-field-rcsNumero" cle="rcsNumero" libelle="Numéro (9 chiffres)">
-                  <DebouncedInput id="settings-field-rcsNumero" inputMode="numeric" className={`${CLASSE_CHAMP} tabular-nums`} placeholder="123 456 789" maxLength={11} value={entreprise.rcsNumero || ''} onChange={maj('rcsNumero')} />
-                </ChampParam>
-              </div>
-              {getRCSComplet() && (
-                <p className="mt-4 p-3 rounded-xl text-sm bg-succes-fond text-succes-texte">Sera imprimé : <strong>{getRCSComplet()}</strong></p>
-              )}
-            </Bloc>
-          ) : (
-            <div className="rounded-2xl p-4 flex items-start gap-3 bg-info-fond text-info-texte">
-              <Info size={18} aria-hidden="true" className="flex-shrink-0 mt-0.5" />
-              <div className="text-sm">
-                <p className="font-semibold">Micro-entreprise</p>
-                <p className="mt-0.5">Le RCS ne concerne que les commerçants et les sociétés. Un artisan en micro-entreprise est inscrit au registre national des entreprises (RNE) : il n’a pas de numéro de RCS à saisir.</p>
-              </div>
-            </div>
-          )}
+          {/* Immatriculation : RNE en tant qu'entreprise du secteur des métiers et de l'artisanat (artisan) ou RCS (commerçant, société), choix guidé par la forme
+              juridique (retour d'Hugo du 3 nov. 2026 : « Type à revoir car pas commerçant »). Mêmes champs qu'avant
+              (rcsType, rcsVille, rcsNumero) ; libellés, mention et sources dans lib/immatriculation. */}
+          {(() => {
+            const registre = registreDe(entreprise);
+            const textes = libellesImmatriculation(registre);
+            const mention = mentionImmatriculation(entreprise);
+            const choisirRegistre = (r) => {
+              if (r === registre) return;
+              // La ville du greffe ne vaut que pour le RCS : on la vide à chaque changement (relecture du 3 nov. 2026 :
+              // sinon « RCS 33 A … »). Le SIREN reste.
+              updateEntreprise((p) => ({ ...p, rcsType: r === 'RM' ? 'RM' : (estSociete(p) ? 'B' : 'A'), rcsVille: '' }), 'rcsType');
+            };
+            // Le RNE (métiers et artisanat) proposé d'office à un entrepreneur individuel s'enregistre avec la première saisie :
+            // sans lui, ville et numéro se liraient « RCS » (données d'avant, lib/immatriculation)
+            const majImmat = (cle) => (val) => updateEntreprise((p) => ({ ...p, [cle]: val, ...(registre === 'RM' ? { rcsType: 'RM' } : {}) }), cle);
+            return (
+              <Bloc titre="Immatriculation" lexique={LEXIQUE.rcs} sousTitre="Le registre où votre entreprise est inscrite, imprimé sur vos devis et factures.">
+                <div id="settings-field-registre" tabIndex={-1} data-registre={registre}>
+                  <p id="settings-registre-libelle" className="block text-sm font-medium text-encre-2 mb-1.5">Votre registre</p>
+                  <Segmente pleineLargeur ariaLabel="Votre registre" valeur={registre} onChange={choisirRegistre}
+                    options={[{ valeur: 'RM', libelle: 'Métiers et artisanat (RNE)' }, { valeur: 'RCS', libelle: 'Commerce (RCS)' }]} />
+                  <p className="mt-1.5 text-sm text-encre-3">
+                    {registre === 'RM'
+                      ? 'Artisan en entreprise individuelle ou micro-entreprise, immatriculé au RNE en tant qu’entreprise du secteur des métiers et de l’artisanat. Inscrit aussi au RCS ? Choisissez Commerce (RCS).'
+                      : 'Commerçant ou société (SARL, SAS…), y compris artisanale : la mention RCS est obligatoire.'}
+                  </p>
+                </div>
+                <div className={`mt-4 grid grid-cols-1 gap-4 ${registre === 'RCS' ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
+                  {registre === 'RCS' ? (
+                    <ChoixParam id="settings-field-rcs" cle="rcsVille" libelle={textes.lieu} options={VILLES_RCS.map((v) => ({ valeur: v, libelle: v }))}
+                      valeur={entreprise.rcsVille || ''} onChange={majImmat('rcsVille')} vide={textes.lieuExemple} />
+                  ) : null}
+                  {registre === 'RCS' ? (
+                    <ChoixParam id="settings-field-rcsType" cle="rcsType" libelle="Type" titre="Type d’immatriculation" options={TYPES_RCS}
+                      valeur={TYPES_RCS.some((t) => t.valeur === entreprise.rcsType) ? entreprise.rcsType : 'B'} onChange={maj('rcsType')} />
+                  ) : null}
+                  <ChampParam id="settings-field-rcsNumero" cle="rcsNumero" libelle="Numéro SIREN (9 chiffres)">
+                    <DebouncedInput id="settings-field-rcsNumero" inputMode="numeric" className={`${CLASSE_CHAMP} tabular-nums`} placeholder="123 456 789" maxLength={11} value={entreprise.rcsNumero || ''} onChange={majImmat('rcsNumero')} />
+                  </ChampParam>
+                </div>
+                <p className="mt-3 text-sm text-encre-3">{textes.aide}</p>
+                {mention && (
+                  <p className="mt-4 p-3 rounded-xl text-sm bg-succes-fond text-succes-texte">Sera imprimé : <strong>{mention}</strong></p>
+                )}
+              </Bloc>
+            );
+          })()}
 
           {franchiseTva ? (
             <div className="rounded-2xl p-4 flex items-start gap-3 bg-info-fond text-info-texte">
@@ -788,7 +826,11 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
                   <div className="flex-1 text-sm">
                     <p className="font-semibold">{alert.message}</p>
                     <p>Expiration le {alert.date.toLocaleDateString('fr-FR')}</p>
+                    {alert.severity !== 'info' ? <p className="mt-1">Saisissez la date de fin de votre nouvelle attestation.</p> : null}
                   </div>
+                  {alert.severity !== 'info' ? (
+                    <Bouton taille="compacte" onClick={() => renouvelerAssurance(alert.type)}>Renouveler</Bouton>
+                  ) : null}
                 </div>
               ))}
             </div>
@@ -1452,6 +1494,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
           entreprise={entreprise}
           isDark={isDark}
           couleur={couleur}
+          onOuvrirTresorerie={setPage ? ouvrirTresorerie : undefined}
         />
       )}
         </div>

@@ -27,7 +27,7 @@
 import { ArrowRight, MessageSquare, ListChecks, Tag, ShieldCheck } from 'lucide-react';
 import { PLANS, PLAN_ORDER } from '../../stores/subscriptionStore';
 import { STATUTS_RETOUR } from '../../services/retoursService';
-import { MENTION_TVA_ABONNEMENT, prixAbonnement } from '../../stores/prixAbonnement';
+import { prixAbonnement } from '../../stores/prixAbonnement';
 import SectionSite from './site/SectionSite';
 import EnTeteSection from './site/EnTeteSection';
 import Apparition from './site/Apparition';
@@ -108,7 +108,6 @@ export default function EarlyAdoptersSection({ onSignup }) {
                     <Etiquette key={plan.id}>{`${plan.name} ${prixAbonnement(plan)} par mois`}</Etiquette>
                   ))}
                 </Etiquettes>
-                <p className="mt-2 text-xs leading-snug text-slate-600">{MENTION_TVA_ABONNEMENT}</p>
               </>
             }
           >
