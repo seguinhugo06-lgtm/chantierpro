@@ -12,6 +12,10 @@
 --   Après application : rétablir l'aide du champ settings-field-rge (Settings.jsx) à « Reconnu garant de
 --   l'environnement. Imprimé sur vos devis et factures. »
 -- Numéro : 107 est pris par la branche cloud/ia-socle.
+-- ATTENTION (gardien-securite, 4 nov. 2026) : 110 (cloud/metier-qualifications) réécrit aussi toute la fonction et la
+--   contient. Appliquer 108 puis 110 dans la même séance, ou 110 seule. NE JAMAIS rejouer 108 après 110 : la clé
+--   « qualifications » disparaîtrait du devis signé, sans aucune erreur. Contrôle après 110 :
+--   SELECT position('''qualifications''' in prosrc) > 0 FROM pg_proc WHERE proname = 'get_devis_for_signature';
 --
 -- ─── Vérification après application (éditeur SQL) ───────────────────────────
 --   SELECT position('''rgeDomaine'', r ->> ''rgeDomaine''' in prosrc) > 0 AS rge_signature,
