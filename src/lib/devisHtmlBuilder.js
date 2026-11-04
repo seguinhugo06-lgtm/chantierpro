@@ -500,7 +500,6 @@ function buildEntrepriseFields(entreprise) {
     rgeOrganisme: entreprise?.rgeOrganisme || '',
     rgeValidite: entreprise?.rgeValidite || '',
     rgeDomaine: entreprise?.rgeDomaine || '',
-    labels: entreprise?.labels,
     mentionRGE: entreprise?.mentionRGE,
   };
 }
