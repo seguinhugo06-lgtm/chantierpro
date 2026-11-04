@@ -196,16 +196,18 @@ module.exports = [
       const apres = await texte(page);
       verifier(/FAC-2026-00042/.test(apres) && !/FAC-2026-00009/.test(apres), 'la liste montre le numéro attribué par la base (FAC-2026-00042)');
 
-      // 2. Émission sans réseau (relecture du 3 nov. 2026) : l'écriture attend sur l'appareil, la base n'a pas attribué
-      // le numéro → pas de « Facture émise », mais « Émission gardée sur cet appareil »
+      // 2. Émission sans réseau : l'écriture attend sur l'appareil, la base n'a pas enregistré l'émission → pas de
+      // « Facture émise », mais le texte de juriste-btp du 4 nov. 2026, mot pour mot (espaces normalisés)
       await attendre(5000); // le message de l’étape 1 se ferme
       await page.evaluate(() => {
         window.__messagesStatut = [];
         new MutationObserver(() => {
           const t = document.body.innerText;
-          for (const m of ['Facture émise', 'Émission gardée sur cet appareil', 'dès que l’envoi aura réussi', 'au retour du réseau, si la base', 'Pas de connexion']) {
+          for (const m of ['Facture émise', 'Émission gardée', 'si la base', 'l’envoi aura réussi', 'Pas de connexion']) {
             if (t.includes(m) && !window.__messagesStatut.includes(m)) window.__messagesStatut.push(m);
           }
+          const emission = t.replace(/\s+/g, ' ').match(/La facture n’est pas encore émise.{0,220}?votre client\./);
+          if (emission && !window.__messageEmission) window.__messageEmission = emission[0];
         }).observe(document.body, { childList: true, subtree: true, characterData: true });
       });
       horsLigne = true;
@@ -216,12 +218,14 @@ module.exports = [
       verifier(await confirmerDansDialogue(page, 'Émettre la facture'), 'bouton « Émettre la facture » (sans réseau)');
       await attendre(2000);
       const messages = await page.evaluate(() => window.__messagesStatut || []);
-      verifier(messages.includes('Émission gardée sur cet appareil') && !messages.includes('Facture émise'),
-        `sans réseau : « Émission gardée sur cet appareil », jamais « Facture émise » (${JSON.stringify(messages)})`);
-      // Le message ne promet pas « au retour du réseau » : l'écriture attend aussi sur « Serveur indisponible » ou
-      // « Session expirée », réseau présent (contrôle local du 3 nov.)
-      verifier(messages.includes('dès que l’envoi aura réussi') && !messages.includes('au retour du réseau, si la base'),
-        `message hors ligne : « dès que l’envoi aura réussi », pas « au retour du réseau » (${JSON.stringify(messages)})`);
+      const emission = await page.evaluate(() => window.__messageEmission || '');
+      const TEXTE_HORS_LIGNE = 'La facture n’est pas encore émise : elle le sera, avec son numéro définitif, quand ce changement sera enregistré en ligne. D’ici là, ne la transmettez pas à votre client.';
+      verifier(emission === TEXTE_HORS_LIGNE.replace(/\s+/g, ' '),
+        `sans réseau : le texte du juriste, mot pour mot (reçu : ${JSON.stringify(emission)})`);
+      // Ni « Facture émise », ni les anciennes formules (« Émission gardée », « si la base », « l’envoi aura réussi ») ;
+      // le texte exact exclut aussi « au retour du réseau », « recevra son numéro », « peut changer », « provisoire »
+      verifier(!['Facture émise', 'Émission gardée', 'si la base', 'l’envoi aura réussi'].some((m) => messages.includes(m)),
+        `sans réseau : aucune formule refusée (${JSON.stringify(messages)})`);
       horsLigne = false;
 
       // 3. « Payée » : encaissement refusé par la base → aucune réussite, la facture reste à encaisser

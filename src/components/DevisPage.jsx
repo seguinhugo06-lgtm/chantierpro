@@ -2378,7 +2378,10 @@ export default function DevisPage({ clients, addClient, devis, setDevis, chantie
     // Hors ligne, l'écriture attend sur l'appareil : la base n'a ni accepté l'émission ni attribué le numéro, et
     // « Pas de connexion » est déjà affiché (relecture du 3 nov. 2026 : deux messages contraires)
     if (resultat === ECRITURE_EN_ATTENTE) {
-      if (choix.geste === 'emettre') showToast('Émission gardée sur cet appareil : la facture sera émise dès que l’envoi aura réussi, si la base l’accepte.', 'info');
+      // Texte de juriste-btp (4 nov. 2026) : vrai que le numéro soit déjà attribué (brouillon créé en ligne) ou seulement
+      // proposé (brouillon créé hors ligne) ; une facture transmise avant l'enregistrement casserait la séquence continue
+      // des numéros (CGI ann. II art. 242 nonies A, I, 7°). Affiché 10 s : un avertissement doit avoir le temps d'être lu.
+      if (choix.geste === 'emettre') showToast('La facture n’est pas encore émise : elle le sera, avec son numéro définitif, quand ce changement sera enregistré en ligne. D’ici là, ne la transmettez pas à votre client.', 'info', 10000);
       return;
     }
     showToast(choix.geste === 'emettre' ? 'Facture émise' : `Statut enregistré : ${choix.libelle}`, 'success');
