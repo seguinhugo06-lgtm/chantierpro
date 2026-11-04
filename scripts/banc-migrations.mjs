@@ -49,6 +49,11 @@ for (const passage of ['appliquée', 'rejouée sans erreur']) {
 await db.exec('GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO anon, authenticated;');
 await donneesDeBase(t);
 
+// Deux migrations au même numéro chargeraient le même fichier de vérifications : l'une passerait sans contrôle.
+const numeros = migrations.map((f) => f.slice(0, 3));
+const doublons = [...new Set(numeros.filter((n, i) => numeros.indexOf(n) !== i))];
+if (doublons.length) t.ko(`numéros de migration en double : ${doublons.join(', ')}`);
+
 const modules = [];
 for (const f of migrations) {
   const numero = f.slice(0, 3);

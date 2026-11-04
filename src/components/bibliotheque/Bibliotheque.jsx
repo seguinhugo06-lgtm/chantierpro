@@ -566,6 +566,7 @@ export default function Bibliotheque({ setPage, devis, addDevis, updateDevis, cl
               onSelectOuvrage={handleSelectOuvrage}
               isSearching={isSearching}
               searchQuery={searchQuery}
+              franchiseTva={franchiseTva}
             />
           ) : (
             EmptyState

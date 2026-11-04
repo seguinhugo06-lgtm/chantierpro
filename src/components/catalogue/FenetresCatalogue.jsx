@@ -28,8 +28,16 @@ const CHAMPS_IMPORT = [
 
 const SELECT = 'h-11 px-3 rounded-xl border border-bord-fort bg-surface text-base sm:text-sm text-encre cursor-pointer';
 
+/** Les champs à associer : en franchise en base de TVA (art. 293 B du CGI), prix sans « HT » et pas de taux (l'article est créé à
+ * 0 %, Catalogue.creerArticle) — D-31. */
+export function champsImport(franchiseTva = false) {
+  if (!franchiseTva) return CHAMPS_IMPORT;
+  const libelles = { prix: 'Prix unitaire', prixAchat: 'Prix d’achat' };
+  return CHAMPS_IMPORT.filter((c) => c.key !== 'tva_rate').map((c) => (libelles[c.key] ? { ...c, label: libelles[c.key] } : c));
+}
+
 /** Import d'un fichier CSV : les colonnes du fichier, associées aux champs du catalogue. */
-export function FenetreImportCsv({ donnees, mapping, setMapping, onFermer, onImporter, enCours }) {
+export function FenetreImportCsv({ donnees, mapping, setMapping, onFermer, onImporter, enCours, franchiseTva = false }) {
   return (
     <Modal isOpen={!!donnees} onClose={onFermer} size="lg" closeOnBackdrop={!enCours} closeOnEscape={!enCours}>
       <ModalHeader>
@@ -38,7 +46,7 @@ export function FenetreImportCsv({ donnees, mapping, setMapping, onFermer, onImp
       </ModalHeader>
       <ModalBody className="space-y-4">
         <div className="space-y-3">
-          {CHAMPS_IMPORT.map(({ key, label }) => (
+          {champsImport(franchiseTva).map(({ key, label }) => (
             <div key={key} className="flex items-center gap-3">
               <label htmlFor={`import-${key}`} className={`text-sm w-40 flex-shrink-0 text-encre ${key === 'designation' ? 'font-semibold' : ''}`}>{label}</label>
               <select id={`import-${key}`} className={`flex-1 min-w-0 ${SELECT}`} value={mapping[key] || ''} onChange={(e) => setMapping((p) => ({ ...p, [key]: e.target.value }))}>

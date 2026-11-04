@@ -115,6 +115,7 @@ import { estOuverte, estEnRetard, aTraiter as docATraiter, devisARelancer, jours
 import { urlPublique } from '../lib/urlPublique';
 import { FONCTIONS } from '../lib/fonctions';
 import { jourLocal, dateLue } from '../lib/dates';
+import { tableauExportDocuments } from '../lib/exportsCsv';
 import { signatureDuClient } from '../lib/signatureDocument';
 import RetractationDevis from './devis/RetractationDevis';
 import ExemplaireSigne from './devis/ExemplaireSigne';
@@ -1752,27 +1753,10 @@ export default function DevisPage({ clients, addClient, devis, setDevis, chantie
   const exportCSV = (docs) => {
     if (docs.length === 0) return;
     const BOM = '\uFEFF'; // UTF-8 BOM for Excel
-    const headers = ['Numéro', 'Type', 'Client', 'Date', 'Objet', 'Montant HT', 'TVA', isMicro ? 'Montant' : 'Montant TTC', 'Statut', 'Date envoi', 'Date signature', 'Date paiement'];
-    const rows = docs.map(d => {
-      const client = clients.find(c => c.id === d.client_id);
-      const clientName = client ? `${client.prenom || ''} ${client.nom || ''}`.trim() : (d.client_nom || '');
-      const fmtDate = (v) => v ? dateLue(v).toLocaleDateString('fr-FR') : '';
-      return [
-        d.numero || '',
-        d.type === 'facture' ? 'Facture' : 'Devis',
-        clientName,
-        fmtDate(d.date),
-        (d.objet || '').replace(/;/g, ','),
-        (d.total_ht || 0).toFixed(2),
-        (d.tva || 0).toFixed(2),
-        (d.total_ttc || d.montant_ttc || 0).toFixed(2),
-        d.statut || '',
-        fmtDate(d.date_envoi),
-        fmtDate(d.date_signature),
-        fmtDate(d.date_paiement),
-      ];
-    });
-    const csv = BOM + [headers, ...rows].map(r => r.join(';')).join('\n');
+    // Franchise en base de TVA (art. 293 B du CGI) : une seule colonne « Montant » (tableauExportDocuments, D-31) ; sauf si
+    // une pièce exportée a été émise avec TVA : elle est due et doit rester visible (CGI art. 283, 3 ; juriste-btp, 4 nov. 2026)
+    // (règle dans exportDocumentsEnFranchise, src/lib/exportsCsv.js)
+    const csv = BOM + tableauExportDocuments(docs, { clients, entreprise }).map(r => r.join(';')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     remettreFichier(blob, `export-${jourLocal()}.csv`);
     showToast(`${docs.length} document${docs.length > 1 ? 's' : ''} exporté${docs.length > 1 ? 's' : ''} en CSV`, 'success');
@@ -3883,6 +3867,7 @@ export default function DevisPage({ clients, addClient, devis, setDevis, chantie
             isDark={isDark}
             couleur={couleur}
             modeDiscret={modeDiscret}
+            franchise={franchiseAppliquee(selected, entreprise)}
             onClose={() => setViewingSnapshot(null)}
             // Seulement sur un document encore modifiable : une facture émise ou un devis signé se corrigent par un
             // avoir ou un avenant (la base refuse la réécriture, migrations 091 et 093)
@@ -3916,6 +3901,7 @@ export default function DevisPage({ clients, addClient, devis, setDevis, chantie
             isDark={isDark}
             couleur={couleur}
             modeDiscret={modeDiscret}
+            franchise={franchiseAppliquee(selected, entreprise)}
             onClose={() => setComparingSnapshots(null)}
           />
         )}

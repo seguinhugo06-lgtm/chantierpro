@@ -16,6 +16,7 @@ import {
 import SaisieRamonage from './SaisieRamonage';
 import FicheAttestation from './FicheAttestation';
 import RappelRamonage from './RappelRamonage';
+import { estFranchiseTva } from '../../lib/franchiseTva';
 
 const jourFr = (jour, court = false) => (jour
   ? dateLue(String(jour).slice(0, 10)).toLocaleDateString('fr-FR', court ? { day: 'numeric', month: 'short', year: 'numeric' } : { day: 'numeric', month: 'long', year: 'numeric' })
@@ -139,7 +140,7 @@ export default function OngletRamonage({ client, entreprise, setPage, setSelecte
                         onClick={() => setFicheId(p.id)}
                         // Comme la fiche papier : date, méthode, prix et n° de facture ; le prochain ramonage est en tête
                         titre={`${jourFr(jourDe(p.realise_le), true)} · ${METHODE_COURTE[p.methode] || ''}`}
-                        montant={canViewPrices && p.prix_ht != null ? `${prix(p.prix_ht)} HT` : undefined}
+                        montant={canViewPrices && p.prix_ht != null ? (estFranchiseTva(entreprise) ? prix(p.prix_ht) : `${prix(p.prix_ht)} HT`) : undefined}
                         meta={[p.numero || 'numéro en attente', facture ? (facture.numero || 'facture') : 'pas de facture'].join(' · ')}
                         pastille={p.annulee_le ? <Pastille ton="danger">Annulée</Pastille> : undefined}
                       />

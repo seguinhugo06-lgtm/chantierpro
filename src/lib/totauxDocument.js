@@ -104,6 +104,15 @@ export function libellesColonnesPrix(isMicro = false) {
   return isMicro ? { pu: 'Prix unitaire', total: 'Total' } : { pu: 'PU HT', total: 'Total HT' };
 }
 
+/** Libellé du dernier total d'une pièce imprimée (D-31 (1)) : « Total TTC » hors franchise ; en franchise, « Net à payer
+ * (hors taxes et toutes taxes comprises) » sur une facture, « Total (hors taxes et toutes taxes comprises) » sur un devis,
+ * « Total de l’avoir » sur un avoir. Partagé par les générateurs et le document imprimé du portail client. */
+export function libelleTotalImprime(doc, isMicro = false) {
+  if (!isMicro) return 'Total TTC';
+  if (doc?.facture_type === 'avoir') return 'Total de l’avoir';
+  return doc?.type === 'facture' ? 'Net à payer (hors taxes et toutes taxes comprises)' : 'Total (hors taxes et toutes taxes comprises)';
+}
+
 /**
  * Lignes « Total HT / Remise / TVA par taux / Total TTC » du bloc des totaux, en HTML (classes
  * `row sub` / `row total` des générateurs). Avec une remise : total des lignes, remise, puis total
@@ -134,9 +143,7 @@ export function lignesTotauxHtml(doc, { isMicro = false, tauxDefaut = 10 } = {})
   // (arrêté n° 83-50/A du 3 oct. 1983, art. 3) ; « la somme globale à payer hors taxes et toutes taxes comprises »
   // (arrêté du 24 janv. 2017, art. 4, I). La mention 293 B, juste en dessous, précise le taux. Décision d'Hugo du
   // 3 nov. 2026 (avis juriste-btp du même jour). L'avoir ne change pas. Les écrans restent sans « HT » ni « TTC ».
-  const libelleTotal = !isMicro ? 'Total TTC'
-    : doc?.facture_type === 'avoir' ? 'Total de l’avoir'
-      : doc?.type === 'facture' ? 'Net à payer (hors taxes et toutes taxes comprises)' : 'Total (hors taxes et toutes taxes comprises)';
+  const libelleTotal = libelleTotalImprime(doc, isMicro);
   html.push(`<div class="row total"><span>${libelleTotal}</span><span>${euros(t.totalTTC)}</span></div>`);
   return html.join('\n    ');
 }

@@ -190,7 +190,8 @@ module.exports = [
     },
   },
   {
-    // Le module ramonage ajoute un onglet à la fiche client : son historique porte un prix (« 95 € HT »).
+    // Le module ramonage ajoute un onglet à la fiche client : son historique porte un prix (« 95 € » : l'entreprise est une
+    // micro-entreprise, en franchise en base de TVA, sans « HT » — tâche 28 `franchise-restes`, 4 nov. 2026).
     nom: 'ramonage : l’historique d’un appareil sur la fiche client ne montre aucun prix au chef de chantier ; le gérant le voit (375 px)',
     reel: true,
     async executer({ ouvrir, attendre, verifier, sessionFactice }) {
@@ -212,7 +213,7 @@ module.exports = [
         const onglet = await page.evaluate(() => document.querySelector('[data-testid="onglet-ramonage"]')?.innerText.replace(/\s+/g, ' ') || '');
         verifier(onglet.includes(`RAM-${AN}-00011`) && /Insert/.test(onglet), `${role} : l’appareil et son passage sont listés (« ${onglet.slice(0, 160)} »)`);
         if (role === 'chef_chantier') verifier(!/€|HT/.test(onglet), `chef : sans le prix du passage (« ${onglet.slice(0, 160)} »)`);
-        else verifier(/95\s?€\s?HT/.test(onglet), `gérant : avec le prix du passage (« ${onglet.slice(0, 160)} »)`);
+        else verifier(/95\s?€/.test(onglet) && !/(?<![A-Za-zÀ-ÿ])HT(?![A-Za-zÀ-ÿ])/.test(onglet), `gérant : avec le prix du passage, sans « HT » en franchise (« ${onglet.slice(0, 160)} »)`);
       }
     },
   },

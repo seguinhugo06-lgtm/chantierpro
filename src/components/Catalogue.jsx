@@ -22,7 +22,8 @@ import { remettreFichier } from '../lib/natif';
 import { jourLocal } from '../lib/dates';
 import { devisAvecLigneAjoutee } from '../lib/ajoutLigneDevis';
 import { estFranchiseTva } from '../lib/franchiseTva';
-import { lireCsv, nombreFr, associerColonnes } from '../lib/csvImport';
+import { lireCsv, associerColonnes, articleDepuisLigneCsv } from '../lib/csvImport';
+import { tableauExportCatalogue } from '../lib/exportsCsv';
 import { achatConnu, margeBrute, niveauMarge, CLASSES_TON_MARGE } from '../lib/margeArticle';
 import { formatMoney } from '../lib/formatters';
 import ArticleDetail from './catalogue/ArticleDetail';
@@ -504,11 +505,8 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
 
   // Export CSV du catalogue (avec ses prix et ses marges : réservé à qui les voit)
   const exporterCsv = () => {
-    const lignes = [['Référence', 'Nom', 'Description', 'Catégorie', 'Unité', 'TVA %', 'Prix vente HT', 'Prix achat HT', 'Marge %', 'Stock', 'Seuil alerte', 'Favori']];
-    catalogue.forEach((c) => {
-      const marge = margeBrute(c.prix, c.prixAchat);
-      lignes.push([c.reference || '', c.nom, c.description || '', c.categorie, c.unite, c.tva_rate ?? c.tva ?? 20, c.prix, c.prixAchat ?? '', marge !== null ? marge.toFixed(1) : '', c.stock_actuel ?? '', c.stock_seuil_alerte ?? '', c.favori ? 'Oui' : '']);
-    });
+    // Franchise en base de TVA (art. 293 B du CGI) : ni colonne de TVA, ni « HT » (tableauExportCatalogue, D-31)
+    const lignes = tableauExportCatalogue(catalogue, { franchise: franchiseTva });
     const csv = lignes.map((r) => r.map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`).join(';')).join('\n');
     remettreFichier(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' }), `catalogue_${jourLocal()}.csv`)
       .then((r) => { if (r !== 'annule') showToast('Export CSV prêt', 'success'); })
@@ -534,43 +532,17 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
   const importerCsv = async () => {
     if (!importData) return;
     setImportEnCours(true);
-    // Prix et TVA lus à la française (« 1 250,00 », « 5,5 ») ; un prix illisible ou nul : ligne écartée et comptée
-    // (avant : 1 €, TVA 5, articles à 0 €) ; TVA 0 % respectée ; chaque refus de la base compté.
+    // Une ligne → un article (articleDepuisLigneCsv, src/lib/csvImport.js : lecture à la française, prix illisible écarté,
+    // colonne TVA ignorée en franchise) ; chaque refus de la base compté.
     let importes = 0, ecartees = 0, misAJour = 0, refuses = 0, prixIllisibles = 0;
-    const tvaDe = (v, defaut) => { const n = nombreFr(v); return Number.isFinite(n) ? n : defaut; };
     for (const row of importData.rows) {
-      const nom = row[importMapping.designation] || '';
-      if (!nom) { ecartees++; continue; }
-      const ref = row[importMapping.reference] || '';
-      const prix = nombreFr(row[importMapping.prix]);
-      const achatLu = nombreFr(row[importMapping.prixAchat]);
-      const stockLu = nombreFr(row[importMapping.stock]);
-      const existant = ref ? catalogue.find((c) => c.reference === ref) : null; // doublon par référence
-      if (!(prix > 0) && !existant) { prixIllisibles++; continue; }
-      if (existant) {
-        const maj = {
-          ...existant,
-          nom: nom || existant.nom,
-          prix: prix > 0 ? prix : existant.prix,
-          prixAchat: Number.isFinite(achatLu) ? achatLu : existant.prixAchat,
-          unite: row[importMapping.unite] || existant.unite,
-          categorie: row[importMapping.categorie] || existant.categorie,
-          description: row[importMapping.description] || existant.description,
-          tva_rate: tvaDe(row[importMapping.tva_rate], existant.tva_rate),
-          tva: tvaDe(row[importMapping.tva_rate], existant.tva ?? existant.tva_rate),
-          stock_actuel: Number.isFinite(stockLu) ? Math.round(stockLu) : existant.stock_actuel,
-        };
-        if (updateCatalogueItemProp) { if (await updateCatalogueItemProp(existant.id, maj)) misAJour++; else refuses++; }
-        else { setCatalogue((prev) => prev.map((c) => (c.id === existant.id ? maj : c))); misAJour++; }
-      } else {
-        const tva = tvaDe(row[importMapping.tva_rate], 20);
-        const nouveau = {
-          nom, reference: ref, description: row[importMapping.description] || '', prix,
-          prixAchat: Number.isFinite(achatLu) ? achatLu : null, unite: row[importMapping.unite] || 'u', categorie: row[importMapping.categorie] || 'Autre',
-          tva_rate: tva, tva, favori: false, stock_actuel: Number.isFinite(stockLu) ? Math.round(stockLu) : undefined, stock_seuil_alerte: undefined,
-        };
-        if (await creerArticle(nouveau)) importes++; else refuses++;
-      }
+      const { ecartee, prixIllisible, maj, nouveau } = articleDepuisLigneCsv(row, importMapping, { catalogue, franchise: franchiseTva });
+      if (ecartee) { ecartees++; continue; }
+      if (prixIllisible) { prixIllisibles++; continue; }
+      if (maj) {
+        if (updateCatalogueItemProp) { if (await updateCatalogueItemProp(maj.id, maj)) misAJour++; else refuses++; }
+        else { setCatalogue((prev) => prev.map((c) => (c.id === maj.id ? maj : c))); misAJour++; }
+      } else if (await creerArticle(nouveau)) importes++; else refuses++;
     }
     setImportEnCours(false);
     setImportData(null);
@@ -588,7 +560,7 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
   const fenetres = (
     <>
       <input type="file" ref={fileInputRef} accept=".csv,.txt" onChange={choisirFichier} className="hidden" aria-label="Fichier CSV à importer" />
-      <FenetreImportCsv donnees={importData} mapping={importMapping} setMapping={setImportMapping} onFermer={() => setImportData(null)} onImporter={importerCsv} enCours={importEnCours} />
+      <FenetreImportCsv franchiseTva={franchiseTva} donnees={importData} mapping={importMapping} setMapping={setImportMapping} onFermer={() => setImportData(null)} onImporter={importerCsv} enCours={importEnCours} />
       {scannerOuvert && (
         <FenetreScanner
           peutCreer={peutCreer} catalogue={catalogue} onFermer={() => setScannerOuvert(false)}

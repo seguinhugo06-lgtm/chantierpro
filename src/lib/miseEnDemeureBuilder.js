@@ -15,6 +15,7 @@ import { echapperHtml as h, couleurCss } from './echapperHtml';
 import { imprimerHtml } from './imprimerHtml';
 import { nomImprime, formeImprimee, estEntrepreneurIndividuel, estEirl } from './identiteEntreprise';
 import { dateLue } from './dates';
+import { franchiseAppliquee } from './franchiseTva';
 import { mentionImmatriculation } from './immatriculation';
 
 /**
@@ -74,6 +75,9 @@ export function buildMiseEnDemeureHtml({
   // Pénalités et somme réclamée sur le RESTE dû : après un acompte, on réclamait le TTC entier.
   const dejaRegle = Math.min(montantTTC, Math.max(0, Number(doc.montant_paye) || 0));
   const resteDu = Math.round((montantTTC - dejaRegle) * 100) / 100;
+  // Franchise en base de TVA (art. 293 B du CGI) : la facture n'a ni HT ni TTC, la lettre non plus (D-31). Une facture
+  // émise avec TVA par une micro-entreprise garde son « TTC » : elle se réclame telle qu'elle a été émise (franchiseAppliquee).
+  const suffixeTtc = franchiseAppliquee(doc, entreprise) ? '' : ' TTC';
   // Pénalités de l'art. L441-10 et indemnité de 40 € : entre professionnels seulement (estClientPro).
   // À un particulier, on réclame la somme due, qui produit intérêts au taux légal à compter de la mise
   // en demeure (art. 1231-6 C. civ.).
@@ -308,7 +312,7 @@ export function buildMiseEnDemeureHtml({
 <div class="title">MISE EN DEMEURE DE PAYER</div>
 <div class="ref-line">
   Facture n° <strong>${numero || 'N/A'}</strong> du ${fmtDate(dateFacture)}
-  — Montant : <strong>${fmtEuro(montantTTC)}</strong> TTC
+  — Montant : <strong>${fmtEuro(montantTTC)}</strong>${suffixeTtc}
 </div>
 
 <!-- Body -->
@@ -317,7 +321,7 @@ export function buildMiseEnDemeureHtml({
 <p class="body-text">
   Par la présente, nous vous mettons en demeure de régler, dans un délai de <strong>huit (8) jours</strong>
   à compter de la réception de ce courrier, la facture n° <strong>${numero || 'N/A'}</strong>
-  d'un montant de <strong>${fmtEuro(montantTTC)} TTC</strong>${dejaRegle > 0 ? `, dont il reste dû <strong>${fmtEuro(resteDu)}</strong>` : ''}, émise le ${fmtDate(dateFacture)}
+  d'un montant de <strong>${fmtEuro(montantTTC)}${suffixeTtc}</strong>${dejaRegle > 0 ? `, dont il reste dû <strong>${fmtEuro(resteDu)}</strong>` : ''}, émise le ${fmtDate(dateFacture)}
   et arrivée à échéance le <strong>${fmtDate(dateEcheance)}</strong>.
 </p>
 
@@ -351,7 +355,7 @@ ${relanceSummary ? `
   </thead>
   <tbody>
     <tr>
-      <td>Montant initial de la facture TTC</td>
+      <td>Montant initial de la facture${suffixeTtc}</td>
       <td style="text-align:right">${fmtEuro(montantTTC)}</td>
     </tr>
     ${dejaRegle > 0 ? `<tr>

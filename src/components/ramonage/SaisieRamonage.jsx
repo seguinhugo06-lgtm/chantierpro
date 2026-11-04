@@ -11,6 +11,7 @@ import {
 } from '../../lib/ramonage';
 import { buildAttestationRamonageHtml } from '../../lib/attestationRamonageHtml';
 import { useConfirm } from '../../context/AppContext';
+import { estFranchiseTva } from '../../lib/franchiseTva';
 
 /** Choix exclusif en boutons (44 px) ; `deselection` : toucher le choix actif le retire (constats facultatifs). */
 function Choix({ libelle, options, valeur, onChange, deselection = false, erreur, id }) {
@@ -353,7 +354,7 @@ export default function SaisieRamonage({ client, precedent = null, remplace = nu
                   Au-delà de douze mois, le ramonage sort du délai de l’article R. 1331-71 du code de la santé publique (sauf appareil inutilisé pendant au moins douze mois).</p>
               )}
               <p className="text-sm text-encre-3">{AIDE_FREQUENCE}</p>
-              <Champ libelle="Prix (€ HT)" facultatif type="text" inputMode="decimal" value={form.prix_ht === null || form.prix_ht === undefined ? '' : String(form.prix_ht).replace('.', ',')}
+              <Champ libelle={estFranchiseTva(entreprise) ? 'Prix (€)' : 'Prix (€ HT)'} facultatif type="text" inputMode="decimal" value={form.prix_ht === null || form.prix_ht === undefined ? '' : String(form.prix_ht).replace('.', ',')}
                 aide="Repris du dernier passage ou de vos tarifs ; il sert à la facture."
                 onChange={(e) => { const v = e.target.value.replace(',', '.'); maj({ prix_ht: v === '' ? null : v }); }} />
               <label className="flex items-start gap-3 min-h-[44px] cursor-pointer">

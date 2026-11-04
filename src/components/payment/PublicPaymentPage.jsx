@@ -7,6 +7,7 @@ import { supabase, isDemo } from '../../supabaseClient';
 import BandeauDonneesFictives from '../ui/BandeauDonneesFictives';
 import { estDonneesFictives } from '../../lib/donneesFictives';
 import { adresseComplete } from '../../lib/adresseEntreprise';
+import { franchiseAppliquee } from '../../lib/franchiseTva';
 
 /**
  * Page publique de paiement de facture — /pay/:token
@@ -165,6 +166,11 @@ export default function PublicPaymentPage({ payToken }) {
   const fictif = estDonneesFictives(entreprise);
   const couleur = entreprise?.couleur || '#f97316';
   const totalTTC = facture.total_ttc || 0;
+  // Franchise en base de TVA (art. 293 B du CGI) : ni « TTC » ni « HT » (D-31) ; la forme juridique vient de
+  // get_facture_for_payment (migration 114). Une facture émise avec TVA garde son « TTC » (franchiseAppliquee).
+  // get_facture_for_payment ne sert que des factures et n'en renvoie pas le type : sans lui, une facture émise avec TVA
+  // serait lue comme un brouillon
+  const franchise = franchiseAppliquee({ ...facture, type: 'facture' }, entreprise);
   // Reçu réel (paiements enregistrés compris, 081) et avoirs émis : le récapitulatif doit tomber juste
   const dejaPaye = typeof facture.recu === 'number' ? facture.recu : (facture.montant_paye || 0);
   const credite = Number(facture.montant_credite) || 0;
@@ -235,7 +241,7 @@ export default function PublicPaymentPage({ payToken }) {
             <SummaryRow label="Montant payé" value={formatMoney(verifiedAmount)} bold couleur={couleur} />
           )}
           {verifyState !== 'verified' && (
-            <SummaryRow label="Montant TTC" value={formatMoney(totalTTC)} bold couleur={couleur} />
+            <SummaryRow label={franchise ? 'Montant' : 'Montant TTC'} value={formatMoney(totalTTC)} bold couleur={couleur} />
           )}
           {facture.payment_completed_at && (
             <SummaryRow label="Date" value={formatDate(facture.payment_completed_at)} />
@@ -302,7 +308,7 @@ export default function PublicPaymentPage({ payToken }) {
           </div>
 
           <div className="p-5 space-y-2">
-            <SummaryRow label="Total TTC" value={formatMoney(totalTTC)} />
+            <SummaryRow label={franchise ? 'Total' : 'Total TTC'} value={formatMoney(totalTTC)} />
             {credite > 0.005 && (
               <SummaryRow label="Avoir" value={`− ${formatMoney(credite)}`} />
             )}
