@@ -6,8 +6,8 @@
  * de `featureLabels` qui ne disent pas une limite (`contenuDeCarte`, comparaisonPlans.js) : chaque libellé de `PLANS`
  * est dit, par sa ligne de limite ou tel quel, sans rien ajouter. Aucun prix, aucun
  * libellé n'est écrit ici ; le test d'honnêteté le vérifie. Les prix se lisent par `prixAbonnement` et se disent en
- * franchise de TVA (décision D-19) : jamais « HT » ni « TTC » ; la mention « TVA non applicable, art. 293 B du CGI »
- * n'est plus à côté des prix (retour d'Hugo du 26 oct. 2026, avis juriste du 3 nov.) : les CGV et la FAQ ; elle doit figurer sur les factures Stripe (attente 7). Pas de prix barré,
+ * franchise de TVA (décision D-19) : jamais « HT » ni « TTC » ; la mention de franchise de TVA
+ * (`MENTION_TVA_ABONNEMENT`, art. 293 B du CGI) n'est plus à côté des prix (retour d'Hugo du 26 oct. 2026, avis juriste du 3 nov.) : les CGV et la FAQ ; elle doit figurer sur les factures Stripe (attente 7). Pas de prix barré,
  * pas de « populaire » : la carte Artisan est seulement mise en avant (bordure bleu nuit, pastille lue dans
  * `PLANS.artisan.badge`), les trois boutons mènent à la même inscription (`onSignup`, le compte commence au plan
  * Gratuit ; le plan payant se choisit dans « Mon plan »).
