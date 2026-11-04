@@ -30,7 +30,7 @@ function Case({ libelle, valeur, onChange }) {
 
 /**
  * Sous une ligne de devis qui parle d'une borne de recharge : la TVA de la pose suggérée selon le LOCAL (CGI 278-0 bis,
- * N), jamais selon le client, et jamais imposée (décision d'Hugo n° 22). « Appliquer » pose 5,5 % et marque la ligne
+ * N), jamais selon le client, et jamais imposée (D-36). « Appliquer » pose 5,5 % et marque la ligne
  * (`regimeTva`), ce qui la retire de la certification de rénovation énergétique imprimée par les deux générateurs.
  */
 export default function TvaBorne({ ligne, onUpdate }) {
@@ -39,7 +39,8 @@ export default function TvaBorne({ ligne, onUpdate }) {
   const reponses = ligne.borne || {};
   const repondre = (champ, v) => onUpdate('borne', { ...reponses, [champ]: v });
   const s = suggestionTvaBorne(reponses);
-  const marquee = ligne.regimeTva === REGIME_BORNE;
+  // Le titre suit le taux réel de la ligne (une marque restée sur une ligne passée à un autre taux ne dit pas 5,5 %)
+  const marquee = ligne.regimeTva === REGIME_BORNE && Number(ligne.tva) === 5.5;
   const aCinqCinqSansMarque = Number(ligne.tva) === 5.5 && !marquee;
 
   return (
@@ -58,7 +59,7 @@ export default function TvaBorne({ ligne, onUpdate }) {
           <Choix libelle="Où est posée la borne ?" options={LOCAUX} valeur={reponses.local} onChange={(v) => repondre('local', v)} />
           <Case libelle="La borne est destinée aux résidents du logement" valeur={reponses.residents} onChange={(v) => repondre('residents', v)} />
           <Choix libelle="Point de charge" options={POINTS_DE_CHARGE} valeur={reponses.pointDeCharge} onChange={(v) => repondre('pointDeCharge', v)} />
-          <Case libelle="J’ai l’habilitation et, au-delà de 3,7 kW, la qualification IRVE (décret n° 2017-26, art. 22)" valeur={reponses.installateurQualifie} onChange={(v) => repondre('installateurQualifie', v)} />
+          <Case libelle="J’ai l’habilitation (code du travail, art. R. 4544-9) et, sauf borne de 3,7 kW au plus dans une habitation privée non ouverte au public, la qualification IRVE (code de l’énergie, art. D. 353-2)" valeur={reponses.installateurQualifie} onChange={(v) => repondre('installateurQualifie', v)} />
           <Case libelle="Cette ligne ne comprend que la pose (la fourniture est sur une autre ligne)" valeur={reponses.poseSeule} onChange={(v) => repondre('poseSeule', v)} />
           <p role="status" className={`text-sm ${s.taux ? 'text-succes-texte' : 'text-encre-2'}`}>{s.texte}</p>
           <p className="text-sm text-encre-3">{TEXTE_FOURNITURE}</p>

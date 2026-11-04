@@ -27,7 +27,7 @@ const TAILLE_MAX = 5 * 1024 * 1024;
  * L'app ne fabrique ni n'imite l'attestation Consuel.
  */
 export default function OngletElectricite({
-  chantier, client, entreprise, peutModifier, peutMemo, peutFacturer, onAjouterFichier, onOuvrirFacture, showToast, addDevis: addDevisPage,
+  chantier, client, entreprise, peutModifier, peutMemo, peutMemoModifier = false, voitPrix = false, peutFacturer, onAjouterFichier, onOuvrirFacture, showToast, addDevis: addDevisPage,
 }) {
   const { comptesRendus = [], memos = [], devis = [], addMemo, toggleMemo, addCompteRendu, suivreCompteRendu, addDevis: addDevisContexte } = useData();
   // La page passe son addDevis (limites du plan, messages) ; à défaut, celui du contexte
@@ -44,14 +44,14 @@ export default function OngletElectricite({
   const fiche = ficheId ? comptesRendus.find((r) => r.id === ficheId) : null;
 
   const programmer = async () => {
-    if (!miseEnService) { setErreurDate('Indiquez la date de mise en service prévue.'); return; }
+    if (!miseEnService) { setErreurDate('Indiquez la date de mise sous tension prévue.'); return; }
     if (limiteEnvoiConsuel(miseEnService) < jourLocal()) {
-      setErreurDate('Cette mise en service est dans moins de 20 jours : la demande au Consuel devait déjà partir. Le rappel est créé en retard.');
+      setErreurDate('Cette mise sous tension est dans moins de 20 jours : l’attestation devait déjà être parvenue au Consuel. Le rappel est créé en retard.');
     } else setErreurDate('');
     setEnCours(true);
     try {
       const creee = await addMemo?.(tacheConsuel({ chantier, miseEnService }));
-      if (creee !== null && creee !== false) showToast?.(`Rappel créé : demande à envoyer au plus tard le ${jourFr(limiteEnvoiConsuel(miseEnService))}.`, 'success');
+      if (creee !== null && creee !== false) showToast?.(`Rappel créé : attestation à faire parvenir au Consuel au plus tard le ${jourFr(limiteEnvoiConsuel(miseEnService))}.`, 'success');
     } finally {
       setEnCours(false);
     }
@@ -81,13 +81,13 @@ export default function OngletElectricite({
           <p className="text-sm text-encre-2">{AIDE_CONSUEL}</p>
           {!tache && peutMemo && (
             <div className="space-y-3">
-              <Champ libelle="Mise en service prévue" type="date" value={miseEnService} erreur={erreurDate}
+              <Champ libelle="Mise sous tension prévue" type="date" value={miseEnService} erreur={erreurDate}
                 onChange={(e) => { setMiseEnService(e.target.value); setErreurDate(''); }} />
               <Bouton variante="secondaire" icone={BellRing} chargement={enCours} onClick={programmer}>Me rappeler l’envoi au Consuel</Bouton>
-              <p className="text-sm text-encre-3">Une tâche datée du dernier jour d’envoi (20 jours avant) apparaîtra dans « À faire ». Aucun message n’est envoyé au client.</p>
+              <p className="text-sm text-encre-3">Une tâche datée du dernier jour pour que l’attestation parvienne au Consuel (20 jours avant la mise sous tension) apparaîtra dans « À faire ». Aucun message n’est envoyé au client.</p>
             </div>
           )}
-          {tache && !tache.is_done && (
+          {tache && !tache.is_done && peutMemoModifier && (
             <Bouton variante="secondaire" icone={Check} onClick={() => toggleMemo?.(tache.id)}>J’ai envoyé la demande</Bouton>
           )}
           {peutModifier && (
@@ -130,13 +130,13 @@ export default function OngletElectricite({
       </section>
 
       {saisie && (
-        <SaisieCompteRendu chantier={chantier} client={client} entreprise={entreprise} remplace={saisie.remplace}
+        <SaisieCompteRendu chantier={chantier} client={client} entreprise={entreprise} remplace={saisie.remplace} voitPrix={voitPrix}
           intervenantDefaut={entreprise?.nomEntrepreneur || comptesRendus.find((r) => r.intervenant_nom)?.intervenant_nom || ''}
           onEnregistrer={enregistrer} onFermer={() => setSaisie(null)} />
       )}
       {fiche && !saisie && (
         <FicheCompteRendu compteRendu={fiche} entreprise={entreprise} comptesRendus={comptesRendus} devis={devis}
-          suivreCompteRendu={suivreCompteRendu} addDevis={addDevis} peutFacturer={peutFacturer} showToast={showToast}
+          suivreCompteRendu={suivreCompteRendu} addDevis={addDevis} peutModifier={peutModifier} peutFacturer={peutFacturer} showToast={showToast}
           onRefaire={(r) => { setFicheId(null); setSaisie({ remplace: r }); }}
           onOuvrirFacture={(f) => { setFicheId(null); onOuvrirFacture(f); }}
           onFermer={() => setFicheId(null)} />

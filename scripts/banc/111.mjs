@@ -123,6 +123,45 @@ export async function verifier({ db, q, en, commeAnonyme, verifier }) {
     adresse_intervention, nature, travaux) VALUES ($1, now(), 'I', 'C', 'A', 'autre', repeat('x', 20001))`, [SOLO])));
   verifier(!!tropGros, '111 : la taille des textes est bornée (F3)');
 
+  // 9 ter. Relecture locale du 4 nov. au soir : tous les champs bornés ; pas de colonne signature ; pas d'oracle
+  //        d'appartenance (une organisation étrangère est refusée avant les contrôles) ; un « readonly » n'écrit pas
+  const champTropGros = async (col, valeur) => refus(() => en(SOLO, () => q(`INSERT INTO comptes_rendus_electricite (user_id, realise_le, intervenant_nom, client_nom,
+    adresse_intervention, nature, travaux, ${col}) VALUES ($1, now(), 'I', 'C', 'A', 'autre', 'T', $2)`, [SOLO, valeur])));
+  // Un texte répétitif se compresse (pg_column_size mesure la taille stockée) : un contenu peu compressible
+  const bruit = Array.from({ length: 4000 }, (_, i) => ((i * 2654435761) >>> 0).toString(36)).join('');
+  const grosEmetteur = await champTropGros('emetteur', JSON.stringify({ nom: bruit }));
+  const grosContact = await champTropGros('client_contact', 'x'.repeat(3001));
+  // Le motif est vidé à l'insertion (sceller) : il se borne à l'annulation
+  const aAnnuler = await creer();
+  const grosMotif = await refus(() => en(SOLO, () => q(`UPDATE comptes_rendus_electricite SET annulee_le = now(), annulation_motif = repeat('x', 2001) WHERE id = $1`, [aAnnuler.id])));
+  const grosNom = await refus(() => en(SOLO, () => q(`INSERT INTO comptes_rendus_electricite (user_id, realise_le, intervenant_nom, client_nom,
+    adresse_intervention, nature, travaux) VALUES ($1, now(), 'I', repeat('x', 3001), 'A', 'autre', 'T')`, [SOLO])));
+  const normal = await champTropGros('client_contact', '06 00 00 00 00 · client@example.fr');
+  verifier(!!grosEmetteur && !!grosContact && !!grosMotif && !!grosNom && normal === false,
+    `111 : émetteur, contact, noms, adresse et motif bornés ; une valeur normale passe (${[!!grosEmetteur, !!grosContact, !!grosMotif, !!grosNom].join('/')}, ${normal || 'ok'})`);
+  const colSignature = (await q(`SELECT count(*)::int AS n FROM information_schema.columns WHERE table_name = 'comptes_rendus_electricite' AND column_name = 'signature'`)).rows[0].n;
+  verifier(colSignature === 0, `111 : pas de colonne signature sans écran (${colSignature})`);
+  const oracleInconnu = await refus(() => creer({ org: ORG_PATRON, chantier: chantierSolo, client: null }));
+  const oracleSien = await refus(() => creer({ org: ORG_PATRON, chantier: chantierPatron, client: clientPatron }));
+  verifier(/Organisation interdite/.test(oracleInconnu || '') && /Organisation interdite/.test(oracleSien || ''),
+    `111 : une organisation étrangère donne le même refus, que l'identifiant lui appartienne ou non (${oracleInconnu} / ${oracleSien})`);
+  const lecteur = '11100000-0000-4000-8000-0000000000ed';
+  await q(`INSERT INTO auth.users VALUES ($1, 'ro111@x.fr')`, [lecteur]);
+  await q(`INSERT INTO organization_members (organization_id, user_id, role) VALUES ($1, $2, 'readonly')`, [ORG_PATRON, lecteur]);
+  const roCree = await refus(() => creer({ par: lecteur, org: ORG_PATRON, chantier: chantierPatron, client: clientPatron }));
+  const roVoit = (await en(lecteur, () => q('SELECT count(*)::int AS n FROM comptes_rendus_electricite WHERE id = $1', [p.id]))).rows[0].n;
+  const roAnnule = await en(lecteur, () => q(`UPDATE comptes_rendus_electricite SET annulee_le = now(), annulation_motif = 'x' WHERE id = $1 RETURNING id`, [p.id]))
+    .then((r) => r.rows.length, (e) => String(e.message || e));
+  const pIntact = (await q('SELECT annulee_le FROM comptes_rendus_electricite WHERE id = $1', [p.id])).rows[0].annulee_le;
+  verifier(!!roCree && roVoit === 1 && (roAnnule === 0 || typeof roAnnule === 'string') && pIntact === null,
+    `111 : un membre « readonly » lit, mais ne crée ni n'annule (${roCree ? 'création refusée' : 'création acceptée'}, vu ${roVoit}, annulation ${roAnnule})`);
+  // Contre-essai : un ouvrier de la même organisation crée bien
+  const ouvrier = '11100000-0000-4000-8000-0000000000ec';
+  await q(`INSERT INTO auth.users VALUES ($1, 'ouv111@x.fr')`, [ouvrier]);
+  await q(`INSERT INTO organization_members (organization_id, user_id, role) VALUES ($1, $2, 'ouvrier')`, [ORG_PATRON, ouvrier]);
+  const ouvCree = await refus(() => creer({ par: ouvrier, org: ORG_PATRON, chantier: chantierPatron, client: clientPatron }));
+  verifier(ouvCree === false, `111 : contre-essai, un ouvrier de l'organisation crée un compte rendu (${ouvCree || 'ok'})`);
+
   // 10. Départ d'un membre (105) : ses comptes rendus passent au propriétaire ; la table est découverte
   const decouverte = (await q(`SELECT count(*)::int AS n FROM public.tables_rendues_au_depart() t WHERE t = 'comptes_rendus_electricite'`)).rows[0].n;
   const ex = '11100000-0000-4000-8000-0000000000ee';
@@ -156,8 +195,9 @@ export async function verifier({ db, q, en, commeAnonyme, verifier }) {
 
 
   // Ménage (en propriétaire)
-  await q('DELETE FROM comptes_rendus_electricite WHERE user_id = ANY($1)', [[SOLO, PATRON, ex]]);
-  await q('DELETE FROM auth.users WHERE id = $1', [ex]);
+  await q('DELETE FROM comptes_rendus_electricite WHERE user_id = ANY($1)', [[SOLO, PATRON, ex, ouvrier, lecteur]]);
+  await q('DELETE FROM organization_members WHERE user_id = ANY($1)', [[ouvrier, lecteur]]);
+  await q('DELETE FROM auth.users WHERE id = ANY($1)', [[ex, ouvrier, lecteur]]);
   await q('DELETE FROM devis WHERE id = ANY($1)', [[factureSolo, devisSolo, facturePatron]]);
   await q('DELETE FROM chantiers WHERE id = ANY($1)', [[chantierSolo, chantierPatron]]);
   await q('DELETE FROM clients WHERE id = ANY($1)', [[clientSolo, clientPatron]]);

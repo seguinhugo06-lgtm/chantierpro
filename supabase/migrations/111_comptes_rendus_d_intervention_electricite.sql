@@ -19,8 +19,12 @@
 --      même organisation) et l'annulation (une fois, motivée, datée par la base ; « Refaire » crée un compte rendu qui
 --      « annule et remplace »). Les liens au client, au chantier et au compte rendu remplacé ne bougent plus pour un
 --      compte connecté ; la suppression d'une fiche les vide (action de la clé étrangère, exécutée par le propriétaire de
---      la table) ; tailles bornées (relecture gardien-securite du 4 nov. 2026, F1 à F3) ;
---   4. chantier, client, facture et compte rendu remplacé : de la même organisation (contrôlés à l'insertion).
+--      la table) ; tailles bornées, tous les champs texte et JSON compris (relecture gardien-securite du 4 nov. 2026,
+--      F1 à F3, puis relecture locale du 4 nov. au soir) ;
+--   4. chantier, client, facture et compte rendu remplacé : de la même organisation (contrôlés à l'insertion) ; une
+--      organisation dont on n'est pas membre est refusée AVANT le verrou et ces contrôles (pas d'oracle d'appartenance) ;
+--   5. un membre « readonly » lit, mais ne crée, n'annule ni ne lie de facture (policies INSERT et UPDATE).
+--   Pas de colonne de signature : aucun écran ne la propose (décision n° 5 d'Hugo attendue ; elle viendra avec son écran).
 --   Un membre qui quitte l'équipe : ses comptes rendus passent au propriétaire (105, `tables_rendues_au_depart`
 --   découvre la table : elle porte user_id et organization_id).
 --
@@ -32,6 +36,9 @@
 --   select has_table_privilege('authenticated', 'public.comptes_rendus_electricite', 'DELETE');                  -- false
 --   select has_table_privilege('anon', 'public.comptes_rendus_electricite', 'SELECT');                           -- false
 --   select has_function_privilege('authenticated', 'public.sceller_compte_rendu()', 'execute');                  -- false
+--   select count(*) from information_schema.columns where table_name = 'comptes_rendus_electricite' and column_name = 'signature'; -- 0
+--   select count(*) from pg_policies where tablename = 'comptes_rendus_electricite' and cmd in ('INSERT', 'UPDATE')
+--     and coalesce(with_check, '') like '%readonly%';                                                            -- 2
 --   select count(*) from public.tables_rendues_au_depart() t where t = 'comptes_rendus_electricite';            -- 1
 -- ============================================================
 
@@ -57,13 +64,15 @@ CREATE TABLE IF NOT EXISTS public.comptes_rendus_electricite (
   reserves TEXT,
   observations TEXT,
   prix_ht NUMERIC(10, 2) CHECK (prix_ht IS NULL OR prix_ht >= 0),
-  signature TEXT CHECK (signature IS NULL OR length(signature) <= 300000),
   annulee_le TIMESTAMPTZ,
   annulation_motif TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   CONSTRAINT comptes_rendus_tailles CHECK (pg_column_size(mesures) <= 20000 AND length(travaux) <= 20000
-    AND length(coalesce(reserves, '')) <= 20000 AND length(coalesce(observations, '')) <= 20000),
+    AND length(coalesce(reserves, '')) <= 20000 AND length(coalesce(observations, '')) <= 20000
+    AND coalesce(pg_column_size(emetteur), 0) <= 20000
+    AND length(client_nom || intervenant_nom || adresse_intervention || coalesce(client_contact, '')) <= 3000
+    AND length(coalesce(annulation_motif, '')) <= 2000),
   CONSTRAINT comptes_rendus_annulation_motivee CHECK (annulee_le IS NULL OR length(btrim(coalesce(annulation_motif, ''))) > 0)
 );
 
@@ -86,12 +95,16 @@ DROP POLICY IF EXISTS "Comptes rendus : lecture" ON public.comptes_rendus_electr
 CREATE POLICY "Comptes rendus : lecture" ON public.comptes_rendus_electricite FOR SELECT TO authenticated
   USING (organization_id = ANY (public.user_org_ids(auth.uid())) OR (organization_id IS NULL AND user_id = auth.uid()));
 DROP POLICY IF EXISTS "Comptes rendus : création" ON public.comptes_rendus_electricite;
+-- Écrire (créer, annuler, lier une facture) : membre, sauf « readonly » (gardien-securite, 4 nov. 2026, point 3)
 CREATE POLICY "Comptes rendus : création" ON public.comptes_rendus_electricite FOR INSERT TO authenticated
-  WITH CHECK (user_id = auth.uid() AND (organization_id IS NULL OR organization_id = ANY (public.user_org_ids(auth.uid()))));
+  WITH CHECK (user_id = auth.uid() AND (organization_id IS NULL OR (organization_id = ANY (public.user_org_ids(auth.uid()))
+    AND public.mon_role_organisation(organization_id) <> 'readonly')));
 DROP POLICY IF EXISTS "Comptes rendus : suivi" ON public.comptes_rendus_electricite;
 CREATE POLICY "Comptes rendus : suivi" ON public.comptes_rendus_electricite FOR UPDATE TO authenticated
-  USING (organization_id = ANY (public.user_org_ids(auth.uid())) OR (organization_id IS NULL AND user_id = auth.uid()))
-  WITH CHECK (organization_id = ANY (public.user_org_ids(auth.uid())) OR (organization_id IS NULL AND user_id = auth.uid()));
+  USING ((organization_id = ANY (public.user_org_ids(auth.uid())) AND public.mon_role_organisation(organization_id) <> 'readonly')
+    OR (organization_id IS NULL AND user_id = auth.uid()))
+  WITH CHECK ((organization_id = ANY (public.user_org_ids(auth.uid())) AND public.mon_role_organisation(organization_id) <> 'readonly')
+    OR (organization_id IS NULL AND user_id = auth.uid()));
 
 REVOKE ALL ON public.comptes_rendus_electricite FROM anon, authenticated;
 GRANT SELECT, INSERT, UPDATE ON public.comptes_rendus_electricite TO authenticated;
@@ -117,6 +130,11 @@ DECLARE
   v_prefixe TEXT;
   v_dernier INTEGER;
 BEGIN
+  -- Organisation d'un autre : refusée avant le verrou et les contrôles de série, sinon leurs messages diraient si un
+  -- identifiant lui appartient (« sceller » passe avant « verifier », ordre alphabétique ; gardien-securite, point 2)
+  IF auth.uid() IS NOT NULL AND NEW.organization_id IS NOT NULL AND public.mon_role_organisation(NEW.organization_id) IS NULL THEN
+    RAISE EXCEPTION 'Organisation interdite' USING ERRCODE = '42501';
+  END IF;
   v_prefixe := 'CRI-' || v_an || '-';
   PERFORM pg_advisory_xact_lock(hashtextextended('compte_rendu:' || v_serie::text || ':' || v_an, 0));
   SELECT coalesce(max(substring(numero FROM length(v_prefixe) + 1)::int), 0) INTO v_dernier

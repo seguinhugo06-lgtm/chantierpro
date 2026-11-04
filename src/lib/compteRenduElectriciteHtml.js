@@ -16,7 +16,7 @@ import { adresseComplete } from './adresseEntreprise';
 import { PAGE_CSS } from './devisHtmlBuilder';
 import { jourDe } from './ramonage';
 import {
-  TITRE_COMPTE_RENDU, NATURES, MENTION_PORTEE, libelleDe, mesuresImprimees, phraseCompteRendu, qualificationIrve,
+  NATURES, MENTION_PORTEE, libelleDe, mesuresImprimees, phraseCompteRendu, titreCompteRendu,
 } from './electricite';
 
 const jourFr = (jour) => (jour ? dateLue(String(jour).slice(0, 10)).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : '');
@@ -37,8 +37,10 @@ export function buildCompteRenduElectriciteHtml({ compteRendu: r, entreprise, re
   const fictif = estDonneesFictives(source) || estDonneesFictives(entreprise);
   const ligne = (libelle, valeur) => (valeur ? `<tr><th>${libelle}</th><td>${valeur}</td></tr>` : '');
   const mesures = mesuresImprimees(r.mesures).map((m) => ligne(h(m.libelle), h(m.valeur))).join('');
-  // Point d'accroche « Mes qualifications » : imprimée seulement avec un numéro
-  const irve = r.nature === 'borne' ? qualificationIrve(entreprise) : null;
+  // Qualification IRVE : la ligne figée dans l'émetteur à l'enregistrement (valide à la date de l'intervention), jamais
+  // la fiche du jour (`avecEmetteur`, src/lib/electricite.js)
+  const irve = r.nature === 'borne' && typeof source.qualificationIrve === 'string' ? source.qualificationIrve.trim() : '';
+  const titre = titreCompteRendu(r);
   const signature = signatureValide(r.signature)
     ? `<img src="${h(r.signature)}" alt="Signature" style="max-height:70px;max-width:220px;display:block;margin-top:6px" />` : '';
 
@@ -47,7 +49,7 @@ export function buildCompteRenduElectriciteHtml({ compteRendu: r, entreprise, re
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${TITRE_COMPTE_RENDU} ${h(r.numero || '')}</title>
+  <title>${titre} ${h(r.numero || '')}</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 10pt; color: #1e293b; background: #ffffff; padding: 25px; line-height: 1.45; }
@@ -79,11 +81,11 @@ export function buildCompteRenduElectriciteHtml({ compteRendu: r, entreprise, re
         ${[source.tel || source.telephone ? `Tél. ${h(source.tel || source.telephone)}` : '', h(source.email), h(source.siteWeb || source.site_web)].filter(Boolean).join(' · ')}<br>
         ${source.siret ? `SIRET ${h(source.siret)}` : ''}${rcs ? ` · ${h(rcs)}` : ''}
         ${source.rcProAssureur || source.rcProNumero ? `<br>Assurance responsabilité civile professionnelle : ${[h(source.rcProAssureur), source.rcProNumero ? `n° ${h(source.rcProNumero)}` : ''].filter(Boolean).join(', ')}` : ''}
-        ${irve ? `<br>Qualification IRVE${irve.organisme ? ` (${h(irve.organisme)})` : ''} : n° ${h(irve.numero)}` : ''}
+        ${irve ? `<br>${h(irve)}` : ''}
       </div>
     </div>
     <div class="titre">
-      <h1>${TITRE_COMPTE_RENDU}</h1>
+      <h1>${titre}</h1>
       <div class="numero">N° ${h(r.numero || 'en attente')}</div>
       ${remplace?.numero ? `<div class="texte" style="margin-top:4px">Annule et remplace le compte rendu n° ${h(remplace.numero)}</div>` : ''}
     </div>

@@ -13,7 +13,7 @@ import { TAUX_A_VERIFIER, TEXTE_TAUX_A_VERIFIER } from '../../lib/electricite';
  * (brouillon, sans ressaisie) et l'annulation motivée (« Refaire » crée un compte rendu qui l'annule et le remplace).
  */
 export default function FicheCompteRendu({
-  compteRendu: cr, entreprise, comptesRendus, devis = [], suivreCompteRendu, addDevis, peutFacturer, onRefaire, onOuvrirFacture, onFermer, showToast,
+  compteRendu: cr, entreprise, comptesRendus, devis = [], suivreCompteRendu, addDevis, peutModifier = false, peutFacturer, onRefaire, onOuvrirFacture, onFermer, showToast,
 }) {
   const [action, setAction] = useState(null);
   const [annulation, setAnnulation] = useState(null);
@@ -82,7 +82,8 @@ export default function FicheCompteRendu({
           ) : (
             <iframe title={`Compte rendu ${cr.numero}`} srcDoc={html} sandbox="" className="w-full h-[60vh] bg-white rounded-xl border border-bord" />
           )}
-          {!annule && cr.numero && (annulation === null ? (
+          {/* Annuler et refaire : droit de modifier le chantier (canPerform, relecture du 4 nov., point 4) */}
+          {peutModifier && !annule && cr.numero && (annulation === null ? (
             <Bouton variante="discret" icone={Ban} onClick={() => setAnnulation('Erreur de saisie')}>Annuler le compte rendu (erreur de saisie)</Bouton>
           ) : (
             <div className="bg-surface border border-bord rounded-2xl p-4 space-y-3">
@@ -97,7 +98,7 @@ export default function FicheCompteRendu({
           {annule && (
             <div className="bg-surface border border-bord rounded-2xl p-4 space-y-3">
               <p className="text-sm text-encre-2">Annulé{cr.annulation_motif ? ` : ${cr.annulation_motif}` : ''}.</p>
-              <Bouton variante="secondaire" icone={RotateCcw} onClick={() => onRefaire(cr)}>Refaire à partir de celui-ci</Bouton>
+              {peutModifier && <Bouton variante="secondaire" icone={RotateCcw} onClick={() => onRefaire(cr)}>Refaire à partir de celui-ci</Bouton>}
             </div>
           )}
         </div>

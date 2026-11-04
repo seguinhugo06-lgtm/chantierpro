@@ -2,7 +2,8 @@ import { describe, it, expect } from 'vitest';
 import {
   limiteEnvoiConsuel, tacheConsuel, tacheConsuelDuChantier, etatConsuel, AIDE_CONSUEL, TACHE_CONSUEL,
   TITRE_COMPTE_RENDU, MENTION_PORTEE, MOTS_INTERDITS, NATURES, MESURES, manquantsCompteRendu, nouveauCompteRendu,
-  mesuresImprimees, phraseCompteRendu, numeroCompteRenduDemo, ligneFactureCompteRendu, qualificationIrve,
+  mesuresImprimees, phraseCompteRendu, numeroCompteRenduDemo, ligneFactureCompteRendu, qualificationIrve, avecEmetteur,
+  TITRE_SANS_MESURE, TAUX_A_VERIFIER, TEXTE_TAUX_A_VERIFIER,
   suggestionTvaBorne, estLigneBorne, REGIME_BORNE, TEXTE_FOURNITURE, POINTS_DE_CHARGE, LOCAUX,
 } from '../electricite';
 import { buildCompteRenduElectriciteHtml } from '../compteRenduElectriciteHtml';
@@ -14,7 +15,7 @@ const chantier = { id: 'ch1', nom: 'Rénovation Exemple', client_id: 'c1', adres
 const client = { id: 'c1', prenom: 'Lucie', nom: 'Exemple', telephone: '06 00 00 00 01' };
 const entreprise = { nom: 'Électricité Exemple', formeJuridique: 'EI', nomEntrepreneur: 'Paul Exemple', siret: '00000000000000', tvaDefaut: 10 };
 
-describe('Consuel — rappel à J-20 (C. énergie D342-19)', () => {
+describe('Consuel — rappel à J-20 (arrêté du 17 oct. 1973, art. 2)', () => {
   it('la date limite est la mise en service moins 20 jours', () => {
     expect(limiteEnvoiConsuel('2026-11-30')).toBe('2026-11-10');
     expect(limiteEnvoiConsuel('2027-01-05')).toBe('2026-12-16');
@@ -53,10 +54,22 @@ describe('Consuel — rappel à J-20 (C. énergie D342-19)', () => {
 
   it('le rappel est pour l’artisan : aucun texte ne dit « conforme » ni n’imite le Consuel', () => {
     const t = tacheConsuel({ chantier, miseEnService: '2026-11-30' });
-    for (const texte of [t.text, t.notes, AIDE_CONSUEL]) {
+    for (const texte of [t.text, t.notes]) {
       for (const mot of MOTS_INTERDITS) expect(texte).not.toMatch(mot);
     }
-    expect(t.notes).toContain('D342-19');
+    // L'aide nomme le document du Consuel par son nom officiel (juriste-btp au texte, 4 nov.) : c'est la seule
+    // occurrence admise, jamais pour le document de l'artisan
+    const resteAide = AIDE_CONSUEL.replace('attestation de conformité visée par le Consuel', '');
+    for (const mot of MOTS_INTERDITS) expect(resteAide).not.toMatch(mot);
+    expect(t.notes).toContain('arrêté du 17 octobre 1973, art. 2');
+    expect(t.notes).toContain('À faire parvenir au Consuel');
+    expect(t.notes).toContain('mise sous tension');
+    expect(t.notes).not.toContain('mise en service');
+    // Juriste-btp au texte (4 nov.) : le délai vient de l'arrêté de 1973, pas de D342-19 ; « bâtiment d'habitation collectif »
+    expect(AIDE_CONSUEL).toContain('vingt jours avant la date prévue de la mise sous tension par le distributeur (arrêté du 17 octobre 1973, art. 2)');
+    expect(AIDE_CONSUEL).toContain('bâtiment d’habitation collectif');
+    expect(AIDE_CONSUEL).not.toMatch(/immeuble collectif|mise en service/);
+    expect(etatConsuel({ tache: t }, { aujourdhui: '2026-11-05' }).texte).toBe('Attestation à faire parvenir au Consuel au plus tard le 10 novembre 2026.');
   });
 });
 
@@ -133,13 +146,31 @@ describe('Compte rendu d’intervention et d’autocontrôle', () => {
     expect(f.total_ttc).toBe(495);
   });
 
-  it('qualification IRVE : imprimée seulement avec un numéro (point d’accroche « Mes qualifications »)', () => {
-    expect(qualificationIrve(entreprise)).toBeNull();
-    expect(qualificationIrve({ qualifications: [{ type: 'IRVE', organisme: 'Qualifelec' }] })).toBeNull();
-    const avec = { ...entreprise, qualifications: [{ type: 'IRVE', organisme: 'Qualifelec', numero: 'Q-123' }] };
-    expect(qualificationIrve(avec)).toEqual({ organisme: 'Qualifelec', numero: 'Q-123', niveau: '' });
-    expect(buildCompteRenduElectriciteHtml({ compteRendu: { ...cr, nature: 'borne' }, entreprise: avec })).toContain('Qualification IRVE (Qualifelec) : n° Q-123');
-    expect(buildCompteRenduElectriciteHtml({ compteRendu: cr, entreprise: avec })).not.toContain('Qualification IRVE');
+  describe('qualification IRVE (forme de « Mes qualifications », migration 110)', () => {
+    const irve = { type: 'irve', intitule: 'IRVE P1', organisme: 'Qualifelec', numero: 'Q-123', fin: '2027-06-30', imprimer: true };
+    const avec = { ...entreprise, qualifications: [irve] };
+    const ligne = 'IRVE (infrastructures de recharge) : IRVE P1 — Qualifelec — N° Q-123 — Valide jusqu\'au 30/06/2027';
+    const ligneHtml = ligne.replace("'", '&#39;');
+
+    it('valide à la date du document : imprimée ; figée dans l’émetteur à l’enregistrement', () => {
+      expect(qualificationIrve(avec, '2026-11-04')).toBe(ligne);
+      const fige = avecEmetteur({ ...cr, nature: 'borne' }, avec);
+      expect(fige.emetteur.qualificationIrve).toBe(ligne);
+      expect(buildCompteRenduElectriciteHtml({ compteRendu: fige, entreprise })).toContain(ligneHtml);
+      // La fiche du jour n'est plus lue : retirer la qualification de la fiche ne change pas le document enregistré
+      expect(buildCompteRenduElectriciteHtml({ compteRendu: fige, entreprise: { ...entreprise, qualifications: [] } })).toContain(ligneHtml);
+    });
+
+    it('contre-essais : expirée à la date du document, « ne pas imprimer », sans numéro, ou autre nature', () => {
+      expect(qualificationIrve(avec, '2027-07-01')).toBe('');
+      expect(avecEmetteur({ ...cr, nature: 'borne', realise_le: '2027-07-01T10:00:00' }, avec).emetteur.qualificationIrve).toBeUndefined();
+      expect(qualificationIrve({ qualifications: [{ ...irve, imprimer: false }] }, '2026-11-04')).toBe('');
+      expect(qualificationIrve({ qualifications: [{ ...irve, numero: '' }] }, '2026-11-04')).toBe('');
+      expect(qualificationIrve({ qualifications: [{ ...irve, fin: '30/06/2027' }] }, '2026-11-04')).toBe('');
+      expect(qualificationIrve(entreprise)).toBe('');
+      expect(avecEmetteur(cr, avec).emetteur.qualificationIrve).toBeUndefined();
+      expect(buildCompteRenduElectriciteHtml({ compteRendu: avecEmetteur(cr, avec), entreprise: avec })).not.toContain('IRVE');
+    });
   });
 
   it('échappe le texte saisi', () => {
@@ -187,6 +218,17 @@ describe('TVA d’une borne : suggérée selon le local, pas selon le client (CG
     expect(estLigneBorne('Installation IRVE 22 kW')).toBe(true);
     expect(estLigneBorne('Wallbox garage')).toBe(true);
     expect(estLigneBorne('Tableau électrique 3 rangées')).toBe(false);
+  });
+
+  it('reconnaît le pluriel et écarte les bornes d’éclairage (relecture du 4 nov., point 12)', () => {
+    expect(estLigneBorne('Pose de 2 bornes de recharge')).toBe(true);
+    expect(estLigneBorne('Pose de 2 bornes')).toBe(true);
+    expect(estLigneBorne('Deux points de charge parking')).toBe(true);
+    expect(estLigneBorne('Pose de 3 bornes d’éclairage extérieur')).toBe(false);
+    expect(estLigneBorne('Borne d\'éclairage allée')).toBe(false);
+    expect(estLigneBorne('Bornes lumineuses de jardin')).toBe(false);
+    // …sauf si la ligne parle aussi de recharge
+    expect(estLigneBorne('Borne d’éclairage avec prise de recharge véhicule')).toBe(true);
   });
 });
 
@@ -242,9 +284,20 @@ describe('Corrections de juriste-btp (4 nov. 2026)', () => {
   it('sans mesure saisie, le compte rendu ne parle pas d’autocontrôle', () => {
     const sans = { intervenant_nom: 'Paul', realise_le: '2026-11-04T10:00:00', mesures: {}, nature: 'depannage', travaux: 'Remplacement d’un disjoncteur', client_nom: 'C', adresse_intervention: 'A' };
     expect(phraseCompteRendu(sans, 'X')).not.toMatch(/autocontrôle/);
-    expect(buildCompteRenduElectriciteHtml({ compteRendu: sans, entreprise })).not.toMatch(/Autocontrôle réalisé/);
+    const html = buildCompteRenduElectriciteHtml({ compteRendu: sans, entreprise });
+    expect(html).not.toMatch(/Autocontrôle réalisé/);
+    // Le titre aussi (relecture du 4 nov., point 11) : « Compte rendu d'intervention », sans « et d'autocontrôle »
+    expect(html).toContain(`<h1>${TITRE_SANS_MESURE}</h1>`);
+    expect(html).not.toMatch(/autocontrôle/i);
+    expect(buildCompteRenduElectriciteHtml({ compteRendu: { ...sans, mesures: { terre_ohms: '30' } }, entreprise })).toContain(`<h1>${TITRE_COMPTE_RENDU}</h1>`);
     const avec = { ...sans, mesures: { terre_ohms: '30' } };
     expect(phraseCompteRendu(avec, 'X')).toMatch(/autocontrôle dont les résultats/);
+  });
+
+  it('photovoltaïque : la facture tirée avertit, sans proposer de taux (relecture du 4 nov., point 13)', () => {
+    expect(TAUX_A_VERIFIER).toEqual(expect.arrayContaining(['neuf', 'borne', 'photovoltaique']));
+    expect(TAUX_A_VERIFIER).not.toContain('depannage');
+    expect(TEXTE_TAUX_A_VERIFIER).toContain('photovoltaïque');
   });
 
   it('le texte de l’aide Consuel cite le décret des bornes, et un fichier « Consuel » est dit tel quel', () => {

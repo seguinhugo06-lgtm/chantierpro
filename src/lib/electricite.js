@@ -9,7 +9,7 @@
  *   - le document de l'artisan s'appelle « compte rendu d'intervention et d'autocontrôle » ; jamais « attestation de
  *     conformité », jamais le mot « conforme » (`MOTS_INTERDITS`, vérifié par les tests sur les textes produits ici) ;
  *   - TVA d'une borne : le critère est le LOCAL (à usage d'habitation, borne destinée aux résidents), pas la qualité du
- *     client ; toujours une suggestion, jamais un blocage (décision d'Hugo n° 22).
+ *     client ; toujours une suggestion, jamais un blocage (D-36, docs/decisions.md).
  * Cadrage relu par critique-produit le 4 nov. 2026 : rappel Consuel par une tâche datée (moteur existant des tâches),
  * TVA de la borne sur la ligne du devis (le taux se décide sur le devis signé), pas dans le compte rendu.
  */
@@ -26,15 +26,20 @@ const dateFr = (jour) => (jour ? dateLue(String(jour).slice(0, 10)).toLocaleDate
 
 // ─── Consuel ──────────────────────────────────────────────────────────────────────────────────────────────────────
 
-/** Code de l'énergie, art. D342-19 (docs/metier-btp.md § 7, vérifié au texte) : au moins 20 jours avant la mise en service. */
+/** Arrêté du 17 octobre 1973, art. 2 (version du 12/12/2024) : l'attestation doit parvenir au Consuel vingt jours au moins avant la mise sous tension prévue. */
 export const CONSUEL_DELAI_JOURS = 20;
 
-/** Une aide en une phrase (D342-19 ; décret n° 2017-26, art. 23 pour les bornes) : l'artisan décide. */
-export const AIDE_CONSUEL = 'L’attestation Consuel est due notamment pour une installation neuve raccordée au réseau, une '
-  + 'installation de production (photovoltaïque) qui modifie l’installation intérieure, une installation entièrement rénovée '
-  + 'après mise hors tension par le gestionnaire de réseau à la demande du client (code de l’énergie, art. D342-19), et une '
-  + 'borne de plus de 36 kW ou en immeuble collectif (décret n° 2017-26, art. 23). Elle est à envoyer au Consuel au moins '
-  + '20 jours avant la mise en service.';
+/**
+ * Une aide (D342-19 ; décret n° 2017-26, art. 23 pour les bornes ; arrêté du 17 octobre 1973, art. 2 pour le délai) :
+ * l'artisan décide. Texte de juriste-btp, relu au texte le 4 nov. 2026 (docs/metiers/avis-juriste-2026-11-04-electricien.md).
+ */
+export const AIDE_CONSUEL = 'L’attestation de conformité visée par le Consuel est due notamment pour une installation neuve '
+  + 'raccordée au réseau, une installation de production de moins de 250 kVA (photovoltaïque) qui demande une modification '
+  + 'de l’installation intérieure, une installation entièrement rénovée après mise hors tension par le distributeur à la '
+  + 'demande du client (code de l’énergie, art. D342-19), et une borne de recharge de plus de 36 kW ou située dans un '
+  + 'bâtiment d’habitation collectif, quelle que soit sa puissance (décret n° 2017-26, art. 23). Elle doit parvenir au '
+  + 'Consuel au moins vingt jours avant la date prévue de la mise sous tension par le distributeur (arrêté du 17 octobre '
+  + '1973, art. 2).';
 
 /** Date limite d'envoi de la demande au Consuel : mise en service − 20 jours. */
 export const limiteEnvoiConsuel = (miseEnService) => (miseEnService ? ajouterJours(miseEnService, -CONSUEL_DELAI_JOURS) : '');
@@ -52,8 +57,8 @@ export function tacheConsuel({ chantier, miseEnService }) {
   if (!limite) return null;
   return {
     text: `${TACHE_CONSUEL}${chantier?.nom ? ` — ${chantier.nom}` : ''}`,
-    notes: `Au plus tard le ${dateFr(limite)}, 20 jours avant la mise en service prévue le ${dateFr(miseEnService)} `
-      + '(code de l’énergie, art. D342-19). Joignez ensuite l’attestation visée aux fichiers du chantier.',
+    notes: `À faire parvenir au Consuel au plus tard le ${dateFr(limite)}, vingt jours avant la mise sous tension prévue le `
+      + `${dateFr(miseEnService)} (arrêté du 17 octobre 1973, art. 2). Joignez ensuite l’attestation visée aux fichiers du chantier.`,
     due_date: limite,
     category: 'rappel',
     priority: 'haute',
@@ -78,13 +83,15 @@ export function etatConsuel({ tache = null, documents = [] } = {}, { aujourdhui 
   if (!tache) return { ton: 'neutre', texte: 'Aucun rappel Consuel pour ce chantier.' };
   if (tache.is_done) return { ton: 'info', texte: 'Demande envoyée au Consuel : joignez l’attestation visée quand vous la recevez.' };
   return String(tache.due_date || '') < aujourdhui
-    ? { ton: 'danger', texte: `Demande à envoyer : la date limite du ${dateFr(tache.due_date)} est passée.` }
-    : { ton: 'alerte', texte: `Demande à envoyer au plus tard le ${dateFr(tache.due_date)}.` };
+    ? { ton: 'danger', texte: `Attestation à faire parvenir au Consuel : la date limite du ${dateFr(tache.due_date)} est passée.` }
+    : { ton: 'alerte', texte: `Attestation à faire parvenir au Consuel au plus tard le ${dateFr(tache.due_date)}.` };
 }
 
 // ─── Compte rendu d'intervention et d'autocontrôle ───────────────────────────────────────────────────────────────
 
 export const TITRE_COMPTE_RENDU = 'Compte rendu d’intervention et d’autocontrôle';
+/** Sans aucune mesure saisie, le document ne parle pas d'autocontrôle (relecture du 4 nov. 2026, point 11). */
+export const TITRE_SANS_MESURE = 'Compte rendu d’intervention';
 
 export const NATURES = liste([
   ['neuf', 'Installation neuve'], ['renovation_totale', 'Rénovation totale'], ['renovation_partielle', 'Rénovation partielle'],
@@ -112,6 +119,9 @@ export function phraseCompteRendu(cr, nomEntreprise) {
   return mesuresImprimees(cr?.mesures).length ? `${debut}, puis un autocontrôle dont les résultats sont relevés ci-dessus.` : `${debut}.`;
 }
 
+/** Le titre imprimé : « … et d'autocontrôle » seulement si une mesure est saisie. */
+export const titreCompteRendu = (cr) => (mesuresImprimees(cr?.mesures).length ? TITRE_COMPTE_RENDU : TITRE_SANS_MESURE);
+
 /** Les mesures saisies, prêtes à imprimer : [{ libelle, valeur }] (vides exclues). */
 export function mesuresImprimees(mesures = {}) {
   return MESURES.map((m) => {
@@ -121,13 +131,25 @@ export function mesuresImprimees(mesures = {}) {
   }).filter((x) => x.valeur);
 }
 
+const texteNet = (v) => (typeof v === 'string' ? v.trim() : '');
+const jourValide = (v) => /^\d{4}-\d{2}-\d{2}$/.test(texteNet(v)) && jourLocal(dateLue(texteNet(v))) === texteNet(v);
+
 /**
- * Qualification IRVE de l'entreprise, quand la liste « Mes qualifications » existera (branche
- * `cloud/metier-qualifications`, absente du dépôt le 4 nov. 2026) : point d'accroche. Jamais imprimée sans numéro.
+ * La ligne IRVE imprimée sur le compte rendu d'une borne, ou '' : liste « Mes qualifications » de la branche
+ * `cloud/metier-qualifications` (migration 110, forme `{ type: 'irve', intitule, organisme, numero, fin, imprimer }`).
+ * Mêmes règles que `raisonNonImprimee` et `ligneImprimee` de son `src/lib/qualifications.js`, recopiées ici tant que
+ * ce fichier n'est pas sur main (À LA FUSION : les importer à la place de cette fonction) : case « imprimer » respectée,
+ * intitulé, organisme et numéro exigés, date de fin lisible et non passée À LA DATE DU DOCUMENT (`jour`).
  */
-export function qualificationIrve(entreprise) {
-  const q = (entreprise?.qualifications || []).find((x) => /irve/i.test(String(x?.type || x?.nom || '')) && String(x?.numero || '').trim());
-  return q ? { organisme: q.organisme || '', numero: String(q.numero).trim(), niveau: q.niveau || '' } : null;
+export function qualificationIrve(entreprise, jour = jourLocal()) {
+  const liste = Array.isArray(entreprise?.qualifications) ? entreprise.qualifications : [];
+  for (const q of liste) {
+    if (!q || typeof q !== 'object' || texteNet(q.type) !== 'irve' || q.imprimer === false) continue;
+    const [intitule, organisme, numero, fin] = [q.intitule, q.organisme, q.numero, q.fin].map(texteNet);
+    if (!intitule || !organisme || !numero || !jourValide(fin) || fin < String(jour).slice(0, 10)) continue;
+    return `IRVE (infrastructures de recharge) : ${intitule} — ${organisme} — N° ${numero} — Valide jusqu'au ${dateLue(fin).toLocaleDateString('fr-FR')}`;
+  }
+  return '';
 }
 
 const vide = (v) => !String(v ?? '').trim();
@@ -166,8 +188,15 @@ export function nouveauCompteRendu({ chantier = null, client = null, entreprise 
   };
 }
 
-/** Avec l'émetteur figé (identité imprimée, comme l'attestation de ramonage). */
-export const avecEmetteur = (cr, entreprise) => ({ ...cr, emetteur: emetteurDe(entreprise) });
+/**
+ * Avec l'émetteur figé (identité imprimée, comme l'attestation de ramonage) ; pour une borne, la ligne IRVE valide à la
+ * date de l'intervention y est figée aussi : le PDF ne lit plus la fiche du jour.
+ */
+export function avecEmetteur(cr, entreprise) {
+  const emetteur = emetteurDe(entreprise);
+  const irve = cr?.nature === 'borne' ? qualificationIrve(entreprise, jourDe(cr?.realise_le) || jourLocal()) : '';
+  return { ...cr, emetteur: emetteur && irve ? { ...emetteur, qualificationIrve: irve } : emetteur };
+}
 
 /** Mode démo : CRI-AAAA-NNNNN, à la suite du plus grand (la base fait de même, migration 111). */
 export function numeroCompteRenduDemo(comptesRendus, maintenant = new Date()) {
@@ -198,8 +227,17 @@ export function ligneFactureCompteRendu(cr) {
  */
 export const REGIME_BORNE = 'borne_278_0_bis_N';
 
-/** Une ligne qui parle d'une borne de recharge (désignation libre). */
-export const estLigneBorne = (description) => /\b(borne|irve|wallbox|point de charge)\b|recharge.*(v[ée]hicule|voiture)/i.test(String(description || ''));
+/**
+ * Une ligne qui parle d'une borne de recharge (désignation libre) : « borne(s) », « IRVE », « wallbox », « point(s) de
+ * charge », « recharge … véhicule/voiture ». Une borne d'éclairage (ou une « borne lumineuse ») n'en est pas une, sauf
+ * si la ligne parle aussi de recharge.
+ */
+export function estLigneBorne(description) {
+  const t = String(description || '');
+  if (/\b(irve|wallbox(es)?|points? de charge)\b|recharge.*(v[ée]hicule|voiture)/i.test(t)) return true;
+  if (!/\bbornes?\b/i.test(t)) return false;
+  return !/\bbornes?\s+(d['’]\s*[ée]clairage|lumineuses?|de\s+jardin|d['’]\s*appel|incendie|fontaine)/i.test(t) || /recharge/i.test(t);
+}
 
 export const POINTS_DE_CHARGE = liste([
   ['type2', 'Socle ou connecteur de type 2'], ['prise_e_renforcee', 'Prise de type E « renforcée » (14 A au moins)'], ['autre', 'Autre'],
@@ -211,15 +249,17 @@ export const TEXTE_FOURNITURE = 'Si la ligne comprend aussi la fourniture de la 
   + 'choix ; Mallettico n’en suggère aucun.';
 
 /** Natures dont le taux par défaut de l'entreprise (souvent 10 %) est à revoir sur la facture tirée du compte rendu. */
-export const TAUX_A_VERIFIER = ['neuf', 'borne'];
+export const TAUX_A_VERIFIER = ['neuf', 'borne', 'photovoltaique'];
 export const TEXTE_TAUX_A_VERIFIER = 'Vérifiez le taux de TVA de la facture : le 10 % ne vaut que pour un logement achevé '
-  + 'depuis plus de deux ans ; pour une borne, voir la ligne de pose.';
+  + 'depuis plus de deux ans ; pour une borne, voir la ligne de pose ; pour du photovoltaïque, Mallettico ne propose '
+  + 'aucun taux : le taux reste votre choix.';
 
 /**
  * TVA suggérée pour la pose, l'installation et l'entretien d'une borne (CGI art. 278-0 bis, N, relu au texte le 3 nov.
  * 2026) : 5,5 % pour une borne dans un local à usage d'habitation, destinée aux résidents, dans la configuration de
- * l'ann. IV art. 30-0 H (type 2, ou prise de type E « renforcée » d'au moins 14 A), posée par un installateur qui
- * remplit les conditions du décret n° 2017-26, art. 22. Aucune condition d'ancienneté du logement. Le critère est le
+ * l'ann. IV art. 30-0 H (type 2, ou prise de type E « renforcée » d'au moins 14 A), posée par un installateur qui a
+ * l'habilitation et, le cas échéant, la qualification de l'art. D. 353-2 du code de l'énergie (ann. IV, art. 30-0 H,
+ * 3, a). Aucune condition d'ancienneté du logement. Le critère est le
  * local, JAMAIS la qualité du client : cette fonction ne reçoit pas le client.
  * @returns {{ taux: number|null, texte: string, manque: string[] }} une suggestion ; l'artisan choisit le taux
  */
@@ -228,7 +268,7 @@ export function suggestionTvaBorne({ local, residents, pointDeCharge, installate
   if (local !== 'habitation') manque.push(local === 'autre' ? 'le local n’est pas à usage d’habitation' : 'le local n’est pas indiqué');
   if (residents !== true) manque.push('la borne n’est pas indiquée comme destinée aux résidents');
   if (!['type2', 'prise_e_renforcee'].includes(pointDeCharge)) manque.push('le point de charge n’est ni de type 2 ni une prise de type E « renforcée »');
-  if (installateurQualifie !== true) manque.push('les conditions de l’installateur (décret n° 2017-26, art. 22) ne sont pas indiquées');
+  if (installateurQualifie !== true) manque.push('l’habilitation et, le cas échéant, la qualification de l’installateur (code de l’énergie, art. D. 353-2 ; CGI, annexe IV, art. 30-0 H) ne sont pas indiquées');
   if (manque.length) {
     return { taux: null, manque, texte: `Pas de taux réduit suggéré : ${manque.join(' ; ')}. Le taux reste votre choix.` };
   }

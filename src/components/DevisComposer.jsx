@@ -378,6 +378,8 @@ export default function DevisComposer({
       showToast?.('Erreur lors de l\'enregistrement du modèle', 'error');
     }
   };
+  // Un autre taux qu'à 5,5 % retire la marque « pose de borne », aussi depuis « appliquer à tout le devis » (relecture du 4 nov., point 15)
+  const retirerRegimeSiTaux = (l) => { if (Number(l.tva) === 5.5 || !l.regimeTva) return l; const { regimeTva, ...reste } = l; return reste; }; // eslint-disable-line no-unused-vars
   // Un autre taux qu'à 5,5 % retire la marque « pose de borne » (CGI 278-0 bis, N) posée par TvaBorne
   const updateLigne = (id, field, value) => setForm(p => ({ ...p, lignes: p.lignes.map(l => {
     if (l.id !== id) return l;
@@ -845,7 +847,7 @@ export default function DevisComposer({
                   <div className="flex gap-1.5 flex-wrap">
                     {[{ v: 20, sub: 'neuf' }, { v: 10, sub: 'réno' }, { v: 5.5, sub: 'éco-réno' }, { v: 0, sub: 'exonéré' }].map(({ v, sub }) => (
                       <button key={v} type="button"
-                        onClick={() => setForm(p => ({ ...p, tvaDefaut: v, lignes: p.lignes.map(l => l._isSection ? l : { ...l, tva: v }) }))}
+                        onClick={() => setForm(p => ({ ...p, tvaDefaut: v, lignes: p.lignes.map(l => l._isSection ? l : retirerRegimeSiTaux({ ...l, tva: v })) }))}
                         aria-pressed={form.tvaDefaut === v && form.lignes.every(l => l._isSection || l.tva === v)}
                         className={`px-3 h-11 rounded-full text-sm font-semibold border transition-colors ${form.tvaDefaut === v && form.lignes.every(l => l._isSection || l.tva === v) ? 'bg-encre text-surface border-encre' : 'border-bord text-encre-2 hover:bg-surface-2'}`}>
                         {String(v).replace('.', ',')} % <span className="font-normal opacity-70">{sub}</span>

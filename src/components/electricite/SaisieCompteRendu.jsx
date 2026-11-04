@@ -7,7 +7,7 @@ import { useConfirm } from '../../context/AppContext';
 import { jourLocal } from '../../lib/dates';
 import { jourDe } from '../../lib/ramonage';
 import {
-  NATURES, MESURES, TITRE_COMPTE_RENDU, manquantsCompteRendu, nouveauCompteRendu, avecEmetteur,
+  NATURES, MESURES, titreCompteRendu, manquantsCompteRendu, nouveauCompteRendu, avecEmetteur,
 } from '../../lib/electricite';
 import { buildCompteRenduElectriciteHtml } from '../../lib/compteRenduElectriciteHtml';
 
@@ -44,11 +44,12 @@ function Section({ titre, children }) {
  * Saisie d'un compte rendu d'intervention et d'autocontrôle, en plein écran au téléphone, puis aperçu avant
  * l'enregistrement (après lequel la base le numérote et le fige). `remplace` : compte rendu annulé à refaire.
  */
-export default function SaisieCompteRendu({ chantier, client, entreprise, remplace = null, intervenantDefaut = '', onEnregistrer, onFermer }) {
+export default function SaisieCompteRendu({ chantier, client, entreprise, remplace = null, intervenantDefaut = '', voitPrix = false, onEnregistrer, onFermer }) {
   const [form, setForm] = useState(() => {
     if (remplace) {
-      const { id, numero, annulee_le, annulation_motif, created_at, user_id, facture_id, emetteur, ...reste } = remplace; // eslint-disable-line no-unused-vars
-      return { ...reste, remplace_id: remplace.id };
+      const { id, numero, annulee_le, annulation_motif, created_at, user_id, facture_id, emetteur, prix_ht, ...reste } = remplace; // eslint-disable-line no-unused-vars
+      // Sans canViewPrices, l'ancien prix n'est ni montré ni recopié (relecture du 4 nov., point 3)
+      return { ...reste, prix_ht: voitPrix ? prix_ht ?? null : null, remplace_id: remplace.id };
     }
     return nouveauCompteRendu({ chantier, client, entreprise, intervenant: intervenantDefaut });
   });
@@ -114,7 +115,7 @@ export default function SaisieCompteRendu({ chantier, client, entreprise, rempla
         {etape === 'apercu' ? (
           <div className="max-w-3xl mx-auto p-3 sm:p-4 space-y-3">
             <p className="text-sm text-encre-2">Une fois enregistré, le compte rendu reçoit son numéro et ne se modifie plus (il pourra être annulé, puis refait).</p>
-            <iframe title={TITRE_COMPTE_RENDU} srcDoc={apercu} sandbox="" className="w-full h-[60vh] bg-white rounded-xl border border-bord" />
+            <iframe title={titreCompteRendu(form)} srcDoc={apercu} sandbox="" className="w-full h-[60vh] bg-white rounded-xl border border-bord" />
           </div>
         ) : (
           <div className="max-w-3xl mx-auto p-3 sm:p-4 space-y-3">
@@ -141,11 +142,11 @@ export default function SaisieCompteRendu({ chantier, client, entreprise, rempla
               <Champ as="textarea" rows={3} libelle="Réserves et points à reprendre" facultatif value={form.reserves} onChange={(e) => maj({ reserves: e.target.value })} />
               <Champ as="textarea" rows={3} libelle="Observations" facultatif value={form.observations} onChange={(e) => maj({ observations: e.target.value })} />
             </Section>
-            <Section titre="Facture">
+            {voitPrix && <Section titre="Facture">
               <Champ id="cr-prix_ht" libelle="Prix (€ HT)" facultatif type="text" inputMode="decimal" aide="Sert à la facture tirée du compte rendu ; il n’est pas imprimé sur le compte rendu."
                 erreur={erreurDe('prix_ht')} value={form.prix_ht === null || form.prix_ht === undefined ? '' : String(form.prix_ht).replace('.', ',')}
                 onChange={(e) => { const v = e.target.value.replace(',', '.'); maj({ prix_ht: v === '' ? null : v }); }} />
-            </Section>
+            </Section>}
             {erreurs.length > 0 && (
               <div role="alert" className="rounded-2xl bg-danger-fond text-danger-texte p-4 text-sm">
                 <p className="font-semibold">À compléter avant de vérifier le compte rendu :</p>

@@ -3,7 +3,7 @@
  * téléchargement), la facture tirée du compte rendu. Séparées des écrans pour être testées à part.
  */
 import { buildCompteRenduElectriciteHtml } from '../../lib/compteRenduElectriciteHtml';
-import { ligneFactureCompteRendu, TITRE_COMPTE_RENDU } from '../../lib/electricite';
+import { ligneFactureCompteRendu, titreCompteRendu } from '../../lib/electricite';
 import { jourLocal } from '../../lib/dates';
 import { calculerTotaux } from '../../lib/totauxDocument';
 import { estFranchiseTva, tauxTvaParDefaut } from '../../lib/franchiseTva';
@@ -22,7 +22,7 @@ export const nomFichierCompteRendu = (r) => `Compte-rendu-intervention-${r?.nume
 export async function remettreCompteRendu({ html, compteRendu }) {
   const [{ pdfDepuisHtml }, { remettreFichier }] = await Promise.all([import('../../lib/pdfDepuisHtml'), import('../../lib/natif')]);
   const octets = await pdfDepuisHtml(html);
-  return remettreFichier(octets, nomFichierCompteRendu(compteRendu), 'application/pdf', { titre: `${TITRE_COMPTE_RENDU} ${compteRendu.numero || ''}`.trim() });
+  return remettreFichier(octets, nomFichierCompteRendu(compteRendu), 'application/pdf', { titre: `${titreCompteRendu(compteRendu)} ${compteRendu.numero || ''}`.trim() });
 }
 
 /**

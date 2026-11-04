@@ -552,7 +552,7 @@ export default function FicheChantier({
         {ongletActif === 'electricite' && (
           <OngletElectricite
             chantier={ch} client={clients.find((c) => c.id === ch.client_id) || null} entreprise={entreprise}
-            peutModifier={peutModifier} peutMemo={peutMemo} peutFacturer={peutDevis} addDevis={addDevis} showToast={showToast}
+            peutModifier={peutModifier} peutMemo={peutMemo} peutMemoModifier={peutMemoModifier} voitPrix={voitPrix} peutFacturer={peutDevis} addDevis={addDevis} showToast={showToast}
             onAjouterFichier={ajouterFichier} onOuvrirFacture={(f) => ouvrirDevis?.({ ouvrir: f.id })}
           />
         )}

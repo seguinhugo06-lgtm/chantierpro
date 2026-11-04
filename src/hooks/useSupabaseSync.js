@@ -1109,7 +1109,7 @@ export const FIELD_MAPPINGS = {
       reserves: item.reserves || null,
       observations: item.observations || null,
       prix_ht: item.prix_ht === '' || item.prix_ht === null || item.prix_ht === undefined ? null : Number(String(item.prix_ht).replace(',', '.')),
-      signature: item.signature || null,
+      // Pas de signature : la colonne n'existe pas (111, décision n° 5 d'Hugo attendue) ; l'envoyer ferait échouer l'écriture
     }),
     fromSupabase: (row) => ({
       id: row.id,
