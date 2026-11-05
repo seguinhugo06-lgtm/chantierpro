@@ -95,3 +95,43 @@ Tous relus le 4 nov. (voir § 2) : libellés des points contrôlés (trois annex
 8. Ordre en production : livrer, appliquer 113, puis redéployer `send-scheduled-relances`.
 9. À décider par Hugo : devis préalable, refus valable pour tous les rappels, testeur chauffagiste.
 10. Conflit probable avec `cloud/retours` dans `entrepriseService.js` (garder les deux réglages).
+
+## Corrections de la relecture du 4 nov.
+
+Session cloud de correction, le 4 nov. au soir. `origin/main` fusionné deux fois (`db82cf9`, `4ca8e62`). Conflits résolus en gardant les deux côtés : `entrepriseService.js` (`ramonageConseils` et les six réglages `entretien…`), `LegalPages.jsx` (dictée IA et rappels d'entretien), `docs/etat-production.md` (lignes 107, 108, 109, 113 et 114).
+
+### Défauts de la relecture
+
+| # | Point | Fait | Commit |
+|---|---|---|---|
+| 1 | Vérification complète sur la tête de branche | Relancée après `npm ci` : résultat ci-dessous | — |
+| 2 | Appareils de mesure exigés pour un poêle | Exigés pour la chaudière et la PAC seulement : `manquants()`, CHECK conditionnel dans 113 (`entretiens_appareils_mesure`), champ « facultatif » à la saisie pour le poêle, plus de bloc « Mesures » vide sur l'attestation, aide de Paramètres corrigée. Tests et banc (4 bis) avec contre-essai | `25f9222`, `4bf7ea2` |
+| 3 | Obligation dans l'e-mail d'une PAC ou d'un poêle | Limitée à la chaudière, côté app (`phraseObligation`) et côté serveur (`phraseObligationServeur`). Les formules du juriste pour la PAC et le poêle sont gardées en commentaire. Question posée à Hugo (`Q-entretien-obligation`). Test : aucun article dans l'e-mail d'une PAC ou d'un poêle | `25f9222`, `28da03f` |
+| 4 | Lien `/rappel-entretien/{jeton}` sans preuve | Deux parcours en mode réel simulé dans `scripts/parcours/entretien.cjs` : rien ne part à l'ouverture, le refus part au bouton avec le jeton, « C'est noté » s'affiche ; contre-essai avec un jeton refusé : « Lien non reconnu » | `4bf7ea2` |
+| 5 | Choix de la fiche qui envoie | `fichesQuiEnvoient` écarte d'abord les fiches archivées, sans module actif ou sans e-mail (`ficheValable`), puis choisit celle du propriétaire. `fichesSansEmail` remet « sans-email-entreprise » dans le rapport. Test avec contre-essai. `entreprise.created_at` : la colonne est déjà lue par les migrations 083, 086 et 108 et par `notify-signature`, mais elle n'a pas été vérifiée en production (pas d'accès) | `25f9222` |
+| 6 | TVA proposée en franchise | `estFranchiseTva(entreprise)` est passé à `tauxPropose`. En franchise, la case « logement de plus de deux ans », la case 5,5 % et leur aide sont masquées, et le prix s'appelle « Prix (€) » | `4bf7ea2` |
+| 7 | Banc 113 qui masquait l'appel visiteur | L'appel serveur est supprimé. Le refus est lu dans la transaction du visiteur, pour l'entretien et pour le ramonage. **Ce point a montré que l'ancien contrôle ne prouvait rien** : sans l'appel serveur, la lecture faite après coup tombait sur la transaction annulée. Mémoire du gardien mise à jour | `25f9222`, `4068503` |
+| 8 | « Rappel noté » avant l'écriture | `suivreAvecEtat` (`src/lib/suiviRappel.js`) : la carte ne passe à « noté » qu'une fois l'écriture faite et reste telle quelle si elle échoue. Côté entretien ET côté ramonage. Test avec contre-essai | `4bf7ea2` |
+| 9 | PAC air/air de plus de 12 kW | Critères ajoutés (texte exact du juriste) | `25f9222` |
+| 10 | Secondes relectures et erratum 5 | juriste-btp et gardien-securite relancés (voir plus bas). Erratum 5 posé à Hugo (`Q-entretien-reseau`) | `28da03f` |
+
+### Juriste-btp (10 points à corriger) et gardien-securite (figer_entretien)
+
+- Juriste 1 à 9 : textes exacts appliqués dans `entretien.js` (5,5 % pour le poêle, la chaudière bois et la PAC air/air ; classe « Non déterminée » acceptée hors du cas gaz ou fioul de moins de 70 kW ; délais « établie… puis remise » et « remise »), `SaisieEntretien.jsx` (puissance, chaudières en réseau, mesure du CO, classe, alerte de délai) et `EntretienTab.jsx` (attestation de capacité). **Une adaptation** au point 9 : à cause de D-33, Paramètres dit que l'obligation n'est citée que pour une chaudière. Le texte complet du juriste est gardé en commentaire.
+- Juriste 10 : modèle « Entretien PAC (au moins tous les deux ans) » ; ligne « Établissement et remise de l'attestation d'entretien (due à chaque entretien) » dans les deux modèles. Reste le même libellé « Entretien annuel PAC » dans le catalogue `src/lib/data/articles-btp-suite.js:315`, que le juriste n'a pas cité : non modifié.
+- Gardien (`figer_entretien`) : `client_id`, `remplace_id` et `updated_at` sont figés comme dans 111, et `NEW.updated_at := now()`. Banc 6 quinquies : un compte ne vide ni le client ni l'attestation remplacée, et une seconde attestation de remplacement est refusée. Contre-essai : avec l'ancienne règle, 2 échecs au banc.
+
+### Secondes relectures (4 nov., en cloud)
+
+- **juriste-btp** : les deux écarts (obligation limitée à la chaudière dans Paramètres ; prix et TVA en franchise) sont jugés **OK**. La phrase d'obligation de la chaudière est conforme. Rien d'autre à corriger.
+- **gardien-securite** : la 113 est **applicable**. La fonction est applicable après correction d'un **défaut important**, un reste de M1 : une fiche **sans organisation** lisait aussi les lignes que son auteur avait saisies dans l'organisation de son patron, et écrivait à ces clients sous son nom (ramonage aussi). **Corrigé** dans `833817a` : `dansPortee` ajoute `organization_id IS NULL`, avec un test et un contre-essai. Mineur laissé : la boucle de `index.ts` revérifie le module et l'e-mail, ce qui ne sert plus mais reste un filet de sécurité.
+
+### Preuves
+
+| Commande | Résultat |
+|---|---|
+| `npm ci` | fait |
+| `npx vitest run` (fichiers entretien et rappels) | verts : `entretien.test.js` 35, `attestationEntretienHtml.test.js` 6, `rappelsEntretienServeur.test.js` 10, `suiviRappel.test.js` 3 |
+| `npm run banc:migrations` | **785 vérifications, tout vert** |
+| `npm run verifier -- --complet` sur `833817a` (avant la 2ᵉ fusion de main) | tests (1464), lint (0 erreur), smoke, build et banc **verts**. Les parcours ont été coupés par un redémarrage de la session |
+| 1ᵉʳ essai `--complet` sur `4bf7ea2` | parcours en échec : `dist/index.html` a été effacé pendant que d'autres agents tournaient en parallèle. Erreur d'environnement, pas de code ; relancé seul ensuite |
