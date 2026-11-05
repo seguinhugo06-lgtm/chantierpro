@@ -24,7 +24,7 @@
 --   4. chantier, client, facture et compte rendu remplacé : de la même organisation (contrôlés à l'insertion) ; une
 --      organisation dont on n'est pas membre est refusée AVANT le verrou et ces contrôles (pas d'oracle d'appartenance) ;
 --   5. un membre « readonly » lit, mais ne crée, n'annule ni ne lie de facture (policies INSERT et UPDATE).
---   Pas de colonne de signature : aucun écran ne la propose (décision n° 5 d'Hugo attendue ; elle viendra avec son écran).
+--   Pas de colonne de signature : aucun écran ne la propose (signature tracée au doigt : « pas maintenant », 5 nov. 2026 ; elle viendra avec son écran si elle est voulue).
 --   Un membre qui quitte l'équipe : ses comptes rendus passent au propriétaire (105, `tables_rendues_au_depart`
 --   découvre la table : elle porte user_id et organization_id).
 --
