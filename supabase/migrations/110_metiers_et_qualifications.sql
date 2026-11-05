@@ -239,8 +239,9 @@ BEGIN
           FROM jsonb_array_elements(r -> 'qualifications') WITH ORDINALITY AS x(q, n)
           -- Une qualification que l'artisan a choisi de ne pas imprimer ne sort pas (relecture gardien-securite du 4 nov.)
           -- Les qualifications « seulement si une ligne contient… » sortent toutes, même celles qui ne visent pas ce devis :
-          -- elles ne s'impriment pas (buildDevisHtml filtre selon les lignes), mais un visiteur peut les lire. Accepté en
-          -- attendant la décision d'Hugo (relecture du 4 nov., point 12 ; docs/cloud/metier-qualifications.md).
+          -- elles ne s'impriment pas (buildDevisHtml filtre selon les lignes), mais un visiteur peut les lire. Décidé le
+          -- 5 nov. 2026 (session locale, point non soumis à Hugo) : pas de filtre SQL en plus, ce sont des informations
+          -- publiques de l'artisan et l'affichage filtre déjà (docs/cloud/metier-qualifications.md, lot 4).
           WHERE jsonb_typeof(x.q) = 'object' AND x.n <= 20 AND COALESCE(x.q ->> 'imprimer', 'true') <> 'false'
             AND COALESCE(x.q ->> 'ou', '') <> 'non') END,
         'donneesFictives', CASE WHEN r ->> 'donneesFictives' = 'true' THEN true END
