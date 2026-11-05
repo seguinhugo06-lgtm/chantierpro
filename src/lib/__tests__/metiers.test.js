@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { METIERS, normaliserMetiers, bibliothequeDes, referentielDes, modelesDes, partagerParMetier, changementsDuChoix, lotsAlternes } from '../metiers';
+import { METIERS, normaliserMetiers, bibliothequeDes, referentielDes, modelesDes, partagerParMetier, changementsDuChoix, lotsAlternes, peutChoisirSonMetier } from '../metiers';
+import { getInvitableRoles, getAllRoles, canAccessPage, hasFullAccess } from '../permissions';
 import { TRADE_LIBRARY } from '../templates/trade-library';
 import { MODELES_DEVIS } from '../data/modeles';
 import { CATEGORIES_METIERS as CATEGORIES_BTP } from '../data/articles-btp';
@@ -108,3 +109,30 @@ describe('éditeur : bloc « Votre métier »', () => {
     expect(lotsAlternes([], bib, 4)).toEqual([]);
   });
 });
+
+// Décision d'Hugo du 5 nov. 2026 (D-41) : la question « Quels travaux faites-vous ? » est posée dans la fenêtre de
+// bienvenue et dans Paramètres › Mon métier, jamais aux membres invités. Le métier se range sur la fiche de l'entreprise,
+// que ni un chef de chantier ni un comptable ne modifie ; le propriétaire seul choisit.
+describe('question du métier : le propriétaire seulement, jamais un membre invité (D-41)', () => {
+  it('aucun rôle qu’on attribue par invitation ne reçoit la question, administrateur compris', () => {
+    const invitables = getInvitableRoles().map((r) => r.value);
+    expect(invitables).toEqual(expect.arrayContaining(['admin', 'comptable', 'chef_chantier', 'ouvrier', 'readonly']));
+    for (const role of invitables) expect(peutChoisirSonMetier(role), role).toBe(false);
+  });
+
+  it('le propriétaire la reçoit ; un rôle inconnu ou pas encore lu, non', () => {
+    expect(peutChoisirSonMetier('owner')).toBe(true);
+    for (const role of [null, undefined, '', 'inconnu']) expect(peutChoisirSonMetier(role), String(role)).toBe(false);
+    expect(getAllRoles().filter((r) => peutChoisirSonMetier(r.value)).map((r) => r.value)).toEqual(['owner']);
+  });
+
+  it('un membre invité qui ne modifie pas la fiche n’ouvre même pas Paramètres', () => {
+    for (const role of ['comptable', 'chef_chantier', 'ouvrier', 'readonly']) expect(canAccessPage(role, 'settings'), role).toBe(false);
+  });
+
+  it('contre-essai : la règle « qui peut modifier la fiche » (accès complet à Paramètres) laisserait passer l’administrateur invité', () => {
+    expect(hasFullAccess('admin', 'settings')).toBe(true);
+    expect(peutChoisirSonMetier('admin')).toBe(false);
+  });
+});
+

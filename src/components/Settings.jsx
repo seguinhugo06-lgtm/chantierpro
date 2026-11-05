@@ -42,6 +42,7 @@ import LigneListe, { GroupeListe } from './ui/LigneListe';
 import { EnTetePage } from './ui/EnTete';
 import { jourLocal, dateLue } from '../lib/dates';
 import { echeancesQualifications } from '../lib/qualifications';
+import { peutChoisirSonMetier } from '../lib/metiers';
 import MesQualifications from './settings/MesQualifications';
 import MonMetierTab from './settings/MonMetierTab';
 import { estEntrepreneurIndividuel, estEirl, nomImprime } from '../lib/identiteEntreprise';
@@ -183,7 +184,7 @@ function PastilleValidite({ date }) {
 export default function Settings({ entreprise, setEntreprise, user, devis = [], depenses = [], clients = [], chantiers = [], isDark, couleur, setPage, modeDiscret }) {
   const { showToast } = useToast();
   const { confirm } = useConfirm();
-  const { canManageTeam } = usePermissions();
+  const { canManageTeam, role } = usePermissions();
   const { orgId } = useOrg();
   const relances = useRelances({
     devis, clients, entreprise,
@@ -243,8 +244,11 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
   const [brouillonPenalites, setBrouillonPenalites] = useState(null);
   const [penalitesRefusees, setPenalitesRefusees] = useState(false);
 
-  // Rubrique Équipe réservée à qui gère l'équipe
-  const groupesVisibles = GROUPES.filter((g) => g.id !== 'equipe' || canManageTeam);
+  // Rubrique Équipe réservée à qui gère l'équipe ; « Mon métier » au propriétaire de l'entreprise, jamais à un membre
+  // invité, administrateur compris (D-41, 5 nov. 2026 : src/lib/metiers.js, peutChoisirSonMetier)
+  const monMetierPermis = peutChoisirSonMetier(role);
+  const groupesVisibles = GROUPES.filter((g) => g.id !== 'equipe' || canManageTeam)
+    .map((g) => ({ ...g, rubriques: g.rubriques.filter((r) => r.cle !== 'metier' || monMetierPermis) }));
 
   // Persist wizard step
   useEffect(() => {
@@ -1059,7 +1063,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
         />
       )}
 
-      {tab === 'metier' && (
+      {tab === 'metier' && monMetierPermis && (
         <MonMetierTab entreprise={entreprise} updateEntreprise={updateEntreprise} />
       )}
 

@@ -87,6 +87,15 @@ export function changementsDuChoix(entreprise, metiers) {
   return patch;
 }
 
+/**
+ * Qui reçoit la question « Quels travaux faites-vous ? » : le propriétaire de l'entreprise, jamais un membre invité,
+ * quel que soit son rôle (D-41, 5 nov. 2026). Le métier se range sur la fiche de l'entreprise ; un membre invité ne la
+ * modifie pas (la base refuse l'enregistrement d'un chef de chantier), et un administrateur invité ne choisit pas à la
+ * place du gérant. Deux endroits : la fenêtre de bienvenue (App.jsx) et Paramètres › Mon métier (Settings.jsx).
+ * @param {string|null|undefined} role rôle dans l'organisation ouverte (OrgContext)
+ */
+export const peutChoisirSonMetier = (role) => role === 'owner';
+
 /** « Électricien, Plombier » pour un résumé, ou '' . */
 export function nomsDesMetiers(metiers) {
   return normaliserMetiers(metiers).map((id) => PAR_ID[id].nom).join(', ');

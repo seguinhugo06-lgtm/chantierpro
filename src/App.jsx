@@ -89,7 +89,7 @@ import { usePermissions } from './hooks/usePermissions';
 import { fetchSubscription, computeLiveUsage } from './services/subscriptionsApi';
 import { Home, FileText, Building2, Users, Package, HardHat, Settings as SettingsIcon, Eye, EyeOff, Menu, Bell, Plus, ChevronRight, HelpCircle, Search, X, CheckCircle, AlertCircle, Info, Wifi, WifiOff, Wallet, ClipboardList, Smartphone, CreditCard, MessageCircle, CalendarCheck, Mic, PenLine, Clock, TrendingUp, Lightbulb, Mail, BookOpen, Hand, Rocket, Palette, Briefcase } from 'lucide-react';
 import ChoixMetiers from './components/settings/ChoixMetiers';
-import { changementsDuChoix, normaliserMetiers } from './lib/metiers';
+import { changementsDuChoix, normaliserMetiers, peutChoisirSonMetier } from './lib/metiers';
 import { usePWA } from './hooks/usePWA';
 import { registerNetworkListeners, getPendingCount, syncQueue, clearAllMutations, clearMutationsDe, checkConnectivity } from './lib/offline/sync';
 import OfflineIndicator from './components/ui/OfflineIndicator';
@@ -159,7 +159,7 @@ export default function App() {
   const { showToast, toast, hideToast } = useToast();
 
   // RBAC: organization role + permissions
-  const { canAccess, canAccessBilling, canViewPrices, canPerform, hasFull, role: userRole, loading: orgLoading, orgId } = usePermissions();
+  const { canAccess, canAccessBilling, canViewPrices, canPerform, role: userRole, loading: orgLoading, orgId } = usePermissions();
 
   // PWA install hook
   const { canInstall, install, isInstalled } = usePWA();
@@ -2106,10 +2106,10 @@ export default function App() {
 
       {/* Onboarding Modal for first-time users */}
       {/* Après le chargement de la fiche et des droits (relecture du 4 nov.) : un métier déjà choisi sur un autre appareil
-          saute la question, et seul qui peut modifier la fiche (gérant, compte seul) la reçoit */}
+          saute la question, et seul le propriétaire de l'entreprise la reçoit, jamais un membre invité (D-41, 5 nov.) */}
       {showOnboarding && !entrepriseLoading && !orgLoading && (
         <OnboardingModal setShowOnboarding={setShowOnboarding} entreprise={entreprise} setEntreprise={setEntreprise} showToast={showToast}
-          peutChoisirMetier={hasFull('settings')} isDark={isDark} couleur={couleur} />
+          peutChoisirMetier={peutChoisirSonMetier(userRole)} isDark={isDark} couleur={couleur} />
       )}
 
       {/* Dictée vocale — client + chantier + devis en une seule prise de parole */}
@@ -2620,7 +2620,7 @@ function HelpModal({ setShowHelp, isDark: _isDark }) {
 function OnboardingModal({ setShowOnboarding, entreprise, setEntreprise, showToast, peutChoisirMetier = true, isDark: _isDark, couleur: _couleur }) {
   const [step, setStep] = useState(0);
   // Lot 1 « métiers » : « Quels travaux faites-vous ? » en premier, sauf si le métier est déjà enregistré (autre
-  // appareil) ou si le compte ne peut pas modifier la fiche (membre invité non gérant : la base refuserait). Choix
+  // appareil) ou si le compte est un membre invité (jamais posée : D-41, `peutChoisirSonMetier`). Choix
   // multiple, rien d'obligatoire : sans choix, « Passer cette question » et l'app reste telle quelle. La fenêtre n'est
   // montée qu'une fois la fiche chargée (App) : la décision est prise sur la vraie fiche, puces préremplies.
   const dejaChoisis = normaliserMetiers(entreprise?.metiers);
