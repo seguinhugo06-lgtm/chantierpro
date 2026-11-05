@@ -6,6 +6,7 @@ import Champ from '../ui/Champ';
 import { useConfirm } from '../../context/AppContext';
 import { jourLocal } from '../../lib/dates';
 import { jourDe } from '../../lib/ramonage';
+import { estFranchiseTva } from '../../lib/franchiseTva';
 import {
   NATURES, MESURES, titreCompteRendu, manquantsCompteRendu, nouveauCompteRendu, avecEmetteur,
 } from '../../lib/electricite';
@@ -143,7 +144,7 @@ export default function SaisieCompteRendu({ chantier, client, entreprise, rempla
               <Champ as="textarea" rows={3} libelle="Observations" facultatif value={form.observations} onChange={(e) => maj({ observations: e.target.value })} />
             </Section>
             {voitPrix && <Section titre="Facture">
-              <Champ id="cr-prix_ht" libelle="Prix (€ HT)" facultatif type="text" inputMode="decimal" aide="Sert à la facture tirée du compte rendu ; il n’est pas imprimé sur le compte rendu."
+              <Champ id="cr-prix_ht" libelle={estFranchiseTva(entreprise) ? 'Prix (€)' : 'Prix (€ HT)'} facultatif type="text" inputMode="decimal" aide="Sert à la facture tirée du compte rendu ; il n’est pas imprimé sur le compte rendu."
                 erreur={erreurDe('prix_ht')} value={form.prix_ht === null || form.prix_ht === undefined ? '' : String(form.prix_ht).replace('.', ',')}
                 onChange={(e) => { const v = e.target.value.replace(',', '.'); maj({ prix_ht: v === '' ? null : v }); }} />
             </Section>}

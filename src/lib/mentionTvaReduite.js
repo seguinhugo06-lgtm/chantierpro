@@ -53,6 +53,34 @@ const FACTURE_5_5 = 'Par le règlement de la présente facture, le client certif
 
 const echapper = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
+// Taux d'une ligne : le sien, sinon celui du document
+const tauxDeLigne = (l, tauxDefaut) => Number(l.tva !== undefined && l.tva !== null && l.tva !== '' ? l.tva : tauxDefaut);
+
+/**
+ * Une ligne de pose de borne de recharge au taux de 5,5 % (CGI 278-0 bis, N) : la marque `regimeTva` posée par le volet
+ * de l'éditeur (src/components/devis/TvaBorne.jsx), ET le taux de 5,5 %. C'est le seul repère de ce module, pour
+ * l'exclusion de la certification du client comme pour la mention de la borne : une ligne marquée mais passée à un autre
+ * taux n'est plus une pose de borne à 5,5 %.
+ */
+const estPoseBorne = (l, tauxDefaut) => l.regimeTva === REGIME_BORNE && tauxDeLigne(l, tauxDefaut) === 5.5;
+
+/**
+ * Mention imprimée sur le devis et la facture quand une ligne est une pose de borne à 5,5 % (décision d'Hugo du 5 nov.
+ * 2026, D-39 : « OK pour tout » à la mention proposée par juriste-btp le 4 nov. 2026). Texte de la décision, gardé tel
+ * quel (apostrophes droites comprises) : À RELIRE PAR LE JURISTE, qui vérifiera la lettre N de l'art. 278-0 bis du CGI
+ * au texte officiel (docs/metiers/avis-juriste-2026-11-04-electricien.md, point 4).
+ */
+export const MENTION_BORNE = "TVA à 5,5 % : pose d'une infrastructure de recharge dans un local à usage d'habitation, destinée aux résidents (CGI art. 278-0 bis, N)";
+
+/**
+ * Le document porte-t-il une pose de borne à 5,5 % ? (une ligne marquée, au taux de 5,5 %, à montant non nul)
+ * Sans les lignes : non (comportement d'avant).
+ */
+export function portePoseBorne(lignes, tauxDefaut) {
+  const valides = Array.isArray(lignes) ? filterValidLignes(lignes) : [];
+  return valides.some((l) => estPoseBorne(l, tauxDefaut) && totalLigne(l) > 0);
+}
+
 /**
  * Taux réduits présents dans le document (lignes à base non nulle).
  * @param {Record<string, {base: number}>} tvaDetails - { "10": { base, montant }, "5.5": {...} }
@@ -68,11 +96,10 @@ export function tauxReduitsPresents(tvaDetails = {}, { lignes, tauxDefaut } = {}
   // « borne » ne déclenche donc pas le modèle ; les autres lignes au même taux, si. Sans les lignes : comportement d'avant.
   const valides = Array.isArray(lignes) ? filterValidLignes(lignes) : null;
   if (valides && valides.some((l) => l.regimeTva === REGIME_BORNE)) {
-    const tauxDe = (l) => Number(l.tva !== undefined && l.tva !== null && l.tva !== '' ? l.tva : tauxDefaut);
+    const tauxDe = (l) => tauxDeLigne(l, tauxDefaut);
     // Exclue seulement à 5,5 % : une ligne marquée mais passée à un autre taux reste dans la certification (juriste-btp,
     // 4 nov. 2026 : sinon la certification 10 % disparaissait, avec un risque de rappel à 20 %)
-    const estPoseBorne = (l) => l.regimeTva === REGIME_BORNE && tauxDe(l) === 5.5;
-    const autre = (t) => valides.some((l) => !estPoseBorne(l) && tauxDe(l) === t && totalLigne(l) > 0);
+    const autre = (t) => valides.some((l) => !estPoseBorne(l, tauxDefaut) && tauxDe(l) === t && totalLigne(l) > 0);
     presents.dix = presents.dix && autre(10);
     presents.cinqCinq = presents.cinqCinq && autre(5.5);
   }
@@ -117,7 +144,9 @@ export function mentionTvaReduiteHtml({ tvaDetails, nomClient, isMicro = false, 
   if (isMicro || isAvoir) return '';
   const presents = tauxReduitsPresents(tvaDetails, { lignes, tauxDefaut });
   const textes = textesCertification(presents, nomClient, { isFacture, isAcompte });
-  if (!textes.length) return '';
+  // Une pose de borne à 5,5 % : sa mention propre, après la certification (s'il y en a une pour d'autres lignes) ou seule
+  const borne = portePoseBorne(lignes, tauxDefaut) ? mentionBorneHtml() : '';
+  if (!textes.length) return borne;
   const taux = [presents.cinqCinq && '5,5 %', presents.dix && '10 %'].filter(Boolean).join(' et ');
   const articles = [presents.cinqCinq && 'art. 278-0 bis A', presents.dix && 'art. 279-0 bis'].filter(Boolean).join(' et ');
   return `<div class="tva-reduite" style="margin-top:12px;padding:10px 12px;border:1px solid #cbd5e1;border-radius:6px;font-size:7.5pt;line-height:1.45;color:#334155;page-break-inside:avoid">
@@ -127,5 +156,10 @@ export function mentionTvaReduiteHtml({ tvaDetails, nomClient, isMicro = false, 
     <div style="margin-top:6px;color:#64748b">${isFacture
       ? CONSERVATION
       : `La signature du présent devis vaut certification. À défaut, le taux normal de 20 % s’applique. ${CONSERVATION}`}</div>
-  </div>`;
+  </div>${borne}`;
+}
+
+/** Le bloc de la mention de la borne : même présentation que la certification, sans en prendre le titre. */
+function mentionBorneHtml() {
+  return `<div class="tva-borne" style="margin-top:12px;padding:10px 12px;border:1px solid #cbd5e1;border-radius:6px;font-size:7.5pt;line-height:1.45;color:#334155;page-break-inside:avoid">${echapper(MENTION_BORNE)}</div>`;
 }

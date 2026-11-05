@@ -29,7 +29,7 @@ const TAILLE_MAX = 5 * 1024 * 1024;
 export default function OngletElectricite({
   chantier, client, entreprise, peutModifier, peutMemo, peutMemoModifier = false, voitPrix = false, peutFacturer, onAjouterFichier, onOuvrirFacture, showToast, addDevis: addDevisPage,
 }) {
-  const { comptesRendus = [], memos = [], devis = [], addMemo, toggleMemo, addCompteRendu, suivreCompteRendu, addDevis: addDevisContexte } = useData();
+  const { comptesRendus = [], memos = [], devis = [], clients = [], addMemo, toggleMemo, addCompteRendu, suivreCompteRendu, addDevis: addDevisContexte } = useData();
   // La page passe son addDevis (limites du plan, messages) ; à défaut, celui du contexte
   const addDevis = addDevisPage || addDevisContexte;
   const [miseEnService, setMiseEnService] = useState('');
@@ -42,6 +42,9 @@ export default function OngletElectricite({
   const etat = etatConsuel({ tache, documents: chantier.documents || [] });
   const mesComptesRendus = comptesRendus.filter((r) => r.chantier_id === chantier.id);
   const fiche = ficheId ? comptesRendus.find((r) => r.id === ficheId) : null;
+  // Le client du compte rendu (adresse d'envoi, avertissement du dépannage chez un particulier) : sa fiche, jamais celle du
+  // chantier si le compte rendu n'en nomme pas
+  const clientDeLaFiche = fiche?.client_id ? clients.find((c) => c.id === fiche.client_id) || null : null;
 
   const programmer = async () => {
     if (!miseEnService) { setErreurDate('Indiquez la date de mise sous tension prévue.'); return; }
@@ -135,7 +138,7 @@ export default function OngletElectricite({
           onEnregistrer={enregistrer} onFermer={() => setSaisie(null)} />
       )}
       {fiche && !saisie && (
-        <FicheCompteRendu compteRendu={fiche} entreprise={entreprise} comptesRendus={comptesRendus} devis={devis}
+        <FicheCompteRendu compteRendu={fiche} client={clientDeLaFiche} entreprise={entreprise} comptesRendus={comptesRendus} devis={devis}
           suivreCompteRendu={suivreCompteRendu} addDevis={addDevis} peutModifier={peutModifier} peutFacturer={peutFacturer} showToast={showToast}
           onRefaire={(r) => { setFicheId(null); setSaisie({ remplace: r }); }}
           onOuvrirFacture={(f) => { setFicheId(null); onOuvrirFacture(f); }}

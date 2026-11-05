@@ -16,7 +16,7 @@ export default function ElectriciteTab({ entreprise, setEntreprise }) {
           actif={!!entreprise?.electriciteActif}
           onChange={(v) => setEntreprise((p) => ({ ...p, electriciteActif: v }))}
           libelle="Je fais des travaux d’électricité"
-          description="Ajoute l’onglet « Électricité » aux fiches chantier : le rappel de la demande d’attestation Consuel, et le compte rendu d’intervention et d’autocontrôle en PDF, d’où vous tirez la facture."
+          description="Ajoute l’onglet « Électricité » aux fiches chantier : le rappel de la demande d’attestation Consuel, et le compte rendu d’intervention et d’autocontrôle en PDF, à envoyer au client par e-mail, d’où vous tirez la facture."
         />
         {/* Rappel du risque de D-30, comme Paramètres › Ramonage (relecture du 4 nov., point 7), sans bloquer ; exception
             d'urgence de L221-10, 4° ajoutée par juriste-btp (4 nov. au soir, sur pièces : Légifrance injoignable) */}

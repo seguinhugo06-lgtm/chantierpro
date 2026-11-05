@@ -15,6 +15,7 @@
  */
 import { jourLocal, dateLue } from './dates';
 import { ajouterJours, jourDe, emetteurDe } from './ramonage';
+import { estClientParticulier } from './retractation';
 
 const liste = (paires) => paires.map(([valeur, libelle]) => ({ valeur, libelle }));
 export const libelleDe = (options, valeur) => options.find((o) => o.valeur === valeur)?.libelle || '';
@@ -253,6 +254,26 @@ export const TAUX_A_VERIFIER = ['neuf', 'borne', 'photovoltaique'];
 export const TEXTE_TAUX_A_VERIFIER = 'Vérifiez le taux de TVA de la facture : le 10 % ne vaut que pour un logement achevé '
   + 'depuis plus de deux ans ; pour une borne, voir la ligne de pose ; pour du photovoltaïque, Mallettico ne propose '
   + 'aucun taux : le taux reste votre choix.';
+
+/**
+ * Facture tirée d'un compte rendu de dépannage chez un particulier, sans devis (décision d'Hugo du 5 nov. 2026, D-39 :
+ * avertir sans bloquer). Texte de juriste-btp, relu au texte le 4 nov. 2026 (arrêté du 24 janv. 2017, annexe 1 et art. 4, I ;
+ * docs/metiers/avis-juriste-2026-11-04-electricien.md, point 5), dont seul le renvoi change : « Dépannage express » est un
+ * écran de `cloud/metier-depannage`, absent ici, d'où « Devis ». Le renvoi est À RELIRE PAR LE JURISTE.
+ */
+export const TEXTE_DEPANNAGE_SANS_DEVIS = 'Dépannage chez un particulier : un devis détaillé devait lui être remis avant '
+  + 'l’intervention (arrêté du 24 janvier 2017, art. 4). Pour le prochain, faites-le depuis « Devis ».';
+
+/**
+ * L'avertissement montré (jamais un blocage) quand la facture vient d'être tirée d'un compte rendu, ou ''. Un seul à la
+ * fois : le taux à vérifier (neuf, borne, photovoltaïque) ou le devis d'un dépannage. Le second ne vise qu'un client
+ * particulier (`estClientParticulier`, src/lib/retractation.js : ni syndic, ni professionnel, ni client inconnu).
+ */
+export function avertissementFactureCompteRendu(cr, client) {
+  if (TAUX_A_VERIFIER.includes(cr?.nature)) return TEXTE_TAUX_A_VERIFIER;
+  if (cr?.nature === 'depannage' && estClientParticulier(client)) return TEXTE_DEPANNAGE_SANS_DEVIS;
+  return '';
+}
 
 /**
  * TVA suggérée pour la pose, l'installation et l'entretien d'une borne (CGI art. 278-0 bis, N, relu au texte le 3 nov.

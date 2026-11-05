@@ -1,25 +1,28 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Download, Receipt, Ban, RotateCcw } from 'lucide-react';
+import { X, Download, Send, Receipt, Ban, RotateCcw } from 'lucide-react';
 import { Bouton, BoutonIcone } from '../ui/Bouton';
 import Champ from '../ui/Champ';
 import Pastille from '../ui/Pastille';
-import { htmlCompteRendu, remettreCompteRendu, donneesFactureCompteRendu } from './actionsCompteRendu';
+import { htmlCompteRendu, remettreCompteRendu, envoyerCompteRendu, donneesFactureCompteRendu } from './actionsCompteRendu';
+import { isDemo } from '../../supabaseClient';
 import { captureException } from '../../lib/sentry';
-import { TAUX_A_VERIFIER, TEXTE_TAUX_A_VERIFIER } from '../../lib/electricite';
+import { avertissementFactureCompteRendu } from '../../lib/electricite';
 
 /**
- * Un compte rendu enregistré : le document, son PDF (partage ou téléchargement), la facture tirée du compte rendu
- * (brouillon, sans ressaisie) et l'annulation motivée (« Refaire » crée un compte rendu qui l'annule et le remplace).
+ * Un compte rendu enregistré : le document, son PDF (partage ou téléchargement), son envoi au client par e-mail (comme
+ * l'attestation de ramonage), la facture tirée du compte rendu (brouillon, sans ressaisie) et l'annulation motivée
+ * (« Refaire » crée un compte rendu qui l'annule et le remplace). `client` : la fiche du client du compte rendu.
  */
 export default function FicheCompteRendu({
-  compteRendu: cr, entreprise, comptesRendus, devis = [], suivreCompteRendu, addDevis, peutModifier = false, peutFacturer, onRefaire, onOuvrirFacture, onFermer, showToast,
+  compteRendu: cr, client = null, entreprise, comptesRendus, devis = [], suivreCompteRendu, addDevis, peutModifier = false, peutFacturer, onRefaire, onOuvrirFacture, onFermer, showToast,
 }) {
-  const [action, setAction] = useState(null);
+  const [action, setAction] = useState(null); // 'pdf' | 'envoi' | 'facture' | null
   const [annulation, setAnnulation] = useState(null);
   const html = useMemo(() => (cr.numero ? htmlCompteRendu({ compteRendu: cr, entreprise, comptesRendus }) : ''), [cr, entreprise, comptesRendus]);
   const facture = cr.facture_id ? devis.find((d) => d.id === cr.facture_id) : null;
   const annule = !!cr.annulee_le;
+  const email = String(client?.email || '').trim();
 
   useEffect(() => {
     const echap = (e) => { if (e.key === 'Escape') { e.stopPropagation(); onFermer(); } };
@@ -39,6 +42,26 @@ export default function FicheCompteRendu({
     }
   };
 
+  // Envoi par la fonction `send-email`, comme l'attestation de ramonage : on attend la réponse, et le message de succès ne
+  // vient qu'après elle (un refus du serveur est dit tel quel). En démo, rien ne part et l'écran le dit.
+  const envoyer = async () => {
+    if (!email) return;
+    if (isDemo) {
+      showToast?.(`E-mail (démo) : le compte rendu partirait à ${email}.`, 'info');
+      return;
+    }
+    setAction('envoi');
+    try {
+      await envoyerCompteRendu({ html, compteRendu: cr, entreprise, client });
+      showToast?.(`Compte rendu envoyé à ${email}`, 'success');
+    } catch (e) {
+      captureException(e, { context: 'envoi compte rendu électricité' });
+      showToast?.(e?.message || 'L’envoi a échoué. Réessayez.', 'error');
+    } finally {
+      setAction(null);
+    }
+  };
+
   const faireFacture = async () => {
     if (facture) { onOuvrirFacture(facture); return; }
     setAction('facture');
@@ -46,8 +69,10 @@ export default function FicheCompteRendu({
       const creee = await addDevis(donneesFactureCompteRendu({ compteRendu: cr, entreprise }));
       if (!creee) return; // refus déjà dit (limite, droits, base)
       const lie = await suivreCompteRendu(cr.id, { facture_id: creee.id });
+      // Avertir sans bloquer (D-36, D-39) : le taux à vérifier, ou le devis d'un dépannage chez un particulier
+      const avertissement = avertissementFactureCompteRendu(cr, client);
       if (lie === false) showToast?.('La facture est créée, mais son lien avec le compte rendu n’a pas été enregistré.', 'error');
-      else if (TAUX_A_VERIFIER.includes(cr.nature)) showToast?.(TEXTE_TAUX_A_VERIFIER, 'warning');
+      else if (avertissement) showToast?.(avertissement, 'warning');
       onOuvrirFacture(creee);
     } finally {
       setAction(null);
@@ -82,6 +107,9 @@ export default function FicheCompteRendu({
           ) : (
             <iframe title={`Compte rendu ${cr.numero}`} srcDoc={html} sandbox="" className="w-full h-[60vh] bg-white rounded-xl border border-bord" />
           )}
+          {peutModifier && !annule && cr.numero && !email && (
+            <p className="text-sm text-encre-2">Pas d’e-mail sur la fiche du client : partagez le PDF, ou ajoutez son e-mail à sa fiche pour l’envoyer d’ici.</p>
+          )}
           {/* Annuler et refaire : droit de modifier le chantier (canPerform, relecture du 4 nov., point 4) */}
           {peutModifier && !annule && cr.numero && (annulation === null ? (
             <Bouton variante="discret" icone={Ban} onClick={() => setAnnulation('Erreur de saisie')}>Annuler le compte rendu (erreur de saisie)</Bouton>
@@ -107,6 +135,10 @@ export default function FicheCompteRendu({
       {!annule && cr.numero && (
         <footer className="flex-shrink-0 border-t border-bord bg-surface px-3 sm:px-4 py-3 flex flex-wrap gap-2 justify-end" style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}>
           <Bouton variante="secondaire" icone={Download} chargement={action === 'pdf'} onClick={pdf}>PDF</Bouton>
+          {/* Envoyer au client : un e-mail part au nom de l'entreprise, donc le droit de modifier le chantier, comme annuler et refaire */}
+          {peutModifier && (
+            <Bouton variante="secondaire" icone={Send} chargement={action === 'envoi'} disabled={!email} onClick={envoyer}>Envoyer au client</Bouton>
+          )}
           {(facture || peutFacturer) && (
             <Bouton variante={facture ? 'secondaire' : 'principal'} icone={Receipt} chargement={action === 'facture'} onClick={faireFacture}>
               {facture ? `Facture ${facture.numero || ''}`.trim() : 'Faire la facture'}
