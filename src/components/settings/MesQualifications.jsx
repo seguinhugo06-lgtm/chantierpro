@@ -4,7 +4,7 @@ import { Bouton } from '../ui/Bouton';
 import ChampChoix from '../ui/ChampChoix';
 import { ChampParam, DebouncedInput, CLASSE_CHAMP, EtatEnregistrement } from './champsParametres';
 import {
-  TYPES_QUALIFICATION, ORGANISMES_RGE, qualificationsDe, raisonNonImprimee, ligneImprimee, champsRgeDeLaListe,
+  TYPES_QUALIFICATION, ORGANISMES_RGE, qualificationsDe, raisonNonImprimee, ligneImprimee, champsRgeDeLaListe, nouvelleQualification,
 } from '../../lib/qualifications';
 import { qualificationsDes } from '../../lib/metiers';
 
@@ -32,8 +32,9 @@ export default function MesQualifications({ entreprise, updateEntreprise }) {
   const modifier = (id, champs, cle) => enregistrer((l) => l.map((q) => (q.id === id ? { ...q, ...champs } : q)), cle);
   const ajouter = () => {
     const t = typeDe(typeAjout);
-    // Services à la personne : ajoutée sans impression, l'artisan choisit où (avis juriste-btp du 4 nov. 2026)
-    enregistrer((l) => [...l, { id: nouvelId(), type: t.id, intitule: '', organisme: '', numero: '', fin: '', imprimer: t.id !== 'sap', ou: t.id === 'sap' ? 'non' : 'tous', motsCles: '' }], 'qualifications');
+    // Services à la personne : ajoutée en « Seulement si une ligne contient… » avec une liste de mots vide, donc sans rien
+    // imprimer tant que l'artisan n'a pas mis ses mots (D-41, 5 nov. 2026 ; avis juriste-btp du 4 nov.)
+    enregistrer((l) => [...l, nouvelleQualification(t.id, nouvelId())], 'qualifications');
   };
   const retirer = (id) => enregistrer((l) => l.filter((q) => q.id !== id), 'qualifications');
 

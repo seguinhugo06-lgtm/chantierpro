@@ -62,7 +62,8 @@ export function raisonRgeNonImprime(entreprise, aujourdhui = jourLocal()) {
 // `ou` : 'tous' (tous les documents), 'si' (seulement si une ligne contient l'un des mots), 'non' (ne pas l'imprimer).
 // Le choix est gardé à part des mots : « seulement si » sans mot n'imprime RIEN (relecture du 4 nov. : une déclaration
 // de services à la personne, sans mots par défaut, repassait sinon sur « tous mes documents »). Une fiche d'avant
-// `ou` : `imprimer: false` vaut 'non', des mots valent 'si', sinon 'tous'.
+// `ou` : `imprimer: false` vaut 'non', des mots valent 'si', sinon 'tous' ; la déclaration de services à la personne,
+// sans choix enregistré, vaut 'si' (D-41, 5 nov. 2026 : jamais partout par défaut).
 // Règles communes : jamais imprimée sans numéro ; jamais le mot « certifié » ; validité jugée à la date du document ;
 // date de fin exigée (lisible, non passée) ; la déclaration de services à la personne porte sa date, pas une échéance.
 // RGE : les règles du lot 0 ci-dessus (intitulé, organisme RGE, numéro, date), toujours sur tous les documents (une
@@ -78,9 +79,11 @@ export const TYPES_QUALIFICATION = [
   { id: 'certibiocide', nom: 'Certibiocide', prefixe: 'Certificat individuel biocides (Certibiocide) détenu par', exemple: 'Nom du titulaire, catégorie', aideIntitule: 'Nom du titulaire et catégorie, tels qu’ils figurent sur le certificat (certificat individuel).', motsCles: 'traitement, termites, insectes, xylophages' },
   { id: 'certiphyto', nom: 'Certiphyto', prefixe: 'Certificat individuel produits phytopharmaceutiques (Certiphyto) détenu par', exemple: 'Nom du titulaire, catégorie', aideIntitule: 'Nom du titulaire et catégorie, tels qu’ils figurent sur le certificat (certificat individuel). L’agrément de l’entreprise se saisit dans « Autre qualification ».', motsCles: 'désherbage, traitement' },
   // SAP : « le numéro et la date d'enregistrement de la déclaration » sur la facture (C. trav. D7233-1, 2° ; juriste-btp
-  // au texte, 4 nov. 2026). `fin` porte ici la date d'enregistrement (pas une échéance). Ajoutée sans impression : sur
-  // d'autres travaux, la mention laisserait croire à un crédit d'impôt (choix par défaut : décision d'Hugo attendue).
-  { id: 'sap', nom: 'Services à la personne (déclaration)', exemple: '', dateDeclaration: true, motsCles: '' },
+  // au texte, 4 nov. 2026). `fin` porte ici la date d'enregistrement (pas une échéance). Ajoutée en « Seulement si une
+  // ligne contient… » avec une liste de mots VIDE (D-41, 5 nov. 2026) : rien ne s'imprime tant que l'artisan n'a pas mis
+  // ses mots, et jamais sur un travail exclu (électricité, plomberie, chauffage : docs/metiers/multiservice.md § 6) ;
+  // sur d'autres travaux, la mention laisserait croire à un crédit d'impôt. Aucun mot par défaut : c'est lui qui les choisit.
+  { id: 'sap', nom: 'Services à la personne (déclaration)', exemple: '', dateDeclaration: true, motsCles: '', ouParDefaut: 'si' },
   { id: 'autre', nom: 'Autre qualification', prefixe: '', exemple: 'Qualibat 5111', motsCles: '' },
 ];
 const TYPE_PAR_ID = Object.fromEntries(TYPES_QUALIFICATION.map((t) => [t.id, t]));
@@ -103,7 +106,23 @@ function ouDe(o) {
   if (o.imprimer === false || o.ou === 'non') return 'non';
   if (texte(o.type) === 'rge') return 'tous';
   if (o.ou === 'si' || o.ou === 'tous') return o.ou;
+  // Sans choix enregistré : le défaut du type (services à la personne : « seulement si », jamais partout)
+  if (TYPE_PAR_ID[texte(o.type)]?.ouParDefaut) return TYPE_PAR_ID[texte(o.type)].ouParDefaut;
   return texte(o.motsCles) ? 'si' : 'tous';
+}
+
+/** Où imprimer une qualification qu'on vient d'ajouter : le défaut de son type ('tous' sauf services à la personne). */
+export function ouParDefaut(type) {
+  return TYPE_PAR_ID[texte(type)]?.ouParDefaut || 'tous';
+}
+
+/**
+ * Une qualification qu'on vient d'ajouter dans Paramètres › Légal › Mes qualifications : vide, à imprimer selon le
+ * défaut de son type. Services à la personne : « Seulement si une ligne contient… » avec une liste de mots vide, donc
+ * rien d'imprimé tant que l'artisan n'a pas mis ses mots (D-41, 5 nov. 2026).
+ */
+export function nouvelleQualification(type, id) {
+  return { id, type: TYPE_PAR_ID[texte(type)] ? texte(type) : 'autre', intitule: '', organisme: '', numero: '', fin: '', imprimer: true, ou: ouParDefaut(type), motsCles: '' };
 }
 
 /**

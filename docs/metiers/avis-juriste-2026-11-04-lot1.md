@@ -16,7 +16,7 @@ Le texte exige « le numéro et la date d'enregistrement de la déclaration » s
 - **Source** : C. trav. D7233-1, 2° (version du 30/12/2016), https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000033747505/2026-11-04, consulté le 04/11/2026.
 - **Citation** : « produisent une facture faisant apparaître : » … « 2° Le numéro et la date d'enregistrement de la déclaration si celle-ci a été demandée »
 - **Correction** : ligne imprimée « Services à la personne : déclaration enregistrée sous le n° {numéro} le {date} » ; raison « Ajoutez la date d'enregistrement de la déclaration : elle s'imprime avec son numéro. » ; libellé « Date d'enregistrement de la déclaration » ; aide « Obligatoire avec le numéro sur vos factures de services à la personne (code du travail, art. D7233-1, 2°). » ; avertissement « À imprimer sur vos factures de services à la personne, où elle est obligatoire (code du travail, art. D7233-1, 2°) ; sur d'autres travaux, elle laisserait croire à un crédit d'impôt. » **Fait.**
-- **Décision d'Hugo** (non appliquée) : par défaut « Seulement si une ligne contient… » avec des mots de services à la personne, plutôt que « Ne pas l'imprimer ».
+- **Décision d'Hugo** (appliquée le 5 nov. 2026, D-41, lot 4) : par défaut « Seulement si une ligne contient… » plutôt que « Ne pas l'imprimer », avec une liste de mots **vide** : rien ne s'imprime tant que l'artisan n'a pas mis ses mots, et jamais sur un travail exclu (`docs/metiers/multiservice.md` l. 82).
 
 ### 3. « Qualiopi certifie les organismes de formation »
 Qualiopi est le nom de la certification, pas un certificateur.
