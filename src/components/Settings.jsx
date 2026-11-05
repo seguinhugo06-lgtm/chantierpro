@@ -14,6 +14,7 @@ import Facture2026Tab from './settings/Facture2026Tab';
 import RelanceConfigTab from './settings/RelanceConfigTab';
 import RamonageTab, { Interrupteur } from './settings/RamonageTab';
 import EntretienTab from './settings/EntretienTab';
+import DepannageTab from './settings/DepannageTab';
 import PaymentConfigTab from './settings/PaymentConfigTab';
 import EntrepriseSettingsPage from './settings/EntrepriseSettingsPage';
 import TeamManagement from './settings/TeamManagement';
@@ -83,6 +84,8 @@ const GROUPES = [
     { cle: 'ramonage', libelle: 'Ramonage', icone: Flame },
     // Attestations d'entretien chaudière, PAC, poêle (D-33)
     { cle: 'entretien', libelle: 'Entretien', icone: Wrench },
+    // Dépannage express (lot 3) : grille tarifaire affichable, devis en un écran
+    { cle: 'depannage', libelle: 'Dépannage', icone: Wrench },
   ]},
   { id: 'finance', libelle: 'Finance', rubriques: [
     { cle: 'comptabilite', libelle: 'Comptabilité', icone: Calculator },
@@ -1075,6 +1078,10 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
       )}
       {tab === 'ramonage' && (
         <RamonageTab entreprise={entreprise} setEntreprise={updateEntreprise} />
+      )}
+
+      {tab === 'depannage' && (
+        <DepannageTab entreprise={entreprise} setEntreprise={updateEntreprise} />
       )}
 
       {tab === 'postchantier' && (

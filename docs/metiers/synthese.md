@@ -150,7 +150,7 @@ Avis complet : `avis-juriste-2026-11-03.md`. Comme la recherche, cette première
 - **Extension** : toujours 20 % (addition de construction, BOI-TVA-LIQ-30-20-90-30 § 380) ; la règle des 10 % de surface s'applique en plus aux travaux sur l'existant. `docs/metier-btp.md` § 4 est aligné.
 - **Documents** : le compte rendu de l'électricien ne s'appelle jamais « attestation de conformité » et n'imite pas le Consuel ; la fiche fluides se remplit sur le CERFA officiel, sans l'imiter.
 - **Services à la personne** : imprimer « organisme déclaré n° … », jamais « ouvre droit au crédit d'impôt » ; l'attestation fiscale ne compte que les paiements admis (pas les espèces).
-- **Serrurier** : l'alerte « abus de faiblesse » est un profilage : avis RGPD avant tout code.
+- **Serrurier** : pas d'alerte « abus de faiblesse » (décision d'Hugo du 5 nov. 2026, D-40) ; ce serait un profilage des clients.
 
 ### Vérifications au texte avant tout code (ordre du juriste)
 1. Borne : relu le 3 nov. 2026 (278-0 bis N, sans condition d'ancienneté, qualification de l'installateur) ; reste le taux de la part fourniture au BOFiP.

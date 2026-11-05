@@ -57,6 +57,10 @@ export const REGLAGES_SANS_COLONNE = {
   ramonageRappelJours: 30,
   ramonageEnvoiAuto: false,
   ramonageTarifs: {},
+  // Dépannage express (lot 3, src/lib/depannage.js) : bouton « Dépannage express » de la page Devis et des fiches
+  // clients ; grille tarifaire HT (taux horaire, décompte du temps, déplacement, majorations, forfaits) imprimable TTC
+  depannageActif: false,
+  depannageGrille: {},
   // Conseils (R. 1331-77) imprimés sur l'attestation par défaut ; décochables à chaque attestation (retour nov. 2026)
   ramonageConseils: true,
   // « Mes qualifications » (lot 1, src/lib/qualifications.js) : la liste qui remplace le champ RGE unique. null tant

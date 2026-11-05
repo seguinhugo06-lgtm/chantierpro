@@ -333,7 +333,7 @@ module.exports = [
       verifier(cases.demande && /marie\.dupont@email\.fr/.test(cases.exemplaire), `cases proposées au particulier : demande expresse, exemplaire par e-mail (${cases.exemplaire.slice(0, 70)})`);
       await page.evaluate(() => [...document.querySelectorAll('[role="dialog"] input[type=checkbox], .fixed input[type=checkbox]')].forEach((c) => c.click()));
       await attendre(300);
-      await cliquer(page, 'Passer a la signature');
+      await cliquer(page, 'Passer à la signature');
       await attendre(600);
       const canevas = await page.$('canvas');
       const boite = canevas && await canevas.boundingBox();
@@ -375,7 +375,7 @@ module.exports = [
         accepte?.click();
       });
       await attendre(300);
-      await cliquer(page, 'Passer a la signature');
+      await cliquer(page, 'Passer à la signature');
       await attendre(600);
       const canevas = await page.$('canvas');
       const boite = canevas && await canevas.boundingBox();

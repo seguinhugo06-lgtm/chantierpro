@@ -93,7 +93,6 @@ Propositions :
 | Utile | **Facture « pour l'assureur »** : bloc « constat » (date et heure, adresse, traces d'effraction oui/non, photos jointes, fermeture provisoire), à imprimer ou envoyer plus tard | M | Faible ; aucune affirmation à la place de l'assureur |
 | Utile | Champ « produit certifié » par ligne (marque, modèle, n° de certificat CNPP) imprimé tel quel ; aucun texte « A2P » sans numéro | S | Faible ; évite la pratique trompeuse |
 | Utile | Case « pièces remplacées : conservées par le client / laissées à l'artisan » sur la facture | S | Faible |
-| Plus tard | Alerte douce si un client « particulier » a plus de X interventions en peu de temps ou un montant inhabituel (prévention de l'abus de faiblesse) | M | Moyen (ton). **Avis RGPD requis** : c'est un profilage des clients (minimisation, aucune déduction de vulnérabilité stockée) |
 | Plus tard | Modèle « portail / garde-corps » avec décennale et acompte, séparé du dépannage | S | Voir commun.md |
 
 ## Sources
@@ -119,5 +118,4 @@ Propositions :
 
 Relue par juriste-btp le 03/11/2026, sans texte officiel ouvert (avis : `avis-juriste-2026-11-03.md`). Corrections appliquées. Restent à vérifier au texte :
 - C. conso. L121-4 : article exact pour « se dire agréé par un organisme public » ;
-- alerte abus de faiblesse : avis RGPD avant tout code ;
 - TVA d'une ouverture de porte seule ; décharge pour les pièces remplacées (arrêté de 2017, art. 4 III) ; seuil de 25 €.
