@@ -77,8 +77,8 @@ module.exports = [
       const jeu = jeuElectricite();
       const RENO = 'nature de travaux de rénovation énergétique';
       const DIX = 'supérieure à 10 %.';
-      // La mention de la décision 3, telle qu'elle est écrite dans le HTML (apostrophes échappées)
-      const MENTION = 'TVA à 5,5 % : pose d&#39;une infrastructure de recharge dans un local à usage d&#39;habitation, destinée aux résidents (CGI art. 278-0 bis, N)';
+      // La mention de la décision 3, texte exact de l'avis de juriste-btp du 5 nov. 2026 (point 4)
+      const MENTION = 'TVA à 5,5 % : pose d’une infrastructure de recharge pour véhicules électriques dans un local à usage d’habitation, destinée aux résidents (CGI, art. 278-0 bis, N).';
       const lignes = (marque) => [
         { id: 'l1', description: 'Pose d’une borne de recharge 7 kW (type 2)', quantite: 1, unite: 'u', prixUnitaire: 600, montant: 600, tva: 5.5, ...(marque ? { regimeTva: 'borne_278_0_bis_N' } : {}) },
         { id: 'l2', description: 'Remplacement du tableau électrique', quantite: 1, unite: 'u', prixUnitaire: 900, montant: 900, tva: 10 },
@@ -197,8 +197,16 @@ module.exports = [
       const idFacture = factures[0] && (Array.isArray(factures[0].corps) ? factures[0].corps[0] : factures[0].corps).id;
       verifier(factures.length === 1 && lien?.corps.facture_id === idFacture && lien.corps.numero === undefined, 'la facture part en base, puis le lien du compte rendu (sans numéro)');
       const messages = await page.evaluate(() => window.__messages || []);
-      verifier(messages.some((m) => m.includes('Dépannage chez un particulier : un devis détaillé devait lui être remis avant l’intervention')
-        && m.includes('Pour le prochain, faites-le depuis « Devis ».')), 'dépannage chez un particulier : l’avertissement du devis est montré, la facture est créée quand même');
+      verifier(messages.some((m) => m.includes('Dépannage chez un particulier : un devis détaillé devait lui être remis avant l’intervention (arrêté du 24 janvier 2017, article 4).')
+        && m.includes('aucun paiement ni aucune contrepartie ne peut être reçu avant sept jours')
+        && m.includes('Pour le prochain dépannage, faites d’abord le devis depuis « Devis ».')), 'dépannage chez un particulier : l’avertissement du devis (texte de l’avis du 5 nov.) est montré, la facture est créée quand même');
+      // 10 s, assez longtemps pour être lu : la minuterie de « Facture créée » (4,5 s) ne l'efface plus (AppContext)
+      const avertissementAffiche = () => page.evaluate(() => [...document.querySelectorAll('[role="status"][aria-live="polite"]')]
+        .map((e) => e.innerText).join(' | ').includes('Dépannage chez un particulier'));
+      await attendre(4500);
+      verifier(await avertissementAffiche(), 'l’avertissement est encore affiché 7 s après la création de la facture (message de 10 s)');
+      await attendre(5500);
+      verifier(!(await avertissementAffiche()), 'puis il disparaît : il ne reste pas à l’écran');
 
       // 5. Annulation de l'ancien, motivée, envoyée en base
       await page.evaluate(() => localStorage.setItem('cp_current_page', 'chantiers'));

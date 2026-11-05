@@ -54,9 +54,12 @@ export function AppProvider({ children, initialValues = {} }) {
   const showToast = useCallback((message, type = 'info', duration) => {
     const defaultDuration = type === 'error' ? 6000 : 4500;
     const d = duration ?? defaultDuration;
-    setToast({ message, type, id: Date.now() });
+    const notification = { message, type, id: Date.now() };
+    setToast(notification);
     if (d > 0) {
-      setTimeout(() => setToast(null), d);
+      // La minuterie n'efface que SA notification : la minuterie plus ancienne d'une notification précédente (« Facture
+      // créée », 4,5 s) coupait au bout de quelques secondes le message de 10 s affiché juste après
+      setTimeout(() => setToast((courante) => (courante === notification ? null : courante)), d);
     }
   }, []);
 
