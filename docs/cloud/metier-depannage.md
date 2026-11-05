@@ -1,6 +1,8 @@
 # Session cloud « metier-depannage » — dépannage express (lot 3)
 
 > 4 nov. 2026. Branches `cloud/metier-depannage` et `claude/metier-depannage-fd3cwg` (même contenu), parties de `main` @ `73b1e04`. Rien n'est livré sur `main`, aucune migration, aucun accès à la production.
+>
+> Mise à jour du 5 nov. 2026 (lot 4) : Hugo a tranché les décisions de cette session (D-40) et elles sont appliquées sur `corr4-metier-depannage` (dernière section). Les passages « Décisions pour Hugo » et « Décisions d'Hugo (recopiées, non appliquées) » ci-dessous sont donc tranchés, et la date de remise d'un devis n'est plus posée à la signature mais à la remise.
 
 ## Ce qui est fait
 
@@ -208,3 +210,97 @@ Session cloud de correction (consigne metier-depannage-v3). Branche mise à jour
 8. `verifier --complet` vert sur `29c5a58`, le dernier commit de code.
 9. À relire au texte en local : L221-8 et l'annexe 2.
 10. Sept décisions d'Hugo recopiées ci-dessus.
+
+## Décisions d'Hugo du 5 nov. (lot 4)
+
+> 5 nov. 2026, session de correction `corr4-metier-depannage`, partie de `cloud/metier-depannage` @ `5a01a5b9` (base `main` @ `4da73220` : `main` n'est pas fusionnée, elle a 69 commits d'avance). Aucun SQL, aucune migration, aucune fonction Edge, rien de poussé. D-40 n'est pas consignée dans `docs/decisions.md` : ce fichier a divergé de `main`, la session locale s'en charge.
+
+### Contrôle des corrections v3
+
+| Point de la consigne v3 | État | Preuve |
+|---|---|---|
+| 1. En-tête sous l'encoche | fait | `DevisExpress.jsx:114` : `min-h-14` et `minHeight: calc(3.5rem + env(safe-area-inset-top))`, le motif de `SaisieRamonage.jsx:211-212`. Constaté par une sonde (point 5) : avec une encoche simulée de 47 px, en-tête de 103 px, zone utile de 56 px, bouton Fermer entre 53 et 97 px, à 375 et 768 px. |
+| 2. Chemin du dépôt et guillemets | fait | `depannage.js:36-49` : sources « Arrêté du 24 janvier 2017, articles 2 et 3 / article 4 / article 5 » ; le chemin n'est plus qu'en commentaire (l. 31-35). `DepannageTab.jsx:145-152` : « Ce que demande l’arrêté du 24 janvier 2017 : », liste sans guillemets. Test « les sources affichées ne nomment aucun fichier du dépôt » ; le parcours lit l'écran (ni `docs/`, ni guillemets). |
+| 3. Textes relus, avis versé | fait, aligné sur l'avis | Avis versé : `docs/metiers/avis-juriste-2026-11-04-depannage.md`. `AVERTISSEMENT_URGENCE` (`depannage.js:335`, « pour répondre à l’urgence »), question et modèle de l'annexe 2 (`depannage.js:245`, `:260-270`), phrase « Affichez la grille… » (`DepannageTab.jsx:152`). Ajouté ici : un test compare mot pour mot l'avertissement et cette phrase à l'avis. La relecture au texte de Légifrance reste à la session locale : cette session n'y a pas accès. |
+| 4. Signature d'un brouillon jamais remis | fait autrement | Solution d'attente de la v3 insuffisante : rien n'était enregistré avant la signature et `date_envoi` était posée à la signature (`handleSignatureSave`). Corrigé, voir la décision 2. |
+| 5. Constat d'affichage | fait en v3 sans preuve versionnée (`audit-ui/` est ignoré) : refait | Sonde jetable `audit-ui/sonde-depannage-v4.cjs`, module allumé, grille saisie (taux, déplacement, zone, deux majorations, un forfait), express avec urgence et une pièce, à 375 et 768 px : débordement horizontal 0, aucun élément coupé, aucune cible sous 44 px (cases comptées par leur libellé), en-tête avec encoche conforme (point 1), aucune erreur JavaScript. |
+| 6. « Client créé mais non choisi » | fait | `DevisExpress.jsx:249` et `:252` : « Client non enregistré. Réessayez. » ; `DevisComposer.jsx` non touché (tâche à part). |
+| 7. TTC figé dans la désignation | fait | `depannage.js:169`, `:174` : « Frais de déplacement », « Main-d’œuvre, au taux horaire », sans montant ; tests « aucun montant dans les libellés » et « même libellé à 10 % et à 20 % ». |
+| 8. Lieu d'exécution vide | fait | `DevisExpress.jsx:31-35` (pré-rempli avec l'adresse du client), `:66` (refus sans lieu ni adresse), `:83` (imprimé en note), `:105-109` (changer de client reprend son adresse). Le parcours « (base) » contrôle le pré-remplissage et l'enregistrement. |
+| 9. Réponse sur les pièces perdue | fait | `DevisExpress.jsx:41` (aucune réponse par défaut), `:68` (réponse exigée pour un particulier avec des pièces) ; `DevisPage.jsx:680-685` (la duplication retire `conservee` des lignes et des lots). Le parcours « (base) » contrôle le refus sans réponse et `conservee: false` enregistré. |
+| 10. Parcours en mode réel simulé | fait | `scripts/parcours/depannage.cjs`, second parcours `reel: true` : grille dans `settings_json.reglages`, devis envoyé en base avec ses lignes et leurs catégories. |
+| 11. Forfait à moitié saisi effacé | fait | `DepannageTab.jsx:36-53` (`dernierEnvoi` : les champs ne se relisent que sur un changement venu d'ailleurs) ; le parcours « (base) » le contrôle. |
+| Section « Conflits » de la consigne : libellés « HT » sans égard pour la franchise (D-31) | pas fait en v3 (renvoyé à la session locale), aucune décision nécessaire : fait ici | `DepannageTab.jsx:58`, `:103`, `:109`, `:130` et `DevisExpress.jsx:48`, `:164`, `:188`, `:199` : plus de « HT » en franchise. Test `libellesFranchiseDepannage.test.jsx` (4 tests), contre-essai sur l'ancien code : 2 échecs. |
+| Hors périmètre, sur le chemin du dépannage (consigne v3 : tâches à part) | non traités | `handleSignatureSave` affiche « Devis signé et accepté » sans tester le retour de `onUpdate` ; « Passer a la signature » (`SignaturePad.jsx`) n'a pas d'accent. |
+
+### Décisions appliquées
+
+#### 1. « Devis gratuit » seulement sur les dépannages
+
+- **Comportement vérifié, déjà conforme** : `mentionsDepannage` (`depannage.js:254`) n'imprime la mention que pour `estDevisDepannage(doc)` (`:222` : devis express, case « urgence demandée », ou case facultative « Dépannage, réparation ou entretien » de l'éditeur) et un client particulier. Il y a trois générateurs, pas deux, et tous appellent le même bloc : `devisHtmlBuilder.js:341`, `pdfHtmlBuilder.js:272`, générateur inline de `DevisPage.jsx:1569`. Aucun devis payant n'existe dans le code.
+- **Rien à coder** ; seul le commentaire de `depannage.js` (« devis payant : décision d'Hugo ») est remplacé par la décision.
+- **Tests** (`depannage.test.js`, « “Devis gratuit” seulement sur un dépannage ») : devis express, case « urgence » et case de l'éditeur impriment « Devis gratuit. » dans `devisHtmlBuilder` et `pdfHtmlBuilder`. Contre-essais : un devis ordinaire de particulier n'imprime rien (le test vérifie que le formulaire de rétractation y est, donc que c'est bien un devis de particulier), ni un dépannage pour un client professionnel. Un test de câblage vérifie que les trois fichiers appellent `${mentionsDepannageHtml({ doc, client })}`.
+- **Parcours** (générateur inline, qu'aucun test unitaire ne peut rendre) : l'aperçu du devis de dépannage porte « Devis gratuit. » ; l'aperçu de `DEV-2026-00001` (Marie Dupont, un particulier, devis ordinaire de la démo) n'en porte pas et porte le formulaire de rétractation.
+- **Contre-essai fait** : en retirant `estDevisDepannage` de `mentionsDepannage` (la mention sur tout devis de particulier, l'option écartée), 4 tests échouent ; code remis, tests verts.
+
+#### 2. Pas de signature sur place d'un devis jamais remis (C. conso. L221-8)
+
+- **Constat sur la v3** : la fenêtre de signature s'ouvrait après deux confirmations sans que rien soit enregistré, et `handleSignatureSave` posait `date_envoi` à la signature : la date de remise était celle de la signature. Les deux points de la fiche étaient donc faux.
+- **Corrigé** (`src/lib/remiseDevis.js`, nouveau ; `DevisPage.jsx:1911-1934` (la porte et le parcours de remise), `:2973` et `:2985` (les deux boutons « Faire signer »), `:794-795` (la signature sans date de remise)) :
+  - « Faire signer » sur un brouillon de dépannage : fenêtre « Remettez d’abord le devis » (texte de la v3, inchangé) → le PDF s'ouvre (imprimé ou partagé) → fenêtre « Le client a-t-il reçu le devis ? » → bouton « Devis remis au client » → la remise est **enregistrée** (statut « envoyé » et jour de la remise, on attend l'écriture) → la signature s'ouvre. Si la base refuse, la signature reste fermée et l'artisan est prévenu.
+  - La signature n'a plus qu'une porte, `ouvrirSignature` : elle refuse un devis qui n'est ni « envoyé » ni « vu ». Le « Faire signer » d'un devis envoyé (par e-mail, WhatsApp, SMS) passe par la même porte, sans changement pour lui.
+  - Seconde voie : « Envoyer » par e-mail enregistre la même chose (statut « envoyé », jour d'envoi, comportement existant) ; « Faire signer » ouvre ensuite la signature sans nouvelle fenêtre.
+  - `handleSignatureSave` ne pose plus aucune date de remise : la date reste celle de la remise.
+  - Les deux fenêtres passent en variante « info » (elles étaient rouges, la variante « danger » étant celle par défaut).
+- **Tests** (`remiseDevis.test.js`, 20 tests) : sans remise, rien n'est enregistré et la signature ne s'ouvre pas (deux contre-essais : on renonce à la première fenêtre ; le PDF est ouvert mais la remise n'est pas confirmée) ; remise confirmée, elle est enregistrée avant que la signature s'ouvre ; la base refuse, la signature reste fermée et l'artisan est prévenu ; une écriture mise en file hors ligne compte ; un devis déjà remis s'ouvre sans nouvelle remise ; le jour de la remise est posé sans donnée de signature, et la première date est gardée ; la signature n'a qu'une porte (un seul `setShowSignaturePad(true)`, derrière `devisRemis`) et `handleSignatureSave` ne contient plus `date_envoi`.
+- **Parcours** (`depannage.cjs`, 1er parcours, étape 5, puis étape 8) : on renonce à la première fenêtre → la signature ne s'ouvre pas, le devis reste brouillon sans date de remise ; le PDF est ouvert mais la remise n'est pas confirmée → idem ; remise confirmée → le devis stocké est « envoyé » avec le jour de la remise **avant** que la signature soit dessinée, puis la signature s'ouvre ; la signature a lieu 2 jours plus tard (horloge de la page avancée) et `date_envoi` reste celle de la remise ; voie e-mail : un second devis envoyé (envoi simulé) est « envoyé », puis « Faire signer » ouvre la signature sans fenêtre de remise.
+- **Contre-essais faits** : (a) parcours modifié sur l'**ancien** code : échec à « l’artisan confirme “Devis remis au client” » (le bouton n'existe pas) ; avec l'ancien code et seulement ce libellé changé, échec à « la remise est enregistrée avant la signature » (le devis est encore brouillon, sans date de remise, quand la signature s'ouvre) ; (b) tests : en laissant la signature s'ouvrir sans confirmation de la remise, 2 échecs ; en l'ouvrant avant l'enregistrement, 2 échecs ; avec l'ancien `DevisPage.jsx` (deux portes, date posée à la signature), 3 échecs.
+
+#### 3. Pas d'alerte « abus de faiblesse »
+
+- Rien à coder. Recherche dans `src/`, `scripts/`, `supabase/`, `docs/` : aucune trace dans l'application ni dans le site. Restaient trois annonces dans les docs, retirées ou remplacées par la décision : la ligne « Plus tard » de `docs/metiers/serrurier.md` (alerte douce), sa liste « Restent à vérifier au texte » (« avis RGPD avant tout code »), et la ligne de `docs/metiers/synthese.md`, qui dit maintenant « pas d’alerte (D-40) ».
+- Laissés tels quels : les avis du juriste du 3 nov. (`avis-juriste-2026-11-03*.md`, archives) et la description du risque légal dans `serrurier.md` (l. 65, ce n'est pas une alerte annoncée).
+
+#### 4. Pas de majoration d'urgence
+
+- **Vérifié, déjà conforme** : la grille n'a que `majorationNuit` et `majorationDimanche` (`depannage.js:65`, `:67`) ; le devis express n'accepte que `'nuit'` et `'dimanche'` (`:175`, toute autre valeur est refusée) ; l'écran express ne propose que les majorations de la grille (`DevisExpress.jsx:178`) ; Paramètres › Dépannage dit « Une urgence demandée par le client ne majore jamais le prix » (`DepannageTab.jsx:120`).
+- **Gardé, et verrouillé par des tests** (`depannage.test.js`, « aucune majoration d’urgence ») : deux majorations seulement dans la grille, une majoration d'urgence saisie dans les réglages est ignorée, `majoration: 'urgence'` est refusée (contre-essai : la nuit et le dimanche passent), aucun écran ne contient de majoration d'urgence. Parcours : les options de majoration de l'écran express sont celles de la grille (« Aucune », « Nuit »), jamais l'urgence, et le total reste 122,10 € urgence cochée.
+
+### Textes nouveaux : À relire par le juriste
+
+Libellés écrits dans cette session, à relire au texte (L221-8 est cité de mémoire dans la 1re fenêtre, comme en v3 ; `docs/metier-btp.md` § 2, relu le 17 oct., le résume de la même façon).
+
+| Texte | Où |
+|---|---|
+| Bouton « Devis remis au client » (mot d'Hugo) | 2e fenêtre de la remise (`remiseDevis.js`) |
+| « Imprimé, ou envoyé avec son accord. Le devis sera enregistré comme remis aujourd’hui, puis le client pourra le signer. » | 2e fenêtre de la remise (la v3 disait « il peut maintenant le signer ») |
+| « La remise du devis n’a pas été enregistrée. Réessayez. » | message d'erreur si la base refuse la remise |
+| « Remettez d’abord le devis au client. » | message si « Faire signer » est demandé sur un devis non remis (porte de sécurité) |
+| « Vos prix, comme sur vos devis. La grille imprimée porte la mention « TVA non applicable, article 293 B du CGI ». » (et libellés sans « HT ») | Paramètres › Dépannage, en franchise de TVA |
+
+Inchangés depuis la v3 et toujours à relire : la 1re fenêtre (« Remettez d’abord le devis… article L221-8 », « Ouvrir le PDF »), le libellé exact de la question de l'annexe 2.
+
+### Ce qui n'a pas été fait
+
+- **Relecture au texte** de L221-8 et de l'annexe 2 (libellé exact de la question sur les pièces) : pas d'accès à Légifrance. À faire par la session locale.
+- **Voie e-mail** : l'accord du client à l'e-mail est rappelé dans la 1re fenêtre, mais pas recueilli au clic sur « Envoyer » (comportement existant, inchangé). À décider si le juriste veut un recueil explicite.
+- **La remise reste déclarative** : l'app ne prouve pas que le devis a été remis (parole de l'artisan, comme en v3).
+- **Hors périmètre** : voir le tableau (retour de `onUpdate` à la signature, accent de « Passer a la signature »), la réponse sur les pièces à la signature en ligne (migration 112), `docs/metier-btp.md` § 2 non touché (le test compare ses obligations) : la règle « remise enregistrée avant signature » n'y est pas décrite.
+- **Vérification complète** (`npm run verifier -- --complet`) et banc de migrations : non lancés (aucun SQL touché ; l'assemblage est vérifié par la session locale).
+
+### Commandes lancées et résultats
+
+Machine chargée par d'autres sessions (charge moyenne 18 à 20) : les durées sont gonflées, pas les résultats.
+
+- **Départ, état v3 (`5a01a5b9`)** : `npx vitest run src/lib/__tests__/depannage.test.js` : 36 verts. `npm run build` puis `npm run parcours -- depannage` : 2 parcours verts (28 et 8 vérifications).
+- **Contre-essais** (code remis ensuite, tests de nouveau verts) :
+  - parcours modifié, sur l'ancien code : échec à « l’artisan confirme “Devis remis au client” » ; avec l'ancien code et **seulement** ce libellé changé, échec à « la remise est enregistrée avant la signature (brouillon, remis le undefined, attendu 2026-11-05) » ;
+  - `remiseDevis.test.js` : sans confirmation de la remise, 2 échecs ; signature ouverte avant l'enregistrement, 2 échecs ; ancien `DevisPage.jsx`, 3 échecs ;
+  - « Devis gratuit » sur tout devis de particulier : 4 échecs ;
+  - ancienne `DepannageTab.jsx` et ancien `DevisExpress.jsx` (libellés « HT ») : 2 échecs.
+- **Sonde** `node audit-ui/sonde-depannage-v4.cjs` (jetable, non versionnée) : 375 et 768 px, débordement 0, aucun élément coupé, aucune cible sous 44 px, en-tête avec encoche simulée de 47 px à 103 px (zone utile 56 px), aucune erreur JavaScript. Captures des deux fenêtres de la remise à 375 px : `audit-ui/depannage-4-remise-1.png` et `depannage-5-remise-2.png` (elles ne sont plus rouges, le bouton dit « Devis remis au client »).
+- **`npm run verifier -- --rapide`** (arbre modifié) : tests 1371/1371, lint 0 erreur (241 avertissements, déjà présents), smoke vert.
+- **`npm run verifier` (standard) sur `9b97cc9`**, arbre propre, dernier commit de code : tests 1372/1372, lint 0 erreur (241 avertissements), smoke, build : « Tout est vert ». Les tests du lot passent aussi sous `TZ=America/Martinique` et `TZ=Pacific/Noumea` (78/78), et le script `test:fuseaux` du standard rejoue toute la suite sous ces fuseaux.
+- **`npm run parcours -- depannage` sur le code final (`9b97cc9`)** : 2 parcours verts (46 et 10 vérifications), après `npm run build`.
+- **`npm run parcours -- facturation`** (l'autre parcours qui fait signer un devis sur place ; lancé avant les commits, sur le même code d'application : il n'a changé ensuite que des commentaires et des tests) : 10 parcours verts.
+- **Non lancés** : `npm run verifier -- --complet`, `npm run banc:migrations` (aucun SQL touché). Le commit qui suit `9b97cc9` ne touche que ce rapport.
