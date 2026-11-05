@@ -225,6 +225,29 @@ describe('entretien — D-38 : chaudières en réseau dans un même local, une a
   });
 });
 
+// D-38 (Hugo, 5 nov. 2026), décision 6 : une PAC sans attestation de capacité saisie, c'est une information, jamais un blocage
+describe('entretien — D-38 : l’attestation de capacité des fluides est une information, jamais un blocage', () => {
+  const pacComplete = (o = {}) => {
+    const b = nouveauBrouillon({ client, categorieValeur: 'pac', maintenant: new Date('2026-11-04T10:00:00') });
+    return {
+      ...b, local: 'Garage', intervenant_nom: 'P', appareils_mesure: 'Manomètres X',
+      appareils: [{ ...b.appareils[0], type: 'air_eau', marque: 'M', modele: 'X', fluide: 'R32', points: { 'generateur.tensions': true } }],
+      mesures: { resultats: 'Tensions 230 V' }, etancheite: 'controle', defauts: 'Aucun', actions: 'Aucune', conseils: { choix: ['fluide'], texte: '' }, ...o,
+    };
+  };
+  it('une PAC au R32 dont le contrôle d’étanchéité est déclaré s’enregistre, sans attestation de capacité (aucune donnée à fournir)', () => {
+    expect(manquants(pacComplete())).toEqual([]);
+    expect(manquants(pacComplete({ etancheite: 'reglement_ue' }))).toEqual([]);
+    expect(manquants(pacComplete()).some((x) => /capacit/i.test(`${x.champ} ${x.message}`))).toBe(false);
+  });
+  it('contre-essai : ce qui bloque reste l’annexe 3 (étanchéité, fluide), pas l’attestation de capacité', () => {
+    expect(manquants(pacComplete({ etancheite: '' })).map((x) => x.champ)).toEqual(['etancheite']);
+    const sansFluide = pacComplete();
+    sansFluide.appareils = [{ ...sansFluide.appareils[0], fluide: '' }];
+    expect(manquants(sansFluide).map((x) => x.champ)).toEqual(['appareil0-fluide']);
+  });
+});
+
 // D-38 (Hugo, 5 nov. 2026), décision 5 : la case « Logement achevé depuis plus de deux ans » n'est jamais cochée d'avance
 describe('entretien — D-38 : « logement achevé depuis plus de deux ans » est un choix de l’artisan, jamais coché d’avance', () => {
   const maintenant = new Date('2026-11-04T10:00:00');
