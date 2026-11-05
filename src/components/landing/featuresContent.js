@@ -25,6 +25,7 @@
 
 import { PLANS, PLAN_ORDER } from '../../stores/subscriptionStore';
 import { DEFAULT_DEVIS_STEPS, DEFAULT_FACTURE_STEPS, bornes, delais } from './site/delaisRelance';
+import { NB_METIERS, NB_METIERS_AVEC_PRIX, PHRASE_PRIX } from './comptesMetiers';
 
 const ORDI = { largeur: 2880, hauteur: 1800 };
 const TEL = { largeur: 1170, hauteur: 2532, telephone: true };
@@ -134,20 +135,20 @@ export const FEATURES_CONTENT = {
     label: 'Devis et factures',
     badge: 'Cœur de métier',
     title: 'Le devis se monte par lots, la facture suit sans ressaisie',
-    // Bibliothèque des 17 métiers (trade-library.js), lots et sous-totaux (DevisComposer.jsx:429, 789), métré (:1271),
+    // Bibliothèque des 20 métiers (trade-library.js), lots et sous-totaux (DevisComposer.jsx:429, 789), métré (:1271),
     // TVA par ligne (:1189-1190), aperçu « Ce que votre client recevra » (:1509), lien de signature dans l'e-mail
     // (emailSender.js:106-114), factures d'acompte et de solde tirées du devis (DevisPage.jsx:1396, 1515-1518)
     tagline:
-      "Un éditeur plein écran\u202f: les lots types des 17 métiers, des lots avec sous-totaux, le métré, la TVA par ligne. L’aperçu montre le document que recevra votre client\u202f; il signe en ligne, et le devis devient une facture sans rien ressaisir.",
+      "Un éditeur plein écran\u202f: les lots types des 20 métiers, des lots avec sous-totaux, le métré, la TVA par ligne. L’aperçu montre le document que recevra votre client\u202f; il signe en ligne, et le devis devient une facture sans rien ressaisir.",
     capture: CAPTURES.devis,
     // En tête de page, l'éditeur recadré : sur l'écran entier, il n'occupe que le tiers central (relecture DA-6)
     enTeteRecadree: true,
     metaDescription:
       "Devis et factures pour artisans du bâtiment\u202f: lots avec sous-totaux, métré, TVA par ligne, aperçu du document avant envoi, signature en ligne, factures d’acompte et de solde tirées du devis.",
     steps: [
-      // Bibliothèque : DevisComposer.jsx:1322-1460 et « Parcourir les 17 métiers chiffrés » (:1649) ; modèles perso
+      // Bibliothèque : DevisComposer.jsx:1322-1460 et « Parcourir les 20 métiers » (:1649) ; modèles perso
       // « Vos modèles » (:1378) ; favoris et récents (:279-293)
-      { title: "Partez d’un lot ou d’un modèle", text: "Les lots types des 17 métiers de la bibliothèque, vos propres modèles, ou une page blanche. Vos articles favoris et récents sont proposés en premier." },
+      { title: "Partez d’un lot ou d’un modèle", text: "Les lots types des 20 métiers de la bibliothèque, vos propres modèles, ou une page blanche. Vos articles favoris et récents sont proposés en premier." },
       // Unités (:35, 12 unités), lots (:429, 789), métré (:1271), TVA pour tout le devis (:824-826) ou par ligne (:1189-1190)
       { title: 'Composez vos lignes', text: "Recherche dans votre catalogue, lots repliables avec sous-totaux, métré (longueur × largeur × hauteur, chutes en\u202f%), 12 unités, TVA par ligne ou pour tout le devis (20, 10, 5,5 ou 0\u202f%)." },
       // Aperçu avant création (:1509) ; mentions imprimées : rétractation (devisHtmlBuilder.js:425), décennale (:449),
@@ -181,9 +182,9 @@ export const FEATURES_CONTENT = {
       },
     ],
     faq: [
-      // 17 métiers (trade-library.js) ; « 1 000+ » compté dans FaitsSection.jsx:5-12 ; modèles (DevisComposer.jsx:794)
+      // 20 métiers (trade-library.js) ; « 1 000+ » compté dans FaitsSection.jsx:5-12 ; modèles (DevisComposer.jsx:794)
       // Même tournure que la FAQ de l'accueil (faq.js) : le « 1 000+ » additionne la bibliothèque et le Référentiel
-      { q: "Est-ce que je pars d’une page blanche\u202f?", a: "Non. La bibliothèque des 17 métiers propose des lots types déjà chiffrés, à insérer en un geste dans un devis, et le Référentiel BTP ajoute à votre catalogue les articles chiffrés de votre métier\u202f: en tout, plus de 1\u202f000 prestations et ouvrages chiffrés. Vous pouvez aussi enregistrer vos propres modèles." },
+      { q: "Est-ce que je pars d’une page blanche\u202f?", a: `Non. La bibliothèque propose des lots types pour ${NB_METIERS} métiers, à insérer en un geste dans un devis\u202f: ${PHRASE_PRIX}. Le Référentiel BTP ajoute à votre catalogue les articles chiffrés de votre métier\u202f: en tout, plus de 1\u202f000 prestations et ouvrages chiffrés. Vous pouvez aussi enregistrer vos propres modèles.` },
       // Mentions (devisHtmlBuilder.js:425, 449, 454, 714) ; envoi bloqué si le profil est incomplet (DevisComposer.jsx:707,
       // validation à l'envoi DevisPage.jsx:2161)
       { q: 'Les mentions légales sont-elles ajoutées\u202f?', a: "Elles s’ajoutent à partir de votre profil et selon le type de client (le droit de rétractation pour un particulier, par exemple)\u202f: assurance décennale, droit de rétractation, pénalités de retard et conditions de règlement. Tant que votre profil est incomplet, l’envoi est bloqué et l’application vous dit ce qui manque." },
@@ -342,17 +343,17 @@ export const FEATURES_CONTENT = {
   },
 
   // Catalogue : src/components/Catalogue.jsx ; référentiel : src/lib/data/index.js (523 articles, 15 métiers, compté le
-  // 20 oct. 2026) ; bibliothèque des métiers : src/lib/templates/trade-library.js (17 métiers, 97 lots types)
+  // 20 oct. 2026) ; bibliothèque des métiers : src/lib/templates/trade-library.js (20 métiers, 101 lots types)
   catalogue: {
     slug: 'catalogue',
     label: 'Catalogue et bibliothèque',
     badge: 'Déjà chiffré',
     title: 'Bibliothèque et catalogue\u202f: plus de 1\u202f000 prestations et ouvrages déjà chiffrés', // compté dans FaitsSection.jsx:5-12
     tagline:
-      "La bibliothèque des 17 métiers propose des lots types chiffrés à insérer dans un devis, et le Référentiel BTP ajoute à votre catalogue plus de 500 articles chiffrés, métier par métier. Vous ajustez les prix\u202f: ce sont les vôtres.",
+      `La bibliothèque propose des lots types pour ${NB_METIERS} métiers à insérer dans un devis\u202f: ${PHRASE_PRIX}. Le Référentiel BTP ajoute à votre catalogue plus de 500 articles chiffrés, métier par métier. Vous ajustez les prix\u202f: ce sont les vôtres.`,
     capture: CAPTURES.catalogue,
     metaDescription:
-      "Bibliothèque et catalogue pour artisans du bâtiment\u202f: plus de 1\u202f000 prestations et ouvrages chiffrés en tout, lots types de 17 métiers, import par métier, prix d’achat et marge, import de vos tarifs fournisseurs en CSV ou Excel.",
+      `Bibliothèque et catalogue pour artisans du bâtiment\u202f: plus de 1\u202f000 prestations et ouvrages chiffrés en tout, lots types de ${NB_METIERS} métiers (${NB_METIERS_AVEC_PRIX} avec des prix indicatifs), import par métier, prix d’achat et marge, import de vos tarifs fournisseurs en CSV ou Excel.`,
     steps: [
       // « Importer le Référentiel BTP » (Catalogue.jsx:1364, 1407) ; 15 métiers (src/lib/data/index.js)
       { title: 'Importez votre métier', text: "Dans le catalogue, «\u202fImporter le Référentiel BTP\u202f»\u202f: choisissez vos métiers parmi 15 (plomberie, électricité, maçonnerie, peinture, menuiserie…), les articles arrivent chiffrés." },
@@ -365,7 +366,7 @@ export const FEATURES_CONTENT = {
       {
         name: 'Contenu inclus',
         items: [
-          'Les lots types de 17 métiers, avec des prix indicatifs', // trade-library.js
+          `Les lots types de ${NB_METIERS} métiers\u202f: ${PHRASE_PRIX}`, // trade-library.js ; comptes dans comptesMetiers.js
           'Le Référentiel BTP\u202f: plus de 500 articles chiffrés, en 15 métiers', // src/lib/data/index.js
           'Prix indicatifs et modifiables\u202f: vos tarifs restent les vôtres',
         ],
@@ -505,7 +506,7 @@ export const CARTES_FONCTIONNALITES = [
   },
   {
     categorie: 'devis', icone: 'catalogue', slug: 'catalogue', titre: 'Catalogue et bibliothèque', capture: CAPTURES.catalogue,
-    description: "Les lots types de 17 métiers et le Référentiel BTP, déjà chiffrés\u202f: vous composez vos devis sans partir d’une page blanche.",
+    description: `Les lots types de ${NB_METIERS} métiers (${NB_METIERS_AVEC_PRIX} avec des prix indicatifs) et le Référentiel BTP chiffré\u202f: vous composez vos devis sans partir d’une page blanche.`,
     points: ['Plus de 1\u202f000 prestations et ouvrages chiffrés, bibliothèque comprise', 'Import par métier', "Prix d’achat et marge", 'Import de vos tarifs (CSV ou Excel)'],
   },
   {

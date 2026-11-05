@@ -3,7 +3,7 @@ import { useToast, useConfirm } from '../context/AppContext';
 import {
   Download, FileText, RefreshCw, AlertCircle, AlertTriangle, Info, Calculator, Building2, ChevronLeft, Shield, Check,
   Home, Smartphone, Fuel, Landmark, BarChart3, CreditCard, Users, HardDrive, FolderOpen, Construction, Receipt, Mail,
-  GraduationCap, Flame, Package, LayoutTemplate, Scale,
+  GraduationCap, Flame, Package, LayoutTemplate, Scale, Briefcase,
 } from 'lucide-react';
 import { captureException } from '../lib/sentry';
 import AdminHelp from './admin-help/AdminHelp';
@@ -43,7 +43,9 @@ import AideMot from './ui/AideMot';
 import LigneListe, { GroupeListe } from './ui/LigneListe';
 import { EnTetePage } from './ui/EnTete';
 import { jourLocal, dateLue } from '../lib/dates';
-import { ORGANISMES_RGE, raisonRgeNonImprime } from '../lib/qualifications';
+import { echeancesQualifications } from '../lib/qualifications';
+import MesQualifications from './settings/MesQualifications';
+import MonMetierTab from './settings/MonMetierTab';
 import { estEntrepreneurIndividuel, estEirl, nomImprime } from '../lib/identiteEntreprise';
 import { estSociete } from '../lib/mentionsFacture';
 import { registreDe, libellesImmatriculation, mentionImmatriculation } from '../lib/immatriculation';
@@ -64,6 +66,8 @@ import { COULEUR_DOCUMENTS_DEFAUT } from '../lib/theme';
 const GROUPES = [
   { id: 'entreprise', libelle: 'Mon entreprise', rubriques: [
     { cle: 'identite', libelle: 'Identité', icone: Building2 },
+    // Lot 1 « métiers » : le choix de l'inscription, modifiable
+    { cle: 'metier', libelle: 'Mon métier', icone: Briefcase },
     { cle: 'legal', libelle: 'Légal', icone: Scale },
     { cle: 'assurances', libelle: 'Assurances', icone: Shield },
     { cle: 'banque', libelle: 'Banque', icone: Landmark },
@@ -142,8 +146,6 @@ const optionsAcompte = (valeur) => {
   return [...ACOMPTES, { valeur: n, libelle: `${String(n).replace('.', ',')} %` }].sort((a, b) => a.valeur - b.valeur);
 };
 const TYPES_RCS = [{ valeur: 'A', libelle: 'A : commerçant' }, { valeur: 'B', libelle: 'B : société commerciale' }, { valeur: 'C', libelle: 'C : GIE' }, { valeur: 'D', libelle: 'D : société civile' }];
-// Liste unique des organismes RGE (src/lib/qualifications.js) : « Qualiopi », certification des organismes de formation, en est retiré
-const OPTIONS_ORGANISMES_RGE = ORGANISMES_RGE.map((v) => ({ valeur: v, libelle: v }));
 
 const TITRE_CARTE = 'text-lg font-semibold text-encre';
 
@@ -243,7 +245,9 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
   const [brouillonPenalites, setBrouillonPenalites] = useState(null);
   const [penalitesRefusees, setPenalitesRefusees] = useState(false);
 
-  // Rubrique Équipe réservée à qui gère l'équipe
+  // Rubrique Équipe réservée à qui gère l'équipe. « Mon métier » reste ouvert à qui ouvre Paramètres et peut modifier la fiche
+  // de l'entreprise (propriétaire et administrateur), selon les droits existants : ce n'est pas poser la question de la
+  // bienvenue, réservée au propriétaire (D-41, 5 nov. 2026 ; src/lib/metiers.js, peutChoisirSonMetier)
   const groupesVisibles = GROUPES.filter((g) => g.id !== 'equipe' || canManageTeam);
 
   // Persist wizard step
@@ -423,8 +427,10 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
     };
     verifier('rc', entreprise.rcProValidite, 'RC Pro');
     verifier('decennale', entreprise.decennaleValidite, 'Décennale');
+    // « Mes qualifications » : même alerte, même délai (60 jours)
+    for (const q of echeancesQualifications(entreprise)) verifier(`qualif-${q.id}`, q.fin, q.nom);
     return alerts;
-  }, [entreprise.rcProValidite, entreprise.decennaleValidite]);
+  }, [entreprise]);
 
   const bandeauAssurances = vueMobile === 'rubrique' ? (tab === 'assurances' ? 'hidden' : 'hidden md:flex') : (tab === 'assurances' ? 'md:hidden' : '');
   const hasAssuranceAlerts = alertesAssurances.some(a => a.severity === 'critical' || a.severity === 'warning');
@@ -804,25 +810,9 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
               </ChampParam>
             </Bloc>
 
-          <Bloc titre="Qualifications professionnelles">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <ChampParam id="settings-field-rge" cle="rge" libelle="Numéro RGE" facultatif aide="Reconnu garant de l’environnement. Imprimé sur vos devis et factures en PDF ; il n’apparaît pas sur la page de signature en ligne ni sur l’exemplaire signé.">
-                <DebouncedInput id="settings-field-rge" placeholder="E-12345" value={entreprise.rge || ''} onChange={maj('rge')} />
-              </ChampParam>
-              <ChoixParam id="settings-field-rgeOrganisme" cle="rgeOrganisme" libelle="Organisme RGE" facultatif options={OPTIONS_ORGANISMES_RGE}
-                valeur={entreprise.rgeOrganisme || ''} onChange={maj('rgeOrganisme')} vide="Choisir l’organisme" />
-              <ChampParam id="settings-field-rgeValidite" cle="rgeValidite" libelle="Fin de validité" facultatif aide="Date indiquée sur votre certificat. Après cette date, le RGE n’est plus imprimé sur vos documents. En cas de suspension, videz le numéro.">
-                <input id="settings-field-rgeValidite" type="date" className={CLASSE_CHAMP} value={entreprise.rgeValidite || ''} onChange={e => updateEntreprise(p => ({ ...p, rgeValidite: e.target.value }), 'rgeValidite')} />
-              </ChampParam>
-              <ChampParam id="settings-field-rgeDomaine" cle="rgeDomaine" libelle="Intitulé de la qualification RGE" facultatif aide="Tel qu’il figure sur votre certificat (ex. : QualiPAC chauffage et eau chaude sanitaire). Exigé par l’Anah sur les devis et factures des travaux aidés.">
-                <DebouncedInput id="settings-field-rgeDomaine" placeholder="QualiPAC" value={entreprise.rgeDomaine || ''} onChange={maj('rgeDomaine')} />
-              </ChampParam>
-            </div>
-            {/* Le RGE saisi s'imprime en pied des devis et factures (les trois générateurs), sauf dans ces cas. Page de signature :
-                pas avant la migration 108 (get_devis_for_signature) ; l'aide du numéro le dit, à rétablir ensuite. */}
-            {raisonRgeNonImprime(entreprise) && (
-              <p className="mt-2 text-sm text-alerte-texte flex items-start gap-1"><AlertTriangle size={14} className="mt-0.5 shrink-0" aria-hidden="true" /> {raisonRgeNonImprime(entreprise)}</p>
-            )}
+          {/* « Mes qualifications » (lot 1) : la liste remplace le champ RGE unique (src/lib/qualifications.js) */}
+          <Bloc titre="Mes qualifications">
+            <MesQualifications entreprise={entreprise} updateEntreprise={updateEntreprise} />
           </Bloc>
         </div>
       )}
@@ -1071,6 +1061,10 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
           devis={devis}
           modeDiscret={modeDiscret}
         />
+      )}
+
+      {tab === 'metier' && (
+        <MonMetierTab entreprise={entreprise} updateEntreprise={updateEntreprise} />
       )}
 
       {tab === 'ramonage' && (

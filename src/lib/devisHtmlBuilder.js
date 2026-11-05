@@ -433,7 +433,7 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mod
   }) : ''}
 
   <!-- FOOTER -->
-  ${buildFooterHtml(e, rcsComplet, piedDePageHtml({ nature: natureDuDocument(doc), client }), isClientMode, jourDuDocument(doc))}
+  ${buildFooterHtml(e, rcsComplet, piedDePageHtml({ nature: natureDuDocument(doc), client }), isClientMode, jourDuDocument(doc), doc)}
 </body>
 </html>`);
 }
@@ -441,7 +441,7 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mod
 /**
  * Bloc footer réutilisable
  */
-function buildFooterHtml(e, rcsComplet, piedDePage = '', isClientMode = false, jour = undefined) {
+function buildFooterHtml(e, rcsComplet, piedDePage = '', isClientMode = false, jour = undefined, doc = null) {
   return `<div class="footer">
     <strong>${e.nom}</strong>
     ${e.formeJuridique ? ` · ${e.formeJuridique}` : ''}
@@ -455,7 +455,7 @@ function buildFooterHtml(e, rcsComplet, piedDePage = '', isClientMode = false, j
       ${e.decennaleAssureur && e.decennaleNumero ? `Assurance décennale: ${e.decennaleAssureur}${e.decennaleAssureurAdresse ? ` (${e.decennaleAssureurAdresse})` : ''} N°${e.decennaleNumero}${e.decennaleValidite ? ` (Valide jusqu'au ${dateLue(e.decennaleValidite).toLocaleDateString('fr-FR')})` : ''}${e.decennaleZone ? ` — Zone : ${e.decennaleZone}` : ''}${e.decennaleActivites ? ` — Activités : ${e.decennaleActivites}` : ''}` : ''}
       ${e.decennaleAssureur && e.decennaleNumero && e.rcProAssureur ? '<br>' : ''}
       ${e.rcProAssureur ? `RC Pro: ${e.rcProAssureur}${e.rcProNumero ? ` N°${e.rcProNumero}` : ''}${e.rcProValidite ? ` (Valide jusqu'au ${dateLue(e.rcProValidite).toLocaleDateString('fr-FR')})` : ''}` : ''}
-      ${qualificationsHtml(e, h, jour)}
+      ${qualificationsHtml(e, h, jour, doc)}
     </div>
     ${piedDePage}
   </div>`;
@@ -500,6 +500,9 @@ function buildEntrepriseFields(entreprise) {
     rgeOrganisme: entreprise?.rgeOrganisme || '',
     rgeValidite: entreprise?.rgeValidite || '',
     rgeDomaine: entreprise?.rgeDomaine || '',
+    // « Mes qualifications » (lot 1) : la liste, appliquée par `qualificationsHtml` ; page de signature : migration 110
+    qualifications: entreprise?.qualifications,
+    labels: entreprise?.labels,
     mentionRGE: entreprise?.mentionRGE,
   };
 }
@@ -748,7 +751,7 @@ export function buildSituationFactureHtml({ situation, parentDevis, client, chan
   </div>
 
   <!-- FOOTER -->
-  ${buildFooterHtml(e, rcsComplet, '', false, jourDuDocument(situation))}
+  ${buildFooterHtml(e, rcsComplet, '', false, jourDuDocument(situation), situation)}
 </body>
 </html>`);
 }

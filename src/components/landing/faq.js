@@ -20,6 +20,7 @@
 import { PLANS as PLANS_APP } from '../../stores/subscriptionStore';
 import { MENTION_TVA_ABONNEMENT, prixAbonnement, moisOfferts } from '../../stores/prixAbonnement';
 import { DEFAULT_DEVIS_STEPS, DEFAULT_FACTURE_STEPS, delais } from './site/delaisRelance';
+import { NB_METIERS, PHRASE_PRIX } from './comptesMetiers';
 
 export const CATEGORIES_FAQ = [
   { id: 'tout', libelle: 'Tout' },
@@ -69,9 +70,10 @@ export function questionsFaq(plans = PLANS_APP) {
     {
       categorie: 'features',
       q: "Est-ce que je pars d’une page blanche pour mes devis\u202f?",
-      // Bibliothèque des 17 métiers (trade-library.js) ; Référentiel BTP (Catalogue.jsx:1364) ; « 1 000+ » compté dans
+      // Bibliothèque des 20 métiers (trade-library.js) ; Référentiel BTP (Catalogue.jsx:1364) ; « 1 000+ » compté dans
       // FaitsSection.jsx:5-12 ; import CSV ou Excel (Catalogue.jsx:1469, 1504)
-      a: "Non. La bibliothèque des 17 métiers propose des lots types déjà chiffrés, à insérer en un geste dans un devis, et le Référentiel BTP ajoute à votre catalogue les articles chiffrés de votre métier\u202f: en tout, plus de 1\u202f000 prestations et ouvrages chiffrés. Vous ajoutez vos propres articles, ou importez vos tarifs fournisseurs en CSV ou Excel.",
+      // Prix : 17 des 20 métiers ont des prix indicatifs, trois n'en ont aucun (comptesMetiers.js, comparé à la bibliothèque par un test)
+      a: `Non. La bibliothèque propose des lots types pour ${NB_METIERS} métiers, à insérer en un geste dans un devis\u202f: ${PHRASE_PRIX}. Le Référentiel BTP ajoute à votre catalogue les articles chiffrés de votre métier\u202f: en tout, plus de 1\u202f000 prestations et ouvrages chiffrés. Vous ajoutez vos propres articles, ou importez vos tarifs fournisseurs en CSV ou Excel.`,
     },
     {
       categorie: 'features',

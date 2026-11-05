@@ -18,6 +18,7 @@ import Champ from './ui/Champ';
 import { achatConnu, margeBrute, niveauMarge, CLASSES_TON_MARGE } from '../lib/margeArticle';
 import { formatMoney } from '../lib/formatters';
 import { MENTION_FRANCHISE_ARTICLE } from '../lib/franchiseTva';
+import { partagerParMetier, referentielDes } from '../lib/metiers';
 import { CATEGORIES_METIERS, getSousCategories, getArticlesBySousCategorie, searchAllArticles, tauxPropreArticle } from '../lib/data';
 
 const CONSIGNES = { 1: 'Sélectionnez votre type d\'activité', 2: 'Sélectionnez une sous-catégorie', 3: 'Sélectionnez un article', 4: 'Ajustez les prix et la quantité' };
@@ -36,7 +37,12 @@ export function tvaArticleReferentiel(article, franchiseTva = false) {
   return taux === null ? TVA_PROPOSEE : String(taux);
 }
 
-export default function ArticlePicker({ isOpen, onClose, onSelect, franchiseTva = false }) {
+export default function ArticlePicker({ isOpen, onClose, onSelect, franchiseTva = false, metiers = [] }) {
+  // Les catégories des métiers choisis en premier (src/lib/metiers.js), toutes restent affichées
+  const categories = useMemo(() => {
+    const { premiers, autres } = partagerParMetier(CATEGORIES_METIERS, referentielDes(metiers), (c) => c.id);
+    return [...premiers, ...autres];
+  }, [metiers]);
   const [step, setStep] = useState(1); // 1 : catégorie, 2 : sous-catégorie, 3 : article, 4 : prix
   const [selectedCategorie, setSelectedCategorie] = useState(null);
   const [selectedSousCategorie, setSelectedSousCategorie] = useState(null);
@@ -181,7 +187,7 @@ export default function ArticlePicker({ isOpen, onClose, onSelect, franchiseTva 
         {/* Étape 1 : les métiers */}
         {step === 1 && !recherche && (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {CATEGORIES_METIERS.map((cat) => (
+            {categories.map((cat) => (
               <Carte key={cat.id} as="button" marge="aucun" onClick={() => handleSelectCategorie(cat)} className="text-center p-4">
                 <span className="w-12 h-12 mx-auto mb-2 rounded-xl bg-surface-2 flex items-center justify-center text-2xl" aria-hidden="true">{cat.icon}</span>
                 <span className="block font-semibold text-sm text-encre">{cat.nom}</span>

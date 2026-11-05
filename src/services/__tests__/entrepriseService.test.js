@@ -1,5 +1,8 @@
-import { describe, it, expect } from 'vitest';
-import { fromSupabase, toSupabase, REGLAGES_SANS_COLONNE, createEntreprise, updateEntreprise, archiveEntreprise, setActiveEntreprise } from '../entrepriseService';
+import { describe, it, expect, vi } from 'vitest';
+import { fromSupabase, toSupabase, REGLAGES_SANS_COLONNE, createEntreprise, updateEntreprise, archiveEntreprise, setActiveEntreprise, _reinitialiserRepliMetiers } from '../entrepriseService';
+import { captureException } from '../../lib/sentry';
+
+vi.mock('../../lib/sentry', () => ({ captureException: vi.fn() }));
 
 // Ligne de production telle que relue : assurances anciennes, réglages déjà rangés dans settings_json
 const LIGNE = {
@@ -110,5 +113,80 @@ describe('entreprise : une écriture refusée par la base ne s\'affiche pas comm
   it('archivage refusé : une erreur, pas « archivée »', async () => {
     const liste = [{ id: 'e1', nom: 'A', is_active: false }, { id: 'e2', nom: 'B', is_active: true }];
     await expect(archiveEntreprise(fauxSupabase({ lignesEcrites: [], liste }), { id: 'e1', userId: 'u1', orgId: 'o1' })).rejects.toThrow(/Archivage refusé/);
+  });
+});
+
+// Lot 1 « métiers » : colonne entreprise.metiers (migration 110), repli dans settings_json.reglages tant qu'elle manque
+describe('entreprise : le métier choisi', () => {
+  it('relu depuis la colonne, sinon depuis le repli ; valeurs inconnues écartées', () => {
+    expect(fromSupabase({ id: 'e', metiers: ['plombier', 'electricien'] }).metiers).toEqual(['electricien', 'plombier']);
+    expect(fromSupabase({ id: 'e', settings_json: { reglages: { metiers: ['ramoneur', 'x'] } } }).metiers).toEqual(['ramoneur']);
+    expect(fromSupabase({ id: 'e' }).metiers).toEqual([]);
+    expect(toSupabase({ metiers: ['peintre', 'x'] }).metiers).toEqual(['peintre']);
+    expect(toSupabase({ metiers: ['peintre'] }).__reglages).toBeUndefined();
+  });
+
+  it('migration 110 pas encore appliquée : l’écriture se replie dans les réglages, sans perdre les autres', async () => {
+    const ecrits = [];
+    const faux = {
+      from: () => ({
+        select: () => ({ eq: () => ({ maybeSingle: () => Promise.resolve({ data: { settings_json: { relanceConfig: { enabled: true }, reglages: { mediateur: 'CNPM' } } }, error: null }) }) }),
+        update: (ligne) => {
+          ecrits.push(ligne);
+          const erreur = 'metiers' in ligne ? { code: 'PGRST204', message: "Could not find the 'metiers' column of 'entreprise' in the schema cache" } : null;
+          return { eq: () => ({ select: () => Promise.resolve(erreur ? { data: null, error: erreur } : { data: [{ id: 'e1' }], error: null }) }) };
+        },
+      }),
+    };
+    await updateEntreprise(faux, { id: 'e1', data: { metiers: ['electricien'], nom: 'Élec' } });
+    expect(ecrits).toHaveLength(2);
+    expect(ecrits[1]).not.toHaveProperty('metiers');
+    expect(ecrits[1].nom).toBe('Élec');
+    expect(ecrits[1].settings_json).toEqual({ relanceConfig: { enabled: true }, reglages: { mediateur: 'CNPM', metiers: ['electricien'] } });
+  });
+
+  // Compte neuf : la bienvenue crée la fiche par createEntreprise, avec la colonne `metiers` (relecture du 4 nov.)
+  const fauxCreation = (erreurSurMetiers) => {
+    const inserts = [];
+    return {
+      inserts,
+      from: () => ({
+        select: () => ({ is: () => ({ order: () => ({ order: () => ({ eq: () => Promise.resolve({ data: [], error: null }) }) }) }) }),
+        insert: (ligne) => {
+          inserts.push(ligne);
+          const erreur = 'metiers' in ligne ? erreurSurMetiers : null;
+          return { select: () => ({ single: () => Promise.resolve(erreur ? { data: null, error: erreur } : { data: { id: 'n1', ...ligne }, error: null }) }) };
+        },
+      }),
+    };
+  };
+
+  it('création avant la migration 110 (PGRST204) : nouvelle insertion sans la colonne, métiers dans les réglages, autres réglages gardés', async () => {
+    _reinitialiserRepliMetiers();
+    captureException.mockClear();
+    const faux = fauxCreation({ code: 'PGRST204', message: "Could not find the 'metiers' column of 'entreprise' in the schema cache" });
+    const cree = await createEntreprise(faux, { data: { nom: 'Élec Durand', metiers: ['plombier', 'electricien'], acompteDefaut: 30 }, userId: 'u1', orgId: 'o1' });
+    expect(faux.inserts).toHaveLength(2);
+    expect(faux.inserts[0].metiers).toEqual(['electricien', 'plombier']);
+    expect(faux.inserts[1]).not.toHaveProperty('metiers');
+    expect(faux.inserts[1].nom).toBe('Élec Durand');
+    expect(faux.inserts[1].settings_json).toEqual({ reglages: { acompteDefaut: 30, metiers: ['electricien', 'plombier'] } });
+    expect(cree.metiers).toEqual(['electricien', 'plombier']);
+    expect(cree.acompteDefaut).toBe(30);
+    // Schéma pas encore appliqué : signalé une fois par session, pas à chaque enregistrement
+    expect(captureException).toHaveBeenCalledTimes(1);
+    await createEntreprise(fauxCreation({ code: 'PGRST204', message: "Could not find the 'metiers' column" }), { data: { nom: 'B', metiers: ['peintre'] }, userId: 'u1', orgId: 'o1' });
+    expect(captureException).toHaveBeenCalledTimes(1);
+  });
+
+  it('contre-essai à la création : une autre erreur n’est pas rejouée sans la colonne, et lève', async () => {
+    const faux = fauxCreation({ code: '42501', message: 'new row violates row-level security policy' });
+    await expect(createEntreprise(faux, { data: { nom: 'X', metiers: ['electricien'] }, userId: 'u1', orgId: 'o1' })).rejects.toThrow(/row-level security/);
+    expect(faux.inserts).toHaveLength(1);
+  });
+
+  it('une autre erreur n’est pas maquillée en succès', async () => {
+    const faux = { from: () => ({ update: () => ({ eq: () => ({ select: () => Promise.resolve({ data: null, error: { code: '42501', message: 'denied' } }) }) }) }) };
+    await expect(updateEntreprise(faux, { id: 'e1', data: { metiers: ['electricien'] } })).rejects.toThrow(/denied/);
   });
 });

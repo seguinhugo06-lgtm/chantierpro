@@ -14,6 +14,11 @@
  * de l'artisan — l'interface le dit, et « Enregistrer comme modèle » sert à
  * capturer ses propres prix.
  *
+ * Exception (D-41, 5 nov. 2026) : Ramonage, Froid et climatisation, Multiservice n'ont AUCUN prix. Aucune source n'est
+ * tenue pour eux (D-02 : prix de référence réels uniquement) ; l'artisan saisit les siens. Leurs lignes n'ont pas de
+ * `prixUnitaire` : jamais de prix inventé, jamais de « 0 € » présenté comme un tarif (src/lib/templates/prixBibliotheque.js,
+ * « Prix à saisir » à l'écran). Les autres métiers gardent leurs prix.
+ *
  * TVA : 10 % rénovation d'un logement de plus de 2 ans, 5,5 % rénovation
  * énergétique, 20 % neuf / extension / aménagement extérieur.
  */
@@ -908,10 +913,15 @@ chauffage: {
       resume: 'PAC air/air 3 unités intérieures',
       base: { quantite: 1, unite: 'ens.' },
       lignes: [
-        { designation: 'Fourniture et pose d\'unité extérieure multisplit 7 kW', unite: 'u', quantite: 1, prixUnitaire: 3200, tva: 10 },
-        { designation: 'Fourniture et pose d\'unité intérieure murale avec télécommande', unite: 'u', quantite: 3, prixUnitaire: 780, tva: 10 },
-        { designation: 'Liaisons frigorifiques cuivre isolées et goulottes', unite: 'ml', quantite: 24, prixUnitaire: 58, tva: 10 },
-        { designation: 'Évacuation des condensats avec pompe de relevage', unite: 'u', quantite: 3, prixUnitaire: 145, tva: 10 },
+        // CGI 279-0 bis, 1 : la fourniture d'un système de climatisation est exclue du 10 % ; la pose y reste (juriste-btp, 4 nov. 2026)
+        { designation: 'Fourniture d\'unité extérieure multisplit 7 kW', unite: 'u', quantite: 1, prixUnitaire: 2500, tva: 20 },
+        { designation: 'Pose d\'unité extérieure multisplit sur support', unite: 'u', quantite: 1, prixUnitaire: 700, tva: 10 },
+        { designation: 'Fourniture d\'unité intérieure murale avec télécommande', unite: 'u', quantite: 3, prixUnitaire: 550, tva: 20 },
+        { designation: 'Pose d\'unité intérieure murale', unite: 'u', quantite: 3, prixUnitaire: 230, tva: 10 },
+        { designation: 'Fourniture de liaisons frigorifiques cuivre isolées et goulottes', unite: 'ml', quantite: 24, prixUnitaire: 30, tva: 20 },
+        { designation: 'Pose des liaisons frigorifiques sous goulotte', unite: 'ml', quantite: 24, prixUnitaire: 28, tva: 10 },
+        { designation: 'Fourniture de pompe de relevage des condensats', unite: 'u', quantite: 3, prixUnitaire: 85, tva: 20 },
+        { designation: 'Pose de l\'évacuation des condensats', unite: 'u', quantite: 3, prixUnitaire: 60, tva: 10 },
         { designation: 'Percements de murs et étanchéité des traversées', unite: 'u', quantite: 3, prixUnitaire: 72, tva: 10 },
         { designation: 'Alimentation électrique dédiée depuis le tableau', unite: 'forfait', quantite: 1, prixUnitaire: 390, tva: 10 },
         { designation: 'Tirage au vide, charge en fluide et mise en service', unite: 'forfait', quantite: 1, prixUnitaire: 420, tva: 10 },
@@ -941,8 +951,11 @@ chauffage: {
     { designation: 'Distribution chauffage en multicouche isolé', unite: 'ml', quantite: 20, prixUnitaire: 44, tva: 10 },
     { designation: 'Fourniture et pose de thermostat programmable connecté', unite: 'u', quantite: 1, prixUnitaire: 290, tva: 5.5 },
     { designation: 'Pose de robinet thermostatique sur radiateur existant', unite: 'u', quantite: 1, prixUnitaire: 78, tva: 10 },
-    { designation: 'Fourniture et pose d\'unité intérieure murale de climatisation', unite: 'u', quantite: 1, prixUnitaire: 780, tva: 10 },
-    { designation: 'Liaison frigorifique cuivre isolée avec goulotte', unite: 'ml', quantite: 8, prixUnitaire: 58, tva: 10 },
+    // CGI 279-0 bis, 1 : fourniture d'un système de climatisation exclue du 10 % (juriste-btp, 4 nov. 2026)
+    { designation: 'Fourniture d\'unité intérieure murale de climatisation', unite: 'u', quantite: 1, prixUnitaire: 550, tva: 20 },
+    { designation: 'Pose d\'unité intérieure murale de climatisation', unite: 'u', quantite: 1, prixUnitaire: 230, tva: 10 },
+    { designation: 'Fourniture de liaison frigorifique cuivre isolée', unite: 'ml', quantite: 8, prixUnitaire: 30, tva: 20 },
+    { designation: 'Pose de liaison frigorifique sous goulotte', unite: 'ml', quantite: 8, prixUnitaire: 28, tva: 10 },
     { designation: 'Tubage de conduit de fumée en inox flexible', unite: 'ml', quantite: 8, prixUnitaire: 105, tva: 10 },
     { designation: 'Entretien annuel de chaudière avec attestation', unite: 'forfait', quantite: 1, prixUnitaire: 165, tva: 10 },
     { designation: 'Fourniture et pose de ballon d\'eau chaude thermodynamique 200 L', unite: 'u', quantite: 1, prixUnitaire: 3200, tva: 5.5 },
@@ -1515,7 +1528,7 @@ menuiserie: {
       lignes: [
         { designation: 'Relevé de cotes et étude d\'implantation sur site', unite: 'h', quantite: 3, prixUnitaire: 55, tva: 10 },
         { designation: 'Fourniture et pose de caisson mélaminé sur mesure, hauteur sous plafond', unite: 'ml', quantite: 6, prixUnitaire: 320, tva: 10 },
-        { designation: 'Fourniture et pose d\'étagères mélaminées 19 mm sur crémaillères', unite: 'ml', quantite: 18, prixUnitaire: 46, tva: 10 },
+        { designation: 'Fourniture et pose d\'étagères mélaminées 19 mm sur crémaillères', unite: 'ml', quantite: 18, prixUnitaire: 46, tva: 20 }, // éléments mobiliers : taux normal (BOI-TVA-LIQ-30-20-90-20 § 300 et 370 ; juriste-btp, 4 nov. 2026)
         { designation: 'Fourniture et pose de penderie tube aluminium avec supports', unite: 'ml', quantite: 4, prixUnitaire: 58, tva: 10 },
         { designation: 'Fourniture et pose de façade coulissante avec rails haut et bas', unite: 'u', quantite: 4, prixUnitaire: 265, tva: 10 },
         { designation: 'Fourniture et pose de tiroirs sur coulisses à sortie totale, freinés', unite: 'u', quantite: 4, prixUnitaire: 140, tva: 10 },
@@ -1895,6 +1908,116 @@ paysagisme: {
     { designation: 'Dessouchage mécanique et rebouchage du trou', unite: 'u', quantite: 1, prixUnitaire: 260, tva: 20 },
     { designation: 'Main d\'œuvre jardinier paysagiste', unite: 'h', quantite: 7, prixUnitaire: 45, tva: 20 },
     { designation: 'Évacuation des déchets verts en déchèterie', unite: 'forfait', quantite: 1, prixUnitaire: 180, tva: 20 },
+  ],
+},
+// ── Lot 1 « métiers » (4 nov. 2026, docs/metiers/synthese.md § 3.2) : les trois métiers qui manquaient ──
+// SANS PRIX (D-41, 5 nov. 2026) : les prix posés le 4 nov. n'avaient aucune source ; Hugo les a retirés. Chaque ligne a sa
+// désignation, son unité, sa quantité et son taux de TVA ; l'artisan saisit le prix. Ne pas en remettre sans source.
+// TVA proposée par ligne, toujours modifiable (décision d'Hugo n° 22) : 10 % pour des travaux dans un logement de plus
+// de deux ans (ramonage : BOI-ANNX-000210 § 20), 20 % sinon. Jamais 5,5 % par défaut : la PAC air-air ne l'obtient
+// que selon ses classes énergétiques (arrêtés des 13 juil. et 14 août 2026, à relire au texte ; frigoriste.md § 5).
+ramonage: {
+  id: 'ramonage',
+  nom: 'Ramonage',
+  icon: '🧹',
+  color: '#57534e',
+  lots: [
+    {
+      id: 'ramonage-insert',
+      nom: 'Ramonage d\'un insert ou foyer fermé',
+      resume: 'Conduit ramoné par le bas, foyer nettoyé, attestation remise',
+      base: { quantite: 1, unite: 'u' },
+      lignes: [
+        { designation: 'Démontage du déflecteur et nettoyage du foyer', unite: 'u', quantite: 1, tva: 10 },
+        { designation: 'Ramonage mécanique du conduit de fumée, raccordement compris', unite: 'u', quantite: 1, tva: 10 },
+        { designation: 'Nettoyage de la vitre et contrôle visuel des joints', unite: 'u', quantite: 1, tva: 10 },
+      ],
+    },
+    {
+      id: 'ramonage-poele',
+      nom: 'Ramonage d\'un poêle à bois ou à granulés',
+      resume: 'Raccordement démonté, conduit ramoné, chambre de combustion nettoyée',
+      base: { quantite: 1, unite: 'u' },
+      lignes: [
+        { designation: 'Démontage et remontage du raccordement du poêle', unite: 'u', quantite: 1, tva: 10 },
+        { designation: 'Ramonage mécanique du conduit de fumée', unite: 'u', quantite: 1, tva: 10 },
+        { designation: 'Nettoyage de la chambre de combustion', unite: 'u', quantite: 1, tva: 10 },
+      ],
+    },
+  ],
+  prestations: [
+    { designation: 'Ramonage mécanique d\'un conduit de cheminée ouverte', unite: 'u', quantite: 1, tva: 10 },
+    { designation: 'Ramonage mécanique d\'un conduit supplémentaire', unite: 'u', quantite: 1, tva: 10 },
+    { designation: 'Ramonage du conduit d\'une chaudière fioul', unite: 'u', quantite: 1, tva: 10 },
+    { designation: 'Débistrage mécanique du conduit', unite: 'u', quantite: 1, tva: 10 },
+    // Diagnostic facturé seul, sans travaux : 20 % par prudence (juriste-btp, 4 nov. 2026, à vérifier au BOFiP)
+    { designation: 'Inspection du conduit par caméra avec rapport', unite: 'u', quantite: 1, tva: 20 },
+    { designation: 'Fourniture et pose de tubage flexible inox dans conduit existant', unite: 'ml', quantite: 8, tva: 10 },
+    { designation: 'Déplacement', unite: 'forfait', quantite: 1, tva: 10 },
+  ],
+},
+
+froid: {
+  id: 'froid',
+  nom: 'Froid et climatisation',
+  icon: '❄️',
+  color: '#0891b2',
+  lots: [
+    {
+      id: 'clim-monosplit',
+      nom: 'Climatisation monosplit',
+      resume: 'Une unité intérieure murale, liaisons frigorifiques et mise en service',
+      base: { quantite: 1, unite: 'u' },
+      lignes: [
+        // CGI 279-0 bis, 1 : la fourniture d'un système de climatisation est exclue du 10 % ; la pose y reste (juriste-btp, 4 nov. 2026)
+        { designation: 'Fourniture d\'unité extérieure de climatisation', unite: 'u', quantite: 1, tva: 20 },
+        { designation: 'Pose d\'unité extérieure sur support mural', unite: 'u', quantite: 1, tva: 10 },
+        { designation: 'Fourniture d\'unité intérieure murale de climatisation', unite: 'u', quantite: 1, tva: 20 },
+        { designation: 'Pose d\'unité intérieure murale', unite: 'u', quantite: 1, tva: 10 },
+        { designation: 'Fourniture de liaisons frigorifiques cuivre isolées', unite: 'ml', quantite: 5, tva: 20 },
+        { designation: 'Pose des liaisons frigorifiques sous goulotte', unite: 'ml', quantite: 5, tva: 10 },
+        { designation: 'Pose de l\'évacuation des condensats', unite: 'forfait', quantite: 1, tva: 10 },
+        { designation: 'Tirage au vide, contrôle d\'étanchéité et mise en service', unite: 'forfait', quantite: 1, tva: 10 },
+      ],
+    },
+  ],
+  prestations: [
+    { designation: 'Entretien d\'une climatisation (nettoyage des filtres et des échangeurs)', unite: 'u', quantite: 1, tva: 10 },
+    { designation: 'Contrôle d\'étanchéité du circuit frigorifique avec fiche d\'intervention', unite: 'u', quantite: 1, tva: 10 },
+    { designation: 'Recherche de fuite sur circuit frigorifique', unite: 'h', quantite: 2, tva: 10 },
+    // Le fluide fait-il partie des « pièces constitutives » du système (20 %) ? À vérifier au BOFiP (juriste-btp, 4 nov. 2026)
+    { designation: 'Complément de charge en fluide frigorigène', unite: 'kg', quantite: 1, tva: 10 },
+    { designation: 'Récupération du fluide frigorigène et dépose d\'un ancien appareil', unite: 'u', quantite: 1, tva: 10 },
+    { designation: 'Déplacement', unite: 'forfait', quantite: 1, tva: 10 },
+  ],
+},
+
+multiservice: {
+  id: 'multiservice',
+  nom: 'Multiservice, petits travaux',
+  icon: '🧰',
+  color: '#7c3aed',
+  lots: [
+    {
+      id: 'petits-travaux-demi-journee',
+      nom: 'Demi-journée de petits travaux',
+      resume: 'Main-d\'œuvre, petites fournitures et déplacement',
+      base: { quantite: 4, unite: 'h' },
+      lignes: [
+        { designation: 'Main-d\'œuvre petits travaux', unite: 'h', quantite: 4, tva: 10 },
+        { designation: 'Petites fournitures (chevilles, visserie, joints)', unite: 'forfait', quantite: 1, tva: 10 },
+        { designation: 'Déplacement', unite: 'forfait', quantite: 1, tva: 10 },
+      ],
+    },
+  ],
+  prestations: [
+    { designation: 'Montage d\'un meuble en kit', unite: 'u', quantite: 1, tva: 20 },
+    { designation: 'Pose d’étagère ou de tringle à rideaux', unite: 'u', quantite: 1, tva: 20 }, // éléments mobiliers : taux normal (BOI-TVA-LIQ-30-20-90-20 § 300 et 370)
+    { designation: 'Remplacement d\'un joint ou d\'un mécanisme de chasse d\'eau', unite: 'u', quantite: 1, tva: 10 },
+    { designation: 'Remplacement d\'une prise ou d\'un interrupteur', unite: 'u', quantite: 1, tva: 10 },
+    { designation: 'Rebouchage et retouche de peinture sur mur', unite: 'm²', quantite: 2, tva: 10 },
+    { designation: 'Réglage d\'une porte ou d\'une fenêtre', unite: 'u', quantite: 1, tva: 10 },
+    { designation: 'Main-d\'œuvre petits travaux', unite: 'h', quantite: 1, tva: 10 },
   ],
 },
 };

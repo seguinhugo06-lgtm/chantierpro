@@ -24,6 +24,8 @@ import { buildDevisHtml } from '../lib/devisHtmlBuilder';
 import { calculerTotaux, messageLigneSansDesignation } from '../lib/totauxDocument';
 import { estFranchiseTva, premierTaux } from '../lib/franchiseTva';
 import { TRADE_LIBRARY } from '../lib/templates/trade-library';
+import { bibliothequeDes, partagerParMetier, lotsAlternes } from '../lib/metiers';
+import { aUnPrix, totalDuLot, metierSansPrix, PRIX_A_SAISIR } from '../lib/templates/prixBibliotheque';
 import { jourLocal } from '../lib/dates';
 import { profilManquant, enPhrase } from '../lib/profilLegal';
 import { couleurPleine } from '../lib/theme';
@@ -119,6 +121,8 @@ export default function DevisComposer({
   const isEditMode = !!initialData;
   // Franchise en base (art. 293 B CGI) : aucune TVA, ni à l'écran ni dans ce qui est enregistré
   const franchise = estFranchiseTva(entreprise);
+  // Métiers choisis (src/lib/metiers.js) : leurs lots en premier ; sans choix, l'ordre d'aujourd'hui
+  const metiersBib = useMemo(() => bibliothequeDes(entreprise?.metiers), [entreprise?.metiers]);
   const tvaEntreprise = franchise ? 0 : premierTaux(entreprise?.tvaDefaut, entreprise?.tva_defaut, 10);
 
   const blankForm = () => ({
@@ -313,7 +317,8 @@ export default function DevisComposer({
   const addLigne = (item = {}) => {
     if (item.id) rememberArticle(item);
     const newId = generateId();
-    const prix = item.prixUnitaire ?? item.prix ?? 0;
+    // Sans prix (prestation de Ramonage, Froid et climatisation, Multiservice : D-41), le champ arrive vide, à saisir, jamais « 0 »
+    const prix = item.prixUnitaire ?? item.prix ?? '';
     setForm(p => ({
       ...p,
       lignes: [...p.lignes, {
@@ -422,7 +427,8 @@ export default function DevisComposer({
         description: l.designation || l.nom || l.description || '',
         quantite: l.quantite ?? 1,
         unite: l.unite || 'u',
-        prixUnitaire: l.prixUnitaire ?? l.prix ?? 0,
+        // Ligne de la bibliothèque sans prix (D-41) : champ vide à saisir, jamais « 0 »
+        prixUnitaire: l.prixUnitaire ?? l.prix ?? '',
         prixAchat: l.prixAchat ?? 0,
         tva: l.tva !== undefined ? l.tva : p.tvaDefaut,
       }));
@@ -812,6 +818,7 @@ export default function DevisComposer({
             {form.lignes.length === 0 && (
               <div className={`border-t border-bord p-3 sm:p-4`}>
                 <QuickStart templates={METIER_TEMPLATES} articles={quickArticles} persoTemplates={customTemplates}
+                  metiersBib={metiersBib} onAppendBloc={appendBloc} franchise={franchise}
                   onApplyTemplate={applyTemplate} onApplyPerso={applyPersoTemplate} onAddArticle={addLigne}
                   onOpenLibrary={() => setShowLibrary(true)}
                   isDark={isDark} couleur={couleur} textPrimary={textPrimary} textMuted={textMuted} />
@@ -963,6 +970,7 @@ export default function DevisComposer({
         onAppendBloc={appendBloc}
         onAddArticle={addLigne}
         franchise={franchise}
+        metiersBib={metiersBib}
         isDark={isDark} couleur={couleur}
         textPrimary={textPrimary} textMuted={textMuted} inputBg={inputBg}
       />
@@ -1425,7 +1433,7 @@ function MetreModal({ isDark: _isDark, couleur: _couleur, inputBg, textPrimary, 
  * ses missions et leurs prix AVANT de l'appliquer — on ne choisit pas « 9 lignes »
  * à l'aveugle. Tout s'ajoute à la suite, rien n'est jamais écrasé.
  */
-function LibraryPanel({ open, onClose, persoTemplates = [], articles = [], onAppendBloc, onAddArticle, franchise = false, isDark: _isDark, couleur: _couleur, textPrimary, textMuted, inputBg }) {
+function LibraryPanel({ open, onClose, persoTemplates = [], articles = [], onAppendBloc, onAddArticle, franchise = false, metiersBib = [], isDark: _isDark, couleur: _couleur, textPrimary, textMuted, inputBg }) {
   const [q, setQ] = useState('');
   const [openTrade, setOpenTrade] = useState(null);
 
@@ -1444,6 +1452,9 @@ function LibraryPanel({ open, onClose, persoTemplates = [], articles = [], onApp
       || t.lots.some(l => norm(l.nom).includes(n) || l.lignes.some(li => norm(li.designation).includes(n)))
       || t.prestations.some(p => norm(p.designation).includes(n));
   });
+  // Les métiers de l'artisan en tête, puis « Autres métiers » : rien n'est masqué (critique-produit, 4 nov. 2026)
+  const { premiers, autres } = partagerParMetier(trades, metiersBib, ([k]) => k);
+  const entreesMetiers = autres.length && premiers.length ? [...premiers, 'autres', ...autres] : trades;
   const persoFiltered = persoTemplates.filter(t => !q.trim() || norm(t.nom).includes(norm(q)));
   const articlesFiltered = articles.filter(a => !q.trim() || norm(a.nom || '').includes(norm(q)));
 
@@ -1501,7 +1512,9 @@ function LibraryPanel({ open, onClose, persoTemplates = [], articles = [], onApp
           <div>
             {sectionTitle(Sparkles, `Modèles métier (${trades.length})`)}
             <div className="space-y-2">
-              {trades.map(([key, t]) => {
+              {entreesMetiers.map((entree) => {
+                if (entree === 'autres') return <p key="autres-metiers" className="pt-2 text-xs font-semibold text-encre-3">Autres métiers</p>;
+                const [key, t] = entree;
                 const isOpen = openTrade === key;
                 return (
                   <div key={key} className={`rounded-xl border overflow-hidden bg-surface border-bord`}>
@@ -1520,7 +1533,7 @@ function LibraryPanel({ open, onClose, persoTemplates = [], articles = [], onApp
                         {/* Lots types : un chantier complet, déjà proportionné */}
                         <p className={`px-3 pt-2.5 pb-1 text-xs font-semibold ${textMuted}`}>Lots types</p>
                         {t.lots.map(lot => {
-                          const total = lot.lignes.reduce((s, l) => s + l.quantite * l.prixUnitaire, 0);
+                          const total = totalDuLot(lot);
                           return (
                             <button key={lot.id} type="button"
                               onClick={() => onAppendBloc(lot.lignes, lot.nom)}
@@ -1533,8 +1546,9 @@ function LibraryPanel({ open, onClose, persoTemplates = [], articles = [], onApp
                                   {lot.lignes.length} lignes · base {lot.base.quantite} {lot.base.unite}
                                 </span>
                               </span>
-                              <span className="text-xs font-bold whitespace-nowrap tabular-nums text-encre">
-                                {Math.round(total).toLocaleString('fr-FR')} €
+                              {/* Lot sans prix (D-41) : jamais « 0 € » présenté comme un tarif */}
+                              <span className={`text-xs whitespace-nowrap tabular-nums ${total === null ? 'font-medium text-encre-3' : 'font-bold text-encre'}`}>
+                                {total === null ? PRIX_A_SAISIR : `${Math.round(total).toLocaleString('fr-FR')} €`}
                               </span>
                             </button>
                           );
@@ -1550,13 +1564,19 @@ function LibraryPanel({ open, onClose, persoTemplates = [], articles = [], onApp
                             <span className={`flex-1 min-w-0 ${textPrimary}`}>{p.designation}</span>
                             {/* Prix AU M² (ou à l'unité du métier) : c'est ce qui rend
                                 la ligne ajustable une fois dans le devis. */}
-                            <span className="text-xs font-semibold whitespace-nowrap tabular-nums text-encre">
-                              {p.prixUnitaire.toLocaleString('fr-FR')} €/{p.unite}
-                            </span>
+                            {aUnPrix(p) ? (
+                              <span className="text-xs font-semibold whitespace-nowrap tabular-nums text-encre">
+                                {p.prixUnitaire.toLocaleString('fr-FR')} €/{p.unite}
+                              </span>
+                            ) : (
+                              <span className="text-xs font-medium whitespace-nowrap text-encre-3">{PRIX_A_SAISIR}</span>
+                            )}
                           </button>
                         ))}
                         <p className={`px-3 py-2 text-xs ${textMuted}`}>
-                          Prix indicatifs moyens du marché — ajustez-les à vos tarifs, puis « Enregistrer comme modèle ».
+                          {metierSansPrix(t)
+                            ? 'Ce métier est livré sans prix : saisissez les vôtres, puis « Enregistrer comme modèle ».'
+                            : 'Prix indicatifs moyens du marché — ajustez-les à vos tarifs, puis « Enregistrer comme modèle ».'}
                         </p>
                       </div>
                     )}
@@ -1704,8 +1724,10 @@ function SaveTemplateModal({ isDark: _isDark, couleur: _couleur, inputBg, textPr
 }
 
 /* ── Démarrage éclair : modèles métier + articles fréquents ── */
-function QuickStart({ templates, articles, persoTemplates = [], onApplyTemplate, onApplyPerso, onAddArticle, onOpenLibrary, isDark: _isDark, couleur: _couleur, textPrimary, textMuted }) {
+function QuickStart({ templates, articles, persoTemplates = [], metiersBib = [], onAppendBloc, franchise = false, onApplyTemplate, onApplyPerso, onAddArticle, onOpenLibrary, isDark: _isDark, couleur: _couleur, textPrimary, textMuted }) {
   const trades = Object.entries(TRADE_LIBRARY);
+  // Les lots chiffrés des métiers choisis (4 au plus, un de chaque métier à tour de rôle) ; la bibliothèque complète reste à un geste
+  const lotsDuMetier = lotsAlternes(metiersBib, TRADE_LIBRARY, 4).map(({ cle, lot }) => ({ metier: TRADE_LIBRARY[cle], lot }));
   const cardCls = `group flex flex-col items-center gap-1.5 p-3 rounded-xl border transition-all hover:-translate-y-0.5 hover:shadow-md active:scale-95 bg-surface border-bord hover:border-bord-fort`;
   return (
     <div className="space-y-4">
@@ -1722,6 +1744,32 @@ function QuickStart({ templates, articles, persoTemplates = [], onApplyTemplate,
                 <span className={`text-xs ${textMuted}`}>{(tpl.lignes || []).length} lignes{tpl.categorie ? ` · ${tpl.categorie}` : ''}</span>
               </button>
             ))}
+          </div>
+        </div>
+      )}
+      {lotsDuMetier.length > 0 && (
+        <div data-testid="lots-du-metier">
+          <p className="text-sm font-semibold mb-2 flex items-center gap-1.5 text-encre-2">
+            <Layers size={12} className="text-accent-texte" aria-hidden="true" /> Votre métier
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {lotsDuMetier.map(({ metier, lot }) => {
+              const total = totalDuLot(lot);
+              return (
+                <button key={`${metier.id}-${lot.id}`} type="button" onClick={() => onAppendBloc?.(lot.lignes, lot.nom)}
+                  className="flex items-center gap-2.5 p-3 min-h-[44px] rounded-xl border text-left transition-colors bg-surface border-bord hover:border-bord-fort">
+                  <span aria-hidden="true" className="text-lg flex-shrink-0">{metier.icon}</span>
+                  <span className="flex-1 min-w-0">
+                    <span className={`block text-sm font-semibold ${textPrimary}`}>{lot.nom}</span>
+                    <span className={`block text-xs ${textMuted}`}>{metier.nom} · {lot.lignes.length} lignes</span>
+                  </span>
+                  {/* Lot sans prix (D-41) : jamais « 0 € » présenté comme un tarif */}
+                  {total === null
+                    ? <span className="text-xs font-medium whitespace-nowrap text-encre-3">{PRIX_A_SAISIR}</span>
+                    : <span className="text-xs font-bold whitespace-nowrap tabular-nums text-encre">{Math.round(total).toLocaleString('fr-FR')} €{franchise ? '' : ' HT'}</span>}
+                </button>
+              );
+            })}
           </div>
         </div>
       )}
@@ -1743,11 +1791,11 @@ function QuickStart({ templates, articles, persoTemplates = [], onApplyTemplate,
           ))}
         </div>
 
-        {/* Accès aux 17 métiers CHIFFRÉS : c'est la vraie valeur, on l'annonce
-            explicitement plutôt que de la cacher derrière « Tous les métiers ». */}
+        {/* Accès aux 20 métiers de la bibliothèque : c'est la vraie valeur, on l'annonce explicitement plutôt que de la cacher
+            derrière « Tous les métiers ». Pas « chiffrés » : Ramonage, Froid et climatisation, Multiservice n'ont pas de prix (D-41). */}
         <button type="button" onClick={onOpenLibrary}
-          className={`mt-2 inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg border transition-all border-bord text-encre-2 hover:bg-surface-2`}>
-          <Library size={13} /> Parcourir les {trades.length} métiers chiffrés
+          className={`mt-2 inline-flex items-center gap-1.5 min-h-[44px] text-xs font-semibold px-2.5 py-1.5 rounded-lg border transition-all border-bord text-encre-2 hover:bg-surface-2`}>
+          <Library size={13} /> {lotsDuMetier.length > 0 ? `Afficher tous les métiers (${trades.length})` : `Parcourir les ${trades.length} métiers`}
         </button>
       </div>
 

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { X, ChevronRight, FileText, ArrowLeft, Check, TrendingUp, Star, Trash2, Search } from 'lucide-react';
+import { modelesDes, partagerParMetier } from '../lib/metiers';
 import { MODELES_DEVIS, getMetiersWithModeles, prepareModeleLignes, calculateModeleTotal, calculateModeleMarge, searchModeles, descriptionModele } from '../lib/data/modeles-devis';
 
 /**
@@ -13,6 +14,7 @@ export default function TemplateSelector({
   onSelectTemplate,
   customTemplates = [],
   onDeleteTemplate,
+  metiersEntreprise = [],
   // Franchise en base de TVA (art. 293 B du CGI, estFranchiseTva) : le total d'un modèle s'affiche sans « HT »
   franchise = false,
   isDark: _isDark,
@@ -30,7 +32,9 @@ export default function TemplateSelector({
 
   if (!isOpen) return null;
 
-  const metiers = getMetiersWithModeles();
+  // Les modèles des métiers de l'artisan en premier (src/lib/metiers.js) ; tous restent affichés
+  const { premiers: modelesDuMetier, autres: autresModeles } = partagerParMetier(getMetiersWithModeles(), modelesDes(metiersEntreprise), (m) => m.id);
+  const metiers = [...modelesDuMetier, ...autresModeles];
   const selectedMetierData = selectedMetier ? MODELES_DEVIS[selectedMetier] : null;
 
   // Recherche globale

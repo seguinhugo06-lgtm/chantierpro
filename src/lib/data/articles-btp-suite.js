@@ -270,14 +270,19 @@ export const ARTICLES_BTP_SUITE = {
       pac: {
         nom: 'Pompes à chaleur',
         articles: [
-          { id: 'pac-mono', nom: 'PAC air/air monosplit', unite: 'u', prixMin: 1500, prixMax: 3000, prixDefaut: 2250 },
-          { id: 'pac-multi-2', nom: 'PAC air/air multisplit (2 unités int.)', unite: 'u', prixMin: 3000, prixMax: 5500, prixDefaut: 4250 },
-          { id: 'pac-multi-3', nom: 'PAC air/air multisplit (3 unités int.)', unite: 'u', prixMin: 4500, prixMax: 7500, prixDefaut: 6000 },
-          { id: 'pac-multi-4', nom: 'PAC air/air multisplit (4+ unités int.)', unite: 'u', prixMin: 6000, prixMax: 10000, prixDefaut: 8000 },
+          // PAC air/air : « système de climatisation » (CGI ann. IV art. 30-00 A, 4 ; BOI-TVA-LIQ-30-20-90-20 § 50, 70 et 80, lus au
+          // texte le 5 nov. 2026, avis juriste-btp du lot 4, point 10) : la fourniture est à 20 %. Article unique « fourniture et pose » :
+          // 20 % tout entier, comme les ouvrages de climatisation du lot 08. Le 5,5 % (278-0 bis A, I, 3° ; arrêté du 13 juil. 2026,
+          // 30-0 D ter, 1° bis) ne vaut que si l'artisan constate les critères : jamais proposé d'office.
+          { id: 'pac-mono', nom: 'PAC air/air monosplit', unite: 'u', prixMin: 1500, prixMax: 3000, prixDefaut: 2250, tva: 20 },
+          { id: 'pac-multi-2', nom: 'PAC air/air multisplit (2 unités int.)', unite: 'u', prixMin: 3000, prixMax: 5500, prixDefaut: 4250, tva: 20 },
+          { id: 'pac-multi-3', nom: 'PAC air/air multisplit (3 unités int.)', unite: 'u', prixMin: 4500, prixMax: 7500, prixDefaut: 6000, tva: 20 },
+          { id: 'pac-multi-4', nom: 'PAC air/air multisplit (4+ unités int.)', unite: 'u', prixMin: 6000, prixMax: 10000, prixDefaut: 8000, tva: 20 },
           { id: 'pac-air-eau', nom: 'PAC air/eau (chauffage seul)', unite: 'u', prixMin: 6000, prixMax: 12000, prixDefaut: 9000 },
           { id: 'pac-air-eau-ecs', nom: 'PAC air/eau (chauffage + ECS)', unite: 'u', prixMin: 8000, prixMax: 15000, prixDefaut: 11500 },
           { id: 'pac-geo', nom: 'PAC géothermique', unite: 'u', prixMin: 15000, prixMax: 25000, prixDefaut: 20000 },
-          { id: 'unite-int-supp', nom: 'Unité intérieure supplémentaire', unite: 'u', prixMin: 600, prixMax: 1200, prixDefaut: 900 },
+          // Unité intérieure d'une PAC air/air multisplit : même règle (BOI § 70 : « unités extérieures et intérieures »)
+          { id: 'unite-int-supp', nom: 'Unité intérieure supplémentaire', unite: 'u', prixMin: 600, prixMax: 1200, prixDefaut: 900, tva: 20 },
         ]
       },
       poeles: {

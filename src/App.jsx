@@ -90,7 +90,9 @@ import { usePermissions } from './hooks/usePermissions';
 import { droitsDictee } from './lib/droitsDictee';
 import { lireAccordIa, donnerAccordIa } from './lib/accordIa';
 import { fetchSubscription, computeLiveUsage } from './services/subscriptionsApi';
-import { Home, FileText, Building2, Users, Package, HardHat, Settings as SettingsIcon, Eye, EyeOff, Menu, Bell, Plus, ChevronRight, HelpCircle, Search, X, CheckCircle, AlertCircle, Info, Wifi, WifiOff, Wallet, ClipboardList, Smartphone, CreditCard, MessageCircle, CalendarCheck, Mic, PenLine, Clock, TrendingUp, Lightbulb, Mail, BookOpen, Hand, Rocket, Palette } from 'lucide-react';
+import { Home, FileText, Building2, Users, Package, HardHat, Settings as SettingsIcon, Eye, EyeOff, Menu, Bell, Plus, ChevronRight, HelpCircle, Search, X, CheckCircle, AlertCircle, Info, Wifi, WifiOff, Wallet, ClipboardList, Smartphone, CreditCard, MessageCircle, CalendarCheck, Mic, PenLine, Clock, TrendingUp, Lightbulb, Mail, BookOpen, Hand, Rocket, Palette, Briefcase } from 'lucide-react';
+import ChoixMetiers from './components/settings/ChoixMetiers';
+import { changementsDuChoix, normaliserMetiers, peutChoisirSonMetier } from './lib/metiers';
 import { usePWA } from './hooks/usePWA';
 import { registerNetworkListeners, getPendingCount, syncQueue, clearAllMutations, clearMutationsDe, checkConnectivity } from './lib/offline/sync';
 import OfflineIndicator from './components/ui/OfflineIndicator';
@@ -2121,7 +2123,12 @@ export default function App() {
       )}
 
       {/* Onboarding Modal for first-time users */}
-      {showOnboarding && <OnboardingModal setShowOnboarding={setShowOnboarding} isDark={isDark} couleur={couleur} />}
+      {/* Après le chargement de la fiche et des droits (relecture du 4 nov.) : un métier déjà choisi sur un autre appareil
+          saute la question, et seul le propriétaire de l'entreprise la reçoit, jamais un membre invité (D-41, 5 nov.) */}
+      {showOnboarding && !entrepriseLoading && !orgLoading && (
+        <OnboardingModal setShowOnboarding={setShowOnboarding} entreprise={entreprise} setEntreprise={setEntreprise} showToast={showToast}
+          peutChoisirMetier={peutChoisirSonMetier(userRole)} isDark={isDark} couleur={couleur} />
+      )}
 
       {/* Accord avant la première dictée : accepter ouvre la dictée (une fois l'accord écrit), refuser ouvre un devis vierge sans rien envoyer. */}
       {FONCTIONS.ia && dictee.peutDicter && showAccordIa && (
@@ -2654,12 +2661,34 @@ function HelpModal({ setShowHelp, isDark: _isDark, peutDicter = false }) {
 }
 
 // Bienvenue d'un nouveau compte (première connexion, jamais en démo) : quatre écrans, sur ui/Modal et les jetons.
-function OnboardingModal({ setShowOnboarding, isDark: _isDark, couleur: _couleur }) {
+function OnboardingModal({ setShowOnboarding, entreprise, setEntreprise, showToast, peutChoisirMetier = true, isDark: _isDark, couleur: _couleur }) {
   const [step, setStep] = useState(0);
+  // Lot 1 « métiers » : « Quels travaux faites-vous ? » en premier, sauf si le métier est déjà enregistré (autre
+  // appareil) ou si le compte est un membre invité (jamais posée : D-41, `peutChoisirSonMetier`). Choix
+  // multiple, rien d'obligatoire : sans choix, « Passer cette question » et l'app reste telle quelle. La fenêtre n'est
+  // montée qu'une fois la fiche chargée (App) : la décision est prise sur la vraie fiche, puces préremplies.
+  const dejaChoisis = normaliserMetiers(entreprise?.metiers);
+  const [avecMetier] = useState(() => peutChoisirMetier && dejaChoisis.length === 0);
+  const [metiers, setMetiers] = useState(() => dejaChoisis);
+  const [enregistrementMetier, setEnregistrementMetier] = useState(false);
 
   const tuile = 'p-4 rounded-xl text-center bg-surface-2';
 
+  const etapeMetier = {
+    icon: Briefcase,
+    title: 'Quels travaux faites-vous ?',
+    subtitle: 'Plusieurs choix possibles. Vous pourrez changer dans Paramètres › Mon métier.',
+    content: (
+      <div className="space-y-4" data-testid="bienvenue-metiers">
+        <span id="bienvenue-metiers-titre" className="sr-only">Vos métiers</span>
+        <ChoixMetiers valeur={metiers} onChange={setMetiers} desactive={enregistrementMetier} idGroupe="bienvenue-metiers" />
+        <p className="text-sm text-encre-2">Vos métiers passent en premier dans la bibliothèque de devis, les modèles et l’import du catalogue. Les autres restent à un geste.</p>
+      </div>
+    ),
+  };
+
   const steps = [
+    ...(avecMetier ? [etapeMetier] : []),
     {
       icon: Hand,
       title: "Bienvenue sur Mallettico",
@@ -2790,6 +2819,40 @@ function OnboardingModal({ setShowOnboarding, isDark: _isDark, couleur: _couleur
   ];
 
   const currentStep = steps[step];
+  const surEtapeMetier = currentStep === etapeMetier;
+
+  // Le choix coché est enregistré sur la fiche entreprise (jamais de faux succès) : true si c'est fait ou s'il n'y a rien
+  const enregistrerMetier = async () => {
+    if (!surEtapeMetier || !metiers.length) return true;
+    setEnregistrementMetier(true);
+    try {
+      const ok = await setEntreprise((p) => ({ ...p, ...changementsDuChoix(p, metiers) }));
+      return ok !== false;
+    } catch (e) {
+      captureException(e, { context: 'bienvenue : métier' });
+      // La vraie raison : un refus de la base (droits) n'est pas une panne de connexion
+      const refus = /refusée|droit/i.test(String(e?.message || ''));
+      showToast?.(refus
+        ? 'Votre métier n’a pas été enregistré : votre compte n’a pas le droit de modifier la fiche de l’entreprise. Le gérant peut le choisir dans Paramètres › Mon métier.'
+        : 'Votre métier n’a pas été enregistré. Vérifiez votre connexion, ou décochez vos choix pour passer cette question.', 'error');
+      return false;
+    } finally {
+      setEnregistrementMetier(false);
+    }
+  };
+
+  // « Suivant » sur l'étape du métier : le choix d'abord
+  const suivant = async () => {
+    if (!(await enregistrerMetier())) return;
+    if (step < steps.length - 1) setStep(step + 1); else terminer();
+  };
+
+  // « Passer » et la fermeture, sur l'étape du métier : des puces cochées ne sont pas perdues sans un mot
+  const fermer = async () => {
+    if (enregistrementMetier) return;
+    if (!(await enregistrerMetier())) return;
+    terminer();
+  };
 
   const terminer = () => {
     try { localStorage.setItem('mallettico_onboarding_complete', 'true'); } catch { /* préférence non enregistrée : la bienvenue reviendra */ }
@@ -2797,7 +2860,7 @@ function OnboardingModal({ setShowOnboarding, isDark: _isDark, couleur: _couleur
   };
 
   return (
-    <Modal isOpen onClose={terminer} size="md" closeOnBackdrop={false}>
+    <Modal isOpen onClose={fermer} size="md" closeOnBackdrop={false}>
       {/* Avancement */}
       <div className="h-1 bg-surface-2 rounded-t-3xl sm:rounded-t-2xl overflow-hidden" aria-hidden="true">
         <div className="h-full transition-all duration-300 bg-accent" style={{ width: `${((step + 1) / steps.length) * 100}%` }}></div>
@@ -2825,14 +2888,14 @@ function OnboardingModal({ setShowOnboarding, isDark: _isDark, couleur: _couleur
               <span key={i} className={`w-2 h-2 rounded-full transition-colors ${i === step ? 'bg-accent' : 'bg-bord-fort'}`} />
             ))}
           </div>
-          <Bouton variante="discret" taille="compacte" onClick={terminer}>Passer</Bouton>
+          <Bouton variante="discret" taille="compacte" onClick={fermer} disabled={enregistrementMetier}>Passer</Bouton>
         </div>
         <div className="flex gap-2">
           {step > 0 && (
             <Bouton variante="secondaire" onClick={() => setStep(step - 1)}>Retour</Bouton>
           )}
-          <Bouton variante="principal" onClick={() => (step < steps.length - 1 ? setStep(step + 1) : terminer())}>
-            {step < steps.length - 1 ? 'Suivant' : 'Terminer'}
+          <Bouton variante="principal" onClick={suivant} disabled={enregistrementMetier}>
+            {surEtapeMetier && !metiers.length ? 'Passer cette question' : step < steps.length - 1 ? 'Suivant' : 'Terminer'}
           </Bouton>
         </div>
       </ModalFooter>

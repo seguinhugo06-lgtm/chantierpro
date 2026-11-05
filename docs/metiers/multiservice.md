@@ -28,24 +28,46 @@ Règles transverses (TVA 20/10/5,5 et certification, devis en dépannage, contra
 
 ## 3. Documents remis au client
 
-### Devis SAP
-- Arrêté du **17 mars 2015** (information préalable du consommateur, en vigueur au 1er juil. 2015) : devis gratuit au moins pour les prestations dont le prix mensuel est **≥ 100 € TTC**, et à la demande du client ; mentions de l'art. 7 de l'arrêté (non lu) [6, 7] [résumé] **(à vérifier)**. S'ajoute au devis obligatoire du dépannage (voir `commun.md`) quand la prestation est aussi un dépannage.
+Textes lus sur Légifrance le 5 nov. 2026 (avis juriste-btp du lot 4, point 9) : C. trav. D7233-1 à D7233-4 (https://www.legifrance.gouv.fr/codes/section_lc/LEGITEXT000006072050/LEGISCTA000018500094/) et arrêté du 17 mars 2015 (https://www.legifrance.gouv.fr/loda/id/JORFTEXT000030395494). Les listes ci-dessous sont recopiées de ces textes ; elles remplacent celles des résumés.
 
-### Facture SAP (C. trav. D7233-1)
-Mentions relevées dans les résumés [10, 11] [résumé], à relire au texte :
-- nom et adresse du prestataire (personne morale ou entrepreneur individuel) ;
-- **numéro et date d'enregistrement de la déclaration SAP** ;
-- numérotation unique et continue, type de document ;
-- le **mode d'intervention** (prestataire ; mandataire avec ses frais de gestion) ;
-- l'identification de l'intervenant, le cas échéant ;
-- les taux, prix et frais de déplacement, **TTC** quand la prestation est soumise à la TVA (D7233-2) [11].
-Durée de l'intervention et prix horaire : non confirmés comme mentions obligatoires dans les résumés **(à vérifier)** ; pour le petit bricolage, la durée (≤ 2 h) sert à justifier l'éligibilité, donc à imprimer en pratique.
+### Devis SAP (arrêté du 17 mars 2015, en vigueur depuis le 01/07/2015)
+- Art. 4 : prix par prestation rapporté à l'heure, ou forfaitaire ; prix HT et TTC.
+- Art. 5 : « La mention d'un éventuel avantage fiscal ou social est clairement définie, détachée du prix et exprimée dans une police de caractère d'imprimerie de taille inférieure à celle de l'information sur le prix. »
+- Art. 6 : devis gratuit obligatoire à partir de 100 € TTC par mois, et sur demande en dessous.
+- Art. 7, le devis mentionne (les points relus ; les autres points de l'article ne sont pas recopiés dans l'avis) :
+  - 3° « Le numéro de la déclaration si elle a été faite » ;
+  - 5° le lieu de l'intervention ;
+  - 7° « Le ou les modes d'intervention proposés » ;
+  - 8° le nombre d'heures par prestation ;
+  - 9° le prix horaire ou forfaitaire ;
+  - 10° le taux de TVA ;
+  - 11° et 12° le total et les frais annexes, HT et TTC.
+- Art. 8 : « La facture prévue à l'article D. 7233-1 du code du travail est délivrée au consommateur avant paiement. Elle est gratuite quel que soit le support durable utilisé à cette fin. »
 
-### Attestation fiscale annuelle (C. trav. D7233-4)
-- **Quand** : une fois par an, à chaque client, date de remise non fixée par C. trav. D7233-4 ; « avant le 31 mars » vient du modèle service-public : à présenter comme un conseil, jamais comme une obligation légale [3] [résumé] ; un guide ancien dit « 31 janvier », vraisemblablement périmé [3] **(à vérifier)**.
+S'ajoute au devis obligatoire du dépannage (voir `commun.md`) quand la prestation est aussi un dépannage.
+
+### Facture SAP (C. trav. D7233-1, en vigueur depuis le 30/12/2016, décret n° 2016-1895)
+> « Lorsqu'ils assurent la fourniture aux personnes physiques de prestations de services à la personne, les personnes morales et les entrepreneurs individuels produisent une facture faisant apparaître : 1° Le nom et l'adresse de la personne morale ou de l'entrepreneur individuel ; 2° Le numéro et la date d'enregistrement de la déclaration si celle-ci a été demandée ainsi que le numéro et la date de délivrance de l'agrément lorsque les activités relèvent de l'article L. 7232-1 ; 3° Le nom et l'adresse du bénéficiaire de la prestation de service ; 4° La nature exacte des services fournis ; 5° Le montant des sommes effectivement acquittées au titre de la prestation de service ; 6° Un numéro d'immatriculation de l'intervenant permettant son identification dans les registres des salariés de l'entreprise ou de l'association prestataire ; 7° Les taux horaires de main-d'oeuvre ou, le cas échéant, le prix forfaitaire de la prestation ; 8° Le décompte du temps passé ; 9° Les prix des différentes prestations ; 10° Le cas échéant, les frais de déplacement ; 11° […] »
+
+(Le 11° n'est pas recopié dans l'avis du 5 nov. 2026.) Même page :
+- **D7233-2** (depuis le 01/05/2008) : « Lorsque les prestations de service sont imposables à la taxe sur la valeur ajoutée, les taux, prix et frais de déplacement mentionnés à l'article D. 7233-1 comprennent cette taxe. »
+- **D7233-3** : seules les factures acquittées par carte, prélèvement, virement, titre interbancaire de paiement, chèque ou CESU ouvrent droit au crédit d'impôt de CGI 199 sexdecies.
+
+Le taux horaire ou le forfait (7°) et le décompte du temps passé (8°) sont donc des mentions de la facture ; pour le petit bricolage, la durée (≤ 2 h) justifie en plus l'éligibilité.
+
+### Attestation fiscale annuelle (C. trav. D7233-4, en vigueur depuis le 30/12/2016)
+L'entrepreneur déclaré « délivre à chacun de ses clients une attestation fiscale annuelle ». Elle mentionne :
+1. nom, adresse et numéro d'identification ;
+2. numéro et date d'enregistrement de la déclaration ;
+3. nom et adresse du bénéficiaire, numéro du compte débité le cas échéant, montant effectivement acquitté ;
+4. « récapitulatif des interventions faisant apparaître le nom et le code identifiant de l'intervenant, ainsi que la date et la durée de l'intervention ».
+
+- **Quand** : une fois par an, à chaque client ; D7233-4 (lu au texte le 5 nov. 2026) ne fixe aucune date de remise. « Avant le 31 mars » vient du modèle service-public : à présenter comme un conseil, jamais comme une obligation légale [3] [résumé] ; un guide ancien dit « 31 janvier » : le texte ne fixe aucune date.
 - **Pourquoi** : permettre au client le crédit d'impôt de CGI art. 199 sexdecies [4] [résumé].
-- **Contenu relevé** (à confirmer avec l'arrêté d'application, non trouvé) [3, 5] [résumé] : nom et adresse de l'organisme ; numéro et date de déclaration ; montant acquitté dans l'année, dont la part payée en CESU préfinancés ; récapitulatif des interventions (intervenant, date, durée) — cette dernière liste vient d'une version marquée abrogée **(à vérifier)**.
 - Modèle officiel : service-public R32522 [3].
+
+### Ce que l'app produit (avis du lot 4, point 9)
+La ligne `Services à la personne : déclaration enregistrée sous le n° {numéro} le {date}` répond à D7233-1, 2° (facture) et à l'art. 7, 3° (devis). Il ne faut pas y ajouter « crédit d'impôt » : l'art. 5 l'encadre. L'app ne sait aujourd'hui produire ni le 6° (identifiant de l'intervenant), ni des prix unitaires TTC (D7233-2), ni l'attestation fiscale annuelle. **Elle n'imprime donc pas la déclaration, pour l'instant** : « Où l'imprimer » est figé sur « Ne pas l'imprimer » dans Paramètres › Légal › Mes qualifications (décision de la session locale du 5 nov. 2026, après l'avis).
 
 ## 4. Obligations et plafonds propres aux services à la personne
 
@@ -78,10 +100,10 @@ Durée de l'intervention et prix horaire : non confirmés comme mentions obligat
 
 ## 6. Mentions particulières sur le devis et la facture
 
-- Facture SAP : celles de D7233-1 (§ 3), en plus des mentions communes (voir `commun.md`). Le n° SAP est la mention que l'app n'a pas.
-- Mention utile pour le client : « Prestation de services à la personne — organisme déclaré n° … du … (C. trav. D7233-1). » Ne pas écrire « ouvrant droit au crédit d'impôt » : le droit dépend du foyer, des plafonds et du moyen de paiement. Ne jamais l'imprimer pour un travail exclu (électricité, plomberie, chauffage, au-delà de 2 h pour le bricolage), sinon c'est une affirmation fausse qui engage l'artisan.
+- Facture SAP : celles de D7233-1 (§ 3), en plus des mentions communes (voir `commun.md`). Le n° SAP se saisit dans Mes qualifications, mais l'app ne l'imprime pas pour l'instant (§ 3).
+- Mention (C. trav. D7233-1, 2° ; arrêté du 17 mars 2015, art. 7, 3° ; avis du lot 4, point 9) : `Services à la personne : déclaration enregistrée sous le n° … le …`. Ne pas écrire « ouvrant droit au crédit d'impôt » : le droit dépend du foyer, des plafonds et du moyen de paiement (art. 5 de l'arrêté). Ne jamais l'imprimer pour un travail exclu (électricité, plomberie, chauffage, au-delà de 2 h pour le bricolage), sinon c'est une affirmation fausse qui engage l'artisan. L'app ne l'imprime pas pour l'instant (§ 3).
 - Séparer sur des factures distinctes la part SAP et la part « travaux du bâtiment » d'un même client : déduction pratique pour l'attestation fiscale **(à vérifier)**.
-- Devis SAP ≥ 100 € TTC par mois : mentions de l'arrêté du 17 mars 2015, art. 7 (non lues) **(à vérifier)**.
+- Devis SAP ≥ 100 € TTC par mois : mentions de l'arrêté du 17 mars 2015, art. 7 (lues le 5 nov. 2026 : § 3).
 
 ## 7. Aides du client et pièces que l'artisan fournit
 
@@ -97,7 +119,7 @@ Aucun retour de multiservice n'est écrit dans le dépôt. Problèmes déduits d
 - Le plafond de 500 € par foyer pour le bricolage est vite atteint (quelques interventions) ; au-delà, le client n'a plus de crédit d'impôt et le découvre tard.
 - Le mélange SAP / bâtiment fait perdre la condition d'activité exclusive sans que l'artisan le voie.
 - L'avance immédiate fait payer au client la moitié seulement : argument commercial fort, mais demande une inscription et un flux de paiement que Mallettico n'a pas.
-- L'app ne connaît ni le n° SAP, ni la durée d'intervention, ni la notion de « prestation SAP » ; le modèle « nettoyage » existe mais pas de modèle homme toutes mains.
+- L'app garde la déclaration SAP (Mes qualifications) sans l'imprimer ; elle ne connaît ni la durée d'intervention, ni l'intervenant, ni la notion de « prestation SAP » ; le modèle « nettoyage » existe mais pas de modèle homme toutes mains.
 
 | Proposition | Priorité | Effort | Risque juridique |
 |---|---|---|---|

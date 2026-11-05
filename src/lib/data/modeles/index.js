@@ -109,6 +109,8 @@ export function prepareModeleLignes(modele, tvaDefaut = 10) {
   // Un modèle peut imposer son taux (`modele.tva`) quand le taux de l'entreprise serait faux pour ces travaux : chaudière
   // gaz ou fioul à 20 % depuis le 1er mars 2025, même dans un logement de plus de deux ans (CGI 279-0 bis, 2 bis, c ;
   // CGI 278-0 bis A, III bis ; BOI-TVA-LIQ-30-20-90-20 § 200 ; relu au texte le 3 nov. 2026, D-32). Une entreprise en franchise repasse ensuite les lignes à 0 % (`sansTva`).
+  // Une ligne peut imposer le sien (`ligne.tva`) : fourniture d'une climatisation à 20 % (CGI 279-0 bis, 1), la pose
+  // restant au taux de l'entreprise (juriste-btp, 4 nov. 2026 ; choix d'Hugo du 5 nov. 2026, D-41).
   const taux = Number.isFinite(modele.tva) ? modele.tva : tvaDefaut;
   return modele.lignes.map((ligne, index) => ({
     id: `ligne-${Date.now()}-${index}`,
@@ -117,7 +119,7 @@ export function prepareModeleLignes(modele, tvaDefaut = 10) {
     unite: ligne.unite,
     prixUnitaire: ligne.prixUnitaire,
     prixAchat: ligne.prixAchat,
-    tva: taux,
+    tva: Number.isFinite(ligne.tva) ? ligne.tva : taux,
     total: ligne.quantite * ligne.prixUnitaire,
   }));
 }

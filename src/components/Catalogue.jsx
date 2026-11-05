@@ -1,3 +1,4 @@
+import { referentielDes } from '../lib/metiers';
 import { useState, useMemo, useCallback, useEffect, useRef, Suspense, lazy } from 'react';
 import {
   Plus, Minus, Search, Edit3, Trash2, Star, Download, Upload, ArrowUpDown, Camera, FileText, Library, Package, Sparkles, X,
@@ -117,7 +118,11 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
 
   // Premier usage : référentiel BTP, ajout à la main ou fichier CSV
   const [etapeDemarrage, setEtapeDemarrage] = useState(null); // null | 'metiers' | 'importing' | 'done'
-  const [metiersChoisis, setMetiersChoisis] = useState([]);
+  // Import du référentiel : les catégories des métiers choisis sont pré-cochées (src/lib/metiers.js), décochables
+  const [metiersChoisis, setMetiersChoisis] = useState(() => referentielDes(entreprise?.metiers));
+  const cleMetiers = (entreprise?.metiers || []).join(',');
+  // Fiche chargée après l'ouverture de la page : reprendre le choix (sans écraser une sélection déjà commencée)
+  useEffect(() => { setMetiersChoisis((prev) => (prev.length ? prev : referentielDes(cleMetiers ? cleMetiers.split(',') : []))); }, [cleMetiers]);
   const [progression, setProgression] = useState(0);
   const [resultatDemarrage, setResultatDemarrage] = useState(null);
   const [onboardingDismissed, setOnboardingDismissed] = useState(() => {
@@ -560,7 +565,7 @@ export default function Catalogue({ entreprise = {}, catalogue, setCatalogue, ad
         devisChoisi={devisChoisi} setDevisChoisi={setDevisChoisi} onFermer={fermerAjoutDevis} onAjouter={ajouterAuDevis}
         onCreerDevis={() => { fermerAjoutDevis(); setPage?.('devis'); }} enCours={ajoutEnCours} franchiseTva={franchiseTva}
       />
-      {showArticlePicker && <ArticlePicker isOpen={showArticlePicker} onClose={() => setShowArticlePicker(false)} onSelect={ajouterDepuisReferentiel} franchiseTva={franchiseTva} />}
+      {showArticlePicker && <ArticlePicker isOpen={showArticlePicker} onClose={() => setShowArticlePicker(false)} onSelect={ajouterDepuisReferentiel} franchiseTva={franchiseTva} metiers={entreprise?.metiers} />}
     </>
   );
 
