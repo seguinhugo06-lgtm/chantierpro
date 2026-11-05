@@ -193,6 +193,8 @@ Points du juriste (à corriger 1 à 3) : appliqués mot pour mot, tests et parco
 
 ### Décisions d'Hugo (non appliquées)
 
+*Mise à jour du 5 nov. 2026 : Hugo les a toutes tranchées (D-39). Voir « Décisions d'Hugo du 5 nov. (lot 4) » plus bas ; la liste ci-dessous est celle de la session du 4 nov., gardée telle quelle.*
+
 1. Imprimer ou non une mention propre à la borne : « TVA à 5,5 % : pose d'une infrastructure de recharge dans un local à usage d'habitation, destinée aux résidents (CGI art. 278-0 bis, N) ».
 2. Garder la case obligatoire « la ligne ne comprend que la pose » (recommandé par le juriste, par prudence), ou un simple avertissement.
 3. **(reposée)** Facture tirée d'un compte rendu de dépannage, sans devis. L'arrêté du 24 janv. 2017 impose un devis détaillé avant **tout** dépannage chez un particulier, **sans seuil** (metier-btp.md § 2, D-30) ; hors établissement, aucun paiement avant sept jours (L221-10), sauf dépannage urgent demandé. Bloquer, avertir (recommandé par le juriste), ou laisser avec le rappel de Paramètres ? Attention : le texte proposé renvoie à « Dépannage express », écran qui n'existe pas sur main (`cloud/metier-depannage`) ; sinon écrire « depuis « Devis » ».
@@ -213,17 +215,17 @@ Points du juriste (à corriger 1 à 3) : appliqués mot pour mot, tests et parco
 ### Ce qui reste
 
 - Relire au texte (réseau à ouvrir : legifrance.gouv.fr) L221-10 et l'arrêté du 24 janv. 2017, pour le rappel de Paramètres › Électricité.
-- `SaisieRamonage` : même défaut de prix (point 3), sur main.
+- `SaisieRamonage` : même défaut de prix (point 3), sur main. *Corrigé le 5 nov. (lot 4).*
 - Gardes du gardien (tailles, oracle, `readonly`) à reporter dans 104 et 113.
 - À la fusion avec metier-qualifications : remplacer la copie des règles IRVE par l'import de `qualifications.js`, et pré-cocher la case « qualification » du volet borne.
-- Libellés « HT » de la saisie sans `estFranchiseTva` (conflit signalé avec franchise-suite) : non traité ici.
+- Libellés « HT » de la saisie sans `estFranchiseTva` (conflit signalé avec franchise-suite) : non traité ici. *Corrigé le 5 nov. (lot 4).*
 - Migration 111 à inscrire dans `docs/etat-production.md` à la livraison (fichier commun, non touché).
 
 ### Risques
 
 - La copie des règles IRVE peut diverger de `qualifications.js` d'ici la fusion.
 - La base laisse un ouvrier annuler un compte rendu hors de l'écran (voir gardien).
-- Le retrait de la certification (décision n° 6) est dans le code : ne pas livrer avant la décision.
+- Le retrait de la certification (décision n° 6) est dans le code : ne pas livrer avant la décision. *Tranché le 5 nov. : le code le garde.*
 
 ### Résumé (10 lignes)
 
@@ -237,3 +239,118 @@ Points du juriste (à corriger 1 à 3) : appliqués mot pour mot, tests et parco
 8. Avis du juriste versé dans `docs/metiers/` ; metier-btp.md et electricien.md alignés.
 9. Vérification complète verte sur le dernier commit de code (`f3d2e19`), tous parcours compris.
 10. Tes 10 décisions sont listées ci-dessus ; la n° 3 est reposée avec la règle exacte (devis obligatoire, sans seuil).
+
+## Décisions d'Hugo du 5 nov. (lot 4)
+
+Session de correction du 5 nov. 2026, branche locale `corr4-metier-electricien`, partie de `cloud/metier-electricien` à `d13d9936`. Hugo a répondu « OK pour tout » : chaque recommandation de ce rapport est retenue (D-39). Rien n'est fusionné ni poussé ; la production, les secrets, `CLAUDE.md` et `.claude/` ne sont pas touchés. La session locale assemble cette branche en dernier (après qualifications, entretien et dépannage), puis lance la vérification complète.
+
+Commits de code, dans l'ordre : `fff17009` (les décisions de l'électricien), `601dcead` (ramonage : prix et exception d'urgence), `28718d6d` (tests et parcours), `dd0e59d0` (nom d'un test). Les documents (ce rapport compris) suivent dans un dernier commit.
+
+### 1. Contrôle des corrections de la consigne v3
+
+Chaque point est relu dans le code d'aujourd'hui ; les lignes sont celles de `corr4-metier-electricien`.
+
+| # | Point de la consigne v3 | État | Preuve |
+|---|---|---|---|
+| 1 | Vérification complète rouge sur `cee017c` | **Fait par la session cloud, non rejoué ici** | § « Preuves » plus haut : complète verte sur `f3d2e19`, dernier commit de code d'alors. La complète est celle de la session locale, sur l'assemblage (consigne) : ici, niveau standard seulement (§ 5). |
+| 2 | Aucun parcours `reel: true` | Fait | `scripts/parcours/electricite.cjs:74-75`, `:138-139`, `:220-221` : numéro donné par la base et repris à l'écran, relecture, facture liée, annulation, tâche Consuel, droits, deux générateurs. Verts aujourd'hui (§ 5). Deux parcours ajoutés par ce lot (`:288`, `:366`). |
+| 3 | `canViewPrices` : prix visible et recopié | **Fait** pour le compte rendu ; **pas fait par la v3 pour l'attestation de ramonage, fait ici** | `SaisieCompteRendu.jsx:48,53,146` ; `OngletElectricite.jsx:136` ; `FicheChantier.jsx:555`. Ramonage : `SaisieRamonage.jsx:110,120,124,342,358` et `OngletRamonage.jsx:162` (`voitPrix={canViewPrices}`) : sans le droit, ni champ de prix, ni titre « et prix », ni prix du dernier passage, des tarifs ou de l'attestation refaite. Test `electriciteEcrans.test.jsx` et parcours `:366`. |
+| 4 | `canPerform` : annuler, refaire, « J'ai envoyé la demande » | Fait | `FicheCompteRendu.jsx:114` (annuler) et `:129` (refaire) sous `peutModifier` ; `OngletElectricite.jsx:93-94` sous `peutMemoModifier` (`FicheChantier.jsx:167`, `canPerform('memo', 'edit')`) ; la base refuse l'écriture d'un `readonly` (`111` l.99-107). Parcours des droits `:220`. |
+| 5 | Certification du client retirée sans décision | **Fait autrement : tranché par Hugo** (D-39) | Le code garde le retrait (`mentionTvaReduite.js:65,97-105`, `estPoseBorne`). `docs/metiers/electricien.md:109` aligné sur la décision (y compris « fourniture et pose par la même entreprise », qui contredisait la case « pose seule »). |
+| 6 | Avis du juriste non versé | Fait | `docs/metiers/avis-juriste-2026-11-04-electricien.md`. Les textes retenus de l'avis (aide Consuel, tâche, onglet, case et « ce qui manque » du volet borne) sont comparés au code **mot pour mot** par un script d'aujourd'hui : aucun écart. |
+| 7 | Décision 3 mal posée ; rappel absent de Paramètres › Électricité | Fait | `ElectriciteTab.jsx:23` : devis obligatoire, sept jours, exception d'urgence. La décision, reposée avec la règle exacte, est tranchée : avertir sans bloquer (§ 2, décision 4). |
+| 8 | Accroche IRVE incompatible avec « Mes qualifications » | Fait | `electricite.js:145` (`qualificationIrve` : `type: 'irve'`, intitulé, organisme, numéro, `fin`, `imprimer`, validité à la date du document) et `:196` (`avecEmetteur` fige la ligne dans l'émetteur) ; tests `electricite.test.js` « qualification IRVE ». **À la fusion** : importer `raisonNonImprimee` et `ligneImprimee` de `qualifications.js` à la place de la copie. |
+| 9 | Envoi au client absent | **Pas fait par la v3 (décision 8), fait ici** | § 2, décision 5. |
+| 10 | Rappel Consuel par tâche, pas par `rappelsDus` | Écart assumé, **tranché par Hugo** : la tâche datée reste | `electricite.js:56` (`tacheConsuel`). |
+| 11 | Titre sans mesure | Fait | `electricite.js:95,124` ; `compteRenduElectriciteHtml.js:43` ; test et parcours `:138` (`<h1>Compte rendu d’intervention</h1>`). |
+| 12 | `estLigneBorne` : pluriel et bornes d'éclairage | Fait | `electricite.js:236` ; test « reconnaît le pluriel et écarte les bornes d’éclairage ». |
+| 13 | Photovoltaïque sans avertissement de taux | Fait | `electricite.js:253` (`TAUX_A_VERIFIER`) ; test. |
+| 14 | Générateur de `DevisPage` non vérifié | Fait | Parcours `:74` : aperçu (`DevisPage`) et page de signature (`devisHtmlBuilder`), avec contre-essai. |
+| 15 | TVA globale garde la marque | Fait | `DevisComposer.jsx:382` (`retirerRegimeSiTaux`) et `:850` (boutons « appliquer à tout le devis »). |
+| 16 | Tailles de 111, colonne `signature` | Fait | `111` l.71-75 (`comptes_rendus_tailles` : émetteur, noms, contact, adresse, motif) ; aucune colonne `signature` dans le `CREATE TABLE`. SQL non touché ici, banc non relancé. |
+| 17 | Mémoire du gardien | Fait | `.claude/agent-memory/gardien-securite/MEMORY.md:26-39` : F1 à F3 « corrigée ». Fichier lu, non modifié (`.claude/` interdit). |
+| 18 | « décision d'Hugo n° 22 » | Fait | Plus aucune occurrence ; `electricite.js:12` cite D-36. |
+| J | 3 corrections du juriste au texte (Consuel, tâche, qualification D. 353-2) | Fait | Comparaison mot pour mot (voir 6) ; `docs/metier-btp.md:107-108` conforme à l'avis. |
+| G | 3 défauts du gardien (tailles, oracle, `readonly`) | Fait dans 111 ; **hors périmètre dans 104 et 113** (autres branches, SQL interdit hors 111) | `111` l.71-75, `:135-137` (refus avant le verrou), `:99-107`. |
+| H | Libellés « HT » de la saisie (conflit signalé avec franchise-suite) | **Pas fait par la v3, fait ici** | `SaisieCompteRendu.jsx:147` : « Prix (€) » en franchise, « Prix (€ HT) » sinon (même formule que `SaisieRamonage` sur main). Test `electriciteEcrans.test.jsx`. |
+
+### 2. Décisions appliquées
+
+| # | Décision | Ce qui a changé | Test | Contre-essai |
+|---|---|---|---|---|
+| 1 | Compte rendu **allumé** | **Rien à allumer dans le code.** Aucune constante, aucun interrupteur global, aucun réglage masqué ne garde le compte rendu éteint : seul le réglage de l'artisan « Je fais des travaux d'électricité » (Paramètres › Documents › Électricité, `ElectriciteTab.jsx`, défaut éteint `entrepriseService.js:60`) ajoute l'onglet (`FicheChantier.jsx:486`). Il est gardé : l'artisan l'active. **Aucune valeur posée d'office** pour les comptes existants (`reglagesDe` ne force rien ; aucune migration de données). Le choix « Électricien » à l'inscription l'allumera à l'assemblage (session locale), pas ici. Le texte du réglage dit maintenant que le PDF s'envoie par e-mail. | Parcours `:399` (démo) : réglage allumé dans Paramètres, onglet, rappel, compte rendu, PDF, facture. | Même parcours, étape 0 : sans le réglage, pas d'onglet. Mutation : onglet forcé à « éteint » dans `FicheChantier.jsx` → le parcours démo échoue (« l’onglet « Électricité » est sur la fiche chantier ») et le parcours en base aussi (« onglet « Électricité » introuvable »). |
+| 2 | Case « la ligne ne comprend que la pose » **reste exigée** | Aucun changement (`TvaBorne.jsx:66-73`). | **Aucun test ne la couvrait** : ajouté, `electriciteEcrans.test.jsx` (3 tests : sans la case, le 5,5 % est suggéré mais aucun bouton ; avec la case, le bouton ; hors habitation ou sans qualification, jamais). | Mutation : condition `poseSeule === true` retirée → « toutes les autres réponses sont bonnes mais la case n’est pas cochée » échoue. |
+| 3 | **Mention imprimée** pour une borne à 5,5 % | `mentionTvaReduite.js:73` (`MENTION_BORNE`, texte de la décision, apostrophes droites comme dans la fiche), `:79` (`portePoseBorne`), `:148` et `:163` (bloc après la certification, ou seul). Repère : la marque `regimeTva` de la borne **et** le taux de 5,5 % (`:65`, le même que pour retirer la certification). Les deux générateurs appellent ce bloc sans changer (`devisHtmlBuilder.js:338`, `DevisPage.jsx:1561`). Ni franchise ni avoir. | `electricite.test.js` : texte exact ; borne marquée → mention seule (devis, facture, facture d'acompte aux lignes marquées) ; **autre ligne à 5,5 % → pas de mention, certification gardée** ; borne + isolation → les deux ; `buildDevisHtml` (page de signature) devis et facture. Parcours `:74` : **aperçu `DevisPage` et page de signature** impriment la mention pour la ligne marquée. | Ligne marquée passée à 10 %, ligne **sans la marque**, montant nul, sans lignes, franchise, avoir : pas de mention (tests et parcours). Mutations : mention supprimée → 4 tests rouges et le parcours (« la mention de la borne est imprimée ») ; mention pour toute ligne à 5,5 % → 3 tests rouges. |
+| 4 | Facture d'un dépannage, **sans devis** : avertir sans bloquer | `electricite.js:264` (`TEXTE_DEPANNAGE_SANS_DEVIS`, texte de l'avis, « Dépannage express » remplacé par « Devis ») et `:272` (`avertissementFactureCompteRendu`) ; `FicheCompteRendu.jsx:72-75`. Seulement pour un client particulier (`estClientParticulier` de `retractation`) ; la facture est créée avant, jamais de blocage. | `electricite.test.js` (texte exact, particulier, un seul avertissement à la fois). Parcours `:138` : le dépannage d'un particulier montre l'avertissement, la facture est créée. | Syndic, professionnel, entreprise, client inconnu, autres natures : rien (test) ; parcours `:288` : client professionnel, facture créée, aucun avertissement. Mutations : avertissement retiré → test et parcours rouges ; condition « particulier » retirée → test rouge. |
+| 5 | Compte rendu **envoyé par e-mail** comme l'attestation de ramonage | `actionsCompteRendu.js:40` (`corpsEmailCompteRendu`) et `:58` (`envoyerCompteRendu`) : même fonction que `envoyerAttestation`, `sendDocumentEmail` → `send-email`, PDF joint, mêmes contrôles côté serveur. `FicheCompteRendu.jsx:47` (`envoyer`) et `:140` (bouton « Envoyer au client ») : on attend la réponse, « envoyé » seulement après ; un refus est dit tel quel ; en démo, rien ne part et l'écran le dit ; bouton inactif et phrase d'aide sans e-mail sur la fiche du client (`:111`). Client = la fiche du client du compte rendu (`OngletElectricite.jsx:47,141`). Sous `peutModifier` (un e-mail part au nom de l'entreprise). **Aucune nouvelle fonction Edge.** | `envoiCompteRendu.test.js` (5 tests : appel unique à `send-email`, destinataire, objet, PDF joint en base64, mêmes champs que l'attestation, refus 403 / 429 / erreur dans un 200 / réseau → exception). Parcours `:288` : envoi, PDF joint, « envoyé » après la réponse ; **refus du serveur dit tel quel, aucun « envoyé »** ; sans e-mail : bouton inactif, rien ne part. Parcours `:220` : lecture seule sans bouton, patron avec. | Mutation : refus avalé (faux succès) → 2 tests rouges ; message de succès affiché même sur refus → le parcours échoue (« le refus du serveur est dit tel quel »). |
+| 6 | Exception du **dépannage urgent** au rappel de Paramètres › Ramonage | `RamonageTab.jsx:136` : clause recopiée mot pour mot de `ElectriciteTab.jsx:23` (« sauf dépannage urgent qu’il a expressément demandé, dans la limite des pièces et travaux strictement nécessaires »). Condition de la fiche (« si ton rapport contient le texte du juriste ») : le rapport nomme l'exception (L. 221-10, 4°, § « Relectures de cette session ») et son texte exact est dans `ElectriciteTab.jsx:23`, corrigé par le juriste le 4 nov. au soir : appliquée. | `electriciteEcrans.test.jsx` : les deux écrans portent la même clause. | Mutation : clause retirée du ramonage → test rouge. |
+| — | Points tranchés par Claude | **Signature au doigt : pas maintenant** (colonne absente de 111 et de la synchronisation, rien à faire). **Certification retirée pour une borne à 5,5 % : on garde** (relue « juste » par le juriste). **Rappel Consuel : tâche datée**. **Choix « Électricien » à l'inscription : pas sur cette branche.** | — | — |
+
+### 3. Textes nouveaux « À relire par le juriste »
+
+1. **Mention de la borne** (`MENTION_BORNE`, `mentionTvaReduite.js:73`) : « TVA à 5,5 % : pose d'une infrastructure de recharge dans un local à usage d'habitation, destinée aux résidents (CGI art. 278-0 bis, N) ». À vérifier : la **lettre N** au texte officiel (aucun paragraphe du BOFiP ne commente le N, recherche du 4 nov.). Apostrophes **droites**, comme dans la décision ; le reste du document en utilise de typographiques.
+2. **Avertissement du dépannage** (`TEXTE_DEPANNAGE_SANS_DEVIS`, `electricite.js:264`) : texte du juriste, relu au texte le 4 nov. ; seul le renvoi change (« Pour le prochain, faites-le depuis « Devis ». »). À valider : ce renvoi.
+3. **E-mail du compte rendu** (`corpsEmailCompteRendu`, `actionsCompteRendu.js:40`) : « Bonjour, / Veuillez trouver ci-joint le compte rendu d’intervention et d’autocontrôle n° … du … (nature). / Cordialement, nom de l'entreprise, contact ». Objet : « Compte rendu d’intervention et d’autocontrôle n° … — nom de l'entreprise » (sans « et d’autocontrôle » quand aucune mesure n'est saisie, comme le document). Calqué sur l'e-mail du ramonage, sans ses deux phrases propres (conservation, rappels). Ni « conforme » ni « certifié » (testé).
+4. **Rappel de Paramètres › Ramonage** (`RamonageTab.jsx:136`) : clause du dépannage urgent ajoutée. À vérifier : **un ramonage est-il visé** par cette exception (L. 221-10, 4°) ? Elle est alignée sur Paramètres › Électricité, relu par le juriste le 4 nov. au soir sur pièces ; le texte officiel de L. 221-10 reste à rouvrir (réserve déjà inscrite plus haut).
+
+### 4. Ce qui n'a pas été fait, et réserves
+
+- **Facture d'acompte ou d'étape d'une borne : ni mention, ni retrait de la certification.** Ces factures sont faites de lignes forfaitaires par taux (« Acompte 30 % sur devis… », `src/lib/facturation.js`) qui ne portent pas la marque de la borne : le repère de la décision (« selon le repère que ta branche utilise déjà ») n'y est pas. Elles gardent le comportement d'avant (certification « rénovation énergétique » imprimée à 5,5 %). Le devis, la facture complète et la facture de solde, qui gardent les lignes du devis, sont couverts. Suite possible, à décider : porter la marque sur la ligne d'acompte quand tout le 5,5 % du devis vient de poses de borne marquées (`lignesFactureAcompte`, `buildFactureLignesForEtape`) ; c'est le cas courant avec l'acompte de 30 % par défaut. Non fait : cela touche trois constructeurs de lignes de facture, hors des décisions de la fiche.
+- **L'avertissement du dépannage ne cherche pas de devis existant** : il paraît pour tout dépannage chez un particulier, comme la fiche le demande (conditions : particulier, jamais de blocage). Un devis fait avant n'éteint pas le toast. Affinement possible : le taire si un devis envoyé précède la date de l'intervention.
+- **Deux commentaires restent périmés** (« décision n° 5 d'Hugo attendue », signature) : `useSupabaseSync.js:1112` et `111_…sql:27`. Non touchés : le premier est dans un fichier déjà en conflit avec `metier-entretien`, le second est du SQL. À mettre à jour à l'assemblage.
+- **`docs/decisions.md`** : D-39 n'y est pas (fichier commun, conflits ; la session locale le tient).
+- **Vérification complète non rejouée** (consigne : celle de la session locale, sur l'assemblage). Banc de migrations non relancé : aucun SQL touché.
+- **Gardes de 104 et 113** (tailles, oracle, `readonly`) : hors de cette branche, comme dit plus haut.
+
+### 5. Commandes lancées et résultats
+
+| Commande | Résultat |
+|---|---|
+| `npm ci` | fait |
+| `npm run verifier -- --rapide` sur `d13d9936` (point de départ, avant toute modification) | vert : 1 325 tests, lint 0 erreur (241 avertissements), smoke |
+| `npm run verifier` (standard) sur `dd0e59d0`, dernier commit de code | **vert** : 1 353 tests (28 de plus), lint 0 erreur, smoke, build. Les commits suivants ne touchent que des documents. |
+| `npm run parcours -- electricite` (après `npm run build`) | **6 parcours réussis**, 75 vérifications : les 4 de la v3 et les 2 de ce lot (e-mail ; prix de l'attestation de ramonage) |
+| `npm run parcours -- ramonage` | **18 parcours réussis** (RamonageTab et SaisieRamonage sont touchés), dont le nouveau « un chef de chantier n’a pas le champ de prix de l’attestation » |
+| Tests ajoutés | `electricite.test.js` 31 → 45 ; `electriciteEcrans.test.jsx` 9 (nouveau) ; `envoiCompteRendu.test.js` 5 (nouveau) |
+| `npm run banc:migrations` | non lancé : aucun SQL touché |
+| `npm run verifier -- --complet` | non lancé : celui de la session locale, sur l'assemblage |
+
+**Contre-essais** (une correction défaite à la fois, puis restaurée par `git checkout` ; l'arbre est revenu au commit) :
+
+| Correction défaite | Résultat |
+|---|---|
+| Mention de la borne supprimée (`mentionTvaReduite.js`) | 4 tests rouges ; le parcours des deux générateurs échoue (« aperçu (DevisPage) : pose marquée à 5,5 %, la mention de la borne est imprimée ») |
+| Mention pour toute ligne à 5,5 %, marque ignorée | 3 tests rouges (autre ligne à 5,5 %, contre-essais, page de signature) |
+| Avertissement du dépannage retiré | 1 test rouge ; le parcours en base échoue (« l’avertissement du devis est montré ») |
+| Condition « client particulier » retirée | 1 test rouge (syndic, professionnel, entreprise, inconnu) |
+| Refus du serveur avalé dans `envoyerCompteRendu` | 2 tests rouges (refus 403 / 429, erreur dans un 200, réseau) |
+| « Envoyé » affiché même quand le serveur refuse (`FicheCompteRendu.jsx`) | le parcours d'envoi échoue (« le refus du serveur est dit tel quel ») |
+| Case « la ligne ne comprend que la pose » non exigée (`TvaBorne.jsx`) | 1 test rouge |
+| « Prix (€ HT) » même en franchise | 1 test rouge |
+| `SaisieRamonage` : prix montré et repris sans le droit | 1 test rouge ; le parcours du chef de chantier échoue (« la saisie ne montre aucun champ de prix au chef de chantier ») |
+| Clause du dépannage urgent retirée de Paramètres › Ramonage | 1 test rouge |
+| Réglage « Électricité » éteint pour tous (`FicheChantier.jsx`) | le parcours en démo échoue (« l’onglet « Électricité » est sur la fiche chantier ») et celui en base aussi (« onglet « Électricité » introuvable ») |
+
+Les quatre mutations du navigateur (mention, avertissement, faux succès, prix du ramonage) ont été jouées ensemble sur un seul arbre : 4 parcours rouges, chacun pour sa propre mutation, et les 2 autres (droits, démo) verts.
+
+### 6. À l'assemblage (pour la session locale)
+
+- Appliquer **111 avant** que quiconque active le réglage (sinon l'enregistrement d'un compte rendu échoue) ; l'inscrire dans `docs/etat-production.md`. `send-email` n'est pas modifiée : rien à redéployer.
+- Le choix « Électricien » à l'inscription allume `electriciteActif` (avec `metier-qualifications`) ; ne pas poser la valeur aux comptes existants.
+- Remplacer la copie des règles IRVE par l'import de `qualifications.js` ; pré-cocher la case « qualification » du volet borne.
+- Ajouter D-39 à `docs/decisions.md` ; mettre à jour les deux commentaires périmés (§ 4).
+- Faire relire par juriste-btp les quatre textes du § 3, textes officiels ouverts.
+- Rejouer, après chaque fusion : `npm run parcours -- electricite` et `-- ramonage` (le second parcours de ce lot, « un chef de chantier n’a pas le champ de prix de l’attestation », est dans `electricite.cjs` pour ne pas toucher `ramonage.cjs`).
+
+### Résumé (10 lignes)
+
+1. Contrôle v3 : 18 points + juriste + gardien relus dans le code ; 3 « pas faits » traités ici (envoi, prix de la saisie du ramonage, libellés « HT »).
+2. Décision 1 : rien à allumer dans le code, le réglage de l'artisan est la porte ; aucune valeur posée d'office.
+3. Décision 2 : la case « pose seule » reste exigée ; elle n'avait aucun test, elle en a trois.
+4. Décision 3 : la mention de la borne est imprimée à 5,5 % pour une ligne marquée, par le bloc commun aux deux générateurs ; pas pour une autre ligne à 5,5 %.
+5. Décision 4 : avertissement (sans blocage) pour la facture d'un dépannage chez un particulier, texte du juriste avec « Devis ».
+6. Décision 5 : « Envoyer au client » par le chemin de l'attestation de ramonage ; aucun faux succès ; aucune nouvelle fonction Edge.
+7. Exception du dépannage urgent ajoutée au rappel de Paramètres › Ramonage.
+8. Tests : 28 de plus, chacun avec son contre-essai (mutation) ; deux parcours de plus.
+9. Réserves : l'acompte d'une borne n'imprime ni mention ni retrait de certification ; l'avertissement du dépannage ne cherche pas de devis.
+10. Quatre textes à relire par le juriste (§ 3).

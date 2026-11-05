@@ -76,3 +76,13 @@ L'écran citait l'art. 22 du décret n° 2017-26, abrogé depuis le 1er juillet 
 - rappel de Paramètres › Électricité (calqué sur Paramètres › Ramonage, relu le 24 oct.) ;
 - `TEXTE_TAUX_A_VERIFIER`, complété pour le photovoltaïque ;
 - titre « Compte rendu d’intervention » quand aucune mesure n'est saisie.
+
+## Suite : décisions d'Hugo du 5 nov. 2026 (D-39)
+
+L'avis ci-dessus est versé tel qu'il a été rendu. Hugo a tranché le 5 nov. 2026 (« OK pour tout » : chaque recommandation est retenue) :
+
+- **Point 4 (case « la ligne ne comprend que la pose »)** : gardée comme condition du bouton 5,5 % d'une borne (test `src/components/__tests__/electriciteEcrans.test.jsx`).
+- **Point 5 (facture de dépannage sans devis)** : avertir sans bloquer, pour un client particulier seulement (`estClientParticulier`). Le texte est celui de l'avis, à une différence près : le renvoi « Pour le prochain, faites-le depuis « Dépannage express » » devient « Pour le prochain, faites-le depuis « Devis » », « Dépannage express » étant un écran de `cloud/metier-depannage`, absent de cette branche (`TEXTE_DEPANNAGE_SANS_DEVIS`, `src/lib/electricite.js`). **Renvoi à relire par le juriste.**
+- **Retrait de la certification du client pour une pose de borne à 5,5 %** (décision n° 6 du rapport) : tranché, le code garde ce retrait.
+- **Mention propre à la borne** (décision n° 1 du rapport) : imprimée sur le devis et la facture pour une ligne de pose marquée à 5,5 %, texte de la décision gardé tel quel (`MENTION_BORNE`, `src/lib/mentionTvaReduite.js`). **À relire par le juriste**, qui vérifiera la lettre N de l'art. 278-0 bis au texte officiel.
+- **Exception du dépannage urgent** (L. 221-10, 4°) : ajoutée au rappel de Paramètres › Ramonage, recopiée de celui de Paramètres › Électricité. **À relire par le juriste** : un ramonage est-il visé par cette exception ?
