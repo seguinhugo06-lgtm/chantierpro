@@ -5,9 +5,11 @@
  *
  * Droit (arrêté du 24 janvier 2017, relu au texte et résumé dans docs/metier-btp.md § 2) : devis détaillé avant
  * toute prestation de dépannage, réparation ou entretien chez un particulier, sans seuil ; le devis dit s'il est
- * gratuit ou payant (art. 4, I) et que le client peut conserver les pièces remplacées (art. 4, III, annexe 2) ; taux
- * horaires TTC, décompte du temps, frais de déplacement et forfaits affichés dans les locaux, communiqués avant un
- * contrat conclu chez le client et accessibles sur tout espace en ligne (art. 2 et 3).
+ * gratuit ou payant (art. 4, I) et que le client peut conserver les pièces, éléments ou appareils remplacés (art. 4,
+ * III, annexe 2) ; taux horaires TTC, décompte du temps, forfaits, frais de déplacement, caractère gratuit ou payant du
+ * devis et toute autre condition de rémunération communiqués au client avant le contrat, affichés dans les locaux si
+ * l'artisan y reçoit des clients, et accessibles sur tout espace en ligne (art. 2 et 3) ; une note remise sur un support
+ * durable (art. 5 ; arrêté du 3 octobre 1983, art. 3).
  *
  * Choix (relectures critique-produit et juriste-btp du 4 nov. 2026) :
  * - la case « urgence demandée par le client » ne change jamais le prix : elle sert au droit (L221-10, 4° ;
@@ -33,19 +35,21 @@ import { arrondi } from './totauxDocument';
 /**
  * Obligations, résumées (pas citées) : textes recopiés à l'identique de docs/metier-btp.md § 2 (le test les compare),
  * rédaction juriste-btp au texte de l'arrêté du 24 janvier 2017, art. 2 à 5 (Légifrance, version du 01/04/2017,
- * consulté le 04/11/2026). La source affichée ne nomme pas le fichier du dépôt.
+ * consulté le 04/11/2026), reformulée le 05/11/2026 après la relecture du lot 4 (point 8 : « toute autre condition de
+ * rémunération », affichage dans les locaux seulement si l'artisan y reçoit des clients, note de l'arrêté du 3 octobre
+ * 1983, art. 3). La source affichée ne nomme pas le fichier du dépôt.
  */
 export const OBLIGATIONS = [
   {
-    texte: 'Taux horaires TTC, décompte du temps, frais de déplacement, prix TTC des forfaits et caractère gratuit ou payant du devis : affichés dans les locaux, communiqués avant un contrat conclu chez le client et accessibles sur tout espace en ligne (art. 2 et 3)',
+    texte: 'Taux horaires TTC, décompte du temps, prix TTC des forfaits, frais de déplacement, caractère gratuit ou payant du devis et toute autre condition de rémunération (majorations comprises) : communiqués au client avant le contrat, affichés dans vos locaux si vous y recevez des clients, et accessibles sur votre site ou vos pages en ligne (art. 2 et 3)',
     source: 'Arrêté du 24 janvier 2017, articles 2 et 3',
   },
   {
-    texte: 'Un devis détaillé est remis avant toute intervention ; conclu dans vos locaux, il dit s’il est gratuit ou payant (art. 4, I) ; il informe le client qu’il peut conserver les pièces remplacées, selon le modèle de l’annexe 2 (art. 4, III)',
+    texte: 'Un devis détaillé est remis avant toute intervention ; conclu dans vos locaux, il dit s’il est gratuit ou payant (art. 4, I) ; il informe le client qu’il peut conserver les pièces, éléments ou appareils remplacés, selon le modèle de l’annexe 2 (art. 4, III)',
     source: 'Arrêté du 24 janvier 2017, article 4',
   },
   {
-    texte: 'une note (la facture en tient lieu) est remise gratuitement sur un support durable dès la fin de l’intervention, avant le paiement (art. 5)',
+    texte: 'une note est remise gratuitement sur un support durable dès la fin de l’intervention, avant le paiement ; votre facture en tient lieu si elle indique la date et le lieu de l’intervention (art. 5 ; arrêté du 3 octobre 1983, art. 3)',
     source: 'Arrêté du 24 janvier 2017, article 5',
   },
 ];

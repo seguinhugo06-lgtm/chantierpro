@@ -191,19 +191,48 @@ describe('obligations affichées : recopiées mot pour mot de docs/metier-btp.md
   });
 });
 
+// Avis juriste-btp du 5 nov. 2026 (lot 4, point 8), lu au texte de l'arrêté du 24 janvier 2017, art. 2 à 5, et de l'arrêté
+// du 3 octobre 1983, art. 3 : les trois textes affichés dans Paramètres › Dépannage, mot pour mot
+describe('obligations affichées : mot pour mot l’avis juriste-btp du 5 nov. 2026 (point 8)', () => {
+  const TEXTES = [
+    'Taux horaires TTC, décompte du temps, prix TTC des forfaits, frais de déplacement, caractère gratuit ou payant du devis et toute autre condition de rémunération (majorations comprises) : communiqués au client avant le contrat, affichés dans vos locaux si vous y recevez des clients, et accessibles sur votre site ou vos pages en ligne (art. 2 et 3)',
+    'Un devis détaillé est remis avant toute intervention ; conclu dans vos locaux, il dit s’il est gratuit ou payant (art. 4, I) ; il informe le client qu’il peut conserver les pièces, éléments ou appareils remplacés, selon le modèle de l’annexe 2 (art. 4, III)',
+    'une note est remise gratuitement sur un support durable dès la fin de l’intervention, avant le paiement ; votre facture en tient lieu si elle indique la date et le lieu de l’intervention (art. 5 ; arrêté du 3 octobre 1983, art. 3)',
+  ];
+  it('les trois textes sont ceux du juriste', () => {
+    expect(OBLIGATIONS.map((o) => o.texte)).toEqual(TEXTES);
+  });
+  it('art. 2 : « toute autre condition de rémunération » (majorations comprises), communiqué avant le contrat, affichage dans les locaux seulement si l’artisan y reçoit des clients', () => {
+    expect(OBLIGATIONS[0].texte).toContain('toute autre condition de rémunération (majorations comprises)');
+    expect(OBLIGATIONS[0].texte).toContain('communiqués au client avant le contrat');
+    expect(OBLIGATIONS[0].texte).toContain('affichés dans vos locaux si vous y recevez des clients');
+  });
+  it('art. 4, III : « pièces, éléments ou appareils remplacés », comme la question de l’annexe 2', () => {
+    expect(OBLIGATIONS[1].texte).toContain('pièces, éléments ou appareils remplacés');
+    expect(QUESTION_PIECES).toContain('pièces, éléments ou appareils remplacés');
+  });
+  it('art. 5 : la facture ne tient lieu de note que si elle indique la date et le lieu de l’intervention (arrêté du 3 octobre 1983, art. 3)', () => {
+    expect(OBLIGATIONS[2].texte).toContain('votre facture en tient lieu si elle indique la date et le lieu de l’intervention');
+    expect(OBLIGATIONS[2].texte).toContain('arrêté du 3 octobre 1983, art. 3');
+    expect(OBLIGATIONS[2].texte).not.toContain('(la facture en tient lieu)');
+  });
+  it('la phrase « Affichez la grille… » de Paramètres › Dépannage : avant la signature, chez le client ou à distance', () => {
+    const phrase = 'Affichez la grille dans vos locaux si vous y recevez des clients ; remettez-la ou envoyez-la au client avant qu’il signe le devis, quand le contrat est conclu chez lui ou à distance (arrêté du 24 janvier 2017, art. 3) ; et mettez-la sur votre site.';
+    const ecran = readFileSync(fileURLToPath(new URL('../../components/settings/DepannageTab.jsx', import.meta.url)), 'utf8');
+    expect(ecran).toContain(phrase);
+    expect(ecran).not.toContain('avant le devis quand vous intervenez chez lui');
+  });
+});
+
 describe('avertissement d’urgence : rédaction au texte (L221-10, 4° ; L221-28, 8°)', () => {
   it('« pour répondre à l’urgence », pièces de rechange, sept jours limités au contrat signé chez le client', () => {
     expect(AVERTISSEMENT_URGENCE).toContain('pièces de rechange et travaux strictement nécessaires pour répondre à l’urgence');
     expect(AVERTISSEMENT_URGENCE).not.toContain('faire cesser');
     expect(AVERTISSEMENT_URGENCE).toContain('signé chez le client, il ne permet de recevoir aucun paiement avant l’expiration d’un délai de sept jours');
   });
-  it('mot pour mot l’avis versé (docs/metiers/avis-juriste-2026-11-04-depannage.md), comme la phrase « Affichez la grille… »', () => {
-    const lire = (f) => readFileSync(fileURLToPath(new URL(f, import.meta.url)), 'utf8');
-    const avis = lire('../../../docs/metiers/avis-juriste-2026-11-04-depannage.md');
+  it('mot pour mot l’avis versé (docs/metiers/avis-juriste-2026-11-04-depannage.md)', () => {
+    const avis = readFileSync(fileURLToPath(new URL('../../../docs/metiers/avis-juriste-2026-11-04-depannage.md', import.meta.url)), 'utf8');
     expect(avis).toContain(AVERTISSEMENT_URGENCE);
-    const phrase = 'Affichez la grille dans vos locaux, remettez-la au client avant le devis quand vous intervenez chez lui (arrêté du 24 janvier 2017, art. 3), et mettez-la sur votre site.';
-    expect(avis).toContain(phrase);
-    expect(lire('../../components/settings/DepannageTab.jsx')).toContain(phrase);
   });
 });
 

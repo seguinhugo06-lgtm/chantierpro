@@ -148,8 +148,8 @@ export default function DepannageTab({ entreprise, setEntreprise }) {
                 <li key={o.source}>{majuscule(o.texte)}. <span className="text-encre-3">{o.source}.</span></li>
               ))}
             </ul>
-            {/* Rédaction juriste-btp du 4 nov. 2026 (arrêté du 24 janv. 2017, art. 3 ; docs/metiers/avis-juriste-2026-11-04-depannage.md) */}
-            <p className="text-sm text-encre-2 mb-3">Affichez la grille dans vos locaux, remettez-la au client avant le devis quand vous intervenez chez lui (arrêté du 24 janvier 2017, art. 3), et mettez-la sur votre site.</p>
+            {/* Rédaction juriste-btp du 5 nov. 2026, lue au texte (arrêté du 24 janv. 2017, art. 3 ; avis du lot 4, point 8), qui remplace celle du 4 nov. */}
+            <p className="text-sm text-encre-2 mb-3">Affichez la grille dans vos locaux si vous y recevez des clients ; remettez-la ou envoyez-la au client avant qu’il signe le devis, quand le contrat est conclu chez lui ou à distance (arrêté du 24 janvier 2017, art. 3) ; et mettez-la sur votre site.</p>
             {g.tauxHoraire === null ? (
               <p role="alert" className="flex gap-2 text-sm text-alerte-texte mb-3">
                 <AlertTriangle size={16} className="flex-shrink-0 mt-0.5" aria-hidden="true" />
