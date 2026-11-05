@@ -2,6 +2,7 @@
 // OUVRAGES — Lot RE : Renovation Energetique
 // Prix indicatifs marche francais BTP 2025 — HT
 // TVA 5.5% applicable pour la majorite des travaux de renovation energetique
+// Exception : les PAC air/air (chapitre CHAP_RE_03_02) sont a 20 %, voir le commentaire du chapitre
 // =============================================================================
 
 export default [
@@ -558,6 +559,12 @@ export default [
 
   // ===========================================================================
   // CHAP_RE_03_02 — PAC air/air
+  // Une PAC air/air est un « système de climatisation » (CGI ann. IV art. 30-00 A, 4 ; BOI-TVA-LIQ-30-20-90-20 § 50, 70 et 80,
+  // lus au texte le 5 nov. 2026, avis juriste-btp du lot 4, point 10) : la fourniture, toutes pièces constitutives et éléments de
+  // raccordement compris (liaisons, réseau de gaines et bouches d'un gainable), est à 20 % ; la pose à 10 %. Chaque ouvrage est
+  // ici une ligne unique « fourniture et pose » : elle prend 20 % tout entière, comme les ouvrages de climatisation du lot 08.
+  // Le 5,5 % (CGI 278-0 bis A, I, 3° ; arrêté du 13 juil. 2026, ann. IV art. 30-0 D ter, 1° bis) ne vaut que si l'artisan constate
+  // les critères (classe A+ en multi-split, A++ en mono-split, fluide, pilotage) : l'app ne le propose jamais d'office.
   // ===========================================================================
   {
     id: 'RE_03_02_001',
@@ -573,7 +580,7 @@ export default [
     prixMin: 850,
     prixMax: 1500,
     tempsPoseH: 6,
-    tva: 5.5,
+    tva: 20,
     tags: ['PAC', 'air/air', 'monosplit', 'climatisation', 'réversible'],
     difficulte: 'standard',
   },
@@ -591,7 +598,7 @@ export default [
     prixMin: 1000,
     prixMax: 1700,
     tempsPoseH: 6,
-    tva: 5.5,
+    tva: 20,
     tags: ['PAC', 'air/air', 'monosplit', '3.5kW', 'réversible'],
     difficulte: 'standard',
   },
@@ -609,7 +616,7 @@ export default [
     prixMin: 3200,
     prixMax: 5500,
     tempsPoseH: 16,
-    tva: 5.5,
+    tva: 20,
     tags: ['PAC', 'air/air', 'multisplit', '3 unités', 'réversible'],
     difficulte: 'complexe',
   },
@@ -627,7 +634,7 @@ export default [
     prixMin: 4800,
     prixMax: 8000,
     tempsPoseH: 24,
-    tva: 5.5,
+    tva: 20,
     tags: ['PAC', 'air/air', 'multisplit', '5 unités', 'grande maison'],
     difficulte: 'complexe',
   },
@@ -645,7 +652,7 @@ export default [
     prixMin: 4200,
     prixMax: 7200,
     tempsPoseH: 20,
-    tva: 5.5,
+    tva: 20,
     tags: ['gainable', 'PAC', 'air/air', 'faux plafond', 'gaines'],
     difficulte: 'complexe',
   },

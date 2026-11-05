@@ -10,9 +10,13 @@ import { tvaArticleReferentiel } from '../../components/ArticlePicker';
 // 20 % ; la pose reste au taux de l'entreprise (10 % par défaut). Même balayage que `tvaChaudiere.test.js` (lot 0) :
 // modèles de devis, bibliothèque des métiers, bibliothèque d'ouvrages, référentiel du catalogue.
 //
-// Ouvrages et référentiel ne portent qu'UN taux par ligne « fourniture et pose » : ils ne peuvent pas séparer. Les ouvrages
-// de climatisation du lot 08 sont donc à 20 % tout entiers, jamais à taux réduit ; le référentiel n'a aucun article gainable
-// (voir le dernier groupe, et les réserves de docs/cloud/metier-qualifications.md).
+// Ouvrages et référentiel ne portent qu'UN taux par ligne « fourniture et pose » : ils ne peuvent pas séparer. Une ligne
+// unique fourniture et pose de climatisation prend donc 20 % tout entière (ouvrages de climatisation du lot 08, ouvrages PAC
+// air/air du lot 10, articles PAC air/air du référentiel), jamais 10 % ni 5,5 %.
+//
+// PAC air/air (avis juriste-btp du lot 4, 5 nov. 2026, point 10 ; BOI-TVA-LIQ-30-20-90-20 § 50, 70, 80) : hors des critères du
+// 1° bis (CGI ann. IV art. 30-0 D ter, arrêté du 13 juil. 2026), la fourniture est à 20 % et la pose à 10 %. Le 5,5 % (CGI
+// 278-0 bis A, I, 3°) ne vaut que si l'artisan constate les critères : l'app ne le propose jamais d'office.
 
 const articlesBtp = () =>
   Object.values(ALL_ARTICLES_BTP).flatMap((c) => Object.values(c.sousCategories || {}).flatMap((s) => s.articles || []));
@@ -145,9 +149,56 @@ describe('climatisation : bibliothèque d’ouvrages, lot 08 (split, multisplit,
   });
 });
 
+describe('climatisation : PAC air/air de la bibliothèque d’ouvrages, lot 10 (rénovation énergétique)', () => {
+  const pacAirAir = () => ALL_OUVRAGES.filter((o) => o.chapitreId === 'CHAP_RE_03_02');
+
+  it('les cinq PAC air/air du lot 10, « Gainable PAC air/air 7kW » comprise, sont à 20 % : jamais 5,5 % d’office', () => {
+    expect(pacAirAir().map((o) => o.id)).toEqual(['RE_03_02_001', 'RE_03_02_002', 'RE_03_02_003', 'RE_03_02_004', 'RE_03_02_005']);
+    expect(pacAirAir().find((o) => /Gainable/i.test(o.nom))?.id).toBe('RE_03_02_005');
+    for (const o of pacAirAir()) expect(o.tva, `${o.id} ${o.nom}`).toBe(20);
+  });
+
+  it('balayage : tout ouvrage de climatisation, split, gainable ou PAC air/air de toute la base est à 20 % (ni 10 %, ni 5,5 %)', () => {
+    const concernes = ALL_OUVRAGES.filter((o) => /air\/air|climatisation|split|gainable/i.test(`${o.nom} ${o.description} ${(o.tags || []).join(' ')}`) && !/air\/eau/i.test(`${o.nom} ${o.description}`));
+    expect(concernes.length).toBeGreaterThanOrEqual(17);
+    for (const o of concernes) expect(o.tva, `${o.id} ${o.nom}`).toBe(20);
+  });
+
+  it('contre-essai : une PAC air/eau (autre règle) et le reste du lot 10 gardent leur taux réduit', () => {
+    const airEau = ALL_OUVRAGES.filter((o) => /PAC air\/eau/i.test(o.nom));
+    expect(airEau.length).toBeGreaterThan(0);
+    for (const o of airEau) expect([5.5, 10], o.id).toContain(o.tva);
+    expect(ALL_OUVRAGES.filter((o) => o.chapitreId?.startsWith('CHAP_RE_') && o.chapitreId !== 'CHAP_RE_03_02').every((o) => o.tva === 5.5 || o.tva === 10 || o.tva === 20)).toBe(true);
+    expect(ALL_OUVRAGES.filter((o) => o.chapitreId === 'CHAP_RE_01_01').every((o) => o.tva === 5.5)).toBe(true);
+  });
+});
+
 describe('climatisation : référentiel du catalogue (sélecteur d’articles)', () => {
+  const PAC_AIR_AIR = ['pac-mono', 'pac-multi-2', 'pac-multi-3', 'pac-multi-4', 'unite-int-supp'];
+
   it('le référentiel n’a aucun article gainable : rien à séparer ni à porter à 20 %', () => {
     expect(articlesBtp().filter((a) => /gainable/i.test(a.nom))).toEqual([]);
+  });
+
+  it('les PAC air/air (monosplit, multisplit) et l’unité intérieure supplémentaire sont proposées à 20 % (article unique fourniture et pose), 0 % en franchise', () => {
+    const articles = articlesBtp().filter((a) => PAC_AIR_AIR.includes(a.id));
+    expect(articles.map((a) => a.id).sort()).toEqual([...PAC_AIR_AIR].sort());
+    for (const a of articles) {
+      expect(tvaArticleReferentiel(a), a.id).toBe('20');
+      expect(tvaArticleReferentiel(a, true), a.id).toBe('0');
+    }
+  });
+
+  it('balayage : tout article du référentiel qui est une PAC air/air ou une climatisation est proposé à 20 %', () => {
+    const clim = articlesBtp().filter((a) => /air\/air|climatisation|split/i.test(a.nom) && !/air\/eau/i.test(a.nom));
+    expect(clim.length).toBeGreaterThanOrEqual(4);
+    for (const a of clim) expect(tvaArticleReferentiel(a), a.id).toBe('20');
+  });
+
+  it('contre-essai : une PAC air/eau, une PAC géothermique et l’entretien d’une PAC restent proposées à 10 %', () => {
+    const autres = articlesBtp().filter((a) => ['pac-air-eau', 'pac-air-eau-ecs', 'pac-geo', 'entretien-pac'].includes(a.id));
+    expect(autres).toHaveLength(4);
+    for (const a of autres) expect(tvaArticleReferentiel(a), a.id).toBe('10');
   });
 
   it('le sélecteur propose le taux de l’article quand il en a un, 10 % sinon, 0 % en franchise (contre-essai de la règle)', () => {
