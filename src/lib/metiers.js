@@ -88,10 +88,12 @@ export function changementsDuChoix(entreprise, metiers) {
 }
 
 /**
- * Qui reçoit la question « Quels travaux faites-vous ? » : le propriétaire de l'entreprise, jamais un membre invité,
- * quel que soit son rôle (D-41, 5 nov. 2026). Le métier se range sur la fiche de l'entreprise ; un membre invité ne la
- * modifie pas (la base refuse l'enregistrement d'un chef de chantier), et un administrateur invité ne choisit pas à la
- * place du gérant. Deux endroits : la fenêtre de bienvenue (App.jsx) et Paramètres › Mon métier (Settings.jsx).
+ * Qui reçoit la question « Quels travaux faites-vous ? » de la fenêtre de bienvenue (App.jsx) : le propriétaire de
+ * l'entreprise, jamais un membre invité, quel que soit son rôle (D-41, 5 nov. 2026). Le métier se range sur la fiche de
+ * l'entreprise ; un membre invité ne la modifie pas (la base refuse l'enregistrement d'un chef de chantier), et un
+ * administrateur invité ne choisit pas à la place du gérant à sa première connexion.
+ * Paramètres › Mon métier n'est pas cette question : il reste ouvert à qui ouvre Paramètres et peut modifier la fiche
+ * (propriétaire et administrateur), selon les droits existants (Settings.jsx ; décision du 5 nov. 2026, après relecture).
  * @param {string|null|undefined} role rôle dans l'organisation ouverte (OrgContext)
  */
 export const peutChoisirSonMetier = (role) => role === 'owner';

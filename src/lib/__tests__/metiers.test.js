@@ -111,8 +111,9 @@ describe('éditeur : bloc « Votre métier »', () => {
 });
 
 // Décision d'Hugo du 5 nov. 2026 (D-41) : la question « Quels travaux faites-vous ? » est posée dans la fenêtre de
-// bienvenue et dans Paramètres › Mon métier, jamais aux membres invités. Le métier se range sur la fiche de l'entreprise,
-// que ni un chef de chantier ni un comptable ne modifie ; le propriétaire seul choisit.
+// bienvenue et dans Paramètres › Mon métier, jamais aux membres invités. Précision de la session locale (5 nov.) : la
+// question de la BIENVENUE reste au propriétaire seul ; Paramètres › Mon métier reste ouvert à qui ouvre Paramètres et peut
+// modifier la fiche de l'entreprise (propriétaire et administrateur), selon les droits existants : ce n'est pas poser la question.
 describe('question du métier : le propriétaire seulement, jamais un membre invité (D-41)', () => {
   it('aucun rôle qu’on attribue par invitation ne reçoit la question, administrateur compris', () => {
     const invitables = getInvitableRoles().map((r) => r.value);
@@ -133,6 +134,12 @@ describe('question du métier : le propriétaire seulement, jamais un membre inv
   it('contre-essai : la règle « qui peut modifier la fiche » (accès complet à Paramètres) laisserait passer l’administrateur invité', () => {
     expect(hasFullAccess('admin', 'settings')).toBe(true);
     expect(peutChoisirSonMetier('admin')).toBe(false);
+  });
+
+  it('Paramètres › Mon métier : ouvert au propriétaire et à l’administrateur, selon les droits existants de Paramètres', () => {
+    const quiOuvreParametres = getAllRoles().map((r) => r.value).filter((role) => canAccessPage(role, 'settings'));
+    expect(quiOuvreParametres).toEqual(['owner', 'admin']);
+    for (const role of quiOuvreParametres) expect(hasFullAccess(role, 'settings'), role).toBe(true);
   });
 });
 

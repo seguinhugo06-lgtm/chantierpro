@@ -42,7 +42,6 @@ import LigneListe, { GroupeListe } from './ui/LigneListe';
 import { EnTetePage } from './ui/EnTete';
 import { jourLocal, dateLue } from '../lib/dates';
 import { echeancesQualifications } from '../lib/qualifications';
-import { peutChoisirSonMetier } from '../lib/metiers';
 import MesQualifications from './settings/MesQualifications';
 import MonMetierTab from './settings/MonMetierTab';
 import { estEntrepreneurIndividuel, estEirl, nomImprime } from '../lib/identiteEntreprise';
@@ -184,7 +183,7 @@ function PastilleValidite({ date }) {
 export default function Settings({ entreprise, setEntreprise, user, devis = [], depenses = [], clients = [], chantiers = [], isDark, couleur, setPage, modeDiscret }) {
   const { showToast } = useToast();
   const { confirm } = useConfirm();
-  const { canManageTeam, role } = usePermissions();
+  const { canManageTeam } = usePermissions();
   const { orgId } = useOrg();
   const relances = useRelances({
     devis, clients, entreprise,
@@ -244,11 +243,10 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
   const [brouillonPenalites, setBrouillonPenalites] = useState(null);
   const [penalitesRefusees, setPenalitesRefusees] = useState(false);
 
-  // Rubrique Équipe réservée à qui gère l'équipe ; « Mon métier » au propriétaire de l'entreprise, jamais à un membre
-  // invité, administrateur compris (D-41, 5 nov. 2026 : src/lib/metiers.js, peutChoisirSonMetier)
-  const monMetierPermis = peutChoisirSonMetier(role);
-  const groupesVisibles = GROUPES.filter((g) => g.id !== 'equipe' || canManageTeam)
-    .map((g) => ({ ...g, rubriques: g.rubriques.filter((r) => r.cle !== 'metier' || monMetierPermis) }));
+  // Rubrique Équipe réservée à qui gère l'équipe. « Mon métier » reste ouvert à qui ouvre Paramètres et peut modifier la fiche
+  // de l'entreprise (propriétaire et administrateur), selon les droits existants : ce n'est pas poser la question de la
+  // bienvenue, réservée au propriétaire (D-41, 5 nov. 2026 ; src/lib/metiers.js, peutChoisirSonMetier)
+  const groupesVisibles = GROUPES.filter((g) => g.id !== 'equipe' || canManageTeam);
 
   // Persist wizard step
   useEffect(() => {
@@ -1063,7 +1061,7 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
         />
       )}
 
-      {tab === 'metier' && monMetierPermis && (
+      {tab === 'metier' && (
         <MonMetierTab entreprise={entreprise} updateEntreprise={updateEntreprise} />
       )}
 
