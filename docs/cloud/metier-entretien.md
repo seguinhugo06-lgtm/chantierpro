@@ -134,4 +134,53 @@ Session cloud de correction, le 4 nov. au soir. `origin/main` fusionné deux foi
 | `npx vitest run` (fichiers entretien et rappels) | verts : `entretien.test.js` 35, `attestationEntretienHtml.test.js` 6, `rappelsEntretienServeur.test.js` 10, `suiviRappel.test.js` 3 |
 | `npm run banc:migrations` | **785 vérifications, tout vert** |
 | `npm run verifier -- --complet` sur `833817a` (avant la 2ᵉ fusion de main) | tests (1464), lint (0 erreur), smoke, build et banc **verts**. Les parcours ont été coupés par un redémarrage de la session |
+| **`npm run verifier -- --complet` sur `c670f7b`** (tête fusionnée avec `origin/main`, dernier commit de code compris, arbre propre) | **tout vert** : tests 1464/1464, lint 0 erreur, smoke, build, banc, parcours navigateur (dont les deux nouveaux parcours du lien d'entretien), audit d'interface 0 défaut. Enregistré dans `audit-ui/derniere-verification.json` le 05/11 à 00 h 54 UTC. Le commit suivant (`a3637ad` et la suite) ne touche que ce rapport |
 | 1ᵉʳ essai `--complet` sur `4bf7ea2` | parcours en échec : `dist/index.html` a été effacé pendant que d'autres agents tournaient en parallèle. Erreur d'environnement, pas de code ; relancé seul ensuite |
+
+Les captures et le journal sont dans le dossier `audit-ui/` de la session cloud, pas dans le dépôt.
+
+### Ce qui reste (session locale)
+
+1. Fusion avec la branche d'intégration et les autres branches métier (conflits annoncés : `Settings.jsx`, `entrepriseService.js`, `DataContext.jsx`, `useSupabaseSync.js`, `LegalPages.jsx`, `etat-production.md`, mémoire du gardien), puis `npm ci`, `--complet`, parcours entretien et ramonage, banc.
+2. Avant de redéployer `send-scheduled-relances`, vérifier en lecture seule en production : la colonne `entreprise.created_at`, et que les 2 fiches avec `ramonageEnvoiAuto` sont celles du propriétaire de leur organisation, **ou des fiches sans organisation dont les ramonages n'ont pas d'organisation** (correctif M1 bis : une fiche sans organisation ne lit plus que les lignes sans organisation).
+3. Ordre D-22, le même jour : livrer le front, appliquer 113 (déjà corrigée : appareils de mesure, gel des liens), redéployer la fonction (`entretien.ts` dans le contrôle md5), passage à blanc.
+4. Non fait ici, hors des corrections demandées :
+   - le libellé « Entretien annuel PAC » du catalogue (`articles-btp-suite.js:315`) ;
+   - la date « Version du 24 octobre 2026 » de la politique de confidentialité, qui change avec ce lot ;
+   - les libellés « HT » sans franchise des autres écrans (tâche franchise-suite) ;
+   - `figer_ramonage` (m1 côté ramonage, migration à part).
+
+### Décisions d'Hugo (aucune appliquée)
+
+- `Q-entretien-obligation` (nouvelle, dans `docs/decisions.md`) : écrire l'obligation avec son article dans le rappel d'une PAC ou d'un poêle ? En attendant, seulement pour la chaudière.
+- `Q-entretien-reseau` (nouvelle, erratum 5) : chaudières en réseau dans un même local, une attestation pour l'ensemble ou une par chaudière ?
+- Devis préalable (arrêté du 24 janv. 2017, art. 4) : garder le parcours sans devis, ou ajouter un « devis en un geste » (recommandé par le juriste) ? Avec, à défaut, l'avertissement des sept jours (L. 221-10) proposé par le juriste.
+- Un refus de rappel vaut pour tous les rappels de l'artisan (ramonage et entretien) : à confirmer.
+- La phrase « Vous restez libre de confier cet entretien au professionnel qualifié de votre choix » : à confirmer.
+- PAC sans attestation de capacité : une simple information, jamais bloquante : à confirmer.
+- Case « Logement achevé depuis plus de deux ans » cochée par défaut : la garder, ou exiger un choix ?
+- Le 5,5 % sur simple déclaration de l'artisan et le rendement saisi à la main : à confirmer.
+- Trouver un vrai chauffagiste ou frigoriste pour tester le parcours.
+
+### Textes nouveaux soumis au juriste
+
+Tous relus le 4 nov. au soir (seconde relecture : OK) : les dix corrections du juriste, appliquées mot pour mot ; la phrase de Paramètres limitée à la chaudière ; « Prix (€) » et « TVA non applicable (article 293 B du CGI) » en franchise ; l'aide des appareils de mesure (« exigées pour la chaudière et la pompe à chaleur, facultatives pour un poêle ou un insert »).
+
+### Risques
+
+- Le correctif M1 bis change aussi l'envoi des rappels de ramonage en production. Une fiche **sans organisation** dont les ramonages portent une organisation n'enverrait plus rien, sans erreur. D'où le point 2 ci-dessus.
+- Avant l'application de 113, la base refuse les attestations et l'app lit une table absente : livrer le front et 113 le même jour.
+- Ne jamais rejouer 104 après 113.
+
+### Résumé (10 lignes)
+
+1. Les 10 défauts de la relecture, les 10 corrections du juriste et le défaut `figer_entretien` du gardien sont appliqués.
+2. Appareils de mesure facultatifs pour le poêle, dans l'app ET dans la 113 (pas encore appliquée).
+3. L'obligation et son article ne sortent que dans le rappel d'une chaudière ; la question est posée à Hugo.
+4. Le lien de désinscription de l'entretien a ses parcours en mode réel, avec un contre-essai.
+5. Le banc prouve maintenant le refus fait par un visiteur. L'ancien contrôle ne le prouvait pas.
+6. « Rappel noté » n'apparaît qu'après l'écriture, pour l'entretien comme pour le ramonage.
+7. Seconde relecture : juriste OK. Gardien : un reste de M1 (fiche sans organisation), corrigé.
+8. `npm run verifier -- --complet` vert sur la tête fusionnée avec `origin/main` (`c670f7b`).
+9. Avant de redéployer : vérifier en production quelles fiches envoient les rappels de ramonage.
+10. 9 décisions pour Hugo, dont 2 nouvelles (obligation PAC et poêle, chaudières en réseau).
