@@ -184,3 +184,114 @@ Tous relus le 4 nov. au soir (seconde relecture : OK) : les dix corrections du j
 8. `npm run verifier -- --complet` vert sur la tête fusionnée avec `origin/main` (`c670f7b`).
 9. Avant de redéployer : vérifier en production quelles fiches envoient les rappels de ramonage.
 10. 9 décisions pour Hugo, dont 2 nouvelles (obligation PAC et poêle, chaudières en réseau).
+
+## Décisions d'Hugo du 5 nov. (lot 4)
+
+Session cloud de correction du 5 nov. 2026, sur la branche locale `corr4-metier-entretien`, partie de `origin/cloud/metier-entretien` à `c2c9b499`. Rien n'est fusionné ni poussé ; `main` n'est pas fusionné ; la production, les secrets, `CLAUDE.md` et `.claude/` ne sont pas touchés. Les décisions D-38 d'Hugo (« OK pour tout ») sont appliquées sans être rouvertes. Cette section remplace les passages plus haut qui disent que l'obligation ne sort que pour la chaudière ou que les décisions restent ouvertes. Les tests qui citent les formules du juriste les lisent dans `docs/metiers/avis-juriste-2026-11-04-entretien.md` : ce fichier doit rester à ce chemin. Commits : `a42d3fb6` (1), `f6049069` (5), `a8ea545a` (4), `7a0341aa` (3), `87c05356` (1 et 6), `c4ab6aee` (2), `05c6bf63` (point 10 de la v3), `dae7c947` (parcours), `3516ed4f` (mappage du devis).
+
+### Résumé
+
+1. Les 10 défauts de la v3, les 10 corrections du juriste et le défaut `figer_entretien` sont bien dans le code, texte par texte. Un point n'était pas fait et ne dépendait d'aucune décision : le libellé « Entretien annuel PAC » du catalogue, corrigé.
+2. Décision 1 : la phrase d'obligation est rétablie pour la PAC (visite + 2 ans) et le poêle, côté app, serveur et Paramètres, avec les formules de l'avis lues par les tests.
+3. Décision 2 : « Faire le devis de la visite » sur l'attestation crée un brouillon par `addDevis` et l'ouvre dans l'éditeur ; la facture rappelle les sept jours chez un particulier.
+4. Décision 3 : le refus vaut pour tous les rappels (déjà le cas), prouvé par un test sur les quatre chemins ; les écrans du ramonage le disent maintenant.
+5. Décision 4 : aide des chaudières en réseau avec la citation de R. 224-20. Décision 5 : la case du logement n'est plus cochée d'avance, ni à l'écran, ni à la synchronisation, ni en base. Décision 6 : l'attestation de capacité reste une information.
+6. Sur les sources de la v3, les 6 fichiers de tests écrits ou modifiés ici échouent 34 fois sur 93 ; sur ma tête, 93 sur 93.
+
+### Contrôle des corrections v3
+
+| Point de la consigne v3 | État | Preuve |
+|---|---|---|
+| 1. Vérification sur la tête de branche | fait par la v3 ; rejoué ici au niveau standard | Rapport l. 137 : `--complet` sur `c670f7b`, et seuls des commits de rapport suivent (`git diff --stat c670f7b c2c9b499` : ce rapport seul). Le `--complet` sur l'assemblage reste à la session locale. Mes résultats : plus bas. |
+| 2. Appareils de mesure facultatifs pour un poêle | fait | `src/lib/entretien.js:557` (`manquants`), `supabase/migrations/113_attestations_d_entretien.sql:99` (CHECK conditionnel), `SaisieEntretien.jsx:296` (champ facultatif), `attestationEntretienHtml.js:199` (pas de bloc « Mesures » vide), `EntretienTab.jsx:94` (aide), banc 4 bis (`scripts/banc/113.mjs:75`), tests `entretien.test.js` et `attestationEntretienHtml.test.js:23` |
+| 3. Obligation de l'e-mail limitée à la chaudière | fait en v3, **levé par la décision 1** | voir la décision 1 |
+| 4. Lien `/rappel-entretien/{jeton}` | fait | `scripts/parcours/entretien.cjs:228` (rien ne part à l'ouverture, le refus part au bouton avec le jeton, « C’est noté ») et `:252` (jeton refusé : « Lien non reconnu »), mode réel simulé ; rejoués : verts |
+| 5. Fiche qui envoie les rappels | fait | `supabase/functions/send-scheduled-relances/entretien.ts:174-199` (`ficheValable` d'abord, puis la fiche du propriétaire ; `fichesSansEmail`), `index.ts:519` et `:663`, test « une fiche du propriétaire inutilisable… » avec contre-essai |
+| 6. TVA proposée en franchise | fait | `SaisieEntretien.jsx:50` (`estFranchiseTva`), `:408` et `:412` (cases masquées), `:422-423` (« Prix (€) »), `actionsEntretien.js` (`donneesFacture` passe `franchise`) |
+| 7. Banc 113 : appel visiteur non masqué | fait | `scripts/banc/113.mjs:111-133` (`refusVisiteur` : lu dans la transaction du visiteur, pour l'entretien ET le ramonage). Mémoire du gardien (`.claude/agent-memory/gardien-securite/MEMORY.md:32-35`) à jour ; lue, non modifiée (`.claude/` interdit) |
+| 8. « Rappel noté » avant l'écriture | fait | `src/lib/suiviRappel.js`, `RappelEntretien.jsx:24-25`, `RappelRamonage.jsx:32-33`, `suiviRappel.test.js` (contre-essai : écriture refusée) |
+| 9. PAC air/air de plus de 12 kW | fait | `src/lib/entretien.js:430-431` (`criteres55`) |
+| 10. Secondes relectures, erratum 5 | fait | rapport l. 124-127 ; l'erratum 5 est tranché par Hugo (décision 4) |
+| Juriste 1 (poêle 5,5 %) | fait | `entretien.js:434` |
+| Juriste 2 (chaudière bois 5,5 %) | fait | `entretien.js:426` |
+| Juriste 3 (PAC air/air 5,5 %) | fait | `entretien.js:431` |
+| Juriste 4 (classe énergétique) | fait | `entretien.js:65` (`CLASSES`), `:568` (`manquants`), `SaisieEntretien.jsx:352` (aide) |
+| Juriste 5 (aides de puissance) | fait | `entretien.js:395` et `:402` (constantes, voir la décision 4) ; `SaisieEntretien.jsx:196` et `:287` |
+| Juriste 6 (aide du CO) | fait | `SaisieEntretien.jsx:305` |
+| Juriste 7 (délai de l'attestation) | fait | `entretien.js:29`, `:37`, `:44` ; `SaisieEntretien.jsx:391` |
+| Juriste 8 (attestation de capacité) | fait | `EntretienTab.jsx:96` |
+| Juriste 9 (texte de Paramètres) | adapté en v3, **rétabli par la décision 1** | `entretien.js:405` (`AIDE_OBLIGATION_RAPPEL`), `EntretienTab.jsx:86` |
+| Juriste 10 (modèles) | fait pour les modèles ; **le catalogue ne l'était pas** : fait ici | `src/lib/data/modeles/chauffage.js:220`, `:225`, `:234` ; `src/lib/data/articles-btp-suite.js:315` (commit `05c6bf63`, test `modelesEntretien.test.js`) |
+| Gardien : `figer_entretien` | fait | `113…sql:192-232` (`client_id`, `remplace_id` et `updated_at` figés), banc 6 quinquies (`113.mjs:155`) |
+
+Contrôle des textes de la consigne v3 : un script jetable cherche, dans `src/` et `supabase/functions/`, chaque chaîne « correction exacte » de la consigne ; les dix y sont (à la lecture du point 9 près, levé par la décision 1). Les autres « non faits » de la v3 ne dépendent pas de moi : date de la politique de confidentialité (le jour de la livraison), libellés « HT » (tâche franchise-suite), `figer_ramonage` (autre migration).
+
+### Décisions appliquées
+
+**1. Obligation écrite dans le rappel de la PAC et du poêle** (`a42d3fb6`, `87c05356`)
+- App : `src/lib/entretien.js:378` (`phraseObligation`) et `:362` (`dateEnLettres`). Serveur : `supabase/functions/send-scheduled-relances/entretien.ts:104` (`phraseObligationServeur`), `:79` et `:89` (même date en lettres, visite + 2 ans). Paramètres › Entretien : `entretien.js:405`, `EntretienTab.jsx:86`.
+- Formules du § 4.5 de l'avis, caractères du fichier de l'avis (apostrophes droites) pour la PAC et le poêle ; la chaudière est inchangée (apostrophes typographiques). La PAC donne « au plus tard le {visite + 2 ans} » en toutes lettres (« 4 novembre 2028 ») ; jamais la date conseillée comme échéance. Les conditions restent `obligationConnue` (PAC de 4 à 70 kW connue, hors contrat de performance ; poêle à bois ou à granulés, ni « autre biomasse » ni hydraulique). L'e-mail garde « Vous restez libre de confier cet entretien… » quand l'obligation est citée.
+- Tests : `entretien.test.js` (PAC 4-70 kW connue → la formule lue dans l'avis ; puissance inconnue, 3 kW, 80 kW, contrat de performance → rien ; poêle → la formule ; « autre biomasse » ou hydraulique → rien ; 29 février ; chaudière inchangée), `rappelsEntretienServeur.test.js` (e-mail PAC et poêle avec la formule et le libre choix, jamais « obligatoire » ni dans l'objet ; même règle et même phrase que l'app sur 13 cas ; visite lue à l'heure de Paris), `entretienReglages.test.jsx` (Paramètres).
+- Contre-essai : 8 tests rouges avant la modification (sortie vitest), verts après ; le test des réglages échoue avec l'ancien `EntretienTab.jsx`.
+
+**2. « Faire le devis de la visite »** (`c4ab6aee`)
+- Bouton sur l'attestation, à côté de « Faire la facture », derrière `canPerform('devis', 'create')` : `FicheEntretien.jsx:91` (`faireDevis`) et `:164`. Il appelle `addDevis(donneesDevis(...))` : la création de devis existante de `DataContext` (numéro, limite du plan, conditions d'utilisation), aucun nouveau chemin d'enregistrement.
+- `donneesDevis` : `src/components/entretien/actionsEntretien.js:95` ; la ligne : `src/lib/entretien.js:635` (`ligneDevisVisite`). Brouillon daté du jour, valable 30 jours (ou la validité de l'entreprise), le client, une ligne au forfait « Entretien de … — appareil — installation : adresse » (et « immeuble achevé depuis plus de deux ans » si la case est cochée et le taux réduit), au tarif de Paramètres › Entretien s'il existe, **sinon sans prix** (le prix du dernier entretien n'est pas repris, comme le dit la fiche), au taux proposé par les règles de l'entretien (10 %, 5,5 % déclaré, 20 % sans la case, aucun en franchise). Il n'est jamais envoyé.
+- Ouverture dans l'éditeur habituel : `OngletEntretien.jsx:161` → `ouvrirDevis({ editer: id })` (App.jsx, commentaire de `ouvrirDevis`) → `DevisPage.jsx:451` (nouvelle branche de `demande`). Sans `ouvrirDevis`, repli sur la fiche du devis.
+- Sept jours : `FicheEntretien.jsx:80` ; texte `entretien.js:656-658` (`avertissementSeptJours` : client particulier seulement). Le texte du ramonage « s'il existe déjà sur main » n'existe pas (le ramonage n'a qu'une phrase dans Paramètres) : c'est le texte proposé par le juriste, mot pour mot, en notification d'avertissement de 9 s ; l'erreur « lien non enregistré » garde la place si les deux s'appliquent.
+- Paramètres › Entretien : la dernière phrase du paragraphe « devis préalable » (« Le parcours entretien ne fait pas ce devis ») n'était plus vraie ; elle dit maintenant que le bouton prépare le devis. La partie légale est inchangée.
+- Tests : `devisVisiteEntretien.test.js` (le devis porte le client, l'adresse et la ligne ; un autre client, une autre adresse ou un autre appareil donnent un autre devis ; tarif ou sans prix ; taux ; brouillon, 30 jours, jamais envoyé ; pas de numéro ni de date de visite passée ; un forfait ; sept jours : texte et condition particulier ; ce que le mappage envoie à la table `devis` ; câblage du bouton), `entretienReglages.test.jsx`. Contre-essai : 11 tests rouges avant (le douzième, sur le mappage, a été écrit ensuite, avec le commit `3516ed4f`). Parcours : étapes 7 (sept jours) et 9 (ouverture de l'attestation, bouton, éditeur sur « Modifier devis » avec Marie Dupont, la ligne et l'adresse, brouillon `DEV-…` stocké à 10 %), captures `audit-ui/entretien-fiche-devis-375.png` et `entretien-devis-375.png`.
+
+**3. Un refus de rappel vaut pour tous les rappels** (`7a0341aa`)
+- Vérifié : le refus est une seule date sur la fiche du client (`clients.rappels_refuses_le`), posée par le lien de n'importe quel rappel (113 : `refuser_rappels_ramonage` reconnaît les deux jetons ; banc 6 et 6 bis), lue par les quatre chemins (`ramonage.js` et `entretien.js` dans l'app, `ramonage.ts` et `entretien.ts` au serveur). Gardé tel quel.
+- Les écrans du ramonage le sous-disaient, sur une action irréversible (« ne recevra plus de rappel de ramonage », « a refusé les rappels de ramonage ») : les trois textes sont maintenant communs (`src/lib/suiviRappel.js`) et employés par les deux onglets et les deux saisies. Le parcours ramonage attend la nouvelle ligne.
+- Tests : `refusRappels.test.jsx` (avec le refus, aucun des quatre rappels ne sort ; sans, les quatre sortent ; un autre client n'est pas touché ; la page publique le dit pour les deux sujets ; les écrans de l'artisan emploient les mêmes textes). Contre-essai : les deux tests de texte étaient rouges avant ; les tests de données passaient déjà (c'était déjà le cas).
+
+**4. Chaudières en réseau dans un même local** (`a8ea545a`)
+- `src/lib/entretien.js:394-402` (constantes), `SaisieEntretien.jsx:196` et `:287`. L'aide de la puissance d'une chaudière dit qu'elles forment une seule chaudière, une seule attestation pour l'ensemble, la somme des puissances, et cite R. 224-20, 1°, alinéa 2, mot pour mot (lu dans l'avis par le test). L'aide de la PAC est celle de la relecture (R. 224-42, 1°). Un poêle n'affiche plus le libellé « chaudières en réseau ».
+- Tests : `entretien.test.js` (4). Contre-essai : rouges avant (constantes absentes).
+
+**5. Case « logement achevé depuis plus de deux ans »** (`f6049069`)
+- Jamais cochée d'avance, même reprise de l'an dernier : `entretien.js:511`. Elle était aussi « vraie » par défaut ailleurs : la synchronisation envoyait « vrai » si la valeur manquait (`src/hooks/useSupabaseSync.js`, `=== true` maintenant) et la colonne avait `DEFAULT true` (`113…sql:82`, `DEFAULT false` ; 113 n'est pas appliquée, la table est modifiée sur place). Sans la case : 20 %, aucune mention.
+- Tests : `entretien.test.js` (brouillon, taux, ligne de facture, reprise, synchronisation) ; banc 4 ter (`113.mjs:83`) ; parcours entretien (case décochée à l'ouverture, cochée par l'artisan, facture à 10 % avec la mention). Contre-essai : 4 tests rouges avant ; banc avec l'ancien défaut `true` : 1 échec sur 786.
+- Une attestation refaite (« annule et remplace ») garde le choix de l'attestation annulée : c'est son propre document, pas une case cochée d'avance.
+
+**6. PAC sans attestation de capacité saisie** (`87c05356`)
+- Vérifié et gardé : `manquants()` ne prend pas l'entreprise et ne demande jamais l'attestation ; l'écran ne montre qu'une note (`SaisieEntretien.jsx`, sans `role="alert"`) ; le champ de Paramètres est facultatif.
+- Tests : `entretien.test.js` (une PAC au R32 au contrôle d'étanchéité déclaré s'enregistre ; contre-essai : ce qui bloque reste l'étanchéité et le fluide), `entretienReglages.test.jsx` (champ « facultatif »).
+
+Points tranchés par Claude, non modifiés : la phrase « Vous restez libre… » reste dans l'e-mail quand l'obligation est citée (testé pour les trois appareils) ; le 5,5 % reste proposé sur la déclaration de l'artisan et le rendement saisi à la main.
+
+### Textes nouveaux « À relire par le juriste »
+
+1. **Aide de la puissance d'une chaudière** (`entretien.js:400`) : « Plusieurs chaudières en réseau dans un même local forment une seule chaudière (article R. 224-20, 1°, alinéa 2, du code de l’environnement) : faites une seule attestation pour l’ensemble, avec la somme de leurs puissances. Décrivez les autres chaudières du réseau dans les observations. » La citation qui suit est mot pour mot celle de l'erratum 5 ; le reste, dont le renvoi aux observations, est de moi. Le nombre d'attestations d'un réseau est le choix d'Hugo (une pour l'ensemble), que le texte d'origine ne tranche pas.
+2. **Avertissement des sept jours** (`entretien.js:656`) : texte proposé par le juriste dans la relecture du 4 nov., repris mot pour mot (« article L221-10 » sans point, comme chez lui) ; seule la durée d'affichage (9 s) est de moi.
+3. **Case « logement achevé depuis plus de deux ans »** (`SaisieEntretien.jsx:410`) : « À cocher par vous, à chaque attestation. Cochée : la facture est proposée à 10 % et le dit. Sinon : 20 %, sans cette mention. Vous pourrez changer la TVA sur la facture. »
+4. **Paramètres › Entretien, devis préalable** (`EntretienTab.jsx:103`) : la phrase ajoutée « Sur une attestation, « Faire le devis de la visite » prépare ce devis pour la prochaine visite : vous le complétez dans l’éditeur, puis vous l’envoyez. » ; le reste du paragraphe est inchangé.
+5. **Ligne du devis de la visite** (`entretien.js:635`) : « Entretien de … — appareil — installation : adresse — immeuble achevé depuis plus de deux ans » (la dernière partie seulement si la case est cochée et le taux réduit), au forfait. Même construction que la ligne de la facture, sans le numéro ni la date de la visite.
+6. **Écrans du ramonage et de l'entretien sur le refus** (`suiviRappel.js`) : « … ne recevra plus aucun rappel, ni de ramonage ni d’entretien (ni SMS proposé, ni e-mail automatique). Ce refus ne s’annule pas. » ; « Ce client a refusé les rappels le … (ramonage et entretien). » ; « Noté sur sa fiche : ni e-mail automatique, ni SMS proposé, pour aucun rappel (ramonage et entretien). »
+7. **Format de la date de la PAC** : « au plus tard le 4 novembre 2028 » en toutes lettres (la chaudière écrit « 31 décembre 2027 »). Les formules de l'avis ne donnent pas de format pour `{date de la visite + 2 ans}`.
+
+### Ce qui n'a pas été fait, et pourquoi
+
+- **SMS de rappel d'une PAC ou d'un poêle** : sans phrase d'obligation. L'avis ne donne la formule du SMS que pour la chaudière (`texteSms`, inchangé) ; rien n'est inventé. À demander au juriste si Hugo veut l'étendre.
+- **Bouton sur la carte de l'appareil** (onglet Entretien) : le bouton est sur l'attestation seulement, comme le dit la fiche en premier choix. Pour un rappel qui arrive, la carte de l'appareil serait un accès plus court (un toucher de moins) ; même fonction `faireDevis`, à ajouter si Hugo le veut.
+- **Parcours en mode réel simulé du bouton « Faire le devis de la visite »** : non écrit. Le parcours joue le bouton en démo ; l'écriture réelle est celle de `addDevis` (la création de l'éditeur) et un test lit ce que le mappage envoie à la table `devis`. Le mode démo cache les pannes du mode réel : à constater au premier essai réel (le brouillon doit apparaître dans la liste des devis, numéroté par la base).
+- **Sept jours sur la facture d'un ramonage** : la fiche dit « comme pour le ramonage (D-30) », mais le ramonage n'a pas cette notification (seulement la phrase de Paramètres › Ramonage). Non ajoutée au ramonage : hors fiche.
+- **Reprise de l'an dernier de la case « appareil éligible au 5,5 % »** (`entretien.js`, `nouveauBrouillon`) : reste reprise. La décision 5 ne vise que le logement ; le 5,5 % « sur déclaration de l'artisan » est un point tranché, mais une case reprise est aussi une case cochée d'avance : à confirmer par Hugo ou le juriste.
+- **`docs/decisions.md`** : non modifié (D-38 à consigner par la session locale ; `Q-entretien-obligation` devient « trois appareils », `Q-entretien-reseau` « ensemble », et les questions du devis, du refus, de la phrase « libre », de la PAC, de la case et du 5,5 % sont tranchées). **`docs/etat-production.md`** : non modifié, la ligne 113 dit 785 vérifications (16 dans `113.mjs`) ; c'est 786 (17) avec le banc 4 ter.
+- **`docs/metiers/*.md`**, politique de confidentialité (date de version), `figer_ramonage`, libellés « HT » : hors fiche, comme dans le rapport précédent.
+
+### Commandes lancées et résultats
+
+| Commande | Résultat |
+|---|---|
+| `git fetch origin`, `git checkout -B corr4-metier-entretien origin/cloud/metier-entretien`, `npm ci` | fait |
+| `npx vitest run` (fichiers entretien, rappels, refus, devis, modèles, réglages) | verts |
+| `npm run banc:migrations` | **786 vérifications, tout vert** (785 + 4 ter) ; contre-essai avec `DEFAULT true` : 1 échec sur 786 |
+| `npm run build`, `npm run parcours -- entretien` | **3 parcours verts** : 35 vérifications pour le premier (27 avant), 4 et 1 pour les liens |
+| `npm run parcours -- ramonage` | **17 parcours verts** |
+| Contre-essai global | les sources de la v3 remises (`checkout` de `c2c9b499` sur les fichiers de code) : **34 échecs sur 93** dans les 6 fichiers de tests de ce lot ; sources restaurées, 93 sur 93, arbre propre |
+| `npm run verifier` (standard) sur `3516ed4f` (dernier commit de code ; seul ce rapport était modifié) | **vert** : tests 1512 par passage (normal, Martinique, Nouméa), lint 0 erreur (244 avertissements existants), smoke, build. Une première passe sur `dae7c947`, arbre propre, était verte aussi (1511 tests) |
+
+Le commit qui suit `3516ed4f` ne touche que ce rapport. Non lancé : `npm run verifier -- --complet` (parcours complets, audit d'interface), réservé à la session locale sur l'assemblage ; les parcours de cette branche (`entretien`, `ramonage`) ont été rejoués seuls.
