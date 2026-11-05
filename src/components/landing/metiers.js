@@ -6,6 +6,8 @@
  * les trois premiers lots types de chacun, leurs totaux HT calculés ici. Aucun prix n'est recopié dans le site.
  */
 
+import { aUnPrix, totalDuLot } from '../../lib/templates/prixBibliotheque';
+
 /** Le métier choisi à l'arrivée (spec : « Électricité choisi d'abord »). */
 export const METIER_INITIAL = 'electricite';
 
@@ -25,16 +27,18 @@ export function metiersDeLaBibliotheque(bibliotheque) {
 /**
  * Ce que montre la carte d'un lot type : nom, résumé, nombre de lignes, total HT (somme des quantité × prix
  * unitaire, arrondie à l'euro) et ses trois premières lignes avec leur montant HT arrondi à l'euro.
+ * Un lot dont une ligne n'a pas de prix (Ramonage, Froid et climatisation, Multiservice : D-41, 5 nov. 2026) n'a ni total
+ * ni montant (`null`) : la carte écrit « Prix à saisir », jamais « 0 € ».
  */
 export function apercuDuLot(lot) {
-  const total = lot.lignes.reduce((somme, l) => somme + l.quantite * l.prixUnitaire, 0);
+  const total = totalDuLot(lot);
   return {
     id: lot.id,
     nom: lot.nom,
     resume: lot.resume || '',
     nbLignes: lot.lignes.length,
-    totalHT: aLEuro(total),
-    lignes: lot.lignes.slice(0, NB_LIGNES).map((l) => ({ designation: l.designation, montant: aLEuro(l.quantite * l.prixUnitaire) })),
+    totalHT: total === null ? null : aLEuro(total),
+    lignes: lot.lignes.slice(0, NB_LIGNES).map((l) => ({ designation: l.designation, montant: aUnPrix(l) ? aLEuro(l.quantite * l.prixUnitaire) : null })),
   };
 }
 

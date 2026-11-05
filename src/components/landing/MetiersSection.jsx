@@ -12,6 +12,8 @@
  * habituel (Alt+← est le retour arrière du navigateur).
  * Un changement de métier fait par le visiteur est annoncé brièvement (texte hors écran, poli).
  * Bibliothèque introuvable : un message à la place de l'explorateur, pas un squelette pour toujours.
+ * Ramonage, Froid et climatisation, Multiservice n'ont aucun prix (D-41, 5 nov. 2026) : leurs cartes écrivent « Prix à
+ * saisir » à la place du total (`data-sans-prix`), sans montant par ligne, jamais « 0 € ».
  * Attributs `data-*` lus par le parcours `scripts/parcours/site.cjs`.
  */
 import { useEffect, useRef, useState } from 'react';
@@ -22,6 +24,7 @@ import SectionSite from './site/SectionSite';
 import EnTeteSection from './site/EnTeteSection';
 import PastilleFiltre from './site/PastilleFiltre';
 import { chargerBibliotheque } from './site/bibliotheque';
+import { PRIX_A_SAISIR } from '../../lib/templates/prixBibliotheque';
 import { METIER_INITIAL, lotsMontres, metiersDeLaBibliotheque, metierVoisin } from './metiers';
 
 // Largeurs des pastilles d'attente (à peu près celles des noms de métiers) : la place est tenue avant le chargement.
@@ -46,17 +49,25 @@ function CarteLot({ lot, rang }) {
       </div>
       <p className="mt-4 flex items-baseline justify-between gap-3 border-t border-dashed border-marque-acier pt-3">
         <span data-nb-lignes="" className="text-sm text-slate-600">
-          {lot.nbLignes} lignes · HT
+          {lot.nbLignes} lignes{lot.totalHT === null ? '' : ' · HT'}
         </span>
-        <span data-total-ht="" className="whitespace-nowrap text-2xl font-extrabold tabular-nums tracking-tight text-marque-nuit">
-          {formatMoney(lot.totalHT, 0)}
-        </span>
+        {lot.totalHT === null ? (
+          <span data-sans-prix="" className="whitespace-nowrap text-lg font-bold tracking-tight text-slate-600">
+            {PRIX_A_SAISIR}
+          </span>
+        ) : (
+          <span data-total-ht="" className="whitespace-nowrap text-2xl font-extrabold tabular-nums tracking-tight text-marque-nuit">
+            {formatMoney(lot.totalHT, 0)}
+          </span>
+        )}
       </p>
       <ul className="mt-3 flex flex-col gap-2 text-sm">
         {lot.lignes.map((ligne, i) => (
           <li key={i} className="flex items-baseline justify-between gap-3 text-slate-600">
             <span className="line-clamp-2 min-w-0 leading-snug">{ligne.designation}</span>
-            <span className="shrink-0 whitespace-nowrap font-semibold tabular-nums text-slate-900">{formatMoney(ligne.montant, 0)}</span>
+            {ligne.montant === null ? null : (
+              <span className="shrink-0 whitespace-nowrap font-semibold tabular-nums text-slate-900">{formatMoney(ligne.montant, 0)}</span>
+            )}
           </li>
         ))}
       </ul>
@@ -87,6 +98,8 @@ export default function MetiersSection() {
   // Si le métier de départ venait à disparaître de la bibliothèque, le premier métier prend sa place.
   const actif = ids.includes(choisi) ? choisi : ids[0];
   const lots = lotsMontres(bibliotheque, actif);
+  // Métier sans prix (D-41) : la note sous les cartes le dit, au lieu de promettre des prix indicatifs
+  const sansPrix = lots.length > 0 && lots.every((lot) => lot.totalHT === null);
 
   const choisir = (id) => {
     setChoisi(id);
@@ -156,8 +169,9 @@ export default function MetiersSection() {
           </div>
 
           <p data-note="" className="mt-6 max-w-[48em] text-sm leading-relaxed text-slate-600">
-            Prix indicatifs pour 2026, fourniture et pose hors taxes. Ils font gagner du temps ; vos propres
-            tarifs restent les vôtres.
+            {sansPrix
+              ? 'Pour ce métier, les lots types viennent sans prix\u202f: vous saisissez les vôtres.'
+              : 'Prix indicatifs pour 2026, fourniture et pose hors taxes. Ils font gagner du temps\u202f; vos propres tarifs restent les vôtres.'}
           </p>
         </>
       )}

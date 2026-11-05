@@ -55,6 +55,31 @@ describe('explorateur des métiers — logique', () => {
     expect(lotsMontres(TRADE_LIBRARY, 'inconnu')).toEqual([]);
   });
 
+  it('un lot sans prix (Ramonage, Froid et climatisation, Multiservice : D-41) n\'a ni total ni montant, jamais 0 ni NaN', () => {
+    for (const id of ['ramonage', 'froid', 'multiservice']) {
+      const lots = lotsMontres(TRADE_LIBRARY, id);
+      expect(lots.length, id).toBeGreaterThan(0);
+      for (const lot of lots) {
+        expect(lot.totalHT, `${id} — ${lot.nom}`).toBeNull();
+        expect(lot.lignes.length, `${id} — ${lot.nom}`).toBeGreaterThan(0);
+        for (const l of lot.lignes) expect(l, `${id} — ${l.designation}`).toEqual({ designation: expect.any(String), montant: null });
+      }
+    }
+    // une seule ligne sans prix suffit : pas de total partiel présenté comme un tarif
+    const partiel = { id: 'p', nom: 'p', lignes: [{ designation: 'a', quantite: 1, prixUnitaire: 40, tva: 10 }, { designation: 'b', quantite: 1, tva: 10 }] };
+    expect(apercuDuLot(partiel).totalHT).toBeNull();
+    expect(apercuDuLot(partiel).lignes.map((l) => l.montant)).toEqual([40, null]);
+  });
+
+  it('contre-essai : les lots des autres métiers gardent un total et un montant par ligne', () => {
+    for (const id of ['electricite', 'plomberie', 'chauffage']) {
+      for (const lot of lotsMontres(TRADE_LIBRARY, id)) {
+        expect(lot.totalHT, `${id} — ${lot.nom}`).toBeGreaterThan(0);
+        for (const l of lot.lignes) expect(l.montant, `${id} — ${l.designation}`).not.toBeNull();
+      }
+    }
+  });
+
   it('passe d\'un métier à l\'autre au clavier, en boucle', () => {
     const ids = ['a', 'b', 'c'];
     expect(metierVoisin(ids, 'a', 'ArrowRight')).toBe('b');

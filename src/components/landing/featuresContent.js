@@ -145,7 +145,7 @@ export const FEATURES_CONTENT = {
     metaDescription:
       "Devis et factures pour artisans du bâtiment\u202f: lots avec sous-totaux, métré, TVA par ligne, aperçu du document avant envoi, signature en ligne, factures d’acompte et de solde tirées du devis.",
     steps: [
-      // Bibliothèque : DevisComposer.jsx:1322-1460 et « Parcourir les 20 métiers chiffrés » (:1649) ; modèles perso
+      // Bibliothèque : DevisComposer.jsx:1322-1460 et « Parcourir les 20 métiers » (:1649) ; modèles perso
       // « Vos modèles » (:1378) ; favoris et récents (:279-293)
       { title: "Partez d’un lot ou d’un modèle", text: "Les lots types des 20 métiers de la bibliothèque, vos propres modèles, ou une page blanche. Vos articles favoris et récents sont proposés en premier." },
       // Unités (:35, 12 unités), lots (:429, 789), métré (:1271), TVA pour tout le devis (:824-826) ou par ligne (:1189-1190)

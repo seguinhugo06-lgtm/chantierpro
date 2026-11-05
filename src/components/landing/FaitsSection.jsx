@@ -9,7 +9,9 @@
  *                 - référentiel du catalogue (`src/lib/data/index.js`, `ALL_ARTICLES_BTP` = articles-btp.js +
  *                   -suite.js + -fin.js, bouton « Importer Référentiel BTP ») : 523 articles ;
  *               ensemble 1 354 désignations différentes (doublons retirés après mise en minuscules, sans accents ni
- *               espaces multiples), sans compter les 97 lots eux-mêmes. Recompter si l'une de ces listes rétrécit ;
+ *               espaces multiples), sans compter les 97 lots eux-mêmes. Recompter si l'une de ces listes rétrécit.
+ *               Ramonage, Froid et climatisation, Multiservice (ajoutés le 4 nov. 2026, sans prix depuis D-41, 5 nov.) ne
+ *               sont pas des désignations « chiffrées » : ils n'entrent pas dans ce compte ;
  *   « 17 »      métiers de `TRADE_LIBRARY` ;
  *   « 2 écrans » l'application web s'adapte au téléphone et à l'ordinateur ;
  *   « 0 € »     le plan Gratuit de `PLANS` (`src/stores/subscriptionStore.js`), sans carte bancaire.

@@ -25,6 +25,7 @@ import { calculerTotaux, messageLigneSansDesignation } from '../lib/totauxDocume
 import { estFranchiseTva, premierTaux } from '../lib/franchiseTva';
 import { TRADE_LIBRARY } from '../lib/templates/trade-library';
 import { bibliothequeDes, partagerParMetier, lotsAlternes } from '../lib/metiers';
+import { aUnPrix, totalDuLot, metierSansPrix, PRIX_A_SAISIR } from '../lib/templates/prixBibliotheque';
 import { jourLocal } from '../lib/dates';
 import { profilManquant, enPhrase } from '../lib/profilLegal';
 import { couleurPleine } from '../lib/theme';
@@ -316,7 +317,8 @@ export default function DevisComposer({
   const addLigne = (item = {}) => {
     if (item.id) rememberArticle(item);
     const newId = generateId();
-    const prix = item.prixUnitaire ?? item.prix ?? 0;
+    // Sans prix (prestation de Ramonage, Froid et climatisation, Multiservice : D-41), le champ arrive vide, à saisir, jamais « 0 »
+    const prix = item.prixUnitaire ?? item.prix ?? '';
     setForm(p => ({
       ...p,
       lignes: [...p.lignes, {
@@ -425,7 +427,8 @@ export default function DevisComposer({
         description: l.designation || l.nom || l.description || '',
         quantite: l.quantite ?? 1,
         unite: l.unite || 'u',
-        prixUnitaire: l.prixUnitaire ?? l.prix ?? 0,
+        // Ligne de la bibliothèque sans prix (D-41) : champ vide à saisir, jamais « 0 »
+        prixUnitaire: l.prixUnitaire ?? l.prix ?? '',
         prixAchat: l.prixAchat ?? 0,
         tva: l.tva !== undefined ? l.tva : p.tvaDefaut,
       }));
@@ -1530,7 +1533,7 @@ function LibraryPanel({ open, onClose, persoTemplates = [], articles = [], onApp
                         {/* Lots types : un chantier complet, déjà proportionné */}
                         <p className={`px-3 pt-2.5 pb-1 text-xs font-semibold ${textMuted}`}>Lots types</p>
                         {t.lots.map(lot => {
-                          const total = lot.lignes.reduce((s, l) => s + l.quantite * l.prixUnitaire, 0);
+                          const total = totalDuLot(lot);
                           return (
                             <button key={lot.id} type="button"
                               onClick={() => onAppendBloc(lot.lignes, lot.nom)}
@@ -1543,8 +1546,9 @@ function LibraryPanel({ open, onClose, persoTemplates = [], articles = [], onApp
                                   {lot.lignes.length} lignes · base {lot.base.quantite} {lot.base.unite}
                                 </span>
                               </span>
-                              <span className="text-xs font-bold whitespace-nowrap tabular-nums text-encre">
-                                {Math.round(total).toLocaleString('fr-FR')} €
+                              {/* Lot sans prix (D-41) : jamais « 0 € » présenté comme un tarif */}
+                              <span className={`text-xs whitespace-nowrap tabular-nums ${total === null ? 'font-medium text-encre-3' : 'font-bold text-encre'}`}>
+                                {total === null ? PRIX_A_SAISIR : `${Math.round(total).toLocaleString('fr-FR')} €`}
                               </span>
                             </button>
                           );
@@ -1560,13 +1564,19 @@ function LibraryPanel({ open, onClose, persoTemplates = [], articles = [], onApp
                             <span className={`flex-1 min-w-0 ${textPrimary}`}>{p.designation}</span>
                             {/* Prix AU M² (ou à l'unité du métier) : c'est ce qui rend
                                 la ligne ajustable une fois dans le devis. */}
-                            <span className="text-xs font-semibold whitespace-nowrap tabular-nums text-encre">
-                              {p.prixUnitaire.toLocaleString('fr-FR')} €/{p.unite}
-                            </span>
+                            {aUnPrix(p) ? (
+                              <span className="text-xs font-semibold whitespace-nowrap tabular-nums text-encre">
+                                {p.prixUnitaire.toLocaleString('fr-FR')} €/{p.unite}
+                              </span>
+                            ) : (
+                              <span className="text-xs font-medium whitespace-nowrap text-encre-3">{PRIX_A_SAISIR}</span>
+                            )}
                           </button>
                         ))}
                         <p className={`px-3 py-2 text-xs ${textMuted}`}>
-                          Prix indicatifs moyens du marché — ajustez-les à vos tarifs, puis « Enregistrer comme modèle ».
+                          {metierSansPrix(t)
+                            ? 'Ce métier est livré sans prix : saisissez les vôtres, puis « Enregistrer comme modèle ».'
+                            : 'Prix indicatifs moyens du marché — ajustez-les à vos tarifs, puis « Enregistrer comme modèle ».'}
                         </p>
                       </div>
                     )}
@@ -1744,7 +1754,7 @@ function QuickStart({ templates, articles, persoTemplates = [], metiersBib = [],
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {lotsDuMetier.map(({ metier, lot }) => {
-              const total = lot.lignes.reduce((s, l) => s + l.quantite * l.prixUnitaire, 0);
+              const total = totalDuLot(lot);
               return (
                 <button key={`${metier.id}-${lot.id}`} type="button" onClick={() => onAppendBloc?.(lot.lignes, lot.nom)}
                   className="flex items-center gap-2.5 p-3 min-h-[44px] rounded-xl border text-left transition-colors bg-surface border-bord hover:border-bord-fort">
@@ -1753,7 +1763,10 @@ function QuickStart({ templates, articles, persoTemplates = [], metiersBib = [],
                     <span className={`block text-sm font-semibold ${textPrimary}`}>{lot.nom}</span>
                     <span className={`block text-xs ${textMuted}`}>{metier.nom} · {lot.lignes.length} lignes</span>
                   </span>
-                  <span className="text-xs font-bold whitespace-nowrap tabular-nums text-encre">{Math.round(total).toLocaleString('fr-FR')} €{franchise ? '' : ' HT'}</span>
+                  {/* Lot sans prix (D-41) : jamais « 0 € » présenté comme un tarif */}
+                  {total === null
+                    ? <span className="text-xs font-medium whitespace-nowrap text-encre-3">{PRIX_A_SAISIR}</span>
+                    : <span className="text-xs font-bold whitespace-nowrap tabular-nums text-encre">{Math.round(total).toLocaleString('fr-FR')} €{franchise ? '' : ' HT'}</span>}
                 </button>
               );
             })}
@@ -1778,11 +1791,11 @@ function QuickStart({ templates, articles, persoTemplates = [], metiersBib = [],
           ))}
         </div>
 
-        {/* Accès aux 20 métiers CHIFFRÉS : c'est la vraie valeur, on l'annonce
-            explicitement plutôt que de la cacher derrière « Tous les métiers ». */}
+        {/* Accès aux 20 métiers de la bibliothèque : c'est la vraie valeur, on l'annonce explicitement plutôt que de la cacher
+            derrière « Tous les métiers ». Pas « chiffrés » : Ramonage, Froid et climatisation, Multiservice n'ont pas de prix (D-41). */}
         <button type="button" onClick={onOpenLibrary}
           className={`mt-2 inline-flex items-center gap-1.5 min-h-[44px] text-xs font-semibold px-2.5 py-1.5 rounded-lg border transition-all border-bord text-encre-2 hover:bg-surface-2`}>
-          <Library size={13} /> {lotsDuMetier.length > 0 ? `Afficher tous les métiers (${trades.length})` : `Parcourir les ${trades.length} métiers chiffrés`}
+          <Library size={13} /> {lotsDuMetier.length > 0 ? `Afficher tous les métiers (${trades.length})` : `Parcourir les ${trades.length} métiers`}
         </button>
       </div>
 

@@ -183,8 +183,9 @@ const cliquer = (page, texte) => page.evaluate((t) => {
 // partage)
 const GESTES_LOT = [
   ['Nouveau devis'],
-  // Le nombre suit la bibliothèque (TRADE_LIBRARY : 20 métiers depuis le lot 1 « métiers »)
-  ['Parcourir les 20 métiers chiffrés'],
+  // Le nombre suit la bibliothèque (TRADE_LIBRARY : 20 métiers depuis le lot 1 « métiers »). Plus « chiffrés » : trois de
+  // ces métiers n'ont pas de prix (D-41, 5 nov. 2026)
+  ['Parcourir les 20 métiers'],
   ['Électricité\n7 lots types'],
   ['Mise aux normes du tableau électrique'],
   ['__echap'],
