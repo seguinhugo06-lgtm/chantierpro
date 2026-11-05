@@ -17,10 +17,10 @@
  */
 
 export const METIERS = [
-  { id: 'electricien', nom: 'Électricien', bibliotheque: ['electricite'], referentiel: ['electricite'], modeles: ['electricite', 'domotique', 'irve-solaire'], qualifications: ['irve', 'rge'] },
-  { id: 'plombier', nom: 'Plombier', bibliotheque: ['plomberie'], referentiel: ['plomberie'], modeles: ['plomberie', 'assainissement'], qualifications: ['pg_gaz', 'rge'] },
-  { id: 'chauffagiste', nom: 'Chauffagiste', bibliotheque: ['chauffage', 'plomberie'], referentiel: ['chauffage', 'plomberie'], modeles: ['chauffage', 'renovation-energetique'], qualifications: ['rge', 'pg_gaz', 'fluides'] },
-  { id: 'frigoriste', nom: 'Frigoriste, climaticien', bibliotheque: ['froid', 'chauffage'], referentiel: ['chauffage'], modeles: ['chauffage'], qualifications: ['fluides', 'rge'] },
+  { id: 'electricien', nom: 'Électricien', bibliotheque: ['electricite'], referentiel: ['electricite'], modeles: ['electricite', 'domotique', 'irve-solaire'], qualifications: ['irve', 'rge'], modules: ['electricite'] },
+  { id: 'plombier', nom: 'Plombier', bibliotheque: ['plomberie'], referentiel: ['plomberie'], modeles: ['plomberie', 'assainissement'], qualifications: ['pg_gaz', 'rge'], modules: ['depannage'] },
+  { id: 'chauffagiste', nom: 'Chauffagiste', bibliotheque: ['chauffage', 'plomberie'], referentiel: ['chauffage', 'plomberie'], modeles: ['chauffage', 'renovation-energetique'], qualifications: ['rge', 'pg_gaz', 'fluides'], modules: ['entretien'] },
+  { id: 'frigoriste', nom: 'Frigoriste, climaticien', bibliotheque: ['froid', 'chauffage'], referentiel: ['chauffage'], modeles: ['chauffage'], qualifications: ['fluides', 'rge'], modules: ['entretien'] },
   { id: 'ramoneur', nom: 'Ramoneur', bibliotheque: ['ramonage'], referentiel: ['chauffage'], modeles: ['ramonage'], qualifications: [], modules: ['ramonage'] },
   { id: 'macon', nom: 'Maçon', bibliotheque: ['maconnerie', 'terrassement', 'demolition'], referentiel: ['maconnerie', 'terrassement', 'demolition'], modeles: ['maconnerie', 'terrassement', 'demolition', 'ravalement', 'assainissement'], qualifications: ['rge'] },
   { id: 'couvreur', nom: 'Couvreur', bibliotheque: ['couverture', 'etancheite'], referentiel: ['couverture', 'etancheite'], modeles: ['couverture', 'etancheite'], qualifications: ['rge'] },
@@ -29,7 +29,7 @@ export const METIERS = [
   { id: 'plaquiste', nom: 'Plaquiste, plâtrier', bibliotheque: ['platrerie', 'isolation'], referentiel: ['isolation'], modeles: ['platrerie', 'isolation'], qualifications: ['rge'] },
   { id: 'peintre', nom: 'Peintre', bibliotheque: ['peinture'], referentiel: ['peinture'], modeles: ['peinture', 'sols-souples', 'ravalement'], qualifications: [] },
   { id: 'carreleur', nom: 'Carreleur', bibliotheque: ['carrelage'], referentiel: ['carrelage'], modeles: ['carrelage', 'sols-souples'], qualifications: [] },
-  { id: 'serrurier', nom: 'Serrurier, métallier', bibliotheque: ['serrurerie', 'vitrerie'], referentiel: ['serrurerie', 'vitrerie'], modeles: ['serrurerie', 'metallerie', 'fermetures'], qualifications: [] },
+  { id: 'serrurier', nom: 'Serrurier, métallier', bibliotheque: ['serrurerie', 'vitrerie'], referentiel: ['serrurerie', 'vitrerie'], modeles: ['serrurerie', 'metallerie', 'fermetures'], qualifications: [], modules: ['depannage'] },
   { id: 'paysagiste', nom: 'Paysagiste', bibliotheque: ['paysagisme'], referentiel: ['paysagisme'], modeles: ['paysagisme'], qualifications: ['certiphyto', 'sap'] },
   { id: 'multiservice', nom: 'Multiservice, petits travaux', bibliotheque: ['multiservice'], referentiel: ['plomberie', 'electricite', 'peinture'], modeles: ['nettoyage'], qualifications: ['sap'] },
   { id: 'autre', nom: 'Autre', bibliotheque: [], referentiel: [], modeles: [], qualifications: [] },
@@ -76,14 +76,18 @@ export function partagerParMetier(elements, cles, idDe) {
 
 /**
  * Les changements à enregistrer sur la fiche entreprise quand l'artisan choisit ses métiers. Les modules du métier
- * s'allument (ramoneur → « J'effectue des ramonages ») ; aucun n'est éteint quand un métier est retiré : l'artisan
+ * s'allument (ramoneur → ramonage, électricien → Électricité, chauffagiste et frigoriste → Entretien, plombier et
+ * serrurier → Dépannage ; D-36, « une vraie expérience par métier ») ; aucun n'est éteint quand un métier est retiré : l'artisan
  * l'éteint lui-même dans Paramètres, ses attestations restent.
  */
 export function changementsDuChoix(entreprise, metiers) {
   const ids = normaliserMetiers(metiers);
   const patch = { metiers: ids };
   const modules = new Set(ids.flatMap((id) => PAR_ID[id].modules || []));
-  if (modules.has('ramonage') && !entreprise?.ramonageActif) patch.ramonageActif = true;
+  const reglages = { ramonage: 'ramonageActif', electricite: 'electriciteActif', entretien: 'entretienActif', depannage: 'depannageActif' };
+  for (const [module, cle] of Object.entries(reglages)) {
+    if (modules.has(module) && !entreprise?.[cle]) patch[cle] = true;
+  }
   return patch;
 }
 

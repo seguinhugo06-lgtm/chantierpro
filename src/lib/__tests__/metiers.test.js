@@ -60,7 +60,13 @@ describe('métiers', () => {
   it('ramoneur allume « J’effectue des ramonages » ; le retirer ne l’éteint pas', () => {
     expect(changementsDuChoix({}, ['ramoneur'])).toEqual({ metiers: ['ramoneur'], ramonageActif: true });
     expect(changementsDuChoix({ ramonageActif: true }, ['peintre'])).toEqual({ metiers: ['peintre'] });
-    expect(changementsDuChoix({}, ['electricien'])).toEqual({ metiers: ['electricien'] });
+    // D-36 : chaque métier allume son module, jamais un autre, et rien ne s'éteint
+    expect(changementsDuChoix({}, ['electricien'])).toEqual({ metiers: ['electricien'], electriciteActif: true });
+    expect(changementsDuChoix({}, ['chauffagiste', 'frigoriste'])).toEqual({ metiers: ['chauffagiste', 'frigoriste'], entretienActif: true });
+    expect(changementsDuChoix({}, ['serrurier'])).toEqual({ metiers: ['serrurier'], depannageActif: true });
+    expect(changementsDuChoix({}, ['plombier'])).toEqual({ metiers: ['plombier'], depannageActif: true });
+    expect(changementsDuChoix({ electriciteActif: true }, ['electricien'])).toEqual({ metiers: ['electricien'] });
+    expect(changementsDuChoix({}, ['macon', 'peintre'])).toEqual({ metiers: ['macon', 'peintre'] });
   });
 });
 
