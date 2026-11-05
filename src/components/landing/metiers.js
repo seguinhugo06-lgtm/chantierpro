@@ -1,5 +1,5 @@
 /**
- * L'explorateur « Votre métier est déjà chiffré » du site — logique pure (sans React), testée dans
+ * L'explorateur « Votre métier a déjà ses lots types » du site — logique pure (sans React), testée dans
  * `__tests__/metiers.test.js`. L'affichage est dans `MetiersSection.jsx`.
  *
  * Tout vient de la bibliothèque des métiers (`src/lib/templates/trade-library.js`) : les métiers dans son ordre,

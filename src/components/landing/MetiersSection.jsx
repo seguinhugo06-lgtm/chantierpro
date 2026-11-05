@@ -1,5 +1,6 @@
 /**
- * MetiersSection — « Votre métier est déjà chiffré » (spec de la refonte, section 4, `id="metiers"`).
+ * MetiersSection — « Votre métier a déjà ses lots types » (spec de la refonte, section 4, `id="metiers"` ; le titre disait
+ * « … est déjà chiffré » jusqu'au 5 nov. 2026 : trois métiers n'ont plus de prix, voir `comptesMetiers.js`).
  *
  * L'explorateur : les 20 métiers de la bibliothèque en pastilles (Électricité choisi d'abord) ; pour le métier
  * choisi, ses trois premiers lots types en cartes (nom, résumé, « N lignes · HT », total HT arrondi à l'euro, trois
@@ -25,7 +26,12 @@ import EnTeteSection from './site/EnTeteSection';
 import PastilleFiltre from './site/PastilleFiltre';
 import { chargerBibliotheque } from './site/bibliotheque';
 import { PRIX_A_SAISIR } from '../../lib/templates/prixBibliotheque';
+import { NB_METIERS, PHRASE_PRIX } from './comptesMetiers';
 import { METIER_INITIAL, lotsMontres, metiersDeLaBibliotheque, metierVoisin } from './metiers';
+
+// Titre et chapeau : pas de « chiffré » ni de « prix indicatifs » pour tous les métiers (trois n'ont aucun prix : D-41,
+// comptes dans `comptesMetiers.js`, comparés à la bibliothèque par un test)
+const CHAPEAU = `Choisissez le vôtre\u202f: voici les lots types que vous insérez en un geste dans un devis, pour ${NB_METIERS} métiers\u202f: ${PHRASE_PRIX}. Vous ajustez les quantités et vos tarifs, c’est tout.`;
 
 // Largeurs des pastilles d'attente (à peu près celles des noms de métiers) : la place est tenue avant le chargement.
 const ATTENTE = ['w-28', 'w-32', 'w-28', 'w-28', 'w-28', 'w-28', 'w-28', 'w-28', 'w-24', 'w-24', 'w-24', 'w-24', 'w-28', 'w-28', 'w-28', 'w-24', 'w-28'];
@@ -118,10 +124,7 @@ export default function MetiersSection() {
 
   return (
     <SectionSite id="metiers" fond="blanc">
-      <EnTeteSection titre="Votre métier est déjà chiffré.">
-        Choisissez le vôtre : voici les lots types que vous insérez en un geste dans un devis, avec des prix indicatifs.
-        Vous ajustez les quantités et vos tarifs, c’est tout.
-      </EnTeteSection>
+      <EnTeteSection titre="Votre métier a déjà ses lots types.">{CHAPEAU}</EnTeteSection>
 
       {echec ? (
         <p data-metiers-echec="" className="mt-8 rounded-2xl border border-marque-acier/60 bg-marque-glacier-1 px-5 py-4 text-base text-marque-ardoise">
