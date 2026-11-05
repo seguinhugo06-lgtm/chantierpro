@@ -7,7 +7,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
  * contexte : le composant ne lit que ses props.
  */
 const { default: EntretienTab } = await import('../settings/EntretienTab');
-const { AIDE_OBLIGATION_RAPPEL } = await import('../../lib/entretien');
+const { AIDE_OBLIGATION_RAPPEL, AIDE_DEVIS_PREALABLE } = await import('../../lib/entretien');
 
 const texte = (html) => html.replace(/<style[\s\S]*?<\/style>/g, ' ').replace(/<[^>]*>/g, ' ')
   .replace(/&#x27;/g, "'").replace(/&amp;/g, '&').replace(/&nbsp;/g, ' ').replace(/[\s  ]+/g, ' ').trim();
@@ -28,13 +28,17 @@ describe('Paramètres → Entretien', () => {
     // Contre-essai : l'ancienne phrase de la v3 ne parlait que de la chaudière
     expect(t).not.toContain('seulement pour une chaudière');
   });
-  it('le devis préalable : l’obligation de l’arrêté du 24 janv. 2017 et les sept jours, puis le bouton « Faire le devis de la visite » (décision 2)', () => {
+  it('le rappel « Client particulier » : le texte du juriste (avis du 5 nov., point 6), avec la dernière phrase du devis en un geste', () => {
     const t = reglages({ entretienActif: true });
-    expect(t).toContain('une visite d’entretien facturée à l’acte demande un devis détaillé avant l’intervention (arrêté du 24 janvier 2017, article 4)');
-    expect(t).toContain('aucun paiement ne peut être reçu avant sept jours (code de la consommation, article L. 221-10)');
-    expect(t).toContain('« Faire le devis de la visite » prépare ce devis pour la prochaine visite');
-    // Contre-essai : la v3 disait que le parcours ne faisait pas ce devis
-    expect(t).not.toContain('Le parcours entretien ne fait pas ce devis');
+    // Mot pour mot : devis préalable (arrêté du 24 janv. 2017, art. 4), sept jours « ni aucune contrepartie » (L. 221-10),
+    // exception du dépannage urgent qui ne dispense pas du devis (L. 221-10, 4° et L. 221-28, 8°), puis le devis en un geste
+    expect(t).toContain('Client particulier : une visite d’entretien facturée à l’acte demande un devis détaillé avant l’intervention (arrêté du 24 janvier 2017, article 4) et, si le contrat est conclu chez lui, aucun paiement ni aucune contrepartie ne peut être reçu avant sept jours (code de la consommation, article L. 221-10). Exception, qui ne dispense pas du devis : des travaux d’entretien ou de réparation urgents, qu’il a expressément demandés, peuvent être payés sur place et ne donnent pas droit à la rétractation, dans la limite des pièces de rechange et travaux strictement nécessaires pour répondre à l’urgence (articles L. 221-10, 4° et L. 221-28, 8°). Faites ce devis avant la visite, depuis l’attestation ou depuis « Devis ».');
+    expect(t).toContain(AIDE_DEVIS_PREALABLE);
+    expect(t).toContain('Faites ce devis avant la visite, depuis l’attestation ou depuis « Devis ».');
+    // Contre-essai : ni la phrase de la v3 ni celle de l'avis du 4 nov. (« ne fait pas ce devis », « aucun paiement ne peut »)
+    expect(t).not.toContain('ne fait pas ce devis');
+    expect(t).not.toContain('Sur une attestation, « Faire le devis de la visite » prépare');
+    expect(t).not.toContain('aucun paiement ne peut être reçu avant sept jours (code');
   });
   it('l’attestation de capacité est facultative : une information, jamais un blocage (décision 6)', () => {
     const t = reglages({ entretienActif: true });
