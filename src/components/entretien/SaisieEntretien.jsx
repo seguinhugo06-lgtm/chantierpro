@@ -8,6 +8,7 @@ import {
   CATEGORIES, categorie, ENERGIES, TYPES_PAC, TYPES_POELE, EVACUATIONS, TECHNOLOGIES_CHAUDIERE, CLASSES, groupesPoints, niveauCO,
   PHRASES_CO, DEVOIR_CO, RUBRIQUES_CHAUDIERE, SUJETS_CONSEILS, referenceRendement, referenceEmissions, POLLUANTS, manquants,
   nouveauBrouillon, prochainParDefaut, echeanceLegale, apresEcheance, limiteRemise, criteres55, tauxPropose, obligationConnue, peutEtre55, estSolide, estGazFioul, jourDe,
+  AIDE_PUISSANCE_CHAUDIERE, AIDE_SYSTEME_PAC, LIBELLE_PUISSANCE_CHAUDIERE,
 } from '../../lib/entretien';
 import { emetteurDe } from '../../lib/ramonage';
 import { buildAttestationEntretienHtml } from '../../lib/attestationEntretienHtml';
@@ -191,7 +192,7 @@ export default function SaisieEntretien({ client, precedent = null, remplace = n
             <Champ id={ch('fluide')} libelle="Fluide frigorigène (R32, R410A, R290…)" value={a.fluide} erreur={erreurDe(`appareil${i}-fluide`)} onChange={(e) => majAppareil(i, { fluide: e.target.value })} />
             <Champ libelle="Charge (kg)" facultatif inputMode="decimal" value={String(a.charge_kg ?? '')} onChange={(e) => majAppareil(i, { charge_kg: nombreSaisi(e.target.value) })} />
             <Champ as="textarea" className="sm:col-span-2" libelle="Autres machines du même bâtiment (marque, modèle, puissance)" facultatif value={a.autres_machines}
-              aide="Toutes les machines thermodynamiques (pompes à chaleur, climatisations) qui chauffent ou refroidissent le même bâtiment forment un seul système, dont la puissance est la somme de leurs puissances (article R. 224-42, 1° du code de l’environnement) : une attestation pour le système."
+              aide={AIDE_SYSTEME_PAC}
               onChange={(e) => majAppareil(i, { autres_machines: e.target.value })} />
           </div>
         )}
@@ -280,9 +281,9 @@ export default function SaisieEntretien({ client, precedent = null, remplace = n
                 )}
 
                 <Section titre={form.categorie === 'pac' ? 'Puissance du système' : 'Puissance'}>
-                  <Champ libelle={form.categorie === 'pac' ? 'Puissance nominale du système, en kW (machines du bâtiment additionnées)' : 'Puissance nominale, en kW (chaudières en réseau dans le même local : la somme de leurs puissances, article R. 224-20 du code de l’environnement)'} facultatif
+                  <Champ libelle={form.categorie === 'pac' ? 'Puissance nominale du système, en kW (machines du bâtiment additionnées)' : form.categorie === 'chaudiere' ? LIBELLE_PUISSANCE_CHAUDIERE : 'Puissance nominale, en kW'} facultatif
                     inputMode="decimal" value={String(form.puissance_kw ?? '')} onChange={(e) => maj({ puissance_kw: nombreSaisi(e.target.value) })}
-                    aide="Si elle est connue, le rappel peut citer l’obligation d’entretien et son article." />
+                    aide={form.categorie === 'chaudiere' ? AIDE_PUISSANCE_CHAUDIERE : 'Si elle est connue, le rappel peut citer l’obligation d’entretien et son article.'} />
                   {form.categorie === 'pac' && (
                     <Case libelle="Système couvert par un contrat de performance énergétique" checked={form.contrat_performance}
                       aide="Un tel système n’est pas soumis à cet entretien (article R. 224-43 du code de l’environnement)." onChange={(v) => maj({ contrat_performance: v })} />

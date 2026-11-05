@@ -6,6 +6,7 @@ import {
   echeanceLegale, prochainParDefaut, apresEcheance, limiteRemise, niveauCO, PHRASES_CO, obligationConnue, phraseObligation,
   tauxPropose, manquants, nouveauBrouillon, groupesPoints, pointsCoches, ligneFacture, rappelsDus, texteSms,
   referenceEmissions, numeroEntretienDemo, appareilsDuClient, entretienPrecedent, nomAppareil, dateEnLettres, AIDE_OBLIGATION_RAPPEL,
+  TEXTE_CHAUDIERES_EN_RESEAU, AIDE_PUISSANCE_CHAUDIERE, LIBELLE_PUISSANCE_CHAUDIERE, AIDE_SYSTEME_PAC,
 } from '../entretien';
 import { FIELD_MAPPINGS } from '../../hooks/useSupabaseSync';
 
@@ -195,6 +196,32 @@ describe('entretien — TVA proposée (avis § 5.5) : une suggestion', () => {
     expect(hors.tva).toBe(20);
     expect(hors.description).not.toContain('immeuble achevé');
     expect(ligneFacture(chaudiere(), { franchise: true }).tva).toBeUndefined();
+  });
+});
+
+// D-38 (Hugo, 5 nov. 2026), décision 4 : des chaudières en réseau dans un même local font une seule chaudière, une attestation
+describe('entretien — D-38 : chaudières en réseau dans un même local, une attestation pour l’ensemble', () => {
+  it('l’aide de la puissance cite R. 224-20, 1°, alinéa 2, mot pour mot (erratum 5 de l’avis du juriste)', () => {
+    const citation = AVIS.match(/R224-20, 1°, al\. 2 \(en vigueur depuis le 12\/06\/2009\) : « (.+?) » https/)?.[1];
+    expect(citation).toMatch(/^Lorsque plusieurs chaudières sont mises en réseau dans un même local, .* la chaudière la plus ancienne\.$/);
+    expect(TEXTE_CHAUDIERES_EN_RESEAU).toBe(citation);
+    expect(AIDE_PUISSANCE_CHAUDIERE).toContain(`« ${citation} »`);
+    expect(AIDE_PUISSANCE_CHAUDIERE).toContain('article R. 224-20, 1°, alinéa 2, du code de l’environnement');
+  });
+  it('l’aide dit qu’une seule attestation couvre l’ensemble, avec la somme des puissances', () => {
+    expect(AIDE_PUISSANCE_CHAUDIERE).toContain('forment une seule chaudière');
+    expect(AIDE_PUISSANCE_CHAUDIERE).toContain('une seule attestation pour l’ensemble');
+    expect(AIDE_PUISSANCE_CHAUDIERE).toContain('somme de leurs puissances');
+    expect(LIBELLE_PUISSANCE_CHAUDIERE).toBe('Puissance nominale, en kW (chaudières en réseau dans le même local : la somme de leurs puissances, article R. 224-20 du code de l’environnement)');
+  });
+  it('l’aide garde son premier rôle : la puissance connue permet de citer l’obligation', () => {
+    expect(AIDE_PUISSANCE_CHAUDIERE.startsWith('Si elle est connue, le rappel peut citer l’obligation d’entretien et son article.')).toBe(true);
+  });
+  it('PAC : l’aide parle des machines thermodynamiques du bâtiment (R. 224-42, 1°), jamais d’une chaudière', () => {
+    expect(AIDE_SYSTEME_PAC).toBe('Toutes les machines thermodynamiques (pompes à chaleur, climatisations) qui chauffent ou refroidissent le même bâtiment forment un seul système, dont la puissance est la somme de leurs puissances (article R. 224-42, 1° du code de l’environnement) : une attestation pour le système.');
+    expect(AIDE_SYSTEME_PAC).not.toMatch(/chaudière/i);
+    // Contre-essai : l'aide de la chaudière, elle, ne parle pas de pompe à chaleur
+    expect(AIDE_PUISSANCE_CHAUDIERE).not.toMatch(/thermodynamique|pompe à chaleur/i);
   });
 });
 

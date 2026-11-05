@@ -388,6 +388,18 @@ export function phraseObligation(e) {
   return '';
 }
 
+// ── Aides de la saisie : puissance de la chaudière, système de PAC (avis du 4 nov. 2026, § 2.1 et erratum 5) ─────────
+/** Code de l'environnement, R. 224-20, 1°, alinéa 2 (en vigueur depuis le 12/06/2009), mot pour mot : erratum 5 de l'avis. */
+export const TEXTE_CHAUDIERES_EN_RESEAU = "Lorsque plusieurs chaudières sont mises en réseau dans un même local, l'ensemble est considéré comme une seule chaudière, dont la puissance nominale est égale à la somme des puissances nominales des chaudières du réseau et dont la date d'installation est celle de la chaudière la plus ancienne.";
+export const LIBELLE_PUISSANCE_CHAUDIERE = 'Puissance nominale, en kW (chaudières en réseau dans le même local : la somme de leurs puissances, article R. 224-20 du code de l’environnement)';
+/**
+ * D-38 (Hugo, 5 nov. 2026), décision 4 : des chaudières en réseau dans un même local forment une seule chaudière, avec une
+ * attestation pour l'ensemble. La citation est celle de l'erratum 5 ; le reste de l'aide est à relire par le juriste.
+ */
+export const AIDE_PUISSANCE_CHAUDIERE = `Si elle est connue, le rappel peut citer l’obligation d’entretien et son article. Plusieurs chaudières en réseau dans un même local forment une seule chaudière (article R. 224-20, 1°, alinéa 2, du code de l’environnement) : faites une seule attestation pour l’ensemble, avec la somme de leurs puissances. Décrivez les autres chaudières du réseau dans les observations. Le texte : « ${TEXTE_CHAUDIERES_EN_RESEAU} »`;
+/** Aide des « autres machines » d'une PAC (relecture juriste-btp du 4 nov. 2026, point 5) : R. 224-42, 1°, machines thermodynamiques seulement. */
+export const AIDE_SYSTEME_PAC = 'Toutes les machines thermodynamiques (pompes à chaleur, climatisations) qui chauffent ou refroidissent le même bâtiment forment un seul système, dont la puissance est la somme de leurs puissances (article R. 224-42, 1° du code de l’environnement) : une attestation pour le système.';
+
 /** Paramètres → Entretien : ce que le rappel dit de l'obligation (texte de la relecture juriste-btp du 4 nov. 2026, point 9). */
 export const AIDE_OBLIGATION_RAPPEL = 'La date conseillée est la vôtre (douze mois après la visite par défaut). Le rappel cite l’obligation d’entretien et son article seulement quand les données de l’appareil la rendent certaine : chaudière de 4 à 400 kW (une fois par année civile), pompe à chaleur ou climatisation de 4 à 70 kW hors contrat de performance énergétique (au moins tous les deux ans), poêle ou insert à bois ou à granulés (au moins tous les douze mois s’il est utilisé).';
 // Recommandée par juriste-btp (aucun texte ne l'exige ; avis § 4.5, question 6) : elle écarte toute impression de mandat
