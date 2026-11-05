@@ -13,6 +13,7 @@
  */
 import { jourLocal, ajouterMois, dateLue } from './dates';
 import { nomImprime } from './identiteEntreprise';
+import { estClientParticulier } from './retractation';
 
 const liste = (paires) => paires.map(([valeur, libelle]) => ({ valeur, libelle }));
 export const libelleDe = (options, valeur) => options.find((o) => o.valeur === valeur)?.libelle || '';
@@ -599,11 +600,10 @@ export function descriptionAppareil(e) {
  * mentions dispensent de la certification ; au-delà, celle de mentionTvaReduite s'imprime dans les deux générateurs).
  */
 export function ligneFacture(e, { franchise = false } = {}) {
-  const c = categorie(e?.categorie);
   const le = e?.realise_le ? ` du ${dateFr(jourDe(e.realise_le))}` : '';
   const taux = tauxPropose(e, { franchise });
   const morceaux = [
-    `Entretien ${c ? `de ${e.categorie === 'chaudiere' ? 'chaudière' : e.categorie === 'pac' ? 'pompe à chaleur ou climatisation' : 'poêle ou insert'}` : ''}${le}`.trim(),
+    `${operation(e)}${le}`,
     descriptionAppareil(e),
     e?.adresse_installation ? `installation : ${e.adresse_installation}` : '',
     e?.numero ? `attestation n° ${e.numero}` : '',
@@ -617,6 +617,45 @@ export function ligneFacture(e, { franchise = false } = {}) {
     ...(franchise ? {} : { tva: taux }),
   };
 }
+
+/** L'opération : « Entretien de chaudière », « … de pompe à chaleur ou climatisation », « … de poêle ou insert ». */
+const operation = (e) => {
+  const c = categorie(e?.categorie);
+  return `Entretien${c ? ` de ${e.categorie === 'chaudiere' ? 'chaudière' : e.categorie === 'pac' ? 'pompe à chaleur ou climatisation' : 'poêle ou insert'}` : ''}`;
+};
+
+/**
+ * La ligne du devis de la visite (D-38, décision 2 : « Faire le devis de la visite » depuis l'attestation). Arrêté du
+ * 24 janv. 2017, art. 4 : avant une visite d'entretien payée chez un particulier, un devis détaillé est dû ; un prix
+ * forfaitaire par visite se fait dans un devis (avis du 4 nov. 2026, § 6). Une ligne « Entretien de … » d'après l'appareil,
+ * avec l'adresse de l'installation (le lieu d'exécution) ; au tarif réglé dans Paramètres → Entretien s'il existe, sinon
+ * sans prix ; au taux de TVA que les règles de l'entretien proposent. La visite est à venir : ni numéro d'attestation ni
+ * date de visite, contrairement à la ligne de facture.
+ */
+export function ligneDevisVisite(e, { franchise = false, entreprise = null } = {}) {
+  const taux = tauxPropose(e, { franchise });
+  const morceaux = [
+    operation(e),
+    descriptionAppareil(e),
+    e?.adresse_installation ? `installation : ${e.adresse_installation}` : '',
+    e?.logement_plus_2_ans && (taux === 10 || taux === 5.5) ? 'immeuble achevé depuis plus de deux ans' : '',
+  ].filter(Boolean);
+  return {
+    description: morceaux.join(' — '),
+    quantite: 1,
+    unite: 'forfait',
+    prixUnitaire: tarifPour(entreprise, e?.categorie) ?? 0,
+    ...(franchise ? {} : { tva: taux }),
+  };
+}
+
+/**
+ * Texte proposé par juriste-btp (relecture du 4 nov. 2026, « Visite d'entretien chez un particulier ») : la facture tirée
+ * d'une attestation, chez un client particulier, rappelle les sept jours (C. conso. L221-10).
+ */
+export const AVERTISSEMENT_SEPT_JOURS = 'Entretien convenu chez le client : aucun paiement ne peut être reçu avant sept jours après la conclusion du contrat (article L221-10 du code de la consommation).';
+/** L'avertissement pour ce client, ou '' (professionnel, copropriété : pas de contrat de consommation). */
+export const avertissementSeptJours = (client) => (estClientParticulier(client) ? AVERTISSEMENT_SEPT_JOURS : '');
 
 // ── Historique et rappels ─────────────────────────────────────────────────────────────────────────────────────────
 const parDateDecroissante = (a, b) => String(b.realise_le || '').localeCompare(String(a.realise_le || ''));

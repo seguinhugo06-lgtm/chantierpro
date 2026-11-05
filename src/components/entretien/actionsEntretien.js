@@ -3,7 +3,7 @@
  * l'attestation (taux de TVA proposé, jamais imposé : la facture reste un brouillon que l'artisan relit).
  */
 import { buildAttestationEntretienHtml, informationRappelsEntretien } from '../../lib/attestationEntretienHtml';
-import { categorie, ligneFacture, descriptionAppareil, jourDe, tauxPropose } from '../../lib/entretien';
+import { categorie, ligneFacture, ligneDevisVisite, descriptionAppareil, jourDe, tauxPropose } from '../../lib/entretien';
 import { nomImprime } from '../../lib/identiteEntreprise';
 import { echapperHtml as h } from '../../lib/echapperHtml';
 import { dateLue, jourLocal } from '../../lib/dates';
@@ -70,6 +70,40 @@ export function donneesFacture({ entretien, entreprise, aujourdhui = jourLocal()
     type: 'facture',
     client_id: entretien.client_id,
     date: aujourdhui,
+    statut: 'brouillon',
+    tvaRate: taux,
+    lignes,
+    sections: [{ id: '1', titre: '', lignes }],
+    remise: 0,
+    total_ht: t.totalHT,
+    tva: t.totalTVA,
+    total_ttc: t.totalTTC,
+    tvaParTaux: t.tvaParTaux,
+    objet: `Entretien — ${categorie(entretien.categorie)?.libelle || ''}`.trim(),
+  };
+}
+
+/**
+ * Le devis (brouillon) de la visite d'entretien, tiré d'une attestation (D-38, décision 2 : « devis en un geste »).
+ * Arrêté du 24 janv. 2017, art. 4 : chez un particulier, une visite d'entretien payée à l'acte demande un devis détaillé
+ * avant l'intervention (avis juriste-btp du 4 nov. 2026, § 6 et 7.7). Prérempli : le client, l'adresse de l'installation
+ * et une ligne « Entretien de … » d'après l'appareil, au tarif de Paramètres → Entretien s'il existe (sinon sans prix), au
+ * taux de TVA que les règles de l'entretien proposent (aucun en franchise). Il se crée par la création de devis habituelle
+ * (`addDevis`, DataContext : numéro, limite du plan, conditions d'utilisation) puis s'ouvre dans l'éditeur ; il n'est
+ * jamais envoyé d'ici.
+ */
+export function donneesDevis({ entretien, entreprise, aujourdhui = jourLocal() }) {
+  const franchise = estFranchiseTva(entreprise);
+  const taux = tauxPropose(entretien, { franchise });
+  const l = ligneDevisVisite(entretien, { franchise, entreprise });
+  const lignes = [{ id: crypto.randomUUID(), ...l, montant: Math.round(l.quantite * l.prixUnitaire * 100) / 100, ...(franchise ? { tva: 0 } : {}) }];
+  const t = calculerTotaux(lignes, { tauxDefaut: taux, franchise });
+  const validite = Number(entreprise?.validiteDevis || entreprise?.validite_devis);
+  return {
+    type: 'devis',
+    client_id: entretien.client_id,
+    date: aujourdhui,
+    validite: validite > 0 ? validite : 30,
     statut: 'brouillon',
     tvaRate: taux,
     lignes,

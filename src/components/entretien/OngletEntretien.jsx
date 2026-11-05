@@ -30,7 +30,7 @@ const dernierRamonageDe = (ramonages, clientId) => (ramonages || [])
  * Onglet « Entretien » de la fiche client (Paramètres → Entretien) : les appareils entretenus, leur historique, le rappel
  * du prochain entretien, et le parcours « Nouvel entretien » → attestation → PDF, envoi, facture.
  */
-export default function OngletEntretien({ client, entreprise, setPage, setSelectedDevis, showToast, modeDiscret }) {
+export default function OngletEntretien({ client, entreprise, setPage, setSelectedDevis, ouvrirDevis, showToast, modeDiscret }) {
   const { entretiens = [], ramonages = [], clients = [], devis = [], addEntretien, suivreEntretien, addDevis, updateClient } = useData();
   const { confirm } = useConfirm();
   const { canViewPrices, canPerform } = usePermissions();
@@ -157,6 +157,8 @@ export default function OngletEntretien({ client, entreprise, setPage, setSelect
           suivreEntretien={suivreEntretien} addDevis={addDevis} showToast={showToast}
           onRefaire={(r) => { setFicheId(null); setSaisie({ remplace: r }); }}
           onOuvrirFacture={(f) => { setFicheId(null); setSelectedDevis?.(f); setPage?.('devis'); }}
+          // Le devis de la visite s'ouvre dans l'éditeur (App.jsx, ouvrirDevis({ editer })) ; sans lui, sur sa fiche
+          onOuvrirEditeur={(d) => { setFicheId(null); if (ouvrirDevis) ouvrirDevis({ editer: d.id }); else { setSelectedDevis?.(d); setPage?.('devis'); } }}
           onFermer={() => setFicheId(null)} />
       )}
     </div>

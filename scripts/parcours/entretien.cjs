@@ -24,6 +24,16 @@ async function taper(page, selecteur, texte) {
   await page.click(selecteur, { clickCount: 3 });
   await page.type(selecteur, texte);
 }
+// Note chaque message affiché à partir de l'appel, même s'il en remplace un autre (une notification en remplace une autre)
+const noterMessages = (page) => page.evaluate(() => {
+  window.__messages = [];
+  const lire = () => {
+    const t = [...document.querySelectorAll('[role="status"][aria-live="polite"]')].map((e) => (e.innerText || '').trim()).filter(Boolean).join(' | ');
+    if (t && window.__messages[window.__messages.length - 1] !== t) window.__messages.push(t);
+  };
+  new MutationObserver(lire).observe(document.body, { childList: true, subtree: true, characterData: true });
+});
+const messagesNotes = (page) => page.evaluate(() => window.__messages || []);
 async function champParLibelle(page, debut) {
   return page.evaluateHandle((d) => {
     const l = [...document.querySelectorAll('[role="dialog"] label')].find((x) => x.innerText.startsWith(d));
@@ -150,9 +160,14 @@ module.exports = [
       fs.writeFileSync(path.join(RACINE, 'audit-ui', 'entretien-attestation.pdf'), Buffer.from(pdf.base64, 'base64'));
       await page.screenshot({ path: path.join(RACINE, 'audit-ui', 'entretien-attestation-375.png') });
 
-      // 7. Facture tirée de l'attestation : 10 %, adresse de l'installation, « immeuble achevé depuis plus de deux ans »
+      // 7. Facture tirée de l'attestation : 10 %, adresse de l'installation, « immeuble achevé depuis plus de deux ans »,
+      // et, chez un client particulier, le rappel des sept jours (L221-10 ; D-38, décision 2)
+      await noterMessages(page);
       await cliquer(page, 'Faire la facture', { dans: '[role="dialog"]' });
       await attendre(1800);
+      const messagesFacture = (await messagesNotes(page)).join(' || ');
+      verifier(messagesFacture.includes('Entretien convenu chez le client : aucun paiement ne peut être reçu avant sept jours après la conclusion du contrat (article L221-10 du code de la consommation).'),
+        `la facture tirée de l’attestation d’un client particulier rappelle les sept jours (${messagesFacture.slice(0, 120)})`);
       const facture = await page.evaluate(() => document.querySelector('main')?.innerText || '');
       verifier(/Facture/.test(facture) && facture.includes(`attestation n° ENT-${AN}-00001`) && facture.includes('immeuble achevé depuis plus de deux ans') && /10\s*%/.test(facture),
         'la facture reprend l’entretien, le numéro d’attestation, la mention du logement et le taux de 10 %');
@@ -176,6 +191,34 @@ module.exports = [
       const sms = decodeURIComponent(await page.evaluate(() => document.querySelector('[role="dialog"] a[href^="sms:"]')?.getAttribute('href') || ''));
       verifier(sms.includes('art. R. 224-41-7') && sms.includes('répondez STOP') && !/obligatoire/i.test(sms), `le SMS cite l'article et l'opposition STOP (${sms.slice(0, 160)}…)`);
       await page.screenshot({ path: path.join(RACINE, 'audit-ui', 'entretien-rappel-375.png') });
+
+      // 9. « Faire le devis de la visite » (D-38, décision 2) : depuis l'attestation, un devis brouillon prérempli, créé par la
+      // création de devis habituelle, ouvert dans l'éditeur ; il n'est pas envoyé
+      await page.evaluate(() => localStorage.setItem('cp_current_page', 'clients'));
+      await page.reload({ waitUntil: 'networkidle0' });
+      await attendre(1500);
+      await page.evaluate(() => [...document.querySelectorAll('[data-ui="LigneListe"] > button')].find((x) => x.innerText.includes('Dupont'))?.click());
+      await attendre(900);
+      await page.evaluate(() => [...document.querySelectorAll('[data-testid="onglet-entretien"] button')].find((b) => b.innerText.includes('ENT-'))?.click());
+      await attendre(700);
+      verifier(await page.$('[data-testid="fiche-entretien"]') !== null, 'l’attestation s’ouvre depuis l’historique de l’appareil');
+      await cliquer(page, 'Faire le devis de la visite', { dans: '[data-testid="fiche-entretien"]' });
+      await attendre(1800);
+      const editeur = await page.evaluate(() => {
+        const d = document.querySelector('[role="dialog"][aria-label="Modifier devis"]');
+        return d ? { texte: d.innerText, champs: [...d.querySelectorAll('textarea, input')].map((x) => x.value).join(' | ') } : null;
+      });
+      verifier(!!editeur, 'le devis de la visite s’ouvre dans l’éditeur habituel');
+      verifier(editeur.texte.includes('Marie Dupont'), 'le devis porte le client');
+      verifier(editeur.champs.includes('Entretien de chaudière') && editeur.champs.includes('installation : '),
+        `le devis porte la ligne « Entretien de … » et l’adresse de l’installation (${editeur.champs.slice(0, 160)})`);
+      const stocke = await page.evaluate(() => {
+        const brouillons = (JSON.parse(localStorage.getItem('mallettico_demo_data') || '{}').devis || []).filter((d) => d.type === 'devis' && d.lignes?.[0]?.description?.includes('Entretien de chaudière'));
+        return brouillons.map((d) => ({ statut: d.statut, numero: d.numero, client_id: d.client_id, tva: d.tvaRate }));
+      });
+      verifier(stocke.length === 1 && stocke[0].statut === 'brouillon' && /^DEV-/.test(stocke[0].numero || '') && !!stocke[0].client_id && stocke[0].tva === 10,
+        `un seul brouillon est créé, numéroté par la création habituelle, au taux proposé de 10 %, sans envoi (${JSON.stringify(stocke)})`);
+      await page.screenshot({ path: path.join(RACINE, 'audit-ui', 'entretien-devis-375.png') });
     },
   },
   // Lien de désinscription des rappels d'entretien (CPCE L. 34-5), en mode réel simulé : copié du parcours ramonage

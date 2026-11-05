@@ -283,7 +283,7 @@ export default function FicheClient({
             <OngletRamonage client={client} entreprise={entreprise} setPage={setPage} setSelectedDevis={setSelectedDevis} showToast={showToast} modeDiscret={modeDiscret} />
           )}
           {onglet === 'entretien' && entretienActif && (
-            <OngletEntretien client={client} entreprise={entreprise} setPage={setPage} setSelectedDevis={setSelectedDevis} showToast={showToast} modeDiscret={modeDiscret} />
+            <OngletEntretien client={client} entreprise={entreprise} setPage={setPage} setSelectedDevis={setSelectedDevis} ouvrirDevis={ouvrirDevis} showToast={showToast} modeDiscret={modeDiscret} />
           )}
           {onglet === 'documents' && (
             <OngletDocuments clientDevis={clientDevis} paiements={paiements} voitPrix={canViewPrices} formatMoney={formatMoney} onOuvrir={ouvrirDocument} />

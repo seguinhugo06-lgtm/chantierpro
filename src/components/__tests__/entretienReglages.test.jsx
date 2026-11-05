@@ -28,6 +28,14 @@ describe('Paramètres → Entretien', () => {
     // Contre-essai : l'ancienne phrase de la v3 ne parlait que de la chaudière
     expect(t).not.toContain('seulement pour une chaudière');
   });
+  it('le devis préalable : l’obligation de l’arrêté du 24 janv. 2017 et les sept jours, puis le bouton « Faire le devis de la visite » (décision 2)', () => {
+    const t = reglages({ entretienActif: true });
+    expect(t).toContain('une visite d’entretien facturée à l’acte demande un devis détaillé avant l’intervention (arrêté du 24 janvier 2017, article 4)');
+    expect(t).toContain('aucun paiement ne peut être reçu avant sept jours (code de la consommation, article L. 221-10)');
+    expect(t).toContain('« Faire le devis de la visite » prépare ce devis pour la prochaine visite');
+    // Contre-essai : la v3 disait que le parcours ne faisait pas ce devis
+    expect(t).not.toContain('Le parcours entretien ne fait pas ce devis');
+  });
   it('l’attestation de capacité est facultative : une information, jamais un blocage (décision 6)', () => {
     const t = reglages({ entretienActif: true });
     expect(t).toMatch(/Attestation de capacité \(fluides frigorigènes\) : numéro et organisme\s*\(?facultatif/i);

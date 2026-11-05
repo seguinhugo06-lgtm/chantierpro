@@ -100,7 +100,7 @@ export default function EntretienTab({ entreprise, setEntreprise }) {
           <Carte>
             <h3 className="text-lg font-semibold text-encre mb-1">Vos tarifs</h3>
             <p className="text-sm text-encre-2 mb-3">Prix hors taxes proposé pour un nouvel appareil (facultatif). Pour un appareil déjà connu, le prix de son dernier entretien est repris.</p>
-            <p className="text-sm text-encre-2 mb-3">Client particulier : une visite d’entretien facturée à l’acte demande un devis détaillé avant l’intervention (arrêté du 24 janvier 2017, article 4) et, si le contrat est conclu chez lui, aucun paiement ne peut être reçu avant sept jours (code de la consommation, article L. 221-10). Le parcours entretien ne fait pas ce devis : faites-le depuis « Devis ».</p>
+            <p className="text-sm text-encre-2 mb-3">Client particulier : une visite d’entretien facturée à l’acte demande un devis détaillé avant l’intervention (arrêté du 24 janvier 2017, article 4) et, si le contrat est conclu chez lui, aucun paiement ne peut être reçu avant sept jours (code de la consommation, article L. 221-10). Sur une attestation, « Faire le devis de la visite » prépare ce devis pour la prochaine visite : vous le complétez dans l’éditeur, puis vous l’envoyez.</p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {CATEGORIES.map((c) => (
                 <Champ key={c.valeur} libelle={`${c.libelle} (€ HT)`} facultatif type="text" inputMode="decimal" value={tarifs[c.valeur]}

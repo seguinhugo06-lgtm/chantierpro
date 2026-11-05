@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Download, Send, Receipt, Ban, RotateCcw } from 'lucide-react';
+import { X, Download, Send, Receipt, Ban, RotateCcw, FileText } from 'lucide-react';
 import { Bouton, BoutonIcone } from '../ui/Bouton';
 import Champ from '../ui/Champ';
 import Pastille from '../ui/Pastille';
-import { htmlAttestation, remettreAttestation, envoyerAttestation, donneesFacture } from './actionsEntretien';
+import { htmlAttestation, remettreAttestation, envoyerAttestation, donneesFacture, donneesDevis } from './actionsEntretien';
+import { avertissementSeptJours } from '../../lib/entretien';
 import { isDemo } from '../../supabaseClient';
 import { captureException } from '../../lib/sentry';
 import { usePermissions } from '../../hooks/usePermissions';
@@ -15,7 +16,7 @@ import { usePermissions } from '../../hooks/usePermissions';
  * (ramonage), avec les droits : facture et envoi pour qui peut créer ou envoyer un document.
  */
 export default function FicheEntretien({
-  entretien, client, entreprise, entretiens, clients, devis = [], suivreEntretien, addDevis, onRefaire, onOuvrirFacture, onFermer, showToast,
+  entretien, client, entreprise, entretiens, clients, devis = [], suivreEntretien, addDevis, onRefaire, onOuvrirFacture, onOuvrirEditeur, onFermer, showToast,
 }) {
   const { canPerform } = usePermissions();
   const [action, setAction] = useState(null);
@@ -71,8 +72,28 @@ export default function FicheEntretien({
       const creee = await addDevis(donneesFacture({ entretien, entreprise }));
       if (!creee) return;
       const lie = await suivreEntretien(entretien.id, { facture_id: creee.id });
-      if (lie === false) showToast?.('La facture est créée, mais son lien avec l’attestation n’a pas été enregistré.', 'error');
+      if (lie === false) {
+        showToast?.('La facture est créée, mais son lien avec l’attestation n’a pas été enregistré.', 'error');
+      } else {
+        // Chez un client particulier, un entretien convenu chez lui ne se paie pas avant sept jours (L221-10) : D-38,
+        // décision 2. Une seule notification à la fois : l'erreur de lien, plus grave, garde la place.
+        const sept = avertissementSeptJours(client);
+        if (sept) showToast?.(sept, 'warning', 9000);
+      }
       onOuvrirFacture(creee);
+    } finally {
+      setAction(null);
+    }
+  };
+
+  // « Faire le devis de la visite » (D-38, décision 2) : un devis brouillon prérempli par la création de devis habituelle
+  // (numéro, limite du plan, conditions d'utilisation), ouvert dans l'éditeur. Il n'est jamais envoyé d'ici.
+  const faireDevis = async () => {
+    setAction('devis');
+    try {
+      const cree = await addDevis(donneesDevis({ entretien, entreprise }));
+      if (!cree) return; // refusé (limite du plan, conditions non acceptées, client absent) : addDevis l'a dit
+      onOuvrirEditeur(cree);
     } finally {
       setAction(null);
     }
@@ -139,6 +160,9 @@ export default function FicheEntretien({
         <footer className="flex-shrink-0 border-t border-bord bg-surface px-3 sm:px-4 py-3 flex flex-wrap gap-2 justify-end" style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}>
           <Bouton variante="secondaire" icone={Download} chargement={action === 'pdf'} onClick={pdf}>PDF</Bouton>
           {peutEnvoyer && <Bouton variante="secondaire" icone={Send} chargement={action === 'envoi'} disabled={!email} onClick={envoyer}>Envoyer au client</Bouton>}
+          {peutFacturer && (
+            <Bouton variante="secondaire" icone={FileText} chargement={action === 'devis'} onClick={faireDevis}>Faire le devis de la visite</Bouton>
+          )}
           {peutFacturer && (
             <Bouton variante={facture ? 'secondaire' : 'principal'} icone={Receipt} chargement={action === 'facture'} onClick={faireFacture}>
               {facture ? `Facture ${facture.numero || ''}`.trim() : 'Faire la facture'}
