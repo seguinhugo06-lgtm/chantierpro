@@ -97,7 +97,12 @@ describe('import en masse du référentiel (Catalogue)', () => {
   it('seuls les articles qui portent un taux en transmettent un (ni la dépose ni la chaudière granulés)', () => {
     const importes = articlesAImporterDuReferentiel(Object.keys(ALL_ARTICLES_BTP));
     const avecTaux = articlesBtp().filter((a) => Number.isFinite(a.tva)).map((a) => a.nom).sort();
-    expect(avecTaux).toHaveLength(3);
+    // Les trois chaudières gaz et fioul (D-32), plus la fourniture des PAC air/air à 20 % (D-41, avis du 5 nov. 2026)
+    expect(avecTaux).toEqual([
+      'Chaudière fioul condensation', 'Chaudière gaz condensation au sol', 'Chaudière gaz condensation murale',
+      'PAC air/air monosplit', 'PAC air/air multisplit (2 unités int.)', 'PAC air/air multisplit (3 unités int.)',
+      'PAC air/air multisplit (4+ unités int.)', 'Unité intérieure supplémentaire',
+    ]);
     expect(importes.filter((l) => l.tva !== undefined).map((l) => l.nom).sort()).toEqual(avecTaux);
     expect(parNom(importes, 'depose-chaud')?.tva).toBeUndefined();
     expect(parNom(importes, 'chaud-granules')?.tva).toBeUndefined();
