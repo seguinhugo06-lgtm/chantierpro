@@ -4,7 +4,7 @@ import { sansTva } from '../franchiseTva';
 
 // Climatisation (PAC air/air, gainable) : la fourniture du système est exclue du taux de 10 % (CGI 279-0 bis, 1 ;
 // juriste-btp, 4 nov. 2026) ; la pose reste au taux de l'entreprise. Relecture du 4 nov. : les modèles « chauffage »
-// sortaient tout au taux de l'entreprise (10 % par défaut), fourniture comprise. Décision n° 2 d'Hugo attendue.
+// sortaient tout au taux de l'entreprise (10 % par défaut), fourniture comprise. Choix d'Hugo du 5 nov. 2026 (D-41) : fourniture à 20 %, pose à 10 %.
 
 const estClim = (m) => /climatisation|air\/air/i.test(m.nom);
 const modelesClim = () => Object.entries(MODELES_DEVIS).flatMap(([metier, f]) => (f.modeles || []).filter(estClim).map((m) => ({ metier, m })));

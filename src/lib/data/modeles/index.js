@@ -110,7 +110,7 @@ export function prepareModeleLignes(modele, tvaDefaut = 10) {
   // gaz ou fioul à 20 % depuis le 1er mars 2025, même dans un logement de plus de deux ans (docs/metiers/chauffagiste.md
   // § 5, FFB et CAPEB ; à relire au texte). Une entreprise en franchise repasse ensuite les lignes à 0 % (`sansTva`).
   // Une ligne peut imposer le sien (`ligne.tva`) : fourniture d'une climatisation à 20 % (CGI 279-0 bis, 1), la pose
-  // restant au taux de l'entreprise (juriste-btp, 4 nov. 2026 ; décision n° 2 d'Hugo attendue).
+  // restant au taux de l'entreprise (juriste-btp, 4 nov. 2026 ; choix d'Hugo du 5 nov. 2026, D-41).
   const taux = Number.isFinite(modele.tva) ? modele.tva : tvaDefaut;
   return modele.lignes.map((ligne, index) => ({
     id: `ligne-${Date.now()}-${index}`,
