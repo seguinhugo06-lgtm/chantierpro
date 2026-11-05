@@ -102,10 +102,12 @@ const heureDe = (iso) => {
  * @param {object} [p.remplace]   attestation annulée à refaire : tout est repris, la nouvelle « annule et remplace »
  * @param {Array}  p.ramonages
  * @param {object} p.entreprise
+ * @param {boolean} [p.voitPrix=true]  droit de voir les prix (canViewPrices) : sans lui, ni champ de prix ni prix repris
+ *   (du dernier passage, des tarifs ou de l'attestation refaite) ; relecture du 4 nov. 2026, point 3
  * @param {Function} p.onEnregistrer  (données) => Promise<ligne enregistrée | null>
  * @param {Function} p.onFermer
  */
-export default function SaisieRamonage({ client, precedent = null, remplace = null, ramonages = [], entreprise, onEnregistrer, onFermer }) {
+export default function SaisieRamonage({ client, precedent = null, remplace = null, ramonages = [], entreprise, voitPrix = true, onEnregistrer, onFermer }) {
   // La signature reprise est celle du même intervenant, jamais celle d'un autre (relecture juriste-btp : « je soussigné(e) B »
   // ne peut pas porter la signature de A)
   const normaliser = (n) => String(n || '').toLowerCase().replace(/\s+/g, ' ').trim();
@@ -115,11 +117,11 @@ export default function SaisieRamonage({ client, precedent = null, remplace = nu
   const [form, setForm] = useState(() => {
     if (remplace) {
       const { id, numero, annulee_le, annulation_motif, rappel_fait_le, rappel_canal, jeton_rappel, created_at, user_id, facture_id, emetteur, ...reste } = remplace; // eslint-disable-line no-unused-vars
-      return { ...reste, remplace_id: remplace.id };
+      return { ...reste, ...(voitPrix ? {} : { prix_ht: null }), remplace_id: remplace.id };
     }
     const b = nouveauBrouillon({ client, precedent, entreprise });
     const intervenant = b.intervenant_nom || [...ramonages].find((r) => r.intervenant_nom)?.intervenant_nom || '';
-    return { ...b, intervenant_nom: intervenant, signature: signaturePour(intervenant) };
+    return { ...b, ...(voitPrix ? {} : { prix_ht: null }), intervenant_nom: intervenant, signature: signaturePour(intervenant) };
   });
   // Signature reprise (pas tracée ici) : elle suit le nom de l'intervenant
   const [signatureReprise, setSignatureReprise] = useState(!remplace);
@@ -337,7 +339,7 @@ export default function SaisieRamonage({ client, precedent = null, remplace = nu
               )}
             </Section>
 
-            <Section titre="Prochain ramonage et prix">
+            <Section titre={voitPrix ? 'Prochain ramonage et prix' : 'Prochain ramonage'}>
               <Champ id="ramonage-prochain_avant" libelle="Prochain ramonage conseillé avant le" type="date" value={form.prochain_avant || ''}
                 erreur={erreurDe('prochain_avant')} onChange={(e) => { setProchainManuel(true); maj({ prochain_avant: e.target.value }); }} />
               <div className="flex flex-wrap gap-2">
@@ -353,9 +355,11 @@ export default function SaisieRamonage({ client, precedent = null, remplace = nu
                   Au-delà de douze mois, le ramonage sort du délai de l’article R. 1331-71 du code de la santé publique (sauf appareil inutilisé pendant au moins douze mois).</p>
               )}
               <p className="text-sm text-encre-3">{AIDE_FREQUENCE}</p>
-              <Champ libelle="Prix (€ HT)" facultatif type="text" inputMode="decimal" value={form.prix_ht === null || form.prix_ht === undefined ? '' : String(form.prix_ht).replace('.', ',')}
-                aide="Repris du dernier passage ou de vos tarifs ; il sert à la facture."
-                onChange={(e) => { const v = e.target.value.replace(',', '.'); maj({ prix_ht: v === '' ? null : v }); }} />
+              {voitPrix && (
+                <Champ libelle="Prix (€ HT)" facultatif type="text" inputMode="decimal" value={form.prix_ht === null || form.prix_ht === undefined ? '' : String(form.prix_ht).replace('.', ',')}
+                  aide="Repris du dernier passage ou de vos tarifs ; il sert à la facture."
+                  onChange={(e) => { const v = e.target.value.replace(',', '.'); maj({ prix_ht: v === '' ? null : v }); }} />
+              )}
               <label className="flex items-start gap-3 min-h-[44px] cursor-pointer">
                 <input type="checkbox" className="mt-1 h-5 w-5 accent-[rgb(var(--accent))]" checked={refusRappels}
                   disabled={!!client?.rappels_refuses_le} onChange={(e) => setRefusRappels(e.target.checked)} />

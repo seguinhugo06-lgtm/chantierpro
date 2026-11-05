@@ -133,7 +133,9 @@ export default function RamonageTab({ entreprise, setEntreprise }) {
             <h3 className="text-lg font-semibold text-encre mb-1">Vos tarifs</h3>
             <p className="text-sm text-encre-2 mb-3">Prix hors taxes proposé pour un nouvel appareil, selon son type (facultatif). Pour un appareil déjà connu, le prix de son dernier passage est repris.</p>
             {/* Rappel du risque de D-30 (relecture juriste-btp du 24 oct. 2026), sans bloquer */}
-            <p className="text-sm text-encre-2 mb-3">Client particulier : un devis détaillé est obligatoire avant tout ramonage (arrêté du 24 janvier 2017, article 4) et, si le contrat est conclu chez lui, aucun paiement ne peut être reçu avant sept jours (code de la consommation, article L. 221-10). Le parcours ramonage ne fait pas ce devis : faites-le depuis « Devis ».</p>
+            <p className="text-sm text-encre-2 mb-3">Client particulier : un devis détaillé est obligatoire avant tout ramonage (arrêté du 24 janvier 2017, article 4) et, si le contrat est conclu chez lui, aucun paiement ne peut être reçu avant sept jours, sauf dépannage urgent qu’il a expressément demandé, dans la limite des pièces et travaux strictement nécessaires (code de la consommation, article L. 221-10). Le parcours ramonage ne fait pas ce devis : faites-le depuis « Devis ».</p>
+            {/* Exception du dépannage urgent (L. 221-10, 4°) ajoutée le 5 nov. 2026 (D-39) au paragraphe ci-dessus, pour l'aligner sur
+                Paramètres › Électricité : la clause « sauf dépannage urgent… » en est recopiée mot pour mot. À RELIRE PAR LE JURISTE. */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {TYPES_APPAREIL.map((t) => (
                 <Champ

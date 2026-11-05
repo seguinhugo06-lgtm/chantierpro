@@ -159,6 +159,7 @@ export default function OngletRamonage({ client, entreprise, setPage, setSelecte
           remplace={saisie.remplace}
           ramonages={ramonages}
           entreprise={entreprise}
+          voitPrix={canViewPrices}
           onEnregistrer={enregistrer}
           onFermer={() => setSaisie(null)}
         />
