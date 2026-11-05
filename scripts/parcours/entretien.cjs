@@ -202,6 +202,7 @@ module.exports = [
       await page.evaluate(() => [...document.querySelectorAll('[data-testid="onglet-entretien"] button')].find((b) => b.innerText.includes('ENT-'))?.click());
       await attendre(700);
       verifier(await page.$('[data-testid="fiche-entretien"]') !== null, 'l’attestation s’ouvre depuis l’historique de l’appareil');
+      await page.screenshot({ path: path.join(RACINE, 'audit-ui', 'entretien-fiche-devis-375.png') });
       await cliquer(page, 'Faire le devis de la visite', { dans: '[data-testid="fiche-entretien"]' });
       await attendre(1800);
       const editeur = await page.evaluate(() => {
