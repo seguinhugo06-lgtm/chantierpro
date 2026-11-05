@@ -337,7 +337,7 @@ export function buildDevisHtml({ doc, client, chantier, entreprise, couleur, mod
 
   ${isMicro ? '<div class="micro-mention">TVA non applicable, article 293 B du CGI</div>' : ''}
 
-  ${mentionTvaReduiteHtml({ tvaDetails: calculatedTvaDetails, nomClient: formatClientName(client, ''), isMicro, isFacture, isAcompte: doc.facture_type === 'acompte', isAvoir: doc.facture_type === 'avoir' })}
+  ${mentionTvaReduiteHtml({ tvaDetails: calculatedTvaDetails, nomClient: formatClientName(client, ''), isMicro, isFacture, isAcompte: doc.facture_type === 'acompte', isAvoir: doc.facture_type === 'avoir' , lignes: doc.lignes, tauxDefaut: tauxTvaDocument(doc, entreprise) })}
 
   ${mentionsDepannageHtml({ doc, client })}
 

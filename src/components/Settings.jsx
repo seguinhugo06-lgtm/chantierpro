@@ -3,7 +3,7 @@ import { useToast, useConfirm } from '../context/AppContext';
 import {
   Download, FileText, RefreshCw, AlertCircle, AlertTriangle, Info, Calculator, Building2, ChevronLeft, Shield, Check,
   Home, Smartphone, Fuel, Landmark, BarChart3, CreditCard, Users, HardDrive, FolderOpen, Construction, Receipt, Mail,
-  GraduationCap, Flame, Wrench, Package, LayoutTemplate, Scale, Briefcase,
+  GraduationCap, Flame, Wrench, Package, LayoutTemplate, Scale, Briefcase, Zap,
 } from 'lucide-react';
 import { captureException } from '../lib/sentry';
 import AdminHelp from './admin-help/AdminHelp';
@@ -15,6 +15,7 @@ import RelanceConfigTab from './settings/RelanceConfigTab';
 import RamonageTab, { Interrupteur } from './settings/RamonageTab';
 import EntretienTab from './settings/EntretienTab';
 import DepannageTab from './settings/DepannageTab';
+import ElectriciteTab from './settings/ElectriciteTab';
 import PaymentConfigTab from './settings/PaymentConfigTab';
 import EntrepriseSettingsPage from './settings/EntrepriseSettingsPage';
 import TeamManagement from './settings/TeamManagement';
@@ -86,6 +87,8 @@ const GROUPES = [
     { cle: 'entretien', libelle: 'Entretien', icone: Wrench },
     // Dépannage express (lot 3) : grille tarifaire affichable, devis en un écran
     { cle: 'depannage', libelle: 'Dépannage', icone: Wrench },
+    // Électricité (lot 4) : rappel Consuel, comptes rendus d'intervention et d'autocontrôle
+    { cle: 'electricite', libelle: 'Électricité', icone: Zap },
   ]},
   { id: 'finance', libelle: 'Finance', rubriques: [
     { cle: 'comptabilite', libelle: 'Comptabilité', icone: Calculator },
@@ -1082,6 +1085,9 @@ export default function Settings({ entreprise, setEntreprise, user, devis = [], 
 
       {tab === 'depannage' && (
         <DepannageTab entreprise={entreprise} setEntreprise={updateEntreprise} />
+      )}
+      {tab === 'electricite' && (
+        <ElectriciteTab entreprise={entreprise} setEntreprise={updateEntreprise} />
       )}
 
       {tab === 'postchantier' && (

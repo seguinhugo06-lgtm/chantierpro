@@ -1583,7 +1583,7 @@ export default function DevisPage({ clients, addClient, devis, setDevis, chantie
 
   ${isMicro ? '<div class="micro-mention">TVA non applicable, article 293 B du CGI</div>' : ''}
 
-  ${mentionTvaReduiteHtml({ tvaDetails: calculatedTvaDetails, nomClient: formatClientName(client, ''), isMicro, isFacture, isAcompte: doc.facture_type === 'acompte', isAvoir: isAvoirDoc })}
+  ${mentionTvaReduiteHtml({ tvaDetails: calculatedTvaDetails, nomClient: formatClientName(client, ''), isMicro, isFacture, isAcompte: doc.facture_type === 'acompte', isAvoir: isAvoirDoc , lignes: doc.lignes, tauxDefaut: tauxTvaDocument(doc, entreprise) })}
 
   ${mentionsDepannageHtml({ doc, client })}
 

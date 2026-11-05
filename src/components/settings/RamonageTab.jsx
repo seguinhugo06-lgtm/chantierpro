@@ -136,7 +136,10 @@ export default function RamonageTab({ entreprise, setEntreprise }) {
             <h3 className="text-lg font-semibold text-encre mb-1">Vos tarifs</h3>
             <p className="text-sm text-encre-2 mb-3">{franchise ? 'Prix proposé' : 'Prix hors taxes proposé'} pour un nouvel appareil, selon son type (facultatif). Pour un appareil déjà connu, le prix de son dernier passage est repris.</p>
             {/* Rappel du risque de D-30 (relecture juriste-btp du 24 oct. 2026), sans bloquer */}
-            <p className="text-sm text-encre-2 mb-3">Client particulier : un devis détaillé est obligatoire avant tout ramonage (arrêté du 24 janvier 2017, article 4) et, si le contrat est conclu chez lui, aucun paiement ne peut être reçu avant sept jours (code de la consommation, article L. 221-10). Le parcours ramonage ne fait pas ce devis : faites-le depuis « Devis ».</p>
+            <p className="text-sm text-encre-2 mb-3">Client particulier : un devis détaillé est obligatoire avant tout ramonage (arrêté du 24 janvier 2017, article 4) et, si le contrat est conclu chez lui, aucun paiement ni aucune contrepartie ne peut être reçu avant sept jours (code de la consommation, article L. 221-10). Exception, qui ne dispense pas du devis : des travaux d’entretien ou de réparation urgents, qu’il a expressément demandés, peuvent être payés sur place et ne donnent pas droit à la rétractation, dans la limite des pièces de rechange et travaux strictement nécessaires pour répondre à l’urgence (articles L. 221-10, 4° et L. 221-28, 8°). Le parcours ramonage ne fait pas ce devis : faites-le depuis « Devis ».</p>
+            {/* Texte exact de l'avis de juriste-btp du 5 nov. 2026 (point 6), relu au texte officiel : l'exception des travaux
+                urgents (L. 221-10, 4° ; L. 221-28, 8°) ne dispense pas du devis, et un ramonage est visé (arrêté du 24 janv.
+                2017, annexe 1, « ramonage »). Même exception que Paramètres › Électricité. */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {TYPES_APPAREIL.map((t) => (
                 <Champ

@@ -9,6 +9,8 @@
  * @module DevisComposer
  */
 
+import TvaBorne from './devis/TvaBorne';
+import { estLigneBorne } from '../lib/electricite';
 import { useState, useMemo, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import {
@@ -387,7 +389,17 @@ export default function DevisComposer({
       showToast?.('Erreur lors de l\'enregistrement du modèle', 'error');
     }
   };
-  const updateLigne = (id, field, value) => setForm(p => ({ ...p, lignes: p.lignes.map(l => l.id === id ? { ...l, [field]: value } : l) }));
+  // Un autre taux qu'à 5,5 % retire la marque « pose de borne », aussi depuis « appliquer à tout le devis » (relecture du 4 nov., point 15)
+  const retirerRegimeSiTaux = (l) => { if (Number(l.tva) === 5.5 || !l.regimeTva) return l; const { regimeTva, ...reste } = l; return reste; }; // eslint-disable-line no-unused-vars
+  // Un autre taux qu'à 5,5 % retire la marque « pose de borne » (CGI 278-0 bis, N) posée par TvaBorne
+  const updateLigne = (id, field, value) => setForm(p => ({ ...p, lignes: p.lignes.map(l => {
+    if (l.id !== id) return l;
+    const suivante = { ...l, [field]: value };
+    if (field === 'tva' && Number(value) !== 5.5) delete suivante.regimeTva;
+    // …comme une désignation qui ne parle plus d'une borne (relecture gardien-securite, F5)
+    if (field === 'description' && !estLigneBorne(value)) delete suivante.regimeTva;
+    return suivante;
+  }) }));
   const removeLigne = (id) => setForm(p => ({ ...p, lignes: p.lignes.filter(l => l.id !== id) }));
   const moveLigne = (index, dir) => setForm(p => {
     const n = [...p.lignes]; const j = index + dir;
@@ -851,7 +863,7 @@ export default function DevisComposer({
                   <div className="flex gap-1.5 flex-wrap">
                     {[{ v: 20, sub: 'neuf' }, { v: 10, sub: 'réno' }, { v: 5.5, sub: 'éco-réno' }, { v: 0, sub: 'exonéré' }].map(({ v, sub }) => (
                       <button key={v} type="button"
-                        onClick={() => setForm(p => ({ ...p, tvaDefaut: v, lignes: p.lignes.map(l => l._isSection ? l : { ...l, tva: v }) }))}
+                        onClick={() => setForm(p => ({ ...p, tvaDefaut: v, lignes: p.lignes.map(l => l._isSection ? l : retirerRegimeSiTaux({ ...l, tva: v })) }))}
                         aria-pressed={form.tvaDefaut === v && form.lignes.every(l => l._isSection || l.tva === v)}
                         className={`px-3 h-11 rounded-full text-sm font-semibold border transition-colors ${form.tvaDefaut === v && form.lignes.every(l => l._isSection || l.tva === v) ? 'bg-encre text-surface border-encre' : 'border-bord text-encre-2 hover:bg-surface-2'}`}>
                         {String(v).replace('.', ',')} % <span className="font-normal opacity-70">{sub}</span>
@@ -1364,6 +1376,7 @@ function LigneRow({ ligne, index, total, franchise = false, isDark, couleur: _co
           <span className="font-bold text-encre tabular-nums">{eur(lineTotal)}</span>
         </p>
       </div>
+      {!franchise && <TvaBorne ligne={ligne} onUpdate={onUpdate} />}
     </div>
   );
 }
