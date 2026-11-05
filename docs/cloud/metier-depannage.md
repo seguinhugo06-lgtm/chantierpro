@@ -231,7 +231,7 @@ Session cloud de correction (consigne metier-depannage-v3). Branche mise à jour
 | 10. Parcours en mode réel simulé | fait | `scripts/parcours/depannage.cjs`, second parcours `reel: true` : grille dans `settings_json.reglages`, devis envoyé en base avec ses lignes et leurs catégories. |
 | 11. Forfait à moitié saisi effacé | fait | `DepannageTab.jsx:36-53` (`dernierEnvoi` : les champs ne se relisent que sur un changement venu d'ailleurs) ; le parcours « (base) » le contrôle. |
 | Section « Conflits » de la consigne : libellés « HT » sans égard pour la franchise (D-31) | pas fait en v3 (renvoyé à la session locale), aucune décision nécessaire : fait ici | `DepannageTab.jsx:58`, `:103`, `:109`, `:130` et `DevisExpress.jsx:48`, `:164`, `:188`, `:199` : plus de « HT » en franchise. Test `libellesFranchiseDepannage.test.jsx` (4 tests), contre-essai sur l'ancien code : 2 échecs. |
-| Hors périmètre, sur le chemin du dépannage (consigne v3 : tâches à part) | non traités | `handleSignatureSave` affiche « Devis signé et accepté » sans tester le retour de `onUpdate` ; « Passer a la signature » (`SignaturePad.jsx`) n'a pas d'accent. |
+| Hors périmètre, sur le chemin du dépannage (consigne v3 : tâches à part) | traités le 5 nov. à la demande du coordinateur (réserve 3) | `handleSignatureSave` affichait « Devis signé et accepté » sans tester le retour de `onUpdate` ; « Passer a la signature » (`SignaturePad.jsx`) n'avait pas d'accent : corrigés, voir « Corrections du juriste ». |
 
 ### Décisions appliquées
 
@@ -244,6 +244,8 @@ Session cloud de correction (consigne metier-depannage-v3). Branche mise à jour
 - **Contre-essai fait** : en retirant `estDevisDepannage` de `mentionsDepannage` (la mention sur tout devis de particulier, l'option écartée), 4 tests échouent ; code remis, tests verts.
 
 #### 2. Pas de signature sur place d'un devis jamais remis (C. conso. L221-8)
+
+> État de la matinée du 5 nov. Les textes des fenêtres, le choix du mode de remise et la preuve de la remise ont été complétés l'après-midi par les corrections du juriste : voir « Corrections du juriste » plus bas.
 
 - **Constat sur la v3** : la fenêtre de signature s'ouvrait après deux confirmations sans que rien soit enregistré, et `handleSignatureSave` posait `date_envoi` à la signature : la date de remise était celle de la signature. Les deux points de la fiche étaient donc faux.
 - **Corrigé** (`src/lib/remiseDevis.js`, nouveau ; `DevisPage.jsx:1911-1934` (la porte et le parcours de remise), `:2973` et `:2985` (les deux boutons « Faire signer »), `:794-795` (la signature sans date de remise)) :
@@ -266,26 +268,44 @@ Session cloud de correction (consigne metier-depannage-v3). Branche mise à jour
 - **Vérifié, déjà conforme** : la grille n'a que `majorationNuit` et `majorationDimanche` (`depannage.js:65`, `:67`) ; le devis express n'accepte que `'nuit'` et `'dimanche'` (`:175`, toute autre valeur est refusée) ; l'écran express ne propose que les majorations de la grille (`DevisExpress.jsx:178`) ; Paramètres › Dépannage dit « Une urgence demandée par le client ne majore jamais le prix » (`DepannageTab.jsx:120`).
 - **Gardé, et verrouillé par des tests** (`depannage.test.js`, « aucune majoration d’urgence ») : deux majorations seulement dans la grille, une majoration d'urgence saisie dans les réglages est ignorée, `majoration: 'urgence'` est refusée (contre-essai : la nuit et le dimanche passent), aucun écran ne contient de majoration d'urgence. Parcours : les options de majoration de l'écran express sont celles de la grille (« Aucune », « Nuit »), jamais l'urgence, et le total reste 122,10 € urgence cochée.
 
+### Corrections du juriste (avis du 5 nov. 2026, lot 4, points 7 et 8)
+
+Le juriste a relu au texte officiel (Légifrance, le 5 nov. 2026). Avis : `audit-ui/cloud/v4/avis-juriste-lot4.md` du worktree de la session locale (hors dépôt : non versé ici), lignes 23 à 26 de « À corriger » ; plus la réserve 3 de la section précédente. `docs/decisions.md` n'est pas touché (D-40 y est consignée par la session locale). Les textes du juriste sont recopiés **par programme** depuis son avis (comparaison exacte, aucune différence), puis verrouillés par des tests mot pour mot.
+
+| Correction | Où | Test et contre-essai |
+|---|---|---|
+| 1. Fenêtres avant « Faire signer » (point 7) : message de la 1re fenêtre (« Avant de signer chez lui… »), message de la 2e (« Répondez oui seulement s’il l’a reçu… »), bouton « Devis remis au client », annulation « Pas encore » ; titres et « Ouvrir le PDF » inchangés | `src/lib/remiseDevis.js`, `TEXTES_REMISE` ; la 2e fenêtre est le nouveau `src/components/devis/RemiseDevisModal.jsx` (montée avec les fenêtres d'envoi, `DevisPage.jsx`) | `remiseDevis.test.js` : textes mot pour mot ; le parcours lit les deux messages à l'écran |
+| 2. Preuve de la remise (L221-7) : date, heure et mode, sur le devis | voir ci-dessous | `remiseDevis.test.js` (34 tests), `remiseAuClient.test.js` (7), parcours (démo et base) |
+| 3. Paramètres › Dépannage (point 8) : les trois obligations (l. 38, 42 facultative et 46 de l'avis, maintenant l. 44, 48 et 52) et la phrase « Affichez la grille… » | `depannage.js` (`OBLIGATIONS`, commentaires), `docs/metier-btp.md` l. 24 (mêmes chaînes : le test les compare), `DepannageTab.jsx:152` | `depannage.test.js` : 5 tests de plus (textes mot pour mot, « toute autre condition de rémunération », « pièces, éléments ou appareils remplacés » comme l'annexe 2, la facture ne tient lieu de note qu'avec la date et le lieu, la nouvelle phrase). Contre-essai avec les anciens textes : 7 échecs |
+| 4. Réserve 3 : `handleSignatureSave` teste le retour de `onUpdate` ; « Passer à la signature » | `DevisPage.jsx:806-809` ; `SignaturePad.jsx:229` | parcours (base) : la base refuse la signature, l'artisan lit « La signature n’a pas été enregistrée… », aucun « Devis signé », rien de signé en base ; parcours `depannage` et `facturation` mis à jour pour l'accent |
+
+#### La preuve de la remise (correction 2)
+
+- **Donnée** : `devis.remise_au_client = { le, mode, canal? }`. `le` : l'instant de la remise (ISO, UTC), donc la date et l'heure. `mode` : `papier` (« Imprimé et remis ») ou `envoye` (« Envoyé par e-mail ou par message »). `canal` : `email` quand l'envoi part de l'app.
+- **Voie « PDF »** : la 2e fenêtre (`RemiseDevisModal.jsx`) propose les deux modes du juriste, **sans choix par défaut** ; « Devis remis au client » reste éteint tant qu'aucun n'est choisi ; « Pas encore », la croix ou Échap n'enregistrent rien. Le choix et l'instant partent avec la remise (statut « envoyé », jour d'envoi, preuve) dans **une seule écriture, attendue** : `enregistrer` attend `onUpdate` ; s'il rend faux (la base refuse), la fiche revient en brouillon, l'artisan lit « La remise du devis n’a pas été enregistrée. Réessayez. » et la signature reste fermée ; vrai, ou en file hors ligne, la signature s'ouvre.
+- **Voie « Envoyer » (e-mail)** : le premier envoi d'un devis par e-mail ajoute la preuve (mode « envoyé », canal e-mail) à l'écriture du statut, en démo comme en réel (`sendEmail`, `preuveEnvoiParEmail`). Pas de preuve pour une facture, ni quand une première remise est déjà enregistrée (la première est celle qui compte). Les messages WhatsApp et SMS ne sont que préparés : ils n'enregistrent pas de preuve.
+- **Où elle est rangée, sans migration** : dans la colonne JSON **existante `devis.payment_metadata`**, sous la clé `remise_au_client` (colonne ajoutée par les migrations 012 et 067). Mappage dans `src/hooks/useSupabaseSync.js` : `toSupabase` l'écrit pour un devis seulement, et seulement si la preuve existe (une copie périmée n'efface rien) ; `fromSupabase` la relit pour un devis seulement (`remiseAuClientLue`). Les autres colonnes JSON du devis ne conviennent pas : `lignes`, `sections` et `tva_details` sont lues partout pour calculer et imprimer, une clé étrangère y casserait un document. `payment_metadata`, elle, n'est lue par aucun écran ni générateur ; le serveur ne l'écrit que sur les **factures** payées en ligne (`create-invoice-payment`), d'où « jamais écrite ni relue sur une facture ».
+- **Limites, à connaître** : (1) le nom de la colonne est trompeur ; une vraie colonne (migration) serait plus propre, si Hugo le veut. (2) Si une base n'avait pas cette colonne, la couche d'écriture la retirerait puis réessaierait, comme pour toute colonne inconnue (comportement existant, signalé en console) : la remise serait enregistrée sans sa preuve. La colonne existe en production si 067 y est appliquée (`create-invoice-payment` l'écrit sur les factures) : à constater en lecture seule par la session locale. (3) La preuve n'est pas affichée sur la fiche du devis. (4) Elle reste la parole de l'artisan (L221-7 : c'est ce que le juriste demande d'enregistrer).
+- **Tests** : `remiseDevis.test.js` : sans « Pas encore » ni mode valide rien n'est enregistré, la preuve porte l'instant et le mode, un mode inconnu ou un instant illisible lèvent une erreur (jamais une preuve vide), « Envoyer » joint le mode « envoyé » et le canal e-mail, rien pour une facture ni quand une preuve existe. `remiseAuClient.test.js` : aller-retour app, base, app ; jamais écrite sur une facture ; jamais relue sur une facture ; JSON rendu en texte. Parcours démo : la preuve (heure comprise, mode « papier ») est posée avant la signature et intacte après une signature deux jours plus tard ; la voie e-mail pose « envoyé », canal e-mail. Parcours base : la base refuse la remise (signature fermée, message dit, rien en base) ; la base répond lentement (la signature reste fermée tant qu'elle n'a pas répondu, ce qui prouve l'attente de l'écriture) ; la requête porte `payment_metadata.remise_au_client` ; la base refuse la signature (message dit, aucun faux « Devis signé », rien signé) ; puis la signature passe sans nouvelle remise et la preuve est gardée.
+- **Contre-essais faits** : remise enregistrée sans sa preuve : 7 échecs ; preuve écrite aussi sur une facture : 1 échec ; ancien `DevisPage.jsx` : les gardes de source échouent (voir plus haut). Le parcours base contrôle ce qu'un test unitaire ne voit pas : le contenu de la requête et l'ordre (base lente), avec ses propres contre-essais (la base refuse la remise, puis la signature).
+
 ### Textes nouveaux : À relire par le juriste
 
-Libellés écrits dans cette session, à relire au texte (L221-8 est cité de mémoire dans la 1re fenêtre, comme en v3 ; `docs/metier-btp.md` § 2, relu le 17 oct., le résume de la même façon).
+Le juriste a relu au texte, le 5 nov., les fenêtres de la remise (point 7) et les textes de Paramètres › Dépannage (point 8) : ils sont recopiés de son avis (voir ci-dessus), et la 2e fenêtre n'a ni légende ni autre texte que les siens. Restent à relire les textes écrits par cette session :
 
 | Texte | Où |
 |---|---|
-| Bouton « Devis remis au client » (mot d'Hugo) | 2e fenêtre de la remise (`remiseDevis.js`) |
-| « Imprimé, ou envoyé avec son accord. Le devis sera enregistré comme remis aujourd’hui, puis le client pourra le signer. » | 2e fenêtre de la remise (la v3 disait « il peut maintenant le signer ») |
-| « La remise du devis n’a pas été enregistrée. Réessayez. » | message d'erreur si la base refuse la remise |
+| « La remise du devis n’a pas été enregistrée. Réessayez. » | message si la base refuse d'enregistrer la remise |
 | « Remettez d’abord le devis au client. » | message si « Faire signer » est demandé sur un devis non remis (porte de sécurité) |
+| « La signature n’a pas été enregistrée : le devis n’est pas signé. Refaites-le signer. » | message si la base refuse d'enregistrer la signature (correction du 5 nov., réserve 3) |
 | « Vos prix, comme sur vos devis. La grille imprimée porte la mention « TVA non applicable, article 293 B du CGI ». » (et libellés sans « HT ») | Paramètres › Dépannage, en franchise de TVA |
-
-Inchangés depuis la v3 et toujours à relire : la 1re fenêtre (« Remettez d’abord le devis… article L221-8 », « Ouvrir le PDF »), le libellé exact de la question de l'annexe 2.
 
 ### Ce qui n'a pas été fait
 
-- **Relecture au texte** de L221-8 et de l'annexe 2 (libellé exact de la question sur les pièces) : pas d'accès à Légifrance. À faire par la session locale.
-- **Voie e-mail** : l'accord du client à l'e-mail est rappelé dans la 1re fenêtre, mais pas recueilli au clic sur « Envoyer » (comportement existant, inchangé). À décider si le juriste veut un recueil explicite.
-- **La remise reste déclarative** : l'app ne prouve pas que le devis a été remis (parole de l'artisan, comme en v3).
-- **Hors périmètre** : voir le tableau (retour de `onUpdate` à la signature, accent de « Passer a la signature »), la réponse sur les pièces à la signature en ligne (migration 112), `docs/metier-btp.md` § 2 non touché (le test compare ses obligations) : la règle « remise enregistrée avant signature » n'y est pas décrite.
+- **Voie e-mail** : l'accord du client à l'e-mail est rappelé dans la 1re fenêtre (« s’il est d’accord »), mais pas recueilli au clic sur « Envoyer » (comportement existant). Le juriste juge la voie conforme à quatre conditions, dont l'accord du client pour tout support autre que le papier : à décider si un recueil explicite est voulu.
+- **La preuve reste déclarative** : l'app ne prouve pas que le client a reçu le devis ; elle enregistre ce que l'artisan déclare, à l'instant où il le déclare. Elle n'est pas affichée sur la fiche, et WhatsApp et SMS n'en enregistrent pas.
+- **`payment_metadata` en production** : colonne à constater par la session locale (lecture seule), voir la correction 2.
+- **Hors périmètre** : la réponse sur les pièces à la signature en ligne (migration 112) ; `docs/metier-btp.md` : seuls les trois textes de § 2 sont alignés, la règle « remise enregistrée, avec sa preuve, avant la signature » n'y est pas décrite.
 - **Vérification complète** (`npm run verifier -- --complet`) et banc de migrations : non lancés (aucun SQL touché ; l'assemblage est vérifié par la session locale).
 
 ### Commandes lancées et résultats
@@ -304,3 +324,9 @@ Machine chargée par d'autres sessions (charge moyenne 18 à 20) : les durées s
 - **`npm run parcours -- depannage` sur le code final (`9b97cc9`)** : 2 parcours verts (46 et 10 vérifications), après `npm run build`.
 - **`npm run parcours -- facturation`** (l'autre parcours qui fait signer un devis sur place ; lancé avant les commits, sur le même code d'application : il n'a changé ensuite que des commentaires et des tests) : 10 parcours verts.
 - **Non lancés** : `npm run verifier -- --complet`, `npm run banc:migrations` (aucun SQL touché). Le commit qui suit `9b97cc9` ne touche que ce rapport.
+
+Corrections du juriste (après-midi du 5 nov., `e98cbd7f`, `c86de88b`, `c5c10739`) :
+
+- **Tests du lot** : `npx vitest run` de `remiseDevis` (34), `remiseAuClient` (7), `depannage` (59) et `libellesFranchiseDepannage` (4) : 104 verts.
+- **Contre-essais** (code remis ensuite, tests de nouveau verts) : remise enregistrée sans sa preuve, 7 échecs ; preuve écrite aussi sur une facture, 1 échec ; anciens textes des obligations, 7 échecs.
+- **`npm run parcours -- depannage`** (le build de ce code, sans la retouche de commentaire qui a suivi) : 2 parcours verts, 54 et 34 vérifications. Un premier passage du parcours démo avait échoué, par la faute du parcours : il lisait le stockage de la démo à délai fixe, avant sa sauvegarde différée de 500 ms, sur une machine chargée. Les lectures attendent maintenant l'état attendu, et celles qui disent « rien n'est enregistré » attendent la sauvegarde.
