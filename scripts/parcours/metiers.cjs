@@ -23,6 +23,18 @@ const cliquerDans = (page, selecteur, texte) => page.evaluate((s, t) => {
 }, selecteur, texte);
 const puces = (page) => page.evaluate(() => [...document.querySelectorAll('[data-testid="choix-metiers"] button')]
   .filter((b) => b.getAttribute('aria-pressed') === 'true').map((b) => b.innerText.trim()));
+// Éditeur de devis vide, ouvert depuis n'importe quelle page de l'app (mode démo, téléphone)
+const ouvrirEditeurDeDevis = async (page, attendre) => {
+  await page.evaluate(() => [...document.querySelectorAll('nav a, nav button')].find((x) => x.innerText.trim() === 'Devis')?.click());
+  await attendre(1200);
+  await page.evaluate(() => { const b = [...document.querySelectorAll('button')].find((x) => /^Nouveau$/.test((x.innerText || '').trim()) && x.getBoundingClientRect().width > 0); b?.click(); });
+  await attendre(600);
+  await page.evaluate(() => { const b = [...document.querySelectorAll('button, [role=menuitem], a')].find((x) => (x.innerText || '').trim() === 'Nouveau devis'); b?.click(); });
+  await attendre(1500);
+  // Le sélecteur de client peut s'ouvrir d'abord : le fermer sans choisir
+  await page.keyboard.press('Escape');
+  await attendre(500);
+};
 const jusqua = async (attendre, condition, max = 15000) => {
   const debut = Date.now();
   while (!(await condition()) && Date.now() - debut < max) await attendre(200);
@@ -132,6 +144,82 @@ module.exports = [
         return panneau ? [...panneau.querySelectorAll('button[aria-expanded] span.block.text-sm, p')].map((x) => x.innerText.trim()).filter((t) => /^(Plomberie|Électricité|Autres métiers|Maçonnerie)$/.test(t)) : [];
       });
       verifier(JSON.stringify(ordre.slice(0, 4)) === '["Électricité","Plomberie","Autres métiers","Maçonnerie"]', `bibliothèque : métiers choisis, puis « Autres métiers » (${JSON.stringify(ordre)})`);
+    },
+  },
+  {
+    // D-41 (5 nov. 2026) : Ramonage, Froid et climatisation, Multiservice n'ont aucun prix. L'éditeur écrit « Prix à saisir »,
+    // jamais « 0 € » ; les lignes ajoutées arrivent avec un champ de prix vide, à remplir ; les autres métiers gardent leurs prix.
+    nom: 'métiers : ramoneur : éditeur de devis, lots et prestations sans prix (« Prix à saisir », jamais 0 €), prix vide à saisir (375 px)',
+    async executer({ ouvrir, attendre, verifier }) {
+      const { page } = await ouvrir({ page: 'settings', largeur: 375 });
+      await attendre(800);
+      const rubrique = await page.evaluate(() => {
+        const b = [...document.querySelectorAll('button, a')].find((x) => x.innerText.trim() === 'Mon métier' && x.getBoundingClientRect().width > 0);
+        if (b) b.click();
+        return !!b;
+      });
+      verifier(rubrique, 'Paramètres › Mon métier');
+      await attendre(600);
+      await cliquerDans(page, '[data-testid="choix-metiers"]', 'Ramoneur');
+      await attendre(1200);
+      verifier(JSON.stringify(await puces(page)) === '["Ramoneur"]', `ramoneur choisi (${JSON.stringify(await puces(page))})`);
+      await ouvrirEditeurDeDevis(page, attendre);
+
+      // « Votre métier » : les lots de Ramonage, sans total chiffré
+      const lots = await page.evaluate(() => [...document.querySelectorAll('[data-testid="lots-du-metier"] button')].map((b) => b.innerText.split('\n').map((x) => x.trim()).filter(Boolean).join(' / ')));
+      verifier(lots.length === 2 && lots.every((l) => /Ramonage/.test(l)), `« Votre métier » : les deux lots de Ramonage (${lots.join(' ; ')})`);
+      verifier(lots.every((l) => /Prix à saisir/.test(l) && !/(^|[^\d])0\s?€|NaN/.test(l)), `lots sans total : « Prix à saisir », jamais 0 € (${lots.join(' ; ')})`);
+
+      await page.screenshot({ path: 'audit-ui/sonde-ramoneur-editeur-375.png', fullPage: true });
+      // La bibliothèque : lots et prestations de Ramonage sans prix, Électricité avec ses prix
+      const ouvert = await page.evaluate(() => { const b = [...document.querySelectorAll('button')].find((x) => /^Afficher tous les métiers \(20\)$/.test(x.innerText.trim())); b?.click(); return !!b; });
+      verifier(ouvert, 'bibliothèque ouverte');
+      await attendre(700);
+      const deplier = (nom) => page.evaluate((n) => {
+        const b = [...document.querySelectorAll('[aria-label="Bibliothèque de modèles"] button[aria-expanded]')].find((x) => x.innerText.split('\n').map((t) => t.trim()).includes(n));
+        if (b && b.getAttribute('aria-expanded') !== 'true') b.click();
+        return !!b;
+      }, nom);
+      const texteDuMetier = (nom) => page.evaluate((n) => {
+        const b = [...document.querySelectorAll('[aria-label="Bibliothèque de modèles"] button[aria-expanded]')].find((x) => x.innerText.split('\n').map((t) => t.trim()).includes(n));
+        return b?.parentElement?.innerText || '';
+      }, nom);
+      verifier(await deplier('Ramonage'), 'métier Ramonage déplié');
+      await attendre(500);
+      await page.screenshot({ path: 'audit-ui/sonde-ramoneur-bibliotheque-375.png' });
+      const ramonage = await texteDuMetier('Ramonage');
+      verifier((ramonage.match(/Prix à saisir/g) || []).length >= 9, `Ramonage : chaque lot et chaque prestation dit « Prix à saisir » (${(ramonage.match(/Prix à saisir/g) || []).length})`);
+      verifier(!/(^|[^\d])0\s?€|NaN|€\/(u|ml|forfait)/.test(ramonage), 'Ramonage : aucun montant, ni 0 €, ni NaN');
+      verifier(/sans prix : saisissez les vôtres/.test(ramonage), 'Ramonage : la note dit que le métier est livré sans prix');
+      verifier(await deplier('Électricité'), 'métier Électricité déplié');
+      await attendre(500);
+      const elec = await texteDuMetier('Électricité');
+      verifier(/\d[\d\s  ]* €/.test(elec) && !/Prix à saisir/.test(elec), 'Électricité : ses prix sont toujours là');
+      verifier(/Prix indicatifs moyens du marché/.test(elec), 'Électricité : la note des prix indicatifs');
+
+      // Un lot de Ramonage entier, puis une prestation : les lignes arrivent avec un prix VIDE (jamais « 0 »), curseur sur le prix
+      const cliquerDansLeMetier = (nom, debut) => page.evaluate((n, d) => {
+        const b = [...document.querySelectorAll('[aria-label="Bibliothèque de modèles"] button[aria-expanded]')].find((x) => x.innerText.split('\n').map((t) => t.trim()).includes(n));
+        const ligne = [...(b?.parentElement?.querySelectorAll('button:not([aria-expanded])') || [])].find((x) => x.innerText.trim().startsWith(d));
+        ligne?.click();
+        return !!ligne;
+      }, nom, debut);
+      // Un seul métier est déplié à la fois : Ramonage se referme quand Électricité s'ouvre
+      verifier(await deplier('Ramonage'), 'métier Ramonage déplié de nouveau');
+      await attendre(500);
+      verifier(await cliquerDansLeMetier('Ramonage', 'Ramonage d\'un insert ou foyer fermé'), 'lot « Ramonage d’un insert ou foyer fermé » ajouté');
+      await attendre(500);
+      verifier(await cliquerDansLeMetier('Ramonage', 'Ramonage mécanique d\'un conduit de cheminée ouverte'), 'prestation « Ramonage mécanique d’un conduit de cheminée ouverte » ajoutée');
+      await attendre(500);
+      await page.keyboard.press('Escape');
+      await attendre(700);
+      const prix = await page.evaluate(() => [...document.querySelectorAll('input[inputmode="decimal"]')]
+        .filter((i) => i.getBoundingClientRect().width > 0 && /PU HT|Prix unitaire/.test(i.placeholder || ''))
+        .map((i) => i.value));
+      verifier(prix.length === 4 && prix.every((v) => v === ''), `un lot de trois lignes et une prestation : quatre lignes, tous les prix vides (${JSON.stringify(prix)})`);
+      const actif = await page.evaluate(() => (document.activeElement?.placeholder || ''));
+      verifier(/PU HT|Prix unitaire/.test(actif), `le curseur est sur le prix de la dernière ligne (${actif || 'ailleurs'})`);
+      await page.screenshot({ path: 'audit-ui/sonde-ramoneur-lignes-375.png', fullPage: true });
     },
   },
   {
@@ -264,6 +352,33 @@ module.exports = [
     },
   },
   {
+    // D-41 (5 nov. 2026) : la question est posée dans la bienvenue et dans Paramètres, jamais aux membres invités. Un
+    // administrateur invité ouvre Paramètres, mais n'est pas le gérant de l'entreprise : ni question, ni « Mon métier ».
+    nom: 'métiers : administrateur invité : ni la question à la bienvenue, ni « Mon métier » dans Paramètres ; le propriétaire garde les deux (375 px)',
+    reel: true,
+    async executer({ ouvrir, sessionFactice, attendre, verifier }) {
+      const admin = creerBase({ entreprise: [{ ...FICHE }] }, { role: 'admin' });
+      const { page } = await ouvrir({ reel: true, largeur: 375, page: 'dashboard', session: sessionFactice(), supabase: admin.reponse, avantChargement: BIENVENUE_A_VOIR });
+      await jusqua(attendre, async () => !!(await dialogue(page)));
+      await attendre(500);
+      const d = await dialogue(page);
+      verifier(!!d && !/Quels travaux faites-vous/.test(d.texte), `administrateur invité : pas de question du métier (${(d?.texte || 'aucune').slice(0, 50)})`);
+      verifier(admin.journal.filter((j) => j.table === 'entreprise' && j.m !== 'GET').length === 0, 'aucune écriture de la fiche');
+      const rubriques = async (base) => {
+        const { page: p } = await ouvrir({ reel: true, largeur: 375, page: 'settings', session: sessionFactice(), supabase: base.reponse });
+        await jusqua(attendre, async () => await p.evaluate(() => !!document.querySelector('[data-parametres="liste"]')));
+        await attendre(500);
+        return p.evaluate(() => document.querySelector('[data-parametres="liste"]')?.innerText || '');
+      };
+      const listeAdmin = await rubriques(admin);
+      verifier(/Identité/.test(listeAdmin) && /Légal/.test(listeAdmin) && !/Mon métier/.test(listeAdmin),
+        `administrateur invité : Paramètres sans « Mon métier » (${listeAdmin.replace(/\s+/g, ' ').slice(0, 120)})`);
+      const proprio = creerBase({ entreprise: [{ ...FICHE }] });
+      const listeProprio = await rubriques(proprio);
+      verifier(/Mon métier/.test(listeProprio), `propriétaire : Paramètres avec « Mon métier » (${listeProprio.replace(/\s+/g, ' ').slice(0, 120)})`);
+    },
+  },
+  {
     nom: 'métiers : bienvenue, « Passer » avec deux puces cochées : le choix est enregistré, pas perdu (375 px)',
     reel: true,
     async executer({ ouvrir, sessionFactice, attendre, verifier }) {
@@ -282,7 +397,7 @@ module.exports = [
     },
   },
   {
-    nom: 'qualifications : services à la personne, « Seulement si une ligne contient… » reste choisi, champ des mots montré, rien d’imprimé sans mot (375 px)',
+    nom: 'qualifications : services à la personne, ajoutée en « Seulement si une ligne contient… » avec une liste de mots vide, rien d’imprimé sans mot (375 px)',
     async executer({ ouvrir, attendre, verifier }) {
       // Mode démo : la déclaration est ajoutée par l'écran lui-même (type choisi dans la liste de l'app, puis « Ajouter »)
       const { page } = await ouvrir({ page: 'settings', largeur: 375 });
@@ -309,29 +424,41 @@ module.exports = [
         const radios = [...q.querySelectorAll('input[type=radio]')].map((r) => ({ texte: r.closest('label')?.innerText.trim(), coche: r.checked }));
         return { radios, mots: !!q.querySelector('input[id$="-mots"]'), raison: q.querySelector('[data-testid="qualification-raison"]')?.innerText || '', apercu: !!q.querySelector('[data-testid="qualification-apercu"]') };
       });
-      const e0 = await etat();
-      verifier(e0?.radios.find((r) => r.coche)?.texte === 'Ne pas l’imprimer', `ajoutée sans impression (${e0?.radios.find((r) => r.coche)?.texte})`);
-      const clic = await page.evaluate(() => {
-        const q = [...document.querySelectorAll('[data-testid="qualification"]')].pop();
-        const l = [...(q?.querySelectorAll('label') || [])].find((x) => x.innerText.trim() === 'Seulement si une ligne contient…');
-        l?.querySelector('input')?.click();
-        return !!l;
-      });
-      verifier(clic, 'choix « Seulement si une ligne contient… »');
-      await attendre(900);
-      const e = await etat();
-      const coche = e?.radios.find((r) => r.coche)?.texte;
-      verifier(coche === 'Seulement si une ligne contient…', `le choix reste « Seulement si… » (coché : ${coche})`);
-      verifier(e?.mots, 'le champ des mots est montré dès ce choix');
-      verifier(/mots cherchés/.test(e?.raison || '') && !e?.apercu, `rien n’est imprimé tant qu’il est vide (${e?.raison})`);
-      const enregistre = await page.evaluate(() => {
+      const enregistre = () => page.evaluate(() => {
         try {
           const fiches = JSON.parse(localStorage.getItem('mallettico_entreprises') || '[]');
           const l = fiches.flatMap((f) => f?.settings_json?.reglages?.qualifications || []).filter((x) => x.type === 'sap');
-          return l.length ? l[l.length - 1].ou : null;
+          return l.length ? { ou: l[l.length - 1].ou, imprimer: l[l.length - 1].imprimer, motsCles: l[l.length - 1].motsCles } : null;
         } catch { return null; }
       });
-      verifier(enregistre === 'si', `choix enregistré à part des mots (ou = ${enregistre})`);
+      const choisir = (texte) => page.evaluate((t) => {
+        const q = [...document.querySelectorAll('[data-testid="qualification"]')].pop();
+        const l = [...(q?.querySelectorAll('label') || [])].find((x) => x.innerText.trim() === t);
+        l?.querySelector('input')?.click();
+        return !!l;
+      }, texte);
+      // Décision d'Hugo du 5 nov. 2026 (D-41) : par défaut « Seulement si une ligne contient… », liste de mots vide.
+      // Avant : « Ne pas l'imprimer » ; un clic sur « Seulement si » enregistrait des mots vides et l'écran repassait sur « tous ».
+      const e0 = await etat();
+      const coche0 = e0?.radios.find((r) => r.coche)?.texte;
+      verifier(coche0 === 'Seulement si une ligne contient…', `ajoutée en « Seulement si une ligne contient… » (coché : ${coche0})`);
+      verifier(e0?.mots, 'le champ des mots est montré dès l’ajout');
+      verifier(/mots cherchés/.test(e0?.raison || '') && !e0?.apercu, `rien n’est imprimé tant que la liste est vide (${e0?.raison})`);
+      const e1 = await enregistre();
+      verifier(e1?.ou === 'si' && e1?.imprimer === true && !e1?.motsCles, `enregistrée en « si », mots vides (${JSON.stringify(e1)})`);
+      // Le choix est gardé à part des mots : « tous » puis de nouveau « seulement si » ne repasse pas sur « tous »
+      verifier(await choisir('Sur tous mes documents'), 'choix « Sur tous mes documents »');
+      await attendre(700);
+      verifier((await etat())?.radios.find((r) => r.coche)?.texte === 'Sur tous mes documents', 'choix « tous » pris');
+      verifier(await choisir('Seulement si une ligne contient…'), 'retour à « Seulement si une ligne contient… »');
+      await attendre(900);
+      const e = await etat();
+      const coche = e?.radios.find((r) => r.coche)?.texte;
+      verifier(coche === 'Seulement si une ligne contient…', `le choix reste « Seulement si… » sans mot (coché : ${coche})`);
+      verifier(e?.mots, 'le champ des mots est montré dès ce choix');
+      verifier(/mots cherchés/.test(e?.raison || '') && !e?.apercu, `toujours rien d’imprimé sans mot (${e?.raison})`);
+      const e2 = await enregistre();
+      verifier(e2?.ou === 'si', `choix enregistré à part des mots (ou = ${e2?.ou})`);
       await page.screenshot({ path: 'audit-ui/sonde-qualif-sap-375.png', fullPage: true });
     },
   },

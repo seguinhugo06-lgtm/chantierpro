@@ -601,6 +601,31 @@ module.exports = [
         verifier((await presse()) === 'Plomberie', `Alt+flèche droite ne change pas de métier ${a} (${await presse()})`);
         await capturer(page, RACINE, `metiers-${largeur}`);
 
+        // Ramonage, Froid et climatisation, Multiservice n'ont aucun prix (D-41, 5 nov. 2026) : leurs cartes disent « Prix à
+        // saisir » à la place du total, sans montant par ligne, jamais « 0 € » ; la note le dit aussi
+        for (const sansPrix of ['Ramonage', 'Froid et climatisation', 'Multiservice, petits travaux']) {
+          await cliquer(page, sansPrix, { dans: '#metiers' });
+          await attendre(700);
+          const etat = await page.evaluate(() => {
+            const sec = document.querySelector('#metiers');
+            return {
+              cartes: [...sec.querySelectorAll('[data-lot]')].map((c) => ({ prix: c.querySelector('[data-sans-prix]')?.textContent.trim() || '', total: !!c.querySelector('[data-total-ht]'), compte: c.querySelector('[data-nb-lignes]')?.textContent.trim() || '', montants: c.querySelectorAll('li span.font-semibold').length })),
+              note: sec.querySelector('[data-note]')?.textContent.trim() || '',
+              zero: /(^|[^\d])0\s?€|NaN/.test(sec.innerText),
+            };
+          });
+          verifier(etat.cartes.length > 0 && etat.cartes.every((c) => c.prix === 'Prix à saisir' && !c.total && c.montants === 0), `${sansPrix} : « Prix à saisir » à la place du total, sans montant par ligne ${a} (${JSON.stringify(etat.cartes)})`);
+          verifier(etat.cartes.every((c) => /^\d+ lignes$/.test(NORMALISER(c.compte))), `${sansPrix} : « N lignes » sans « HT » ${a} (${etat.cartes.map((c) => c.compte).join(' | ')})`);
+          verifier(!etat.zero, `${sansPrix} : ni « 0 € » ni « NaN » dans l'explorateur ${a}`);
+          verifier(/sans prix/.test(etat.note) && !/Prix indicatifs/.test(etat.note), `${sansPrix} : la note dit que les lots viennent sans prix ${a} (« ${etat.note} »)`);
+          if (sansPrix === 'Ramonage') await capturerSection(page, RACINE, '#metiers', `metiers-ramonage-${largeur}`);
+        }
+        // Un métier chiffré garde ses totaux et sa note
+        await cliquer(page, 'Plomberie', { dans: '#metiers' });
+        await attendre(500);
+        const plomberie = await page.evaluate(() => ({ totaux: document.querySelectorAll('#metiers [data-total-ht]').length, sansPrix: document.querySelectorAll('#metiers [data-sans-prix]').length, note: document.querySelector('#metiers [data-note]')?.textContent.trim() || '' }));
+        verifier(plomberie.totaux === 3 && plomberie.sansPrix === 0 && /Prix indicatifs/.test(plomberie.note), `Plomberie : trois totaux et la note des prix indicatifs ${a} (${JSON.stringify(plomberie)})`);
+
         // ── Le cycle : trois étapes aux titres exacts, leurs liens, la légende des captures
         const cycle = await page.evaluate(() => {
           const section = document.querySelector('#parcours');
