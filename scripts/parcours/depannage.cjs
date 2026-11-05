@@ -2,7 +2,9 @@
 // et l'imprime (PDF : taux horaire TTC aux deux taux, décompte, déplacement, majoration) ; depuis la page Devis, il fait
 // le devis d'un dépannage urgent en un écran (client particulier, urgence cochée, une pièce que le client garde) ; le
 // devis porte les lignes de la grille et les mentions (« Devis gratuit », pièces) ; il le fait signer sur place (phrase
-// d'urgence) puis le facture tout de suite, payable sans attendre sept jours (L221-10, 4°). Données fictives seulement.
+// d'urgence) puis le facture tout de suite, payable sans attendre sept jours (L221-10, 4°). Le devis n'est signé qu'après
+// avoir été REMIS au client (C. conso. L221-8) : la remise est enregistrée avant que la signature s'ouvre, à sa propre
+// date. Données fictives seulement.
 const fs = require('fs');
 const path = require('path');
 
@@ -10,7 +12,38 @@ const { creerBase, UID } = require('../lib/fauxSupabase.cjs');
 const { CGU_VERSION } = require('../lib/cgu.cjs');
 
 const sansInstallation = () => { try { localStorage.setItem('pwa-install-dismissed', String(Date.now())); } catch { /* */ } };
+// Avant chargement : pas d'invite d'installation, et une horloge dont le parcours règle le décalage (window.__decalageMs) :
+// la signature a lieu « deux jours après » la remise. Fonction autonome (elle est sérialisée dans la page).
+const avantChargementHorlogeReglable = () => {
+  try { localStorage.setItem('pwa-install-dismissed', String(Date.now())); } catch { /* */ }
+  const Vraie = Date;
+  window.__decalageMs = 0;
+  class DateReglable extends Vraie {
+    constructor(...a) { if (a.length === 0) super(Vraie.now() + window.__decalageMs); else super(...a); }
+    static now() { return Vraie.now() + window.__decalageMs; }
+  }
+  window.Date = DateReglable;
+};
 const documentsEnregistres = (page) => page.evaluate(() => JSON.parse(localStorage.getItem('mallettico_demo_data') || '{}'));
+
+/** L'aperçu du document de la fiche ouverte (le générateur de DevisPage) : son HTML, la fenêtre refermée. */
+async function apercuDuDocument(page, attendre) {
+  const direct = await page.evaluate(() => {
+    const b = [...document.querySelectorAll('button')].find((x) => (x.innerText || '').trim() === 'Aperçu' && x.offsetParent);
+    if (b) b.click();
+    return !!b;
+  });
+  if (!direct) {
+    await page.evaluate(() => [...document.querySelectorAll('button[aria-label="Plus d\'actions"]')].find((b) => b.offsetParent)?.click());
+    await attendre(500);
+    await page.evaluate(() => [...document.querySelectorAll('button')].find((b) => b.innerText.trim() === 'Aperçu du document')?.click());
+  }
+  await attendre(1200);
+  const html = await page.evaluate(() => document.querySelector('iframe[title="Aperçu du document"]')?.getAttribute('srcdoc') || '');
+  await page.keyboard.press('Escape');
+  await attendre(500);
+  return html;
+}
 
 /** Le champ relié au libellé (Champ : label[for]) dans `dans`. */
 const champ = (page, libelle, dans = 'body') => page.evaluateHandle((l, d) => {
@@ -43,7 +76,7 @@ module.exports = [
     async executer({ ouvrir, cliquer, attendre, verifier, RACINE }) {
       const sortie = path.join(RACINE, 'audit-ui');
       fs.mkdirSync(sortie, { recursive: true });
-      const { page } = await ouvrir({ page: 'settings', largeur: 375, avantChargement: sansInstallation });
+      const { page } = await ouvrir({ page: 'settings', largeur: 375, avantChargement: avantChargementHorlogeReglable });
 
       // 1. Paramètres → Documents → Dépannage : activer, saisir la grille
       await page.evaluate(() => [...document.querySelectorAll('button')].find((b) => b.innerText.trim() === 'Documents')?.click());
@@ -93,6 +126,14 @@ module.exports = [
       await attendre(1200);
       const D = '[data-testid="devis-express"]';
       verifier(!!(await page.$(D)), 'la feuille « Dépannage express » est ouverte');
+      // Pas de majoration d'urgence (décision du 5 nov. 2026) : la grille ne propose que la nuit, le dimanche et les jours fériés
+      const majorations = await page.evaluate((d) => {
+        const lab = [...document.querySelectorAll(`${d} label`)].find((l) => l.innerText.trim().startsWith('Majoration'));
+        const sel = lab && document.getElementById(lab.htmlFor);
+        return sel ? [...sel.options].map((o) => o.text) : null;
+      }, D);
+      verifier(majorations && majorations.some((o) => /^Nuit/.test(o)) && majorations.every((o) => !/urgence/i.test(o)),
+        `les majorations proposées sont celles de la grille, jamais l’urgence (${(majorations || []).join(' | ')})`);
       const client = await champ(page, 'Client', D);
       await client.select('c1');
       await saisir(page, 'Intervention', 'Fuite sous l’évier', D);
@@ -110,7 +151,7 @@ module.exports = [
       await attendre(300);
       // 39 + 60 + 12 = 111 € HT, TVA 10 % : 122,10 € TTC
       const total = await page.$eval('[data-testid="total-express"]', (e) => e.innerText);
-      verifier(/122,10/.test(total), `le total TTC suit la grille (${total})`);
+      verifier(/122,10/.test(total), `le total TTC suit la grille, urgence cochée : aucune majoration d’urgence (${total})`);
       await page.screenshot({ path: path.join(sortie, 'depannage-2-devis-express.png'), fullPage: false });
       await cliquer(page, 'Créer le devis', { dans: D });
       await attendre(2000);
@@ -123,13 +164,7 @@ module.exports = [
       verifier(JSON.stringify(cats) === JSON.stringify(['deplacement', 'main_oeuvre', 'piece']), `lignes de la grille (${cats.join(', ')})`);
       verifier(Math.abs((d?.total_ttc || 0) - 122.1) < 0.005, `total enregistré ${d?.total_ttc}`);
       // Aperçu du document (générateur de DevisPage) : menu « ⋯ » → « Aperçu du document »
-      await page.evaluate(() => [...document.querySelectorAll('button[aria-label="Plus d\'actions"]')].find((b) => b.offsetParent)?.click());
-      await attendre(500);
-      await page.evaluate(() => [...document.querySelectorAll('button')].find((b) => b.innerText.trim() === 'Aperçu du document')?.click());
-      await attendre(1200);
-      const apercu = await page.evaluate(() => document.querySelector('iframe[title="Aperçu du document"]')?.getAttribute('srcdoc') || '');
-      await page.keyboard.press('Escape');
-      await attendre(500);
+      const apercu = await apercuDuDocument(page, attendre);
       verifier(apercu.includes('Devis gratuit.') && apercu.includes('Souhaitez-vous conserver les pièces') && /OUI<span[^>]*>✕<\/span>/.test(apercu),
         'l’aperçu porte « Devis gratuit » et le choix « OUI » pour les pièces (modèle de l’annexe 2)');
       verifier(apercu.includes('mention manuscrite « Lu et approuvé »'), 'l’aperçu porte la ligne « Lu et approuvé » de l’annexe 2');
@@ -137,14 +172,24 @@ module.exports = [
       verifier(apercu.includes('Pièces remplacées') && apercu.includes('Siphon PVC'), 'l’aperçu liste les pièces remplacées');
       verifier(apercu.includes('Dépannage urgent : vous avez expressément demandé'), 'l’aperçu porte l’exception d’urgence de la rétractation');
 
-      // 5. Signature sur place depuis le brouillon : le devis est d'abord remis (PDF, L221-8), puis la phrase d'urgence
-      // est signée. Contre-essai : sans confirmer la remise, la signature ne s'ouvre pas
+      // 5. Signature sur place depuis le brouillon (C. conso. L221-8) : le devis est d'abord REMIS (PDF imprimé ou partagé),
+      // l'artisan confirme « Devis remis au client », la remise est ENREGISTRÉE (statut « envoyé », jour de la remise),
+      // et seulement alors la signature s'ouvre. Contre-essais : tant que la remise n'est pas confirmée, rien n'est
+      // enregistré et la signature ne s'ouvre pas ; la date de remise n'est pas celle de la signature (posée 2 jours après)
       const boutonDialogue = (texte) => page.evaluate((t) => { const b = [...document.querySelectorAll('[role="dialog"] button, [role="alertdialog"] button')].find((x) => (x.innerText || '').trim() === t); if (b) b.click(); return !!b; }, texte);
+      const signatureOuverte = () => page.evaluate(() => document.body.innerText.includes('Passer a la signature'));
+      const stocke = async () => (await documentsEnregistres(page)).devis.find((x) => x.id === d.id);
+      const sansRemise = (s) => s?.statut === 'brouillon' && !s.date_envoi;
+
+      // 5a. On renonce dès la première fenêtre
       await cliquer(page, 'Faire signer');
       await attendre(500);
       verifier(await boutonDialogue('Annuler'), 'avant la signature, l’app demande de remettre le devis');
       await attendre(500);
-      verifier(!(await page.evaluate(() => document.body.innerText.includes('Passer a la signature'))), 'sans remise, la signature ne s’ouvre pas');
+      verifier(!(await signatureOuverte()), 'sans remise, la signature ne s’ouvre pas');
+      verifier(sansRemise(await stocke()), 'rien n’est enregistré tant que le devis n’est pas remis (brouillon, sans date de remise)');
+
+      // 5b. Le PDF est remis, mais l'artisan ne confirme pas la remise
       await capturerPdf(page);
       await cliquer(page, 'Faire signer');
       await attendre(500);
@@ -152,10 +197,28 @@ module.exports = [
       await page.waitForFunction(() => window.__pdf, { timeout: 30000 }).catch(() => null);
       verifier(!!(await page.evaluate(() => window.__pdf)), 'le PDF du devis est remis avant la signature');
       await attendre(500);
-      verifier(await boutonDialogue('Faire signer'), 'l’artisan confirme que le client a reçu le devis');
+      verifier(await boutonDialogue('Annuler'), 'l’app demande si le client a reçu le devis');
+      await attendre(500);
+      verifier(!(await signatureOuverte()), 'PDF ouvert mais remise non confirmée : la signature ne s’ouvre pas');
+      verifier(sansRemise(await stocke()), 'une remise non confirmée n’est pas enregistrée');
+
+      // 5c. L'artisan confirme la remise : elle est enregistrée AVANT que la signature s'ouvre
+      await capturerPdf(page);
+      await cliquer(page, 'Faire signer');
+      await attendre(500);
+      verifier(await boutonDialogue('Ouvrir le PDF'), 'le PDF du devis est proposé une seconde fois');
+      await page.waitForFunction(() => window.__pdf, { timeout: 30000 }).catch(() => null);
+      await attendre(500);
+      const jourDeRemise = await page.evaluate(() => new Date().toLocaleDateString('sv-SE'));
+      verifier(await boutonDialogue('Devis remis au client'), 'l’artisan confirme « Devis remis au client »');
       await attendre(800);
+      verifier(await signatureOuverte(), 'la remise confirmée, la signature s’ouvre');
+      const remis = await stocke();
+      verifier(remis?.statut === 'envoye' && remis.date_envoi === jourDeRemise, `la remise est enregistrée avant la signature (${remis?.statut}, remis le ${remis?.date_envoi}, attendu ${jourDeRemise})`);
       const pad = await page.evaluate(() => document.body.innerText);
       verifier(pad.includes('À ma demande, ces travaux de dépannage sont réalisés en urgence à mon domicile.'), 'la phrase d’urgence est sous la signature');
+      // La signature a lieu deux jours plus tard : elle ne réécrit pas la date de remise
+      await page.evaluate(() => { window.__decalageMs = 2 * 24 * 3600 * 1000; });
       await page.evaluate(() => {
         const accepte = [...document.querySelectorAll('input[type=checkbox]')].find((c) => /J'accepte ce devis/.test(c.closest('label')?.innerText || ''));
         accepte?.click();
@@ -174,8 +237,12 @@ module.exports = [
       await attendre(300);
       await cliquer(page, 'Valider');
       await attendre(1800);
-      const apresSignature = (await documentsEnregistres(page)).devis.find((x) => x.id === d.id);
-      verifier(apresSignature?.signature && apresSignature.statut === 'accepte' && apresSignature.date_envoi, `devis signé sur place (${apresSignature?.statut}, remis le ${apresSignature?.date_envoi})`);
+      await page.evaluate(() => { window.__decalageMs = 0; });
+      const apresSignature = await stocke();
+      const jourDeSignature = String(apresSignature?.signatureDate || apresSignature?.signature_date || '').slice(0, 10);
+      verifier(apresSignature?.signature && apresSignature.statut === 'accepte', `devis signé sur place (${apresSignature?.statut}, signé le ${jourDeSignature})`);
+      verifier(jourDeSignature && jourDeSignature !== jourDeRemise, `la signature est datée d’un autre jour que la remise (${jourDeSignature} ≠ ${jourDeRemise})`);
+      verifier(apresSignature?.date_envoi === jourDeRemise, `la date de remise reste celle de la remise, pas celle de la signature (${apresSignature?.date_envoi})`);
 
       // 6. Facture immédiate : urgence demandée, payable sur place (pas de report au 8e jour)
       await page.keyboard.press('Escape');
@@ -192,6 +259,50 @@ module.exports = [
       const pieces = (facture?.lignes || []).find((l) => l.depannage === 'piece');
       verifier(pieces && pieces.description === 'Siphon PVC', 'la facture reprend la pièce remplacée');
       await page.screenshot({ path: path.join(sortie, 'depannage-3-facture.png'), fullPage: false });
+
+      // 7. Contre-essai de « Devis gratuit » (décision du 5 nov. 2026) : un devis ordinaire d'un particulier (démo :
+      // DEV-2026-00001, Marie Dupont, ni catégorie ni entreprise) n'imprime rien du dépannage, dans le générateur de la fiche
+      await page.evaluate(() => localStorage.setItem('cp_current_page', 'devis'));
+      await page.reload({ waitUntil: 'networkidle0' });
+      await attendre(1500);
+      const ouvert = await page.evaluate(() => {
+        const b = [...document.querySelectorAll('button')].find((x) => (x.innerText || '').includes('DEV-2026-00001'));
+        if (b) b.click();
+        return !!b;
+      });
+      verifier(ouvert, 'un devis ordinaire de la démo (DEV-2026-00001) s’ouvre');
+      await attendre(1000);
+      const ordinaire = await apercuDuDocument(page, attendre);
+      verifier(ordinaire.includes('MODÈLE DE FORMULAIRE DE RÉTRACTATION'), 'c’est bien le devis d’un particulier (le formulaire de rétractation est imprimé)');
+      verifier(!ordinaire.includes('Devis gratuit.') && !ordinaire.includes('depannage-mentions') && !ordinaire.includes('Souhaitez-vous conserver les pièces'),
+        'un devis ordinaire d’un particulier n’imprime ni « Devis gratuit » ni la question sur les pièces (générateur de la fiche)');
+
+      // 8. Seconde voie de remise : l'envoi par e-mail (démo : envoi simulé). Le devis envoyé a sa remise enregistrée (statut
+      // « envoyé », jour d'envoi) : « Faire signer » ouvre la signature sans nouvelle fenêtre de remise
+      await page.evaluate(() => localStorage.setItem('cp_current_page', 'devis'));
+      await page.reload({ waitUntil: 'networkidle0' });
+      await attendre(1500);
+      await page.click('[aria-label="Options de création"]');
+      await attendre(400);
+      await page.evaluate(() => [...document.querySelectorAll('button')].find((b) => b.innerText.trim().startsWith('Dépannage express'))?.click());
+      await attendre(1200);
+      await (await champ(page, 'Client', D)).select('c1');
+      await saisir(page, 'Intervention', 'Serrure qui force', D);
+      await cliquer(page, 'Créer le devis', { dans: D });
+      await attendre(2000);
+      const stocke2 = async () => (await documentsEnregistres(page)).devis.find((x) => x.objet === 'Dépannage : Serrure qui force');
+      verifier(sansRemise(await stocke2()), 'le second devis est un brouillon, jamais remis');
+      await cliquer(page, 'Envoyer');
+      await attendre(1500);
+      verifier(await boutonDialogue('OK'), 'l’envoi par e-mail (simulé en démo) est confirmé');
+      await attendre(500);
+      const envoye = await stocke2();
+      verifier(envoye?.statut === 'envoye' && envoye.date_envoi === await page.evaluate(() => new Date().toLocaleDateString('sv-SE')),
+        `l’e-mail enregistre la remise (${envoye?.statut}, envoyé le ${envoye?.date_envoi})`);
+      await cliquer(page, 'Faire signer');
+      await attendre(800);
+      verifier(await signatureOuverte(), 'devis envoyé par e-mail : « Faire signer » ouvre la signature');
+      verifier(!(await page.evaluate(() => document.body.innerText.includes('Remettez d’abord le devis'))), 'sans nouvelle fenêtre de remise : il l’a déjà été');
     },
   },
   {
@@ -214,6 +325,9 @@ module.exports = [
       await attendre(600);
       const zone = '[data-testid="reglages-depannage"]';
       verifier(!!(await page.$(zone)), 'Paramètres › Dépannage est ouvert');
+      // Micro-entreprise (franchise de TVA, D-31) : ni « HT » ni « TTC » sur les libellés de la grille
+      const libellesGrille = await page.evaluate((z) => [...document.querySelectorAll(`${z} label`)].map((l) => l.innerText.trim()).join(' | '), zone);
+      verifier(libellesGrille.includes('Taux horaire (€)') && !/(^|[^A-Za-zÀ-ÿ])(HT|TTC)(?![A-Za-zÀ-ÿ])/.test(libellesGrille), `en franchise, la grille s’écrit sans « HT » (${libellesGrille.slice(0, 80)}…)`);
       // Un forfait à moitié saisi (intitulé sans prix), puis un autre champ s'enregistre : le forfait reste
       await cliquer(page, 'Ajouter un forfait', { dans: zone });
       await attendre(200);
@@ -244,7 +358,10 @@ module.exports = [
       await cliquer(page, 'Ajouter une pièce', { dans: D });
       await attendre(200);
       await saisir(page, 'Pièce', 'Cartouche', D);
-      await saisir(page, '€ HT', '15', D);
+      // Micro-entreprise : le prix de la pièce s'écrit « € », sans « HT » (D-31)
+      await saisir(page, '€', '15', D);
+      const ecranExpress = await page.evaluate((d) => document.querySelector(d)?.innerText || '', D);
+      verifier(!/(^|[^A-Za-zÀ-ÿ])(HT|TTC)(?![A-Za-zÀ-ÿ])/.test(ecranExpress), 'en franchise, l’écran express n’écrit ni « HT » ni « TTC »');
       // Aucune réponse par défaut sur les pièces : la création la demande
       await cliquer(page, 'Créer le devis', { dans: D });
       await attendre(500);

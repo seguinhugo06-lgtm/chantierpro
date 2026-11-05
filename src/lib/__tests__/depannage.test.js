@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   normaliserGrille, ttcDe, dureeDecomptee, lignesDevisExpress, estDevisDepannage, mentionsDepannage, marquerLignesDepannage,
   mentionsDepannageHtml, grilleImprimableHtml, grilleIncomplete, choixConserverPieces, MENTION_DEVIS_GRATUIT, QUESTION_PIECES, OBLIGATIONS, AVERTISSEMENT_URGENCE,
+  GRILLE_DEFAUT,
 } from '../depannage';
 import { calculerTotaux } from '../totauxDocument';
 import { delaiSeptJours, echeanceApresSeptJours } from '../retractation';
@@ -196,6 +197,14 @@ describe('avertissement d’urgence : rédaction au texte (L221-10, 4° ; L221-2
     expect(AVERTISSEMENT_URGENCE).not.toContain('faire cesser');
     expect(AVERTISSEMENT_URGENCE).toContain('signé chez le client, il ne permet de recevoir aucun paiement avant l’expiration d’un délai de sept jours');
   });
+  it('mot pour mot l’avis versé (docs/metiers/avis-juriste-2026-11-04-depannage.md), comme la phrase « Affichez la grille… »', () => {
+    const lire = (f) => readFileSync(fileURLToPath(new URL(f, import.meta.url)), 'utf8');
+    const avis = lire('../../../docs/metiers/avis-juriste-2026-11-04-depannage.md');
+    expect(avis).toContain(AVERTISSEMENT_URGENCE);
+    const phrase = 'Affichez la grille dans vos locaux, remettez-la au client avant le devis quand vous intervenez chez lui (arrêté du 24 janvier 2017, art. 3), et mettez-la sur votre site.';
+    expect(avis).toContain(phrase);
+    expect(lire('../../components/settings/DepannageTab.jsx')).toContain(phrase);
+  });
 });
 
 describe('les générateurs de PDF impriment les mentions du dépannage', async () => {
@@ -218,5 +227,92 @@ describe('les générateurs de PDF impriment les mentions du dépannage', async 
     const ordinaire = { ...doc, lignes: [{ description: 'Peinture', quantite: 1, prixUnitaire: 100 }], sections: [] };
     expect(buildDevisHtml({ doc: ordinaire, client: PARTICULIER, entreprise, couleur: '#12336F' })).not.toContain(QUESTION_PIECES);
     expect(buildDocumentHTML(ordinaire, PARTICULIER, null, entreprise)).not.toContain(QUESTION_PIECES);
+  });
+});
+
+/**
+ * « Devis gratuit » seulement sur un dépannage (décision d'Hugo du 5 nov. 2026, D-40) : jamais de devis payant, et la
+ * mention ne s'imprime pas sur un devis ordinaire. Un dépannage = le devis express, la case « urgence demandée », ou la
+ * case facultative « Dépannage, réparation ou entretien » de l'éditeur.
+ */
+describe('« Devis gratuit » seulement sur un dépannage, dans les trois générateurs', async () => {
+  const { buildDevisHtml } = await import('../devisHtmlBuilder');
+  const { buildDocumentHTML } = await import('../pdfHtmlBuilder');
+  const entreprise = { nom: 'Plomberie Exemple', formeJuridique: 'EI', siret: '12345678900011', adresse: '1 rue A, 33000 Bordeaux' };
+  const base = { type: 'devis', numero: 'DEV-2026-00001', date: '2026-11-05', statut: 'brouillon', total_ht: 100, tva: 10, total_ttc: 110 };
+  const ligneOrdinaire = { description: 'Remplacement d’un robinet', quantite: 1, prixUnitaire: 100, tva: 10 };
+  const express = lignesDevisExpress({ grille: GRILLE, heures: 1 });
+  const dossiers = {
+    'devis express': { ...base, lignes: express.lignes, sections: express.sections },
+    'case « urgence demandée »': { ...base, lignes: [ligneOrdinaire], travaux_urgents: true },
+    'case « Dépannage, réparation ou entretien » de l’éditeur': { ...base, lignes: marquerLignesDepannage([ligneOrdinaire], true) },
+  };
+  const generateurs = [
+    ['devisHtmlBuilder', (doc, client) => buildDevisHtml({ doc, client, entreprise, couleur: '#12336F' })],
+    ['pdfHtmlBuilder', (doc, client) => buildDocumentHTML(doc, client, null, entreprise)],
+  ];
+  const cas = Object.entries(dossiers).flatMap(([nomDossier, doc]) => generateurs.map(([nomGenerateur, produire]) => [nomDossier, nomGenerateur, doc, produire]));
+  it.each(cas)('%s, %s : un particulier lit « Devis gratuit »', (_d, _g, doc, produire) => {
+    const html = produire(doc, PARTICULIER);
+    expect(html).toContain(MENTION_DEVIS_GRATUIT);
+    expect(html).toContain('depannage-mentions');
+  });
+  it.each(generateurs)('contre-essai, %s : un devis ordinaire de particulier n’imprime rien de tout cela', (_g, produire) => {
+    const html = produire({ ...base, lignes: [ligneOrdinaire] }, PARTICULIER);
+    // C'est bien un devis de particulier (le formulaire de rétractation y est), et il n'a rien du dépannage
+    expect(html).toContain('MODÈLE DE FORMULAIRE DE RÉTRACTATION');
+    expect(html).not.toContain(MENTION_DEVIS_GRATUIT);
+    expect(html).not.toContain('depannage-mentions');
+    expect(html).not.toContain(QUESTION_PIECES);
+  });
+  it.each(generateurs)('contre-essai, %s : un dépannage pour un client professionnel n’imprime rien non plus', (_g, produire) => {
+    const html = produire(dossiers['devis express'], PRO);
+    expect(html).not.toContain(MENTION_DEVIS_GRATUIT);
+  });
+  it('le générateur de la fiche (DevisPage.jsx) appelle le même bloc, avec le devis et le client', () => {
+    // Pas de rendu possible hors navigateur : le parcours « dépannage » lit son aperçu, avec et sans dépannage
+    for (const fichier of ['../../components/DevisPage.jsx', '../devisHtmlBuilder.js', '../pdfHtmlBuilder.js']) {
+      const source = readFileSync(fileURLToPath(new URL(fichier, import.meta.url)), 'utf8');
+      expect(source, fichier).toContain('${mentionsDepannageHtml({ doc, client })}');
+    }
+  });
+  it('aucun devis payant : le seul texte de prix du devis est « Devis gratuit. »', () => {
+    expect(MENTION_DEVIS_GRATUIT).toBe('Devis gratuit.');
+    const source = readFileSync(fileURLToPath(new URL('../depannage.js', import.meta.url)), 'utf8');
+    expect(source).not.toMatch(/MENTION_DEVIS_PAYANT|coutDevis|devisPayant|frais d.établissement du devis/i);
+  });
+});
+
+/**
+ * Pas de majoration d'urgence (décision d'Hugo du 5 nov. 2026, D-40) : la grille ne propose que la nuit, le dimanche et les
+ * jours fériés. La case « urgence demandée par le client » sert au droit (L221-10, 4° ; L221-28, 8°), jamais au tarif.
+ */
+describe('aucune majoration d’urgence : seulement la nuit, le dimanche et les jours fériés', () => {
+  it('la grille n’a que deux majorations', () => {
+    const majorations = Object.keys(GRILLE_DEFAUT).filter((k) => /majoration/i.test(k));
+    expect(majorations.sort()).toEqual(['majorationDimanche', 'majorationNuit']);
+    expect(Object.keys(GRILLE_DEFAUT).some((k) => /urgen/i.test(k))).toBe(false);
+  });
+  it('une majoration d’urgence saisie dans les réglages est ignorée', () => {
+    const g = normaliserGrille({ ...GRILLE, majorationUrgence: 100, urgence: 100 });
+    expect(Object.keys(g).some((k) => /urgen/i.test(k))).toBe(false);
+  });
+  it('« urgence » n’est pas une majoration acceptée par le devis express', () => {
+    const r = lignesDevisExpress({ grille: GRILLE, heures: 1, majoration: 'urgence' });
+    expect(r.erreur).toMatch(/pas dans votre grille/);
+    expect(r.lignes).toEqual([]);
+  });
+  it('la nuit et le dimanche, eux, sont acceptés (contre-essai du refus ci-dessus)', () => {
+    expect(lignesDevisExpress({ grille: GRILLE, heures: 1, majoration: 'nuit' }).erreur).toBe('');
+    expect(lignesDevisExpress({ grille: GRILLE, heures: 1, majoration: 'dimanche' }).erreur).toBe('');
+  });
+  it('les écrans ne proposent aucune majoration d’urgence et le disent à l’artisan', () => {
+    const lire = (f) => readFileSync(fileURLToPath(new URL(f, import.meta.url)), 'utf8');
+    const reglages = lire('../../components/settings/DepannageTab.jsx');
+    const express = lire('../../components/depannage/DevisExpress.jsx');
+    for (const [nom, source] of [['DepannageTab', reglages], ['DevisExpress', express]]) {
+      expect(source, nom).not.toMatch(/majorationUrgence|Majoration d.urgence|majoration.*urgence/i);
+    }
+    expect(reglages).toContain('Une urgence demandée par le client ne majore jamais le prix');
   });
 });
