@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { lignesQualifications, qualificationsDe, raisonNonImprimee, champsRgeDeLaListe, echeancesQualifications, TYPES_QUALIFICATION, nouvelleQualification, ouParDefaut } from '../qualifications';
+import { lignesQualifications, qualificationsDe, raisonNonImprimee, champsRgeDeLaListe, echeancesQualifications, TYPES_QUALIFICATION, nouvelleQualification, ouFige, ligneImprimee } from '../qualifications';
 import { buildDevisHtml } from '../devisHtmlBuilder';
 import { buildDocumentHTML } from '../pdfHtmlBuilder';
 
@@ -20,8 +20,8 @@ describe('Mes qualifications', () => {
   });
 
   it('jamais sans numéro, et jamais le mot « certifié »', () => {
-    // La déclaration SAP est posée « sur tous mes documents » : sans choix, elle vaut « seulement si » (D-41, plus bas)
-    for (const q of [RGE, IRVE, { ...IRVE, type: 'sap', ou: 'tous' }]) {
+    // La déclaration SAP n'est jamais imprimée (avis du lot 4, point 9) : sa raison est le texte du dernier groupe
+    for (const q of [RGE, IRVE]) {
       expect(lignesQualifications({ qualifications: [{ ...q, numero: ' ' }] }, AUJ)).toEqual([]);
       expect(raisonNonImprimee({ ...q, numero: '' }, AUJ)).toMatch(/numéro/);
     }
@@ -31,15 +31,11 @@ describe('Mes qualifications', () => {
     }
   });
 
-  it('date de fin exigée, lisible et non passée (sauf déclaration SAP) ; jugée à la date du document', () => {
+  it('date de fin exigée, lisible et non passée ; jugée à la date du document', () => {
     expect(lignesQualifications({ qualifications: [{ ...IRVE, fin: '' }] }, AUJ)).toEqual([]);
     expect(lignesQualifications({ qualifications: [{ ...IRVE, fin: '31/03/2027' }] }, AUJ)).toEqual([]);
     expect(lignesQualifications({ qualifications: [{ ...IRVE, fin: '2026-11-03' }] }, AUJ)).toEqual([]);
     expect(lignesQualifications({ qualifications: [{ ...IRVE, fin: '2026-11-03' }] }, '2026-10-01')).toEqual(['IRVE (infrastructures de recharge) : IRVE P1 — Qualifelec — N° IRVE-22 — Valide jusqu\'au 03/11/2026']);
-    // SAP : numéro ET date de la déclaration (C. trav. D7233-1, avis juriste du 4 nov. 2026), jamais une échéance
-    expect(lignesQualifications({ qualifications: [{ type: 'sap', ou: 'tous', numero: 'SAP123456789', fin: '2019-03-01' }] }, AUJ)).toEqual(['Services à la personne : déclaration enregistrée sous le n° SAP123456789 le 01/03/2019']);
-    expect(lignesQualifications({ qualifications: [{ type: 'sap', ou: 'tous', numero: 'SAP123456789' }] }, AUJ)).toEqual([]);
-    expect(raisonNonImprimee({ type: 'sap', ou: 'tous', numero: 'SAP1' }, AUJ)).toMatch(/date d’enregistrement de la déclaration/);
   });
 
   it('certificats individuels : « détenu par » le titulaire (avis juriste du 4 nov. 2026)', () => {
@@ -73,20 +69,18 @@ describe('Mes qualifications', () => {
     expect(lignesQualifications(e, AUJ, enSection)).toContain(LIGNE_IRVE);
   });
 
-  it('« seulement si » sans mot n’imprime rien (SAP et Autre), même sur tous les documents ; contre-essai avec un mot', () => {
-    const SAP = { id: 's', type: 'sap', numero: 'SAP123456789', fin: '2019-03-01', imprimer: true, ou: 'si', motsCles: '' };
+  it('« seulement si » sans mot n’imprime rien (Autre), même sur tous les documents ; contre-essai avec un mot', () => {
     const AUTRE = { ...IRVE, id: 'o', type: 'autre', intitule: 'Qualibat 5111', organisme: 'Qualibat', ou: 'si', motsCles: '' };
     const plomberie = { lignes: [{ description: 'Remplacement d\'un mitigeur' }] };
     const menage = { lignes: [{ description: 'Ménage à domicile' }] };
-    expect(lignesQualifications({ qualifications: [SAP, AUTRE] }, AUJ, plomberie)).toEqual([]);
-    expect(lignesQualifications({ qualifications: [SAP, AUTRE] }, AUJ, menage)).toEqual([]);
-    expect(raisonNonImprimee(SAP, AUJ)).toMatch(/mots cherchés/);
+    expect(lignesQualifications({ qualifications: [AUTRE] }, AUJ, plomberie)).toEqual([]);
+    expect(lignesQualifications({ qualifications: [AUTRE] }, AUJ, menage)).toEqual([]);
     expect(raisonNonImprimee(AUTRE, AUJ)).toMatch(/mots cherchés/);
-    const sapMenage = { ...SAP, motsCles: 'ménage' };
-    expect(lignesQualifications({ qualifications: [sapMenage] }, AUJ, plomberie)).toEqual([]);
-    expect(lignesQualifications({ qualifications: [sapMenage] }, AUJ, menage)).toHaveLength(1);
+    const autreMenage = { ...AUTRE, motsCles: 'ménage' };
+    expect(lignesQualifications({ qualifications: [autreMenage] }, AUJ, plomberie)).toEqual([]);
+    expect(lignesQualifications({ qualifications: [autreMenage] }, AUJ, menage)).toHaveLength(1);
     // sans document connu, « seulement si » n'imprime rien
-    expect(lignesQualifications({ qualifications: [sapMenage] }, AUJ)).toEqual([]);
+    expect(lignesQualifications({ qualifications: [autreMenage] }, AUJ)).toEqual([]);
   });
 
   it('le choix « où » est gardé à part des mots ; une fiche d’avant `ou` est lue comme avant', () => {
@@ -126,68 +120,80 @@ describe('Mes qualifications', () => {
   });
 });
 
-// Décision d'Hugo du 5 nov. 2026 (D-41) : la mention « services à la personne » n'est imprimée que sur un document dont
-// une ligne la concerne ; par défaut, « Seulement si une ligne contient… » avec une liste de mots vide. Texte imprimé :
-// C. trav. D7233-1, 2° (« le numéro et la date d'enregistrement de la déclaration »), mot pour mot de l'avis du 4 nov.
-describe('services à la personne : « seulement si » par défaut (D-41)', () => {
+// Services à la personne : jamais imprimée, pour l'instant (avis juriste-btp du lot 4, 5 nov. 2026, point 9 ; décision de
+// la session locale). Elle remplace le défaut « Seulement si une ligne contient… » à mots vides (D-41, premier jet) : imprimer
+// la déclaration, c'est présenter la facture comme une facture de services à la personne, et C. trav. D7233-1 exige alors
+// d'autres mentions (prix TTC, temps passé, identifiant de l'intervenant), puis D7233-4 une attestation fiscale annuelle,
+// que l'app ne produit pas. Le texte de la ligne reste celui de l'avis du 4 nov. (D7233-1, 2°), prêt pour le jour où l'app
+// saura produire le reste.
+describe('services à la personne : jamais imprimée, quel que soit le choix enregistré (avis du lot 4, point 9)', () => {
+  const RAISON = 'Cette déclaration ne s’imprime pas : une facture de services à la personne demande d’autres mentions (prix TTC, temps passé, intervenant) et une attestation fiscale chaque année, que Mallettico ne fait pas encore.';
   const PHRASE = 'Services à la personne : déclaration enregistrée sous le n° SAP123456789 le 01/03/2019';
-  const sapAjoutee = (champs = {}) => ({ ...nouvelleQualification('sap', 's1'), numero: 'SAP123456789', fin: '2019-03-01', ...champs });
+  const sap = (champs = {}) => ({ id: 's1', type: 'sap', numero: 'SAP123456789', fin: '2019-03-01', ...champs });
   const menage = { lignes: [{ description: 'Ménage à domicile, 2 h' }] };
   const jardinage = { sections: [{ lignes: [{ designation: 'Tonte de la pelouse' }] }] };
   const plomberie = { lignes: [{ description: 'Remplacement d’un mitigeur' }] };
   const electricite = { lignes: [{ description: 'Pose d’une prise 16 A et d’un interrupteur' }] };
+  const DOCUMENTS = [menage, jardinage, plomberie, electricite, null];
+  // Tous les états que peut porter une fiche : ajoutée à la main, ancienne, importée, ou posée avant ce changement
+  const CHOIX = [
+    {}, { ou: 'tous' }, { ou: 'non' }, { ou: 'si', motsCles: '' }, { ou: 'si', motsCles: 'ménage, tonte, pose, mitigeur' },
+    { imprimer: true }, { imprimer: false }, { imprimer: true, ou: 'tous', motsCles: 'ménage' }, { motsCles: 'ménage' },
+  ];
 
-  it('ajoutée depuis Paramètres : « seulement si », liste de mots vide ; les autres types restent sur tous les documents', () => {
-    const q = nouvelleQualification('sap', 's1');
-    expect(q).toMatchObject({ type: 'sap', imprimer: true, ou: 'si', motsCles: '' });
-    expect(ouParDefaut('sap')).toBe('si');
-    for (const t of TYPES_QUALIFICATION.filter((x) => x.id !== 'sap')) expect(nouvelleQualification(t.id, 'x').ou, t.id).toBe('tous');
+  it('ajoutée depuis Paramètres : figée sur « ne pas l’imprimer » ; les autres types restent sur tous les documents', () => {
+    expect(nouvelleQualification('sap', 's1')).toEqual({ id: 's1', type: 'sap', intitule: '', organisme: '', numero: '', fin: '', imprimer: false, ou: 'non', motsCles: '' });
+    expect(ouFige('sap')).toBe('non');
+    for (const t of TYPES_QUALIFICATION.filter((x) => x.id !== 'sap')) {
+      expect(ouFige(t.id), t.id).toBeNull();
+      expect(nouvelleQualification(t.id, 'x'), t.id).toMatchObject({ imprimer: true, ou: 'tous' });
+    }
     expect(nouvelleQualification('inconnu', 'x').type).toBe('autre');
   });
 
-  it('mots vides : rien d’imprimé, sur aucun document, avec ou sans numéro et date', () => {
-    for (const doc of [menage, jardinage, plomberie, electricite, null]) {
-      expect(lignesQualifications({ qualifications: [sapAjoutee()] }, AUJ, doc)).toEqual([]);
+  it('aucun choix enregistré ne l’imprime, sur aucun document, numéro et date renseignés', () => {
+    for (const choix of CHOIX) {
+      for (const doc of DOCUMENTS) {
+        expect(lignesQualifications({ qualifications: [sap(choix)] }, AUJ, doc), JSON.stringify(choix)).toEqual([]);
+      }
     }
-    expect(raisonNonImprimee(sapAjoutee(), AUJ)).toBe('Ajoutez les mots cherchés dans les lignes : tant qu’il n’y en a aucun, rien n’est imprimé.');
   });
 
-  it('un mot présent dans une ligne (ligne ou lot) : la mention ; absent : rien', () => {
-    const e = { qualifications: [sapAjoutee({ motsCles: 'ménage, tonte' })] };
-    expect(lignesQualifications(e, AUJ, menage)).toEqual([PHRASE]);
-    expect(lignesQualifications(e, AUJ, jardinage)).toEqual([PHRASE]);
-    expect(lignesQualifications(e, AUJ, plomberie)).toEqual([]);
-    // sans accent ni casse, comme les autres mots cherchés
-    expect(lignesQualifications({ qualifications: [sapAjoutee({ motsCles: 'MENAGE' })] }, AUJ, menage)).toEqual([PHRASE]);
+  it('la lecture force « ne pas l’imprimer » : une fiche qui aurait déjà un autre choix enregistré ne l’imprime pas non plus', () => {
+    for (const choix of CHOIX) {
+      expect(qualificationsDe({ qualifications: [sap(choix)] })[0], JSON.stringify(choix)).toMatchObject({ type: 'sap', ou: 'non', imprimer: false });
+    }
   });
 
-  it('jamais sur un travail exclu : un devis d’électricité ou de plomberie n’imprime rien, mots de services à la personne ou non', () => {
-    const e = { qualifications: [sapAjoutee({ motsCles: 'ménage, tonte, jardinage, courses' })] };
-    expect(lignesQualifications(e, AUJ, electricite)).toEqual([]);
-    expect(lignesQualifications(e, AUJ, plomberie)).toEqual([]);
-    expect(lignesQualifications({ qualifications: [sapAjoutee()] }, AUJ, electricite)).toEqual([]);
+  it('l’écran dit pourquoi, avec le texte exact, quel que soit le choix, avec ou sans numéro et date', () => {
+    for (const choix of CHOIX) {
+      expect(raisonNonImprimee(sap(choix), AUJ), JSON.stringify(choix)).toBe(RAISON);
+      expect(raisonNonImprimee({ type: 'sap', ...choix }, AUJ), JSON.stringify(choix)).toBe(RAISON);
+    }
   });
 
-  it('les deux générateurs : la mention sur un devis de ménage, pas sur un devis de plomberie', () => {
+  it('les deux générateurs n’impriment ni la mention ni le numéro, même « sur tous mes documents » ou avec un mot présent', () => {
     const devis = (description) => ({ type: 'devis', numero: 'DEV-1', date: AUJ, lignes: [{ description, quantite: 2, unite: 'h', prixUnitaire: 30, tva: 10 }], total_ht: 60, tva: 6, total_ttc: 66 });
-    const e = (motsCles) => ({ nom: 'Multi', siret: '12345678900011', qualifications: [sapAjoutee({ motsCles })] });
-    for (const [motsCles, description, attendu] of [['ménage', 'Ménage à domicile', true], ['ménage', 'Remplacement d’un mitigeur', false], ['', 'Ménage à domicile', false]]) {
-      const doc = devis(description);
-      expect(buildDevisHtml({ doc, client: { nom: 'X' }, entreprise: e(motsCles) }).includes(PHRASE), `buildDevisHtml ${motsCles}/${description}`).toBe(attendu);
-      expect(buildDocumentHTML(doc, { nom: 'X' }, null, e(motsCles)).includes(PHRASE), `buildDocumentHTML ${motsCles}/${description}`).toBe(attendu);
+    for (const choix of [{ ou: 'tous' }, { ou: 'si', motsCles: 'ménage' }, { imprimer: true }]) {
+      const doc = devis('Ménage à domicile');
+      const e = { nom: 'Multi', siret: '12345678900011', qualifications: [sap(choix)] };
+      for (const html of [buildDevisHtml({ doc, client: { nom: 'X' }, entreprise: e }), buildDocumentHTML(doc, { nom: 'X' }, null, e)]) {
+        expect(html, JSON.stringify(choix)).not.toContain('Services à la personne');
+        expect(html, JSON.stringify(choix)).not.toContain('SAP123456789');
+      }
     }
   });
 
-  it('une déclaration enregistrée sans choix (fiche importée) vaut « seulement si » ; un « tous » choisi est respecté', () => {
-    expect(qualificationsDe({ qualifications: [{ type: 'sap', numero: 'SAP1', fin: '2019-03-01' }] })[0].ou).toBe('si');
-    expect(qualificationsDe({ qualifications: [{ type: 'sap', numero: 'SAP1', fin: '2019-03-01', imprimer: true }] })[0].ou).toBe('si');
-    expect(qualificationsDe({ qualifications: [{ type: 'sap', ou: 'tous' }] })[0].ou).toBe('tous');
-    expect(qualificationsDe({ qualifications: [{ type: 'sap', ou: 'non' }] })[0].ou).toBe('non');
-    expect(lignesQualifications({ qualifications: [{ type: 'sap', numero: 'SAP123456789', fin: '2019-03-01' }] }, AUJ, plomberie)).toEqual([]);
+  it('la ligne reste écrite mot pour mot (C. trav. D7233-1, 2°), prête pour le jour où l’app produira les autres mentions', () => {
+    expect(ligneImprimee(sap())).toBe(PHRASE);
   });
 
-  it('contre-essai : en « tous mes documents » (l’ancien comportement), la mention sort sur un devis de plomberie', () => {
-    expect(lignesQualifications({ qualifications: [sapAjoutee({ ou: 'tous' })] }, AUJ, plomberie)).toEqual([PHRASE]);
+  it('pas d’alerte d’échéance : la date de la déclaration n’est pas une échéance', () => {
+    expect(echeancesQualifications({ qualifications: [sap({ fin: '2026-11-20' })] }, AUJ)).toEqual([]);
+  });
+
+  it('contre-essai : la règle ne vaut que pour ce type : « tous mes documents » imprime une IRVE, un document sans rapport compris', () => {
+    expect(lignesQualifications({ qualifications: [{ ...IRVE, ou: 'tous' }] }, AUJ, plomberie)).toEqual([LIGNE_IRVE]);
+    expect(lignesQualifications({ qualifications: [{ ...IRVE, ou: 'tous' }, sap({ ou: 'tous' })] }, AUJ, plomberie)).toEqual([LIGNE_IRVE]);
   });
 });
-

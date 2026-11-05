@@ -62,8 +62,8 @@ export function raisonRgeNonImprime(entreprise, aujourdhui = jourLocal()) {
 // `ou` : 'tous' (tous les documents), 'si' (seulement si une ligne contient l'un des mots), 'non' (ne pas l'imprimer).
 // Le choix est gardé à part des mots : « seulement si » sans mot n'imprime RIEN (relecture du 4 nov. : une déclaration
 // de services à la personne, sans mots par défaut, repassait sinon sur « tous mes documents »). Une fiche d'avant
-// `ou` : `imprimer: false` vaut 'non', des mots valent 'si', sinon 'tous' ; la déclaration de services à la personne,
-// sans choix enregistré, vaut 'si' (D-41, 5 nov. 2026 : jamais partout par défaut).
+// `ou` : `imprimer: false` vaut 'non', des mots valent 'si', sinon 'tous'. Un type peut être figé (`ouFige`) : le choix
+// enregistré est alors ignoré à la lecture (services à la personne : jamais imprimée, voir son entrée plus bas).
 // Règles communes : jamais imprimée sans numéro ; jamais le mot « certifié » ; validité jugée à la date du document ;
 // date de fin exigée (lisible, non passée) ; la déclaration de services à la personne porte sa date, pas une échéance.
 // RGE : les règles du lot 0 ci-dessus (intitulé, organisme RGE, numéro, date), toujours sur tous les documents (une
@@ -79,11 +79,17 @@ export const TYPES_QUALIFICATION = [
   { id: 'certibiocide', nom: 'Certibiocide', prefixe: 'Certificat individuel biocides (Certibiocide) détenu par', exemple: 'Nom du titulaire, catégorie', aideIntitule: 'Nom du titulaire et catégorie, tels qu’ils figurent sur le certificat (certificat individuel).', motsCles: 'traitement, termites, insectes, xylophages' },
   { id: 'certiphyto', nom: 'Certiphyto', prefixe: 'Certificat individuel produits phytopharmaceutiques (Certiphyto) détenu par', exemple: 'Nom du titulaire, catégorie', aideIntitule: 'Nom du titulaire et catégorie, tels qu’ils figurent sur le certificat (certificat individuel). L’agrément de l’entreprise se saisit dans « Autre qualification ».', motsCles: 'désherbage, traitement' },
   // SAP : « le numéro et la date d'enregistrement de la déclaration » sur la facture (C. trav. D7233-1, 2° ; juriste-btp
-  // au texte, 4 nov. 2026). `fin` porte ici la date d'enregistrement (pas une échéance). Ajoutée en « Seulement si une
-  // ligne contient… » avec une liste de mots VIDE (D-41, 5 nov. 2026) : rien ne s'imprime tant que l'artisan n'a pas mis
-  // ses mots, et jamais sur un travail exclu (électricité, plomberie, chauffage : docs/metiers/multiservice.md § 6) ;
-  // sur d'autres travaux, la mention laisserait croire à un crédit d'impôt. Aucun mot par défaut : c'est lui qui les choisit.
-  { id: 'sap', nom: 'Services à la personne (déclaration)', exemple: '', dateDeclaration: true, motsCles: '', ouParDefaut: 'si' },
+  // au texte, 4 nov. 2026). `fin` porte ici la date d'enregistrement (pas une échéance).
+  // JAMAIS IMPRIMÉE, pour l'instant (avis juriste-btp du lot 4, 5 nov. 2026, point 9 ; décision de la session locale) :
+  // imprimer la déclaration, c'est présenter la facture comme une facture de services à la personne, et D7233-1 exige alors
+  // les sommes acquittées (5°), l'identifiant de l'intervenant (6°), le taux horaire ou le forfait (7°), le décompte du temps
+  // passé (8°), les prix (9°) et les frais de déplacement (10°), en TTC quand la TVA s'applique (D7233-2), puis D7233-4 une
+  // attestation fiscale annuelle ; sur le devis, l'arrêté du 17 mars 2015, art. 7 : mode d'intervention, nombre d'heures,
+  // montants HT et TTC. L'app ne produit rien de cela. Le choix « où l'imprimer » est donc figé sur « ne pas l'imprimer » (les
+  // autres choix ne s'offrent pas) et un choix déjà enregistré est ignoré à la lecture. Pour la remettre : retirer `ouFige` et
+  // `raisonFigee`, quand l'app saura produire ces mentions.
+  { id: 'sap', nom: 'Services à la personne (déclaration)', exemple: '', dateDeclaration: true, motsCles: '', ouFige: 'non',
+    raisonFigee: 'Cette déclaration ne s’imprime pas : une facture de services à la personne demande d’autres mentions (prix TTC, temps passé, intervenant) et une attestation fiscale chaque année, que Mallettico ne fait pas encore.' },
   { id: 'autre', nom: 'Autre qualification', prefixe: '', exemple: 'Qualibat 5111', motsCles: '' },
 ];
 const TYPE_PAR_ID = Object.fromEntries(TYPES_QUALIFICATION.map((t) => [t.id, t]));
@@ -101,28 +107,32 @@ function normaliser(q, i) {
   };
 }
 
+/**
+ * Le choix « où l'imprimer » d'un type qui ne se choisit pas (`'non'` : services à la personne, jamais imprimée), ou
+ * null pour les types dont l'artisan choisit. L'écran n'offre alors aucun choix (src/components/settings/MesQualifications.jsx).
+ */
+export function ouFige(type) {
+  return TYPE_PAR_ID[texte(type)]?.ouFige || null;
+}
+
 /** Où imprimer : 'tous' | 'si' | 'non' (voir plus haut). Le RGE imprimé l'est toujours partout. */
 function ouDe(o) {
+  // Type figé : le choix enregistré (importé, ancien, ou saisi avant) est ignoré
+  const fige = ouFige(o.type);
+  if (fige) return fige;
   if (o.imprimer === false || o.ou === 'non') return 'non';
   if (texte(o.type) === 'rge') return 'tous';
   if (o.ou === 'si' || o.ou === 'tous') return o.ou;
-  // Sans choix enregistré : le défaut du type (services à la personne : « seulement si », jamais partout)
-  if (TYPE_PAR_ID[texte(o.type)]?.ouParDefaut) return TYPE_PAR_ID[texte(o.type)].ouParDefaut;
   return texte(o.motsCles) ? 'si' : 'tous';
 }
 
-/** Où imprimer une qualification qu'on vient d'ajouter : le défaut de son type ('tous' sauf services à la personne). */
-export function ouParDefaut(type) {
-  return TYPE_PAR_ID[texte(type)]?.ouParDefaut || 'tous';
-}
-
 /**
- * Une qualification qu'on vient d'ajouter dans Paramètres › Légal › Mes qualifications : vide, à imprimer selon le
- * défaut de son type. Services à la personne : « Seulement si une ligne contient… » avec une liste de mots vide, donc
- * rien d'imprimé tant que l'artisan n'a pas mis ses mots (D-41, 5 nov. 2026).
+ * Une qualification qu'on vient d'ajouter dans Paramètres › Légal › Mes qualifications : vide, sur tous les documents,
+ * sauf un type figé (services à la personne : « ne pas l'imprimer »).
  */
 export function nouvelleQualification(type, id) {
-  return { id, type: TYPE_PAR_ID[texte(type)] ? texte(type) : 'autre', intitule: '', organisme: '', numero: '', fin: '', imprimer: true, ou: ouParDefaut(type), motsCles: '' };
+  const ou = ouFige(type) || 'tous';
+  return { id, type: TYPE_PAR_ID[texte(type)] ? texte(type) : 'autre', intitule: '', organisme: '', numero: '', fin: '', imprimer: ou !== 'non', ou, motsCles: '' };
 }
 
 /**
@@ -148,11 +158,15 @@ export function champsRgeDeLaListe(qualifications) {
 /** Pourquoi cette qualification n'est pas imprimée (texte pour l'écran), ou null si elle l'est. */
 export function raisonNonImprimee(q, aujourdhui = jourLocal()) {
   const x = normaliser(q, 0);
+  // Type figé (services à la personne) : l'écran dit pourquoi, quel que soit le choix enregistré
+  if (TYPE_PAR_ID[x.type]?.raisonFigee) return TYPE_PAR_ID[x.type].raisonFigee;
   if (x.ou === 'non') return 'Vous avez choisi de ne pas l’imprimer.';
   if (x.ou === 'si' && !motsDe(x.motsCles).length) return 'Ajoutez les mots cherchés dans les lignes : tant qu’il n’y en a aucun, rien n’est imprimé.';
   if (!x.numero) return 'Ajoutez le numéro : sans numéro, rien n’est imprimé.';
   if (x.type === 'rge') return raisonRgeNonImprime({ rge: x.numero, rgeOrganisme: x.organisme, rgeDomaine: x.intitule, rgeValidite: x.fin }, aujourdhui);
   if (x.type === 'sap') {
+    // Inatteignable tant que la déclaration est figée (`ouFige`) ; textes de l'avis du 4 nov., gardés pour le jour où l'app
+    // produira les autres mentions de D7233-1
     if (!x.fin) return 'Ajoutez la date d’enregistrement de la déclaration : elle s’imprime avec son numéro.';
     if (!jourValide(x.fin)) return 'La date d’enregistrement de la déclaration n’est pas lisible : ressaisissez-la.';
     return null;
@@ -172,7 +186,7 @@ export function raisonNonImprimee(q, aujourdhui = jourLocal()) {
 export function ligneImprimee(q) {
   const x = normaliser(q, 0);
   if (x.type === 'rge') return `Entreprise RGE (Reconnu garant de l'environnement) — Qualification : ${x.intitule} — ${x.organisme} — N° ${x.numero} — Valide jusqu'au ${dateFr(x.fin)}`;
-  // Mot pour mot du juriste (C. trav. D7233-1, 2°)
+  // Mot pour mot du juriste (C. trav. D7233-1, 2°) ; jamais appelée tant que la déclaration est figée (`ouFige`)
   if (x.type === 'sap') return `Services à la personne : déclaration enregistrée sous le n° ${x.numero} le ${dateFr(x.fin)}`;
   const prefixe = TYPE_PAR_ID[x.type].prefixe;
   return `${prefixe ? `${prefixe} : ` : ''}${x.intitule} — ${x.organisme} — N° ${x.numero} — Valide jusqu'au ${dateFr(x.fin)}`;
