@@ -323,7 +323,7 @@ describe('Mention de la pose d’une borne à 5,5 % sur le devis et la facture (
     for (const mot of MOTS_INTERDITS) expect(MENTION_BORNE).not.toMatch(mot);
   });
 
-  it('une ligne de borne marquée à 5,5 % : la mention est imprimée, seule (devis comme facture, acompte compris)', () => {
+  it('une ligne de borne marquée à 5,5 % : la mention est imprimée, seule (devis, facture, facture d’acompte dont les lignes portent la marque)', () => {
     for (const o of [{}, { isFacture: true }, { isFacture: true, isAcompte: true }]) {
       const html = mention([borne], o);
       expect(html).toContain(HTML(MENTION_BORNE));
