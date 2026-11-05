@@ -7,6 +7,7 @@ import Pastille from '../ui/Pastille';
 import { htmlAttestation, remettreAttestation, envoyerAttestation, donneesFacture } from './actionsRamonage';
 import { isDemo } from '../../supabaseClient';
 import { captureException } from '../../lib/sentry';
+import { messageApresFacture } from '../../lib/factureDAttestation';
 
 /**
  * Une attestation enregistrée : le document, son PDF (partage ou téléchargement), l'envoi au client par e-mail, la
@@ -67,7 +68,10 @@ export default function FicheAttestation({
       const creee = await addDevis(donneesFacture({ ramonages: [ramonage], entreprise }));
       if (!creee) return; // refus déjà dit (limite, droits, base)
       const lie = await suivreRamonage(ramonage.id, { facture_id: creee.id });
-      if (lie === false) showToast?.('La facture est créée, mais son lien avec l’attestation n’a pas été enregistré.', 'error');
+      // Le lien non enregistré, ou chez un client particulier le rappel des sept jours (L221-10), dits comme sur la
+      // fiche d'une attestation d'entretien (src/lib/factureDAttestation.js ; relecture juriste-btp du 5 nov., point 11)
+      const message = messageApresFacture({ client, lie });
+      if (message) showToast?.(message.texte, message.type, message.duree);
       onOuvrirFacture(creee);
     } finally {
       setAction(null);

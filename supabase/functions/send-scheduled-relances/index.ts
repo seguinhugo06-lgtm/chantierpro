@@ -23,6 +23,8 @@ import { corsHeaders } from '../_shared/cors.ts';
 import { estClientPro, creditsParFacture, paiementsParDocument, resteDu, relancable, penalites, mentionRetard } from './regles.ts';
 // Rappels du prochain ramonage (migration 104, D-30) : règles et e-mail sans import distant, testés sous vitest
 import { rappelsAEnvoyer, emailRappelRamonage, jourParis } from './ramonage.ts';
+// Rappels du prochain entretien (migration 113, D-33) : même mécanique, testée sous vitest
+import { rappelsAEnvoyerEntretien, emailRappelEntretien, fichesQuiEnvoient, ficheValable, fichesSansEmail, dansPortee } from './entretien.ts';
 import { nomImprime } from '../_shared/identite.ts';
 // Adresse complète sans répéter « code postal ville » (Paramètres l'enregistre en trois champs depuis le 26 oct. 2026)
 import { adresseComplete } from '../_shared/adresseEntreprise.ts';
@@ -490,11 +492,20 @@ serve(async (req) => {
     // deux passages simultanés ne l'envoient pas deux fois ; un envoi en échec le rend (repris le lendemain).
     // Les envois et les échecs comptent dans sent / failed : l'alerte quotidienne (088) les voit.
     // ─────────────────────────────────────────────────────────────
+    // Propriétaire de chaque organisation : seule sa fiche entreprise envoie les rappels (gardien-securite, 4 nov. 2026, M1)
+    const proprietaires = async (fiches: any[]) => {
+      const ids = [...new Set((fiches || []).map((f) => f.organization_id).filter(Boolean))];
+      const carte = new Map<string, string>();
+      if (!ids.length) return { carte, error: null };
+      const { data, error } = await admin.from('organizations').select('id, owner_id').in('id', ids);
+      for (const o of data || []) carte.set(o.id, o.owner_id);
+      return { carte, error };
+    };
     const ramonage: any = { entreprises: 0, dus: 0, envoyes: 0, echecs: 0, details: [] as any[] };
     report.ramonage = ramonage;
     const { data: entsRamonage, error: errEntsRamonage } = await admin
       .from('entreprise')
-      .select('id, user_id, organization_id, nom, forme_juridique, telephone, email, adresse, code_postal, ville, couleur, settings_json, archived_at')
+      .select('id, user_id, organization_id, nom, forme_juridique, telephone, email, adresse, code_postal, ville, couleur, settings_json, archived_at, created_at')
       .eq('settings_json->reglages->>ramonageEnvoiAuto', 'true');
     if (errEntsRamonage) {
       console.error(`[send-scheduled-relances] Lecture entreprises (ramonage): ${errEntsRamonage.message}`);
@@ -503,7 +514,13 @@ serve(async (req) => {
     }
     const organisationsVues = new Set<string>();
     const aujourdhui = jourParis();
-    for (const ent of entsRamonage || []) {
+    const propsR = await proprietaires(entsRamonage || []);
+    if (propsR.error) { ramonage.erreur = propsR.error.message; report.failed++; }
+    const fichesR = propsR.error ? [] : fichesQuiEnvoient(entsRamonage || [], propsR.carte, ficheValable('ramonageActif'));
+    for (const f of propsR.error ? [] : fichesSansEmail(entsRamonage || [], propsR.carte, 'ramonageActif', fichesR)) {
+      ramonage.details.push({ entreprise: f.nom, action: 'sans-email-entreprise' });
+    }
+    for (const ent of fichesR) {
       if (ent.archived_at) continue;
       const reglages = ent.settings_json?.reglages || {};
       if (reglages.ramonageActif !== true && reglages.ramonageActif !== 'true') continue;
@@ -518,7 +535,7 @@ serve(async (req) => {
       organisationsVues.add(serie);
       ramonage.entreprises++;
 
-      const dansOrgR = (requete: any) => (ent.organization_id ? requete.eq('organization_id', ent.organization_id) : requete.eq('user_id', ent.user_id));
+      const dansOrgR = (requete: any) => dansPortee(requete, ent);
       // Lecture complète, page par page : PostgREST s'arrête à 1 000 lignes, et une liste tronquée ferait prendre un
       // ancien passage pour le dernier (relecture verificateur du 24 oct. 2026). Seules les échéances à venir comptent
       // (pas d'e-mail après la date) : un passage plus récent du même appareil a une échéance plus tardive, il est lu aussi.
@@ -620,6 +637,141 @@ serve(async (req) => {
         detail.action = ok ? 'sent' : 'failed';
         detail.error = errMsg;
         ramonage.details.push(detail);
+        await new Promise((res) => setTimeout(res, 200));
+      }
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Rappels du prochain entretien (D-33, migration 113) : même mécanique que le ramonage, pour une fiche entreprise
+    // dont l'artisan a activé l'envoi automatique (Paramètres → Entretien). Table absente (113 pas encore appliquée) :
+    // l'erreur est dite dans le rapport, sans bloquer le reste.
+    // ─────────────────────────────────────────────────────────────
+    const entretien: any = { entreprises: 0, dus: 0, envoyes: 0, echecs: 0, details: [] as any[] };
+    report.entretien = entretien;
+    const { data: entsEntretien, error: errEntsEntretien } = await admin
+      .from('entreprise')
+      .select('id, user_id, organization_id, nom, forme_juridique, telephone, email, adresse, code_postal, ville, couleur, settings_json, archived_at, created_at')
+      .eq('settings_json->reglages->>entretienEnvoiAuto', 'true');
+    if (errEntsEntretien) {
+      console.error(`[send-scheduled-relances] Lecture entreprises (entretien): ${errEntsEntretien.message}`);
+      entretien.erreur = errEntsEntretien.message;
+      report.failed++;
+    }
+    const organisationsVuesE = new Set<string>();
+    const propsE = await proprietaires(entsEntretien || []);
+    if (propsE.error) { entretien.erreur = propsE.error.message; report.failed++; }
+    const fichesE = propsE.error ? [] : fichesQuiEnvoient(entsEntretien || [], propsE.carte, ficheValable('entretienActif'));
+    for (const f of propsE.error ? [] : fichesSansEmail(entsEntretien || [], propsE.carte, 'entretienActif', fichesE)) {
+      entretien.details.push({ entreprise: f.nom, action: 'sans-email-entreprise' });
+    }
+    for (const ent of fichesE) {
+      if (ent.archived_at) continue;
+      const reglages = ent.settings_json?.reglages || {};
+      if (reglages.entretienActif !== true && reglages.entretienActif !== 'true') continue;
+      if (!String(ent.email || '').includes('@')) {
+        entretien.details.push({ entreprise: ent.nom, action: 'sans-email-entreprise' });
+        continue;
+      }
+      const serie = ent.organization_id || ent.user_id;
+      if (organisationsVuesE.has(serie)) continue;
+      organisationsVuesE.add(serie);
+      entretien.entreprises++;
+
+      const dansOrgE = (requete: any) => dansPortee(requete, ent);
+      const toutLireE = async (fabrique: (de: number, a: number) => any) => {
+        const lignes: any[] = [];
+        for (let de = 0; ; de += 1000) {
+          const { data, error } = await fabrique(de, de + 999);
+          if (error) return { data: null, error };
+          lignes.push(...(data || []));
+          if (!data || data.length < 1000) return { data: lignes, error: null };
+        }
+      };
+      const [resE, resC] = await Promise.all([
+        toutLireE((de, a) => dansOrgE(admin.from('entretiens')
+          .select('id, client_id, appareil_ref, categorie, realise_le, prochain_avant, puissance_kw, contrat_performance, local, appareils, annulee_le, rappel_fait_le, jeton_rappel')
+          .is('annulee_le', null).gte('prochain_avant', aujourdhui)).order('id').range(de, a)),
+        toutLireE((de, a) => dansOrgE(admin.from('clients').select('id, nom, prenom, email, rappels_refuses_le')).order('id').range(de, a)),
+      ]);
+      if (resE.error || resC.error) {
+        const msg = [resE.error?.message, resC.error?.message].filter(Boolean).join(' | ');
+        console.error(`[send-scheduled-relances] Lecture entretiens ${ent.nom}: ${msg}`);
+        entretien.details.push({ entreprise: ent.nom, action: 'erreur-lecture', error: msg });
+        entretien.echecs++;
+        report.failed++;
+        continue;
+      }
+      const jours = Math.min(120, Math.max(1, Math.round(Number(reglages.entretienRappelJours) || 30)));
+      const dus = rappelsAEnvoyerEntretien(resE.data || [], resC.data || [], { jours, aujourdhui }).slice(0, maxPerOrg);
+      entretien.dus += dus.length;
+      report.totalDue += dus.length;
+      const identite = {
+        nom: nomImprime({ nom: ent.nom, forme_juridique: ent.forme_juridique, nomEntrepreneur: reglages.nomEntrepreneur }),
+        adresse: adresseComplete(ent).split('\n').join(', '),
+        telephone: ent.telephone,
+        email: ent.email,
+        couleur: ent.couleur,
+      };
+
+      for (const { entretien: e, client } of dus) {
+        const detail: any = { entreprise: ent.nom, entretien: e.id, prochain: e.prochain_avant, clientEmail: client.email };
+        if (dryRun) { detail.action = 'would-send'; entretien.details.push(detail); continue; }
+
+        const pris = await admin.from('entretiens').update({ rappel_fait_le: new Date().toISOString(), rappel_canal: 'email_auto' })
+          .eq('id', e.id).is('rappel_fait_le', null).select('id');
+        if (pris.error || !pris.data?.length) {
+          detail.action = pris.error ? 'erreur-prise' : 'deja-fait';
+          if (pris.error) { detail.error = pris.error.message; entretien.echecs++; report.failed++; }
+          entretien.details.push(detail);
+          continue;
+        }
+
+        const { objet, html, texte } = emailRappelEntretien({ entreprise: identite, client, entretien: e, lien: `${APP_ORIGIN}/rappel-entretien/${e.jeton_rappel}` });
+        let ok = false; let errMsg: string | null = null; let providerId: string | null = null;
+        try {
+          const resp = await fetch(`${SUPABASE_URL}/functions/v1/send-email`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${SERVICE_ROLE}` },
+            body: JSON.stringify({ action: 'send_email', to: client.email, subject: objet, html, text: texte, from_name: identite.nom || undefined, reply_to: ent.email || undefined }),
+          });
+          const data = await resp.json().catch(() => ({}));
+          if (!resp.ok || data?.error) throw new Error(data?.error || `send-email HTTP ${resp.status}`);
+          ok = true; providerId = data?.id || data?.messageId || null;
+        } catch (err) {
+          errMsg = String((err as Error)?.message || err);
+        }
+
+        if (!ok) {
+          const rendu = await admin.from('entretiens').update({ rappel_fait_le: null, rappel_canal: null }).eq('id', e.id).select('id');
+          if (rendu.error || !rendu.data?.length) {
+            console.error(`[send-scheduled-relances] RAPPEL ENTRETIEN ${e.id} marqué fait sans envoi : ${rendu.error?.message || '0 ligne'}`);
+            detail.rappelPerdu = true;
+          }
+        }
+
+        const { error: errJournal } = await admin.from('relance_executions').insert({
+          user_id: ent.user_id,
+          organization_id: ent.organization_id,
+          document_id: e.id,
+          document_type: 'entretien',
+          client_id: client.id,
+          step_id: 'rappel-entretien',
+          step_name: 'Rappel du prochain entretien',
+          sequence_type: 'entretien',
+          channel: 'email',
+          status: ok ? 'sent' : 'failed',
+          subject: objet,
+          body: texte,
+          triggered_by: 'auto_cron',
+          error_message: errMsg,
+          metadata: { email_provider_id: providerId, prochain_avant: e.prochain_avant },
+        });
+        if (errJournal) console.error(`[send-scheduled-relances] Journal du rappel d'entretien ${e.id} perdu : ${errJournal.message}`);
+
+        if (ok) { entretien.envoyes++; report.sent++; } else { entretien.echecs++; report.failed++; }
+        detail.action = ok ? 'sent' : 'failed';
+        detail.error = errMsg;
+        entretien.details.push(detail);
         await new Promise((res) => setTimeout(res, 200));
       }
     }

@@ -319,6 +319,7 @@ export default function App() {
     // d'utilisation, par la garde unique de DataContext (relecture juriste du 25 oct. 2026, G3)
     // (relances : leur activation, et l'envoi « 100 % automatique », seul à faire partir les e-mails sans un clic)
     const activeEnvois = (!base?.ramonageEnvoiAuto && newVal?.ramonageEnvoiAuto)
+      || (!base?.entretienEnvoiAuto && newVal?.entretienEnvoiAuto)
       || (!base?.relanceConfig?.enabled && newVal?.relanceConfig?.enabled)
       || (!base?.relanceConfig?.autoSend && newVal?.relanceConfig?.autoSend);
     if (activeEnvois && !newVal?.__cguVerifiees) {
@@ -1652,7 +1653,8 @@ export default function App() {
   const allerA = (id) => { setPage(id); setMenuPlus(false); setSelectedChantier(null); };
   const rubriquesPlus = nav.filter(n => !ONGLETS_BAS.includes(n.id));
   // Ouvre la page Devis & factures sur une demande : { relancer: id } (fiche + feuille « Relancer »), { ouvrir: id } (la fiche),
-  // { facturer: id } (la fiche et le choix « Facturer ce devis ») ou { etat } / { nature } (la liste filtrée)
+  // { facturer: id } (la fiche et le choix « Facturer ce devis »), { editer: id } (l'éditeur sur ce brouillon : « Faire le devis
+  // de la visite » d'une attestation d'entretien) ou { etat } / { nature } (la liste filtrée)
   const ouvrirDevis = (demande) => { setDemandeDevis(demande); setSelectedDevis(null); setPage('devis'); };
   const basculerTheme = () => setTheme(t => (t === 'dark' ? 'light' : 'dark'));
   // Mode confidentiel : une seule commande, l'œil de l'en-tête (avant : en-tête, Accueil, menu latéral, Finances)

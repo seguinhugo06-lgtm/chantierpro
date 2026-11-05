@@ -150,8 +150,8 @@ function getPayToken() {
 
 // Refus des rappels de ramonage : /rappel-ramonage/{uuid}
 function getJetonRappelRamonage() {
-  const match = window.location.pathname.match(/^\/rappel-ramonage\/([a-f0-9-]{36})\/?$/i)
-  return match ? match[1] : null
+  const match = window.location.pathname.match(/^\/rappel-(ramonage|entretien)\/([a-f0-9-]{36})\/?$/i)
+  return match ? { jeton: match[2], sujet: match[1].toLowerCase() } : null
 }
 
 // Check for demo data mode via URL param: ?demo=true (only works in demo mode)
@@ -242,7 +242,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
       </Suspense>
     ) : jetonRappelRamonage ? (
       <Suspense fallback={<ChargementSite />}>
-        <RefusRappelsPage jeton={jetonRappelRamonage} />
+        <RefusRappelsPage jeton={jetonRappelRamonage.jeton} sujet={jetonRappelRamonage.sujet} />
       </Suspense>
     ) : payToken ? (
       <Suspense fallback={<PublicFallback />}>

@@ -7,6 +7,7 @@ const fs = require('fs');
 const path = require('path');
 const { creerBase, UID, json } = require('../lib/fauxSupabase.cjs');
 const { CGU_VERSION } = require('../lib/cgu.cjs');
+const { SEPT_JOURS, normaliser, noterMessages, messagesNotes } = require('../lib/septJours.cjs');
 
 const AN = new Date().getFullYear();
 const sansInstallation = () => { try { localStorage.setItem('pwa-install-dismissed', String(Date.now())); } catch { /* */ } };
@@ -385,9 +386,14 @@ module.exports = [
       fs.mkdirSync(path.join(RACINE, 'audit-ui'), { recursive: true });
       fs.writeFileSync(path.join(RACINE, 'audit-ui', 'ramonage-attestation.pdf'), Buffer.from(pdf.base64, 'base64'));
 
-      // 6. Facture tirée de l'attestation, sans ressaisie
+      // 6. Facture tirée de l'attestation, sans ressaisie ; chez un client particulier, le rappel des sept jours (L221-10) :
+      // le texte du juriste (avis du 5 nov. 2026, point 11), le même que sur la fiche d'une attestation d'entretien
+      await noterMessages(page);
       await cliquer(page, 'Faire la facture', { dans: '[role="dialog"]' });
       await attendre(1800);
+      const messagesFacture = (await messagesNotes(page)).join(' || ');
+      verifier(normaliser(messagesFacture).includes(normaliser(SEPT_JOURS)),
+        `la facture tirée de l’attestation d’un client particulier rappelle les sept jours, mot pour mot (${messagesFacture.slice(0, 120)})`);
       const facture = await page.evaluate(() => document.querySelector('main')?.innerText || '');
       verifier(/Facture/.test(facture) && facture.includes(`attestation n° RAM-${AN}-00001`) && /120,00/.test(facture),
         'la facture reprend le ramonage, le numéro d’attestation et le prix');
@@ -478,7 +484,44 @@ module.exports = [
       await page.keyboard.press('Escape');
       await attendre(400);
       const fiche = await page.evaluate(() => document.querySelector('[data-testid="onglet-ramonage"]')?.innerText || '');
-      verifier(/a refusé les rappels de ramonage/.test(fiche), 'la fiche le dit');
+      // D-38 (5 nov. 2026) : un refus vaut pour tous les rappels, la fiche le dit
+      verifier(/a refusé les rappels le .* \(ramonage et entretien\)/.test(fiche), 'la fiche le dit, pour le ramonage et l’entretien');
+    },
+  },
+  // Contre-essai du rappel des sept jours (relecture juriste-btp du 5 nov. 2026, point 11) : un client professionnel reçoit la
+  // même facture, avec son lien, et aucun rappel
+  {
+    nom: 'ramonage (base) : la facture tirée d’une attestation ne rappelle pas les sept jours à un client professionnel (contre-essai)',
+    reel: true,
+    async executer({ ouvrir, cliquer, attendre, verifier, sessionFactice }) {
+      const ORG = '0e0e0e0e-0e0e-4e0e-8e0e-0e0e0e0e0e0e';
+      const CLIENT = { id: 'c0c0c0c0-0000-4000-8000-000000000108', nom: 'Durand', prenom: '', entreprise: 'SARL Durand Exemple', categorie: 'Professionnel',
+        telephone: '0600000006', email: 'contact@durand-exemple.fr', adresse: '9 rue Fictive, 24000 Exempleville', created_at: '2026-10-01T08:00:00Z' };
+      const ENTREPRISE = { id: 'e0e0e0e0-0000-4000-8000-000000000108', user_id: UID, organization_id: ORG, nom: 'Ramonage Exemple', forme_juridique: 'Micro-entreprise',
+        siret: '00000000000000', telephone: '0500000000', email: 'contact@exemple.fr', is_active: true, is_default: true,
+        settings_json: { reglages: { ramonageActif: true, nomEntrepreneur: 'Jean Exemple' } }, cgu_accepted_at: '2026-01-01T00:00:00Z', cgu_version: CGU_VERSION,
+        created_at: '2026-01-01T00:00:00Z' };
+      const attestation = { id: 'd0d0d0d0-0000-4000-8000-000000000003', user_id: UID, organization_id: ORG, numero: `RAM-${AN}-00012`, client_id: CLIENT.id,
+        appareil_ref: 'f0f0f0f0-0000-4000-8000-000000000108', realise_le: `${AN}-10-14T09:00:00Z`, intervenant_nom: 'Jean Exemple', client_nom: 'SARL Durand Exemple',
+        qualite_client: 'proprietaire', adresse_intervention: CLIENT.adresse, appareil_type: 'insert', combustible: 'bois', conduit: 'maconne',
+        methode: 'mecanique_manuelle', complement_chimique: false, raccordement: 'ramone', vacuite: 'assuree', constats: {}, conseils: { choix: ['usage'] },
+        prochain_avant: `${AN + 1}-10-14`, nb_dans_annee: 1, prix_ht: 95, jeton_rappel: 'd0d0d0d0-0000-4000-8000-0000000000ca',
+        emetteur: { nom: 'Ramonage Exemple', formeJuridique: 'Micro-entreprise', nomEntrepreneur: 'Jean Exemple', siret: '00000000000000' },
+        annulee_le: null, annulation_motif: null, rappel_fait_le: null, rappel_canal: null, facture_id: null, created_at: `${AN}-10-14T09:00:00Z` };
+      const base = creerBase({ clients: [CLIENT], entreprise: [ENTREPRISE], ramonages: [attestation] });
+      const { page } = await ouvrir({ reel: true, largeur: 375, page: 'clients', session: sessionFactice(UID), supabase: base.reponse, avantChargement: sansInstallation });
+      await attendre(1500);
+      await ouvrirFiche(page, attendre, 'Durand');
+      await page.evaluate((n) => [...document.querySelectorAll('[data-testid="onglet-ramonage"] [data-ui="LigneListe"] > button')].find((b) => b.innerText.includes(n))?.click(), `RAM-${AN}-00012`);
+      await attendre(800);
+      await noterMessages(page);
+      await cliquer(page, 'Faire la facture', { dans: '[role="dialog"]' });
+      await attendre(2000);
+      const factures = base.journal.filter((j) => j.m === 'POST' && j.table === 'devis');
+      const lien = base.journal.find((j) => j.m === 'PATCH' && j.table === 'ramonages' && j.corps?.facture_id);
+      verifier(factures.length === 1 && !!lien, 'la facture du client professionnel part en base, avec le lien de l’attestation');
+      const messages = normaliser((await messagesNotes(page)).join(' || '));
+      verifier(!/sept jours|L\. 221-10/.test(messages), `un client professionnel : aucun rappel des sept jours (${messages.slice(0, 100)})`);
     },
   },
   {
@@ -510,12 +553,14 @@ module.exports = [
       // Facture tirée de la plus récente : la facture part, puis son lien
       await page.evaluate((n) => [...document.querySelectorAll('[data-testid="onglet-ramonage"] [data-ui="LigneListe"] > button')].find((b) => b.innerText.includes(n))?.click(), `RAM-${AN}-00011`);
       await attendre(800);
+      await noterMessages(page);
       await cliquer(page, 'Faire la facture', { dans: '[role="dialog"]' });
       await attendre(2000);
       const factures = base.journal.filter((j) => j.m === 'POST' && j.table === 'devis');
       const lien = base.journal.find((j) => j.m === 'PATCH' && j.table === 'ramonages' && j.corps?.facture_id);
       verifier(factures.length === 1 && lien && lien.corps.facture_id === (Array.isArray(factures[0].corps) ? factures[0].corps[0] : factures[0].corps).id,
         'la facture part en base, puis le lien de l’attestation vers elle');
+      verifier(normaliser((await messagesNotes(page)).join(' || ')).includes(normaliser(SEPT_JOURS)), 'un client particulier : le rappel des sept jours est affiché, mot pour mot');
       verifier(lien && lien.corps.numero === undefined && lien.corps.jeton_rappel === undefined, 'le lien n’envoie ni numéro ni jeton');
       // Annulation de l'ancienne, motivée
       await page.evaluate(() => localStorage.setItem('cp_current_page', 'clients'));

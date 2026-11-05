@@ -62,6 +62,14 @@ export const REGLAGES_SANS_COLONNE = {
   // « Mes qualifications » (lot 1, src/lib/qualifications.js) : la liste qui remplace le champ RGE unique. null tant
   // qu'elle n'a jamais été enregistrée : les anciens champs rge* valent alors une qualification RGE.
   qualifications: null,
+  // Attestations d'entretien (D-33, migration 113) : onglet « Entretien » de la fiche client (chaudière, PAC, poêle),
+  // délai du rappel, envoi automatique des rappels par e-mail, tarifs par type d'appareil, appareils de mesure repris.
+  entretienActif: false,
+  entretienRappelJours: 30,
+  entretienEnvoiAuto: false,
+  entretienTarifs: {},
+  entretienAppareilsMesure: '',
+  entretienAttestationCapacite: '',
 };
 
 /**

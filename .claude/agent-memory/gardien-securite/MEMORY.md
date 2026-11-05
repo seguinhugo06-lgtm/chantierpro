@@ -22,3 +22,15 @@ Pièges appris :
 - Ne pas retirer à `anon` le SELECT sur `organization_members` : des policies d'autres tables (066, 067, 068, 073) y font une sous-requête ; sans le droit, un visiteur aurait une erreur au lieu de zéro ligne.
 - Le banc réaccorde tous les droits de table après les migrations (`banc-migrations.mjs`) : un droit par colonne ne se vérifie qu'après un rejeu de la migration dans les vérifications (voir `scripts/banc/078.mjs`).
 - Une policy qui refuse une écriture ne lève pas d'erreur (0 ligne) : l'app doit relire les lignes modifiées (`.select()`), sinon elle annonce un succès.
+
+## Attestations d'entretien (relecture du 4 nov. 2026, branche cloud/metier-entretien, migration 113, non appliquée)
+
+113 calque 104 (policies, REVOKE/GRANT, sceller/figer, refus par `refuser_rappels_ramonage` étendue) : jugé sain, aucune nouvelle fonction publique, liste de 092 juste.
+
+| Faille | Gravité | Statut |
+|---|---|---|
+| M1 — Cron (ramonage, entretien de send-scheduled-relances/index.ts) : fiche prise au hasard par organisation ; la fiche d'un membre envoyait aux clients du patron sous son nom | MAJEURE | corrigée (fichesQuiEnvoient : fiche du propriétaire seule, filtrée d'abord par ficheValable, commits 25f9222/4bf7ea2), fonction non déployée |
+| M1 bis — Reliquat : fiche personnelle d'un membre (`organization_id` NULL, envoi auto) → `dansOrgR`/`dansOrgE` (index.ts l. 538, 680) filtrent sur `user_id` seul et ramassent les ramonages/entretiens/clients qu'il a saisis DANS l'organisation → rappels aux clients de l'organisation sous son identité | IMPORTANTE | corrigée (833817a : `dansPortee`, `.is('organization_id', null)` sans organisation, test `rappelsEntretienServeur.test.js` avec contre-essai) ; fonction pas encore déployée |
+| m1 — Écriture d'app = ligne entière : `rappel_fait_le` local périmé efface la prise du cron → second e-mail | MINEURE | corrigée pour les entretiens (figer_entretien, 113, banc 6 ter) ; ramonages (104) à vérifier |
+| m2 — Banc 113 : appel visiteur masqué par un appel serveur ; jeton de ramonage non prouvé | MINEURE (preuve) | corrigée (banc 113 : refus lu dans la transaction du visiteur, entretien et ramonage) |
+| F1/F2 (113) — figer_entretien laissait `client_id`, `remplace_id`, `updated_at` modifiables par un compte (vider remplace_id libère l'index unique et efface « annule et remplace ») | ÉLEVÉE | corrigée dans 113 (4bf7ea2, banc 6 quinquies), non appliquée |

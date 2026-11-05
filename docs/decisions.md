@@ -52,6 +52,22 @@ Avant de rouvrir un sujet, lire ici s'il a déjà été tranché. Statut : **dé
 Chaque question ci-dessous est posée à Hugo dans le Pilote (`npm run pilote -- sync`), trois à la fois, dans cet ordre. Quand il répond, Claude ajoute la décision au tableau (avec « (Q-id) » dans la colonne Pourquoi) et retire la question d'ici ; le Pilote la marque alors « consignée ». Rien n'est appliqué avant d'être consigné.
 Format fixe, lu par `scripts/pilote/preparer.mjs` : `### Q-<id> · <question>`, puis `Contexte :`, une ligne `Option` + id entre accents graves + ` : <libellé> — <conséquence>` par option, `Recommandation :` + id entre accents graves + ` — <pourquoi>`, `Irréversible : oui|non`, `Bloque :`, et `Décision : D-xx` si elle est déjà numérotée.
 
+### Q-entretien-obligation · Écrire l'obligation d'entretien, avec son article, dans le rappel d'une PAC ou d'un poêle ?
+Contexte : D-33 n'autorise l'obligation et sa source que dans le rappel d'une chaudière. Le juriste a donné les formules pour la PAC ou la climatisation de 4 à 70 kW (« au moins tous les deux ans », article R. 224-44-3 du code de l'environnement) et pour le poêle ou l'insert à bois ou à granulés (« au moins tous les douze mois lorsqu'il est utilisé », article R. 1331-68 du code de la santé publique) — avis juriste-btp du 4 nov. 2026, § 4.5, question 1. En attendant, l'e-mail et le SMS ne citent l'obligation que pour une chaudière (relecture du 4 nov., point 3).
+Option `chaudiere` : seulement la chaudière, comme aujourd'hui — rien ne change ; les rappels de PAC et de poêle donnent la date conseillée sans parler d'obligation.
+Option `trois` : les trois appareils, avec les formules du juriste — l'e-mail dit l'obligation et sa source quand les données de l'appareil la rendent certaine (puissance de la PAC, combustible du poêle).
+Recommandation : `trois` — ce sont des obligations réelles, citées mot pour mot, et seulement quand leurs conditions sont connues.
+Irréversible : non
+Bloque : rien
+
+### Q-entretien-reseau · Chaudières en réseau dans un même local : une attestation pour l'ensemble, ou une par chaudière ?
+Contexte : Pour l'entretien, des chaudières raccordées en réseau dans un même local voient leurs puissances additionnées (article R. 224-20, 1° du code de l'environnement) ; le texte ne dit pas s'il faut une attestation pour l'ensemble ou une par chaudière (avis juriste-btp du 4 nov. 2026, erratum 5). Aujourd'hui, l'écran demande la somme des puissances et permet plusieurs appareils dans une attestation.
+Option `ensemble` : une attestation pour l'ensemble, avec la somme des puissances — rien ne change.
+Option `une-par-chaudiere` : une attestation par chaudière, chacune avec la puissance totale — plus de saisie, mais chaque appareil a son document.
+Recommandation : `ensemble` — c'est la lecture du texte qui additionne les puissances, et ce que l'écran fait déjà ; à confirmer par le juriste s'il trouve une source.
+Irréversible : non
+Bloque : rien
+
 ### Q-comptes-dev · Quels comptes développeur ouvrir ?
 Contexte : Apple : 99 USD par an ; en entreprise individuelle, le compte est forcément individuel (votre nom affiché). Google : 25 USD une fois ; un compte personnel impose un test fermé (12 testeurs inscrits pendant 14 jours d'affilée) et une vérification sur un téléphone Android ; un compte organisation (numéro D-U-N-S) en est dispensé, mais l'accepter pour une entreprise individuelle n'est pas confirmé.
 Option `perso` : Apple individuel + Google personnel — le plus sûr ; test fermé de 14 jours et téléphone Android nécessaires.

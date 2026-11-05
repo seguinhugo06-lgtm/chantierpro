@@ -448,6 +448,14 @@ export default function DevisPage({ clients, addClient, devis, setDevis, chantie
       setSelected(doc);
       setMode('preview');
       if (demande.facturer && canPerform('devis', 'create')) setChoixFacturation(true);
+    } else if (demande.editer) {
+      // Un brouillon tout juste créé ailleurs (« Faire le devis de la visite » d'une attestation d'entretien) : ouvert
+      // directement dans l'éditeur, prêt à être complété puis envoyé (rien n'est envoyé d'ici)
+      const doc = devis.find(d => d.id === demande.editer);
+      if (!doc) return;
+      setSelected(doc);
+      setMode('preview');
+      if (canPerform('devis', 'edit')) openEditor(doc);
     } else {
       setSelected(null);
       setMode('list');

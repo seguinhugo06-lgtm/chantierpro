@@ -16,6 +16,7 @@ import {
 import SaisieRamonage from './SaisieRamonage';
 import FicheAttestation from './FicheAttestation';
 import RappelRamonage from './RappelRamonage';
+import { messageNePlusRappeler, noteRefusRappels } from '../../lib/suiviRappel';
 import { estFranchiseTva } from '../../lib/franchiseTva';
 
 const jourFr = (jour, court = false) => (jour
@@ -68,7 +69,7 @@ export default function OngletRamonage({ client, entreprise, setPage, setSelecte
   const refuserRappels = async (c) => {
     const ok = await confirm({
       title: 'Ne plus rappeler ce client ?',
-      message: `${c.prenom || ''} ${c.nom || ''}`.trim() + ' ne recevra plus de rappel de ramonage (ni SMS proposé, ni e-mail automatique). Ce refus ne s\'annule pas.',
+      message: messageNePlusRappeler(`${c.prenom || ''} ${c.nom || ''}`.trim()),
       confirmText: 'Ne plus rappeler',
       variant: 'warning',
     });
@@ -85,7 +86,7 @@ export default function OngletRamonage({ client, entreprise, setPage, setSelecte
           envoiAutoPrevu={!!entreprise?.ramonageEnvoiAuto && String(entreprise?.email || '').includes('@')} />
       ))}
       {client.rappels_refuses_le ? (
-        <p className="text-sm text-encre-2">Ce client a refusé les rappels de ramonage le {jourFr(jourDe(client.rappels_refuses_le))}.</p>
+        <p className="text-sm text-encre-2">{noteRefusRappels(jourFr(jourDe(client.rappels_refuses_le)))}</p>
       ) : appareils.length > 0 ? (
         // Un refus dit au téléphone, par SMS (STOP) ou de vive voix se note à tout moment (CPCE L. 34-5 ; RGPD art. 21)
         <div className="flex justify-start">

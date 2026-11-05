@@ -12,9 +12,10 @@ import {
 import { buildAttestationRamonageHtml } from '../../lib/attestationRamonageHtml';
 import { useConfirm } from '../../context/AppContext';
 import { estFranchiseTva } from '../../lib/franchiseTva';
+import { AIDE_REFUS_RAPPELS } from '../../lib/suiviRappel';
 
 /** Choix exclusif en boutons (44 px) ; `deselection` : toucher le choix actif le retire (constats facultatifs). */
-function Choix({ libelle, options, valeur, onChange, deselection = false, erreur, id }) {
+export function Choix({ libelle, options, valeur, onChange, deselection = false, erreur, id }) {
   return (
     <fieldset id={id} className="min-w-0">
       <legend className="block mb-1.5 text-sm font-medium text-encre-2">{libelle}</legend>
@@ -41,7 +42,7 @@ function Choix({ libelle, options, valeur, onChange, deselection = false, erreur
   );
 }
 
-function Section({ titre, children }) {
+export function Section({ titre, children }) {
   return (
     <section className="bg-surface border border-bord rounded-2xl p-4 space-y-4">
       <h3 className="text-base font-semibold text-encre">{titre}</h3>
@@ -55,7 +56,7 @@ function Section({ titre, children }) {
  * Le tracé reste ouvert pendant la saisie (chaque trait met à jour l'image) : une signature en plusieurs traits n'est
  * pas coupée au premier.
  */
-function Signature({ valeur, onChange }) {
+export function Signature({ valeur, onChange }) {
   const pad = useRef(null);
   const boite = useRef(null);
   const [trace, setTrace] = useState(!valeur);
@@ -362,7 +363,7 @@ export default function SaisieRamonage({ client, precedent = null, remplace = nu
                   disabled={!!client?.rappels_refuses_le} onChange={(e) => setRefusRappels(e.target.checked)} />
                 <span>
                   <span className="block text-base text-encre">Le client refuse les rappels de son prochain ramonage</span>
-                  <span className="block text-sm text-encre-3">{client?.rappels_refuses_le ? 'Déjà noté sur sa fiche.' : 'Noté sur sa fiche : ni e-mail automatique, ni SMS proposé.'}</span>
+                  <span className="block text-sm text-encre-3">{client?.rappels_refuses_le ? 'Déjà noté sur sa fiche.' : AIDE_REFUS_RAPPELS}</span>
                 </span>
               </label>
             </Section>

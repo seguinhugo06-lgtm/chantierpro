@@ -317,7 +317,7 @@ export const ARTICLES_BTP_SUITE = {
           { id: 'circulateur', nom: 'Remplacement circulateur', unite: 'u', prixMin: 200, prixMax: 400, prixDefaut: 300 },
           { id: 'vase-expansion', nom: 'Remplacement vase d\'expansion', unite: 'u', prixMin: 100, prixMax: 250, prixDefaut: 175 },
           { id: 'entretien-chaud', nom: 'Entretien annuel chaudière gaz', unite: 'forfait', prixMin: 100, prixMax: 180, prixDefaut: 140 },
-          { id: 'entretien-pac', nom: 'Entretien annuel PAC', unite: 'forfait', prixMin: 150, prixMax: 250, prixDefaut: 200 },
+          { id: 'entretien-pac', nom: 'Entretien PAC (au moins tous les deux ans)', unite: 'forfait', prixMin: 150, prixMax: 250, prixDefaut: 200 },
         ]
       },
     }
