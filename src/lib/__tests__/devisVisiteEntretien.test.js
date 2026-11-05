@@ -4,6 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { donneesDevis, donneesFacture } from '../../components/entretien/actionsEntretien';
 import { ligneDevisVisite, avertissementSeptJours, AVERTISSEMENT_SEPT_JOURS, nouveauBrouillon } from '../entretien';
+import { FIELD_MAPPINGS } from '../../hooks/useSupabaseSync';
 
 /**
  * D-38 (Hugo, 5 nov. 2026), décision 2 : « Faire le devis de la visite » depuis l'attestation. Arrêté du 24 janv. 2017,
@@ -99,6 +100,20 @@ describe('devis de la visite d’entretien (D-38, décision 2)', () => {
     const l = donneesDevis({ entretien: attestation(), entreprise, ...jour }).lignes[0];
     expect(l.quantite).toBe(1);
     expect(l.unite).toBe('forfait');
+  });
+});
+
+describe('ce que la base reçoit (mode réel : le mode démo cache les pannes du mode réel)', () => {
+  it('le devis envoyé à la table devis garde le type, le statut, le client, la validité, le taux, les totaux et la ligne', () => {
+    const d = donneesDevis({ entretien: attestation(), entreprise, ...jour });
+    const ligne = FIELD_MAPPINGS.devis.toSupabase({ ...d, id: 'd1', numero: 'DEV-2027-00001' });
+    expect(ligne).toMatchObject({ id: 'd1', type: 'devis', statut: 'brouillon', client_id: 'c1', numero: 'DEV-2027-00001', date: '2027-10-20', validite_jours: 30, tva_rate: 10, total_ht: 150, total_tva: 15, total_ttc: 165 });
+    expect(ligne.objet).toBe('Entretien — Chaudière');
+    expect(JSON.parse(ligne.lignes).map((l) => l.description).join(' ')).toContain('Entretien de chaudière');
+    expect(JSON.parse(ligne.sections)).toHaveLength(1);
+    // En franchise, le taux enregistré est 0 (et non le repli à 10 %)
+    const f = donneesDevis({ entretien: attestation(), entreprise: { ...entreprise, formeJuridique: 'Micro-entreprise' }, ...jour });
+    expect(FIELD_MAPPINGS.devis.toSupabase({ ...f, id: 'd2', numero: 'DEV-2027-00002' }).tva_rate).toBe(0);
   });
 });
 
