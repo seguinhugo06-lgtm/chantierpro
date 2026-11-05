@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { canViewPrices, canPerformAction, canEditData } from '../permissions';
+import { canViewPrices, canPerformAction, canEditData, canAccessPage, hasFullAccess, getPagePermission, getAccessiblePages } from '../permissions';
 
 describe('les prix selon le rôle : une seule règle (canViewPrices)', () => {
   it('chef de chantier et ouvrier ne voient aucun prix', () => {
@@ -46,5 +46,33 @@ describe('les droits sur les tâches, les dépenses et les pointages (canPerform
     expect(canPerformAction('ouvrier', 'pointage', 'delete')).toBe(false);
     expect(canPerformAction('chef_chantier', 'pointage', 'edit')).toBe(true);
     expect(canPerformAction('chef_chantier', 'pointage', 'delete')).toBe(false);
+  });
+});
+
+// Décision d'Hugo du 5 nov. 2026 (D-37) : la dictée (page « ia-devis ») est réservée au propriétaire et à
+// l'administrateur. Le comptable ne pourrait pas retirer son accord (Paramètres lui est fermé).
+describe('la dictée (page « ia-devis ») : propriétaire et administrateur seulement', () => {
+  it('le propriétaire et l’administrateur y accèdent pleinement', () => {
+    for (const role of ['owner', 'admin']) {
+      expect(canAccessPage(role, 'ia-devis'), role).toBe(true);
+      expect(hasFullAccess(role, 'ia-devis'), role).toBe(true);
+    }
+  });
+
+  it('le comptable, le chef de chantier, l’ouvrier, la lecture seule et un rôle inconnu n’y accèdent pas', () => {
+    for (const role of ['comptable', 'chef_chantier', 'ouvrier', 'readonly', 'inconnu', null, undefined]) {
+      expect(canAccessPage(role, 'ia-devis'), String(role)).toBe(false);
+    }
+    expect(getAccessiblePages('comptable')).not.toContain('ia-devis');
+    expect(getAccessiblePages('admin')).toContain('ia-devis');
+  });
+
+  it('le comptable garde tous ses autres droits sur les devis, les factures et les clients', () => {
+    expect(getPagePermission('comptable', 'devis')).toBe('full');
+    expect(getPagePermission('comptable', 'clients')).toBe('full');
+    expect(getPagePermission('comptable', 'finances')).toBe('full');
+    for (const action of ['create', 'edit', 'send', 'view']) expect(canPerformAction('comptable', 'devis', action), action).toBe(true);
+    expect(canPerformAction('comptable', 'devis', 'delete')).toBe(false);
+    expect(canViewPrices('comptable')).toBe(true);
   });
 });

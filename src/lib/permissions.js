@@ -31,7 +31,11 @@ const PERMISSION_MATRIX = {
   equipe:     { owner: 'full', admin: 'full', comptable: false, chef_chantier: 'view', ouvrier: false, readonly: 'view' },
   catalogue:  { owner: 'full', admin: 'full', comptable: false, chef_chantier: 'view', ouvrier: false, readonly: 'view' },
   finances:   { owner: 'full', admin: 'full', comptable: 'full', chef_chantier: false, ouvrier: false, readonly: 'view' },
-  'ia-devis':     { owner: 'full', admin: 'full', comptable: 'full', chef_chantier: false, ouvrier: false, readonly: false },
+  // Dictée (IA) : réservée au propriétaire et à l'administrateur (décision d'Hugo du 5 nov. 2026, D-37). Le comptable
+  // la perd : l'accord à l'analyse se retire dans Paramètres › Données, qui lui est fermé. Ses droits sur les devis
+  // (entité « devis » de ACTION_MATRIX) ne changent pas. Le serveur applique la même liste (reserver_usage_ia, migration
+  // 107 : SANS_DROIT) ; un test vérifie que les deux disent la même chose.
+  'ia-devis':     { owner: 'full', admin: 'full', comptable: false, chef_chantier: false, ouvrier: false, readonly: false },
   tresorerie:     { owner: 'full', admin: 'full', comptable: 'full', chef_chantier: false, ouvrier: false, readonly: 'view' },
   admin:          { owner: 'full', admin: 'full', comptable: 'full', chef_chantier: false, ouvrier: false, readonly: false },
   soustraitants:  { owner: 'full', admin: 'full', comptable: false, chef_chantier: 'view', ouvrier: false, readonly: 'view' },

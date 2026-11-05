@@ -1,5 +1,5 @@
 -- ============================================================
--- Migration 107: quota mensuel et journal des coûts de l'IA, par organisation et par fonction
+-- Migration 107: quota mensuel et journal des coûts de l'IA, par abonnement (ou par organisation au plan gratuit) et par fonction
 -- ============================================================
 -- Pourquoi : la dictée (fonction Edge voice-intent) appelle l'API d'Anthropic, qui coûte à chaque appel. Le seul
 -- quota était un compteur dans le navigateur (src/lib/dicteeQuota.js) : il repart à zéro en changeant d'appareil ou
@@ -9,13 +9,16 @@
 -- heure de Paris), puis CLOS avec le modèle, les jetons consommés, la durée et l'issue. Décomptent : les appels
 -- réservés, réussis, et les échecs que la dictée peut provoquer (refus du modèle, réponse illisible, réponse coupée par
 -- le plafond de jetons : une dictée très longue la provoque ; relecture gardien-securite du 4 nov., 3) ; une panne de
--- notre côté (API en panne, crédits épuisés, clé refusée, délai, réseau) ne coûte pas de dictée à l'artisan (le
--- décompte du délai reste une décision d'Hugo). Rien ne change à
+-- notre côté (API en panne, crédits épuisés, clé refusée, délai, réseau) ne coûte pas de dictée à l'artisan (le délai
+-- dépassé ne compte toujours pas : décision d'Hugo du 5 nov. 2026, D-37). Rien ne change à
 -- l'écran tant que FONCTIONS.ia est éteint.
 --
 -- Conception :
--- - Générique : une ligne par appel, avec la fonction (`dictee`, plus tard `assistant`…). Le quota se compte par
---   organisation, par mois et par fonction ; le journal sert aussi au suivi des coûts.
+-- - Générique : une ligne par appel, avec la fonction (`dictee`, plus tard `assistant`…). Le quota se compte par mois et
+--   par fonction : aux plans payants PAR ABONNEMENT (« 100 dictées par mois par abonnement, partagées entre ses
+--   utilisateurs et ses entreprises »), au plan gratuit par organisation et par compte (« 5 dictées par mois, partagées
+--   entre les utilisateurs de l'entreprise », avec celles du même compte dans ses autres entreprises gratuites) ; le
+--   journal sert aussi au suivi des coûts.
 -- - Le quota par plan vient de PLANS[plan].limits (src/stores/subscriptionStore.js) : la fonction Edge le passe
 --   (`p_limites`, {"gratuit":5,"artisan":100,"equipe":-1}, -1 = illimité ; décision d'Hugo du 4 nov. 2026), recopié dans
 --   supabase/functions/voice-intent/regles.ts et comparé à PLANS par un test. Un plan absent de p_limites vaut 0.
@@ -28,8 +31,11 @@
 --   Edge, après avoir vérifié le jeton de l'utilisateur). Un utilisateur qui pourrait réserver épuiserait le quota
 --   d'une autre entreprise ; qui pourrait clore « en échec » remettrait son compteur à zéro.
 -- - L'utilisateur doit être membre de l'organisation demandée (sinon HORS_ORGANISATION) ; sans organisation
---   demandée, sa première organisation. Il doit pouvoir créer un devis : rôle owner, admin ou comptable, comme la page
---   « ia-devis » (src/lib/permissions.js) ; sinon SANS_DROIT, sans rien compter (relecture gardien du 3 nov., 2).
+--   demandée, sa première organisation. Il doit être propriétaire (owner) ou administrateur (admin), comme la page
+--   « ia-devis » (src/lib/permissions.js) ; sinon SANS_DROIT, refusé avant tout décompte (relecture gardien du 3 nov., 2).
+--   Le comptable n'en fait plus partie (décision d'Hugo du 5 nov. 2026, D-37) : il ne pourrait pas retirer son accord à
+--   l'analyse, Paramètres › Données lui étant fermé. Ses droits sur les devis ne changent pas. Un test (droitsDictee.test.js)
+--   vérifie que cette liste et celle de l'app sont les mêmes.
 -- - Aux plans payants, le quota se compte aussi PAR ABONNEMENT (colonne payeur = titulaire de la ligne d'abonnement
 --   retenue ; relecture gardien-securite du 4 nov., 2) : le plan suit le compte dans toutes ses organisations, et tout
 --   compte peut créer des organisations ; sans cela, chaque organisation neuve d'un abonné Artisan rouvrait 100 dictées.
@@ -38,10 +44,14 @@
 -- - Plafond anti-abus quel que soit le plan (H2) : 5 analyses par minute (motif « plafond ») et, par JOUR DE PARIS
 --   (de minuit à minuit) et par compte, 20 au plan gratuit (un délai dépassé ne décompte pas du quota mensuel : sans
 --   cela, une suite d'échecs coûterait des centaines d'appels) et 100 aux plans payants (motif « plafond_jour »). Au plan
---   Équipe, sans limite mensuelle, c'est la limite annoncée dans l'offre : « 100 par jour et par personne au plus »
---   (décision d'Hugo du 4 nov. 2026). Le jour est calendaire pour que « réessayez demain » soit exact.
--- - Coupe-circuit global : 3 000 analyses par jour et par fonction, tous comptes confondus → motif « global » (503 côté
---   fonction Edge). Valeur à fixer par Hugo.
+--   Équipe, sans limite mensuelle, c'est la limite annoncée dans l'offre : « 100 analyses par jour et par personne au
+--   plus » (décisions d'Hugo des 4 et 5 nov. 2026). Chaque appel compte, ÉCHECS COMPRIS : « analyses » et non
+--   « dictées », et les CGV le disent (article 4). Le jour est calendaire pour que « réessayez demain » soit exact.
+-- - Coupe-circuit global, par fonction et sur 24 heures glissantes : DEUX compteurs indépendants (décision d'Hugo du
+--   5 nov. 2026, D-37) — 1 000 analyses pour l'ensemble des comptes au plan gratuit, 3 000 pour l'ensemble des plans
+--   payants. Un appel n'est regardé que contre le compteur de son propre plan (colonne `plan` du journal) : un abus de
+--   comptes gratuits ne coupe pas les payants, et l'inverse. Chaque appel compte, même en échec → motif « global »
+--   (503 côté fonction Edge).
 -- - Verrous transactionnels par compte, puis par abonnement payant, puis par organisation (toujours dans cet ordre) : deux appels simultanés ne
 --   dépassent pas le quota.
 -- - Nom en « _log » : la table est un journal ; les migrations 072 (suppression de compte) et 105 (départ d'un membre)
@@ -63,6 +73,9 @@
 --          has_table_privilege('authenticated', 'public.usage_ia_log', 'SELECT,INSERT,UPDATE,DELETE') AS connecte;
 --     → 0, f, f
 --   SELECT has_table_privilege('service_role', 'public.usage_ia_log', 'INSERT,UPDATE,DELETE') AS serveur_ecrit;   → f
+--   SELECT pg_get_functiondef('public.reserver_usage_ia(uuid,uuid,text,jsonb)'::regprocedure) ~ 'v_role NOT IN \(''owner'', ''admin''\)' AS roles,
+--          pg_get_functiondef('public.reserver_usage_ia(uuid,uuid,text,jsonb)'::regprocedure) ~ 'THEN 1000 ELSE 3000' AS seuils;
+--     → t, t   (propriétaire et administrateur seulement ; coupe-circuit à 1 000 analyses gratuites / 3 000 payantes par 24 h)
 --   SELECT jobname, schedule FROM cron.job WHERE jobname = 'purger-journal-ia';   → 1 ligne, 17 3 * * *
 --   Après le déploiement de voice-intent et une dictée :
 --   SELECT fonction, statut, modele, jetons_entree, jetons_sortie, duree_ms FROM public.usage_ia_log ORDER BY id DESC LIMIT 5;
@@ -87,7 +100,7 @@ CREATE TABLE IF NOT EXISTS public.usage_ia_log (
   termine_le TIMESTAMPTZ
 );
 COMMENT ON TABLE public.usage_ia_log IS
-  'Appels à l''IA (migration 107) : quota mensuel par organisation (et par abonnement aux plans payants) et fonction, jetons et durée. Aucun texte dicté stocké. Accès : service_role seulement.';
+  'Appels à l''IA (migration 107) : quota mensuel par fonction (au plan gratuit par organisation et par compte, aux plans payants par abonnement), jetons et durée. Aucun texte dicté stocké. Accès : service_role seulement.';
 -- Table déjà créée par une version antérieure de ce fichier (banc, préproduction) : la colonne est ajoutée.
 ALTER TABLE public.usage_ia_log ADD COLUMN IF NOT EXISTS payeur UUID;
 CREATE INDEX IF NOT EXISTS idx_usage_ia_payeur ON public.usage_ia_log (payeur, fonction, mois) WHERE payeur IS NOT NULL;
@@ -183,6 +196,7 @@ DECLARE
   v_id BIGINT;
   v_role TEXT;
   v_par_jour INTEGER;
+  v_global INTEGER;
 BEGIN
   IF p_user_id IS NULL THEN
     RAISE EXCEPTION 'reserver_usage_ia : utilisateur manquant';
@@ -203,8 +217,10 @@ BEGIN
   IF v_role IS NULL THEN
     RAISE EXCEPTION 'HORS_ORGANISATION';
   END IF;
-  -- Comme la page « ia-devis » (devis.create : owner, admin, comptable). Refus avant tout décompte.
-  IF v_role NOT IN ('owner', 'admin', 'comptable') THEN
+  -- Comme la page « ia-devis » (src/lib/permissions.js) : propriétaire et administrateur seulement. Le comptable ne
+  -- peut pas retirer son accord à l'analyse (Paramètres lui est fermé) : décision d'Hugo du 5 nov. 2026, D-37.
+  -- Refus avant tout décompte et avant tout verrou.
+  IF v_role NOT IN ('owner', 'admin') THEN
     RAISE EXCEPTION 'SANS_DROIT';
   END IF;
 
@@ -241,9 +257,15 @@ BEGIN
       'utilise', NULL, 'par_jour', v_par_jour);
   END IF;
 
-  -- Coupe-circuit global (tous comptes) : borne le coût d'une série de comptes ou d'entreprises (valeur à fixer par Hugo).
+  -- Coupe-circuit global : borne le coût d'une série de comptes ou d'entreprises. DEUX compteurs indépendants sur 24 heures
+  -- glissantes (décision d'Hugo du 5 nov. 2026, D-37) : 1 000 analyses pour l'ensemble des comptes au plan gratuit, 3 000
+  -- pour l'ensemble des plans payants. L'appel n'est regardé que contre le compteur de son propre plan : un abus de comptes
+  -- gratuits ne coupe pas les payants. Chaque appel compte, même en échec ; une ligne sans plan (insérée à la main) compte
+  -- avec les payants.
+  v_global := CASE WHEN v_plan = 'gratuit' THEN 1000 ELSE 3000 END;
   IF (SELECT count(*) FROM public.usage_ia_log
-       WHERE fonction = p_fonction AND created_at > now() - interval '1 day') >= 3000 THEN
+       WHERE fonction = p_fonction AND created_at > now() - interval '1 day'
+         AND ((v_plan = 'gratuit' AND plan = 'gratuit') OR (v_plan <> 'gratuit' AND plan IS DISTINCT FROM 'gratuit'))) >= v_global THEN
     RETURN jsonb_build_object('autorise', false, 'motif', 'global', 'plan', v_plan, 'limite', v_limite, 'utilise', NULL);
   END IF;
 
