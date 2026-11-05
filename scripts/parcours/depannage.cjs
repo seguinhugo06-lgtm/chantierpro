@@ -206,9 +206,11 @@ module.exports = [
       await capturerPdf(page);
       await cliquer(page, 'Faire signer');
       await attendre(500);
+      await page.screenshot({ path: path.join(sortie, 'depannage-4-remise-1.png'), fullPage: false });
       verifier(await boutonDialogue('Ouvrir le PDF'), 'le PDF du devis est proposé une seconde fois');
       await page.waitForFunction(() => window.__pdf, { timeout: 30000 }).catch(() => null);
       await attendre(500);
+      await page.screenshot({ path: path.join(sortie, 'depannage-5-remise-2.png'), fullPage: false });
       const jourDeRemise = await page.evaluate(() => new Date().toLocaleDateString('sv-SE'));
       verifier(await boutonDialogue('Devis remis au client'), 'l’artisan confirme « Devis remis au client »');
       await attendre(800);
