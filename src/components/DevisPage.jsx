@@ -106,6 +106,7 @@ import { getSnapshots } from '../lib/snapshotService';
 import useKeepInViewport from '../hooks/useKeepInViewport';
 import { mentionTvaReduiteHtml } from '../lib/mentionTvaReduite';
 import { mentionsDepannageHtml, estDevisDepannage } from '../lib/depannage';
+import { devisRemis, remettreAvantSignature, TEXTES_REMISE } from '../lib/remiseDevis';
 import { remettreFichier, estNatif, ouvrirLienExterne } from '../lib/natif';
 import { captureException } from '../lib/sentry';
 import { imprimerHtml } from '../lib/imprimerHtml';
@@ -790,8 +791,8 @@ export default function DevisPage({ clients, addClient, devis, setDevis, chantie
       signatureDate: signatureData.signatureDate,
       signataire: signatureData.signataire,
       statut: 'accepte',
-      // Devis de dépannage signé sur place depuis le brouillon : remis au client à cet instant
-      ...(selected.date_envoi ? {} : { date_envoi: jourLocal() }),
+      // (Pas de date de remise ici : la signature ne s'ouvre qu'après l'enregistrement de la remise, à sa propre date.
+      // src/lib/remiseDevis.js, décision d'Hugo du 5 nov. 2026)
       ...(signatureData.executionAnticipee ? { execution_anticipee_le: signatureData.signatureDate } : {}),
       // Accord du client pour recevoir son exemplaire par e-mail (L221-9), conservé avec la signature (090)
       ...(signatureData.exemplaireParEmail ? { exemplaire_email_accepte_le: signatureData.signatureDate } : {}),
@@ -1905,28 +1906,36 @@ export default function DevisPage({ clients, addClient, devis, setDevis, chantie
     downloadFn(doc);
   };
 
+  // La seule porte de la fenêtre de signature : un devis dont la remise n'est pas enregistrée (envoyé ou vu) ne se fait
+  // pas signer (C. conso. L221-8 ; src/lib/remiseDevis.js, décision d'Hugo du 5 nov. 2026)
+  const ouvrirSignature = (doc) => {
+    if (!devisRemis(doc)) { showToast(TEXTES_REMISE.nonRemis, 'warning'); return false; }
+    setShowSignaturePad(true);
+    return true;
+  };
+
+  // Dépannage signé sur place depuis le brouillon : hors établissement, le client reçoit d'abord le devis sur papier ou
+  // support durable (C. conso. L221-8). Deux voies : le PDF remis (imprimé ou partagé), puis l'artisan confirme « Devis
+  // remis au client » ; ou « Envoyer » par e-mail, avec l'accord du client. La remise est ENREGISTRÉE (statut « envoyé »,
+  // jour de la remise) avant que la signature s'ouvre ; si la base la refuse, la signature reste fermée.
+  const remettrePuisFaireSigner = (doc) => remettreAvantSignature({
+    doc,
+    confirm,
+    remettre: printPDF,
+    enregistrer: async (maj) => {
+      const avant = { statut: doc.statut, date_envoi: doc.date_envoi };
+      setSelected(s => (s?.id === doc.id ? { ...s, ...maj } : s));
+      const enregistre = await onUpdate(doc.id, maj);
+      if (!enregistre) setSelected(s => (s?.id === doc.id ? { ...s, ...avant } : s));
+      return enregistre;
+    },
+    ouvrirSignature,
+    signaler: (message) => showToast(message, 'error'),
+  });
+
   /**
    * trySend — validates, shows issues if any, or proceeds with send function
    */
-  // Dépannage signé sur place depuis le brouillon : hors établissement, le client reçoit d'abord le devis sur papier ou
-  // support durable (C. conso. L221-8). Le PDF est remis (impression ou partage), puis l'artisan confirme la remise
-  // avant d'ouvrir la signature (relecture du 4 nov. 2026, en attendant l'avis de juriste-btp et la décision d'Hugo).
-  const remettrePuisFaireSigner = async (doc) => {
-    const pret = await confirm({
-      title: 'Remettez d’abord le devis',
-      message: 'Avant de signer, le client doit recevoir le devis sur papier, ou sur un autre support durable (e-mail) s’il est d’accord (article L221-8 du Code de la consommation). Le montrer à l’écran ne suffit pas. Le PDF va s’ouvrir : imprimez-le ou envoyez-le-lui.',
-      confirmText: 'Ouvrir le PDF',
-    });
-    if (!pret) return;
-    await printPDF(doc);
-    const recu = await confirm({
-      title: 'Le client a-t-il reçu le devis ?',
-      message: 'Imprimé, ou envoyé avec son accord : il peut maintenant le signer.',
-      confirmText: 'Faire signer',
-    });
-    if (recu) setShowSignaturePad(true);
-  };
-
   const trySend = (doc, sendFn) => {
     const issues = validateDevisForSend(doc);
     if (issues.length > 0) {
@@ -2973,7 +2982,7 @@ export default function DevisPage({ clients, addClient, devis, setDevis, chantie
               principal = peutModifier && peutModifierDocument(selected, devis) ? { libelle: 'Prolonger la validité', icone: Pen, onClick: () => openEditor(selected) } : null;
               secondaire = actPdf;
             } else if (st === 'envoye' || st === 'vu') {
-              principal = { libelle: 'Faire signer', icone: PenTool, onClick: () => setShowSignaturePad(true) };
+              principal = { libelle: 'Faire signer', icone: PenTool, onClick: () => ouvrirSignature(selected) };
               if (peutEnvoyer) secondaire = { libelle: 'Relancer', icone: Mail, onClick: () => setRelanceDe(selected) };
             } else if (facturationParSituations && ['accepte', 'signe', 'acompte_facture'].includes(st)) {
               principal = selected.chantier_id
