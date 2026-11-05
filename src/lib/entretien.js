@@ -13,7 +13,6 @@
  */
 import { jourLocal, ajouterMois, dateLue } from './dates';
 import { nomImprime } from './identiteEntreprise';
-import { estClientParticulier } from './retractation';
 
 const liste = (paires) => paires.map(([valeur, libelle]) => ({ valeur, libelle }));
 export const libelleDe = (options, valeur) => options.find((o) => o.valeur === valeur)?.libelle || '';
@@ -401,6 +400,12 @@ export const AIDE_PUISSANCE_CHAUDIERE = `Si elle est connue, le rappel peut cite
 /** Aide des « autres machines » d'une PAC (relecture juriste-btp du 4 nov. 2026, point 5) : R. 224-42, 1°, machines thermodynamiques seulement. */
 export const AIDE_SYSTEME_PAC = 'Toutes les machines thermodynamiques (pompes à chaleur, climatisations) qui chauffent ou refroidissent le même bâtiment forment un seul système, dont la puissance est la somme de leurs puissances (article R. 224-42, 1° du code de l’environnement) : une attestation pour le système.';
 
+/**
+ * Paramètres → Entretien, rappel « Client particulier » : devis préalable et sept jours. Texte de juriste-btp (avis du lot 4,
+ * 5 nov. 2026, point 6), mot pour mot ; la dernière phrase est celle qu'il donne pour le « devis en un geste » de D-38.
+ */
+export const AIDE_DEVIS_PREALABLE = 'Client particulier : une visite d’entretien facturée à l’acte demande un devis détaillé avant l’intervention (arrêté du 24 janvier 2017, article 4) et, si le contrat est conclu chez lui, aucun paiement ni aucune contrepartie ne peut être reçu avant sept jours (code de la consommation, article L. 221-10). Exception, qui ne dispense pas du devis : des travaux d’entretien ou de réparation urgents, qu’il a expressément demandés, peuvent être payés sur place et ne donnent pas droit à la rétractation, dans la limite des pièces de rechange et travaux strictement nécessaires pour répondre à l’urgence (articles L. 221-10, 4° et L. 221-28, 8°). Faites ce devis avant la visite, depuis l’attestation ou depuis « Devis ».';
+
 /** Paramètres → Entretien : ce que le rappel dit de l'obligation (texte de la relecture juriste-btp du 4 nov. 2026, point 9). */
 export const AIDE_OBLIGATION_RAPPEL = 'La date conseillée est la vôtre (douze mois après la visite par défaut). Le rappel cite l’obligation d’entretien et son article seulement quand les données de l’appareil la rendent certaine : chaudière de 4 à 400 kW (une fois par année civile), pompe à chaleur ou climatisation de 4 à 70 kW hors contrat de performance énergétique (au moins tous les deux ans), poêle ou insert à bois ou à granulés (au moins tous les douze mois s’il est utilisé).';
 // Recommandée par juriste-btp (aucun texte ne l'exige ; avis § 4.5, question 6) : elle écarte toute impression de mandat
@@ -648,14 +653,6 @@ export function ligneDevisVisite(e, { franchise = false, entreprise = null } = {
     ...(franchise ? {} : { tva: taux }),
   };
 }
-
-/**
- * Texte proposé par juriste-btp (relecture du 4 nov. 2026, « Visite d'entretien chez un particulier ») : la facture tirée
- * d'une attestation, chez un client particulier, rappelle les sept jours (C. conso. L221-10).
- */
-export const AVERTISSEMENT_SEPT_JOURS = 'Entretien convenu chez le client : aucun paiement ne peut être reçu avant sept jours après la conclusion du contrat (article L221-10 du code de la consommation).';
-/** L'avertissement pour ce client, ou '' (professionnel, copropriété : pas de contrat de consommation). */
-export const avertissementSeptJours = (client) => (estClientParticulier(client) ? AVERTISSEMENT_SEPT_JOURS : '');
 
 // ── Historique et rappels ─────────────────────────────────────────────────────────────────────────────────────────
 const parDateDecroissante = (a, b) => String(b.realise_le || '').localeCompare(String(a.realise_le || ''));

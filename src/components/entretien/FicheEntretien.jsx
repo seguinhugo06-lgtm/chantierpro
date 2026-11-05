@@ -5,7 +5,7 @@ import { Bouton, BoutonIcone } from '../ui/Bouton';
 import Champ from '../ui/Champ';
 import Pastille from '../ui/Pastille';
 import { htmlAttestation, remettreAttestation, envoyerAttestation, donneesFacture, donneesDevis } from './actionsEntretien';
-import { avertissementSeptJours } from '../../lib/entretien';
+import { messageApresFacture } from '../../lib/factureDAttestation';
 import { isDemo } from '../../supabaseClient';
 import { captureException } from '../../lib/sentry';
 import { usePermissions } from '../../hooks/usePermissions';
@@ -72,14 +72,10 @@ export default function FicheEntretien({
       const creee = await addDevis(donneesFacture({ entretien, entreprise }));
       if (!creee) return;
       const lie = await suivreEntretien(entretien.id, { facture_id: creee.id });
-      if (lie === false) {
-        showToast?.('La facture est créée, mais son lien avec l’attestation n’a pas été enregistré.', 'error');
-      } else {
-        // Chez un client particulier, un entretien convenu chez lui ne se paie pas avant sept jours (L221-10) : D-38,
-        // décision 2. Une seule notification à la fois : l'erreur de lien, plus grave, garde la place.
-        const sept = avertissementSeptJours(client);
-        if (sept) showToast?.(sept, 'warning', 9000);
-      }
+      // Le lien non enregistré, ou chez un client particulier le rappel des sept jours (L221-10), dits comme sur la
+      // fiche d'une attestation de ramonage (src/lib/factureDAttestation.js ; relecture juriste-btp du 5 nov., point 11)
+      const message = messageApresFacture({ client, lie });
+      if (message) showToast?.(message.texte, message.type, message.duree);
       onOuvrirFacture(creee);
     } finally {
       setAction(null);

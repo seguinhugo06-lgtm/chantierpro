@@ -5,7 +5,9 @@
 // Données fictives seulement.
 const fs = require('fs');
 const path = require('path');
-const { json } = require('../lib/fauxSupabase.cjs');
+const { json, creerBase, UID } = require('../lib/fauxSupabase.cjs');
+const { CGU_VERSION } = require('../lib/cgu.cjs');
+const { SEPT_JOURS, normaliser, noterMessages, messagesNotes } = require('../lib/septJours.cjs');
 
 const AN = new Date().getFullYear();
 const sansInstallation = () => { try { localStorage.setItem('pwa-install-dismissed', String(Date.now())); } catch { /* */ } };
@@ -24,16 +26,6 @@ async function taper(page, selecteur, texte) {
   await page.click(selecteur, { clickCount: 3 });
   await page.type(selecteur, texte);
 }
-// Note chaque message affiché à partir de l'appel, même s'il en remplace un autre (une notification en remplace une autre)
-const noterMessages = (page) => page.evaluate(() => {
-  window.__messages = [];
-  const lire = () => {
-    const t = [...document.querySelectorAll('[role="status"][aria-live="polite"]')].map((e) => (e.innerText || '').trim()).filter(Boolean).join(' | ');
-    if (t && window.__messages[window.__messages.length - 1] !== t) window.__messages.push(t);
-  };
-  new MutationObserver(lire).observe(document.body, { childList: true, subtree: true, characterData: true });
-});
-const messagesNotes = (page) => page.evaluate(() => window.__messages || []);
 async function champParLibelle(page, debut) {
   return page.evaluateHandle((d) => {
     const l = [...document.querySelectorAll('[role="dialog"] label')].find((x) => x.innerText.startsWith(d));
@@ -161,13 +153,18 @@ module.exports = [
       await page.screenshot({ path: path.join(RACINE, 'audit-ui', 'entretien-attestation-375.png') });
 
       // 7. Facture tirée de l'attestation : 10 %, adresse de l'installation, « immeuble achevé depuis plus de deux ans »,
-      // et, chez un client particulier, le rappel des sept jours (L221-10 ; D-38, décision 2)
+      // et, chez un client particulier, le rappel des sept jours (L221-10) : le texte du juriste (avis du 5 nov., point 11),
+      // pendant 10 secondes (la notification ordinaire disparaît après 4,5 s)
       await noterMessages(page);
       await cliquer(page, 'Faire la facture', { dans: '[role="dialog"]' });
       await attendre(1800);
       const messagesFacture = (await messagesNotes(page)).join(' || ');
-      verifier(messagesFacture.includes('Entretien convenu chez le client : aucun paiement ne peut être reçu avant sept jours après la conclusion du contrat (article L221-10 du code de la consommation).'),
-        `la facture tirée de l’attestation d’un client particulier rappelle les sept jours (${messagesFacture.slice(0, 120)})`);
+      verifier(normaliser(messagesFacture).includes(normaliser(SEPT_JOURS)),
+        `la facture tirée de l’attestation d’un client particulier rappelle les sept jours, mot pour mot (${messagesFacture.slice(0, 120)})`);
+      await page.screenshot({ path: path.join(RACINE, 'audit-ui', 'entretien-sept-jours-375.png') });
+      await attendre(6000);
+      verifier(normaliser(await page.evaluate(() => document.body.innerText)).includes('n’en demandez pas le paiement avant cette date.'),
+        'le rappel des sept jours est encore affiché six secondes après : il reste dix secondes');
       const facture = await page.evaluate(() => document.querySelector('main')?.innerText || '');
       verifier(/Facture/.test(facture) && facture.includes(`attestation n° ENT-${AN}-00001`) && facture.includes('immeuble achevé depuis plus de deux ans') && /10\s*%/.test(facture),
         'la facture reprend l’entretien, le numéro d’attestation, la mention du logement et le taux de 10 %');
@@ -261,6 +258,70 @@ module.exports = [
       await attendre(800);
       const t = await page.evaluate(() => document.body.innerText);
       verifier(!t.includes('C’est noté') && t.includes('Lien non reconnu'), 'jeton refusé : « Lien non reconnu », jamais « C’est noté »');
+    },
+  },
+  // Rappel des sept jours après la facture tirée d'une attestation (relecture juriste-btp du 5 nov. 2026, point 11), en
+  // mode réel simulé : la facture part en base, son lien aussi, et le rappel s'affiche pour un client particulier ;
+  // contre-essai : jamais pour un client professionnel (même facture, même lien, aucun rappel)
+  {
+    nom: 'entretien (base) : la facture tirée d’une attestation rappelle les sept jours à un particulier, jamais à un professionnel (contre-essai)',
+    reel: true,
+    async executer({ ouvrir, cliquer, attendre, verifier, sessionFactice }) {
+      const ORG = '0e0e0e0e-0e0e-4e0e-8e0e-0e0e0e0e0e0e';
+      const PARTICULIER = { id: 'c0c0c0c0-0000-4000-8000-000000000201', nom: 'Martin', prenom: 'Rose', telephone: '0600000004', email: 'rose@exemple.fr',
+        adresse: '7 allée Imaginaire, 24000 Exempleville', created_at: '2026-10-01T08:00:00Z' };
+      const PROFESSIONNEL = { id: 'c0c0c0c0-0000-4000-8000-000000000202', nom: 'Durand', prenom: '', entreprise: 'SARL Durand Exemple', categorie: 'Professionnel',
+        telephone: '0600000005', email: 'contact@durand-exemple.fr', adresse: '9 rue Fictive, 24000 Exempleville', created_at: '2026-10-01T08:00:00Z' };
+      const ENTREPRISE = { id: 'e0e0e0e0-0000-4000-8000-000000000201', user_id: UID, organization_id: ORG, nom: 'Chauffage Exemple', forme_juridique: 'Micro-entreprise',
+        siret: '00000000000000', telephone: '0500000000', email: 'contact@exemple.fr', is_active: true, is_default: true,
+        settings_json: { reglages: { entretienActif: true, nomEntrepreneur: 'Jean Exemple' } }, cgu_accepted_at: '2026-01-01T00:00:00Z', cgu_version: CGU_VERSION,
+        created_at: '2026-01-01T00:00:00Z' };
+      const attestation = (id, numero, client) => ({
+        id, user_id: UID, organization_id: ORG, numero, client_id: client.id, appareil_ref: `f0f0f0f0-0000-4000-8000-0000000002${id.slice(-2)}`,
+        categorie: 'poele', realise_le: `${AN}-10-14T09:00:00Z`, intervenant_nom: 'Jean Exemple',
+        emetteur: { nom: 'Chauffage Exemple', formeJuridique: 'Micro-entreprise', nomEntrepreneur: 'Jean Exemple', siret: '00000000000000' },
+        client_nom: [client.prenom, client.nom].filter(Boolean).join(' '), client_adresse: client.adresse, adresse_installation: client.adresse, local: 'Salon',
+        appareils: [{ type: 'poele', energie: 'granules', marque: 'Exemplair', modele: 'Pellet', points: { 'commun.surfaces': true } }],
+        puissance_kw: null, contrat_performance: false, appareils_mesure: null, mesures: {}, rendement: {}, emissions: {},
+        conseils: { choix: ['stockage'], texte: '' }, prochain_avant: `${AN + 1}-10-14`, echeance_legale: `${AN + 1}-10-14`,
+        logement_plus_2_ans: true, eligible_55: false, prix_ht: 95, signature: null, annulee_le: null, annulation_motif: null, rappel_fait_le: null,
+        rappel_canal: null, facture_id: null, jeton_rappel: `${id.slice(0, 30)}bbbbbb`, created_at: `${AN}-10-14T09:00:00Z`,
+      });
+      const base = creerBase({ clients: [PARTICULIER, PROFESSIONNEL], entreprise: [ENTREPRISE], entretiens: [
+        attestation('d0d0d0d0-0000-4000-8000-000000000a01', `ENT-${AN}-00021`, PARTICULIER),
+        attestation('d0d0d0d0-0000-4000-8000-000000000a02', `ENT-${AN}-00022`, PROFESSIONNEL),
+      ] });
+      const factureDe = async (page, nom, numero) => {
+        await page.evaluate((n) => {
+          const b = [...document.querySelectorAll('[data-ui="LigneListe"] > button')].find((x) => x.innerText.includes(n));
+          if (!b) throw new Error(`client « ${n} » introuvable dans la liste`);
+          b.click();
+        }, nom);
+        await attendre(900);
+        await page.evaluate((n) => [...document.querySelectorAll('[data-testid="onglet-entretien"] [data-ui="LigneListe"] > button')].find((b) => b.innerText.includes(n))?.click(), numero);
+        await attendre(800);
+        await noterMessages(page);
+        await cliquer(page, 'Faire la facture', { dans: '[role="dialog"]' });
+        await attendre(2000);
+        return normaliser((await messagesNotes(page)).join(' || '));
+      };
+      const { page } = await ouvrir({ reel: true, largeur: 375, page: 'clients', session: sessionFactice(UID), supabase: base.reponse, avantChargement: sansInstallation });
+      await attendre(1500);
+
+      // Un client particulier : la facture et son lien partent en base, le rappel s'affiche
+      const messagesParticulier = await factureDe(page, 'Martin', `ENT-${AN}-00021`);
+      const factures = () => base.journal.filter((j) => j.m === 'POST' && j.table === 'devis');
+      const liens = () => base.journal.filter((j) => j.m === 'PATCH' && j.table === 'entretiens' && j.corps?.facture_id);
+      verifier(factures().length === 1 && liens().length === 1, 'la facture part en base, puis le lien de l’attestation vers elle');
+      verifier(messagesParticulier.includes(normaliser(SEPT_JOURS)), `un client particulier : le rappel des sept jours est affiché, mot pour mot (${messagesParticulier.slice(0, 100)})`);
+
+      // Contre-essai : un client professionnel, même parcours, aucun rappel
+      await page.evaluate(() => localStorage.setItem('cp_current_page', 'clients'));
+      await page.reload({ waitUntil: 'networkidle0' });
+      await attendre(1500);
+      const messagesPro = await factureDe(page, 'Durand', `ENT-${AN}-00022`);
+      verifier(factures().length === 2 && liens().length === 2, 'la facture du client professionnel part aussi en base, avec son lien');
+      verifier(!/sept jours|L\. 221-10/.test(messagesPro), `un client professionnel : aucun rappel des sept jours (${messagesPro.slice(0, 100)})`);
     },
   },
 ];

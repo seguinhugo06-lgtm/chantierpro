@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { donneesDevis, donneesFacture } from '../../components/entretien/actionsEntretien';
-import { ligneDevisVisite, avertissementSeptJours, AVERTISSEMENT_SEPT_JOURS, nouveauBrouillon } from '../entretien';
+import { ligneDevisVisite, nouveauBrouillon } from '../entretien';
 import { FIELD_MAPPINGS } from '../../hooks/useSupabaseSync';
 
 /**
@@ -117,20 +117,6 @@ describe('ce que la base reçoit (mode réel : le mode démo cache les pannes du
   });
 });
 
-describe('sept jours : la facture tirée d’une attestation chez un client particulier le rappelle (D-38, décision 2)', () => {
-  it('le texte proposé par juriste-btp (relecture du 4 nov. 2026), mot pour mot', () => {
-    expect(AVERTISSEMENT_SEPT_JOURS).toBe('Entretien convenu chez le client : aucun paiement ne peut être reçu avant sept jours après la conclusion du contrat (article L221-10 du code de la consommation).');
-  });
-  it('affiché pour un client particulier, jamais pour un professionnel ni une copropriété', () => {
-    expect(avertissementSeptJours({ categorie: 'Particulier' })).toBe(AVERTISSEMENT_SEPT_JOURS);
-    expect(avertissementSeptJours({ nom: 'Martin' })).toBe(AVERTISSEMENT_SEPT_JOURS);
-    expect(avertissementSeptJours({ categorie: 'Professionnel' })).toBe('');
-    expect(avertissementSeptJours({ categorie: 'Syndic' })).toBe('');
-    expect(avertissementSeptJours({ entreprise: 'SARL X' })).toBe('');
-    expect(avertissementSeptJours(null)).toBe('');
-  });
-});
-
 describe('câblage du bouton (les interactions sont jouées par le parcours entretien)', () => {
   const lire = (relatif) => fs.readFileSync(path.resolve(path.dirname(fileURLToPath(import.meta.url)), relatif), 'utf8');
   it('« Faire le devis de la visite » passe par la création de devis existante, derrière le droit de créer, et l’éditeur s’ouvre dessus', () => {
@@ -141,6 +127,6 @@ describe('câblage du bouton (les interactions sont jouées par le parcours entr
     expect(fiche).toContain('onOuvrirEditeur(');
     // Jamais d'envoi depuis ce bouton, ni de nouveau chemin d'enregistrement
     expect(fiche).not.toMatch(/sendDocumentEmail|supabase\.from\(/);
-    expect(fiche).toContain('avertissementSeptJours(');
+    expect(fiche).toContain('messageApresFacture(');
   });
 });
