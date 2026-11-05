@@ -44,6 +44,8 @@ export default function DevisExpress({ isOpen, onClose, onCreer, clients = [], a
   const [enCours, setEnCours] = useState(false);
   const [nouveauClient, setNouveauClient] = useState(false);
 
+  // En franchise de TVA (art. 293 B du CGI), aucun écran n'écrit « HT » ni « TTC » (D-31)
+  const ht = franchise ? '' : ' HT';
   const client = clients.find((c) => c.id === clientId) || null;
   const tries = useMemo(() => [...clients].sort((a, b) => formatClientName(a, '').localeCompare(formatClientName(b, ''), 'fr')), [clients]);
   const resultat = useMemo(() => lignesDevisExpress({
@@ -159,7 +161,7 @@ export default function DevisExpress({ isOpen, onClose, onCreer, clients = [], a
             {grille.deplacement !== null ? (
               <label className="flex items-center gap-3 cursor-pointer min-h-11">
                 <input type="checkbox" checked={avecDeplacement} onChange={(e) => setAvecDeplacement(e.target.checked)} className={CASE} />
-                <span className="text-sm text-encre">Frais de déplacement ({formatMoney(grille.deplacement)} HT)</span>
+                <span className="text-sm text-encre">Frais de déplacement ({formatMoney(grille.deplacement)}{ht})</span>
               </label>
             ) : null}
             <div className="grid grid-cols-2 gap-3">
@@ -183,7 +185,7 @@ export default function DevisExpress({ isOpen, onClose, onCreer, clients = [], a
               <label key={i} className="flex items-center gap-3 cursor-pointer min-h-11">
                 <input type="checkbox" checked={forfaits.includes(i)} className={CASE}
                   onChange={(e) => setForfaits((p) => (e.target.checked ? [...p, i] : p.filter((x) => x !== i)))} />
-                <span className="text-sm text-encre">{f.libelle} ({formatMoney(f.prix)} HT)</span>
+                <span className="text-sm text-encre">{f.libelle} ({formatMoney(f.prix)}{ht})</span>
               </label>
             ))}
           </section>
@@ -194,7 +196,7 @@ export default function DevisExpress({ isOpen, onClose, onCreer, clients = [], a
               <div key={i} className="grid grid-cols-[1fr_4.5rem_6rem_2.75rem] gap-2 items-end">
                 <Champ className="min-w-0" libelle="Pièce" type="text" value={p.libelle} onChange={majPiece(i, 'libelle')} />
                 <Champ libelle="Qté" type="text" inputMode="decimal" value={p.quantite} onChange={majPiece(i, 'quantite')} />
-                <Champ libelle="€ HT" type="text" inputMode="decimal" value={p.prix} onChange={majPiece(i, 'prix')} />
+                <Champ libelle={`€${ht}`} type="text" inputMode="decimal" value={p.prix} onChange={majPiece(i, 'prix')} />
                 <button type="button" aria-label={`Retirer ${p.libelle || 'la pièce'}`} onClick={() => setPieces((x) => x.filter((_, j) => j !== i))}
                   className="h-12 w-11 flex items-center justify-center rounded-xl text-encre-2 hover:bg-surface-2">
                   <Trash2 size={18} aria-hidden="true" />

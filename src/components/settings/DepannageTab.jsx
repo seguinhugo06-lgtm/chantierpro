@@ -54,7 +54,9 @@ export default function DepannageTab({ entreprise, setEntreprise }) {
   const changer = (cle) => (e) => setChamps((p) => ({ ...p, [cle]: e.target.value }));
   const changerForfait = (i, cle) => (e) => setChamps((p) => ({ ...p, forfaits: p.forfaits.map((f, j) => (j === i ? { ...f, [cle]: e.target.value } : f)) }));
   const g = normaliserGrille(champs);
-  const ttc = (ht) => (ht === null ? '' : franchise ? formatMoney(ht) : TAUX_GRILLE.map((t) => `${formatMoney(ttcDe(ht, t))} TTC à ${t} %`).join(' · '));
+  // En franchise de TVA (art. 293 B du CGI), aucun écran n'écrit « HT » ni « TTC » (D-31)
+  const ht = franchise ? '' : ' HT';
+  const ttc = (prix) => (prix === null ? '' : franchise ? formatMoney(prix) : TAUX_GRILLE.map((t) => `${formatMoney(ttcDe(prix, t))} TTC à ${t} %`).join(' · '));
 
   const imprimer = async () => {
     setErreurImpression('');
@@ -92,15 +94,19 @@ export default function DepannageTab({ entreprise, setEntreprise }) {
         <>
           <Carte>
             <h3 className="text-lg font-semibold text-encre mb-1">Votre grille tarifaire</h3>
-            <p className="text-sm text-encre-2 mb-3">Prix hors taxes, comme sur vos devis. La grille imprimée les donne toutes taxes comprises.</p>
+            <p className="text-sm text-encre-2 mb-3">
+              {franchise
+                ? 'Vos prix, comme sur vos devis. La grille imprimée porte la mention « TVA non applicable, article 293 B du CGI ».'
+                : 'Prix hors taxes, comme sur vos devis. La grille imprimée les donne toutes taxes comprises.'}
+            </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <Champ libelle="Taux horaire (€ HT)" type="text" inputMode="decimal" value={champs.tauxHoraire}
+              <Champ libelle={`Taux horaire (€${ht})`} type="text" inputMode="decimal" value={champs.tauxHoraire}
                 onChange={changer('tauxHoraire')} onBlur={() => enregistrer()} aide={ttc(g.tauxHoraire) || undefined} />
               <Champ as="select" libelle="Décompte du temps" value={champs.decompte}
                 onChange={(e) => { const s = { ...champs, decompte: e.target.value }; setChamps(s); enregistrer(s); }}>
                 {DECOMPTES.map((d) => <option key={d.valeur} value={d.valeur}>{d.libelle}</option>)}
               </Champ>
-              <Champ libelle="Frais de déplacement (€ HT)" facultatif type="text" inputMode="decimal" value={champs.deplacement}
+              <Champ libelle={`Frais de déplacement (€${ht})`} facultatif type="text" inputMode="decimal" value={champs.deplacement}
                 onChange={changer('deplacement')} onBlur={() => enregistrer()} aide={ttc(g.deplacement) || undefined} />
               <Champ libelle="Zone couverte par ce prix" facultatif type="text" value={champs.deplacementZone} placeholder="Bordeaux et 20 km autour"
                 onChange={changer('deplacementZone')} onBlur={() => enregistrer()} />
@@ -121,7 +127,7 @@ export default function DepannageTab({ entreprise, setEntreprise }) {
               {champs.forfaits.map((f, i) => (
                 <div key={i} className="flex items-end gap-2">
                   <Champ className="flex-1 min-w-0" libelle="Intitulé" type="text" value={f.libelle} onChange={changerForfait(i, 'libelle')} onBlur={() => enregistrer()} />
-                  <Champ className="w-28" libelle="€ HT" type="text" inputMode="decimal" value={f.prix} onChange={changerForfait(i, 'prix')} onBlur={() => enregistrer()} />
+                  <Champ className="w-28" libelle={`€${ht}`} type="text" inputMode="decimal" value={f.prix} onChange={changerForfait(i, 'prix')} onBlur={() => enregistrer()} />
                   <button type="button" aria-label={`Retirer le forfait ${f.libelle || i + 1}`}
                     onClick={() => { const s = { ...champs, forfaits: champs.forfaits.filter((_, j) => j !== i) }; setChamps(s); enregistrer(s); }}
                     className="h-12 w-11 flex items-center justify-center rounded-xl text-encre-2 hover:bg-surface-2">
