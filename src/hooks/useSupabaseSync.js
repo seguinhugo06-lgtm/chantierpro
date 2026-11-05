@@ -59,6 +59,21 @@ function sanitizeForJSON(value, _seen) {
 }
 
 /**
+ * Preuve de la remise d'un devis au client, relue de la colonne JSON `payment_metadata` (clé `remise_au_client`) :
+ * { le, mode, canal? }, ou null. Jamais pour une facture ni un avoir : cette colonne y porte les métadonnées du paiement
+ * en ligne, écrites par le serveur. Tolère un JSON rendu sous forme de texte (comme `lignes`).
+ */
+function remiseAuClientLue(row) {
+  if (!row || row.type === 'facture' || row.type === 'avoir') return null;
+  let meta = row.payment_metadata;
+  if (typeof meta === 'string') {
+    try { meta = JSON.parse(meta); } catch { return null; }
+  }
+  const preuve = meta && typeof meta === 'object' ? meta.remise_au_client : null;
+  return preuve && typeof preuve === 'object' && preuve.le ? preuve : null;
+}
+
+/**
  * Map of local field names to Supabase column names
  */
 export const FIELD_MAPPINGS = {
@@ -239,6 +254,11 @@ export const FIELD_MAPPINGS = {
         ...(item.exemplaire_client_le ? { exemplaire_client_le: item.exemplaire_client_le } : {}),
         // Accord du client pour l'exemplaire par e-mail : écrit avec la signature sur place, jamais effacé (090)
         ...(item.exemplaire_email_accepte_le ? { exemplaire_email_accepte_le: item.exemplaire_email_accepte_le } : {}),
+        // Preuve de la remise du devis au client (C. conso. L221-7 ; D-40, avis du 5 nov. 2026) : l'instant, le mode et le
+        // canal, rangés dans la colonne JSON EXISTANTE `payment_metadata` (migration 067), sans migration, sous la clé
+        // `remise_au_client`. Seulement pour un devis et seulement si elle existe : le serveur écrit cette colonne sur les
+        // factures payées en ligne (create-invoice-payment), et une copie périmée du devis n'efface jamais la preuve.
+        ...(item.type === 'devis' && item.remise_au_client ? { payment_metadata: { remise_au_client: item.remise_au_client } } : {}),
         // Facture-specific fields
         facture_type: item.facture_type || null,
         devis_source_id: item.devis_source_id || null,
@@ -312,6 +332,8 @@ export const FIELD_MAPPINGS = {
       retractation_le: row.retractation_le || null,
       exemplaire_client_le: row.exemplaire_client_le || null,
       exemplaire_email_accepte_le: row.exemplaire_email_accepte_le || null,
+      // Preuve de la remise du devis (voir toSupabase) : relue sur un devis seulement
+      remise_au_client: remiseAuClientLue(row),
       retractation_nom: row.retractation_nom || null,
       retractation_email: row.retractation_email || null,
       retractation_accuse_le: row.retractation_accuse_le || null,

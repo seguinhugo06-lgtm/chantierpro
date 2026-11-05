@@ -106,7 +106,7 @@ import { getSnapshots } from '../lib/snapshotService';
 import useKeepInViewport from '../hooks/useKeepInViewport';
 import { mentionTvaReduiteHtml } from '../lib/mentionTvaReduite';
 import { mentionsDepannageHtml, estDevisDepannage } from '../lib/depannage';
-import { devisRemis, remettreAvantSignature, TEXTES_REMISE } from '../lib/remiseDevis';
+import { devisRemis, remettreAvantSignature, preuveEnvoiParEmail, TEXTES_REMISE } from '../lib/remiseDevis';
 import { remettreFichier, estNatif, ouvrirLienExterne } from '../lib/natif';
 import { captureException } from '../lib/sentry';
 import { imprimerHtml } from '../lib/imprimerHtml';
@@ -121,6 +121,7 @@ import { jourLocal, dateLue } from '../lib/dates';
 import { signatureDuClient } from '../lib/signatureDocument';
 import RetractationDevis from './devis/RetractationDevis';
 import ExemplaireSigne from './devis/ExemplaireSigne';
+import RemiseDevisModal from './devis/RemiseDevisModal';
 import ChoixStatut from './devis/ChoixStatut';
 import { choixDeStatut } from '../lib/changementStatut';
 import { messageExemplaire, nomFichierExemplaire } from '../../supabase/functions/notify-signature/exemplaire.ts';
@@ -365,6 +366,8 @@ export default function DevisPage({ clients, addClient, devis, setDevis, chantie
   const [templateCategory, setTemplateCategory] = useState('Mes modèles');
   const [showSendConfirmation, setShowSendConfirmation] = useState(null); // { clientName, montant, canal, doc }
   const [showCreationSuccess, setShowCreationSuccess] = useState(null); // { devis, numero }
+  // 2e fenêtre de « Faire signer » sur un brouillon : { resolve } tant qu'elle attend la réponse de l'artisan
+  const [demandeRemise, setDemandeRemise] = useState(null);
 
   // Si selectedDevis change depuis l'extérieur (ex: depuis Clients), mettre à jour
   useEffect(() => {
@@ -798,6 +801,12 @@ export default function DevisPage({ clients, addClient, devis, setDevis, chantie
       ...(signatureData.exemplaireParEmail ? { exemplaire_email_accepte_le: signatureData.signatureDate } : {}),
     };
     const enregistre = await onUpdate(selected.id, signe);
+    // Écriture refusée (droits, base) : le devis n'est pas signé, et l'écran ne le dit pas (avant : « Devis signé et
+    // accepté » même quand la base refusait). La fenêtre de signature s'est déjà refermée : le client signe à nouveau.
+    if (!enregistre) {
+      setSnackbar({ type: 'error', message: TEXTES_REMISE.signatureNonEnregistree });
+      return;
+    }
     setSelected(s => ({ ...s, ...signe }));
     const particulier = estConcerneParRetractation({ doc: selected, client: clients.find(c => c.id === selected.client_id) });
     // Particulier sans e-mail : l'exemplaire papier est dû tout de suite (L221-9) ; la fiche le rappelle aussi
@@ -805,7 +814,7 @@ export default function DevisPage({ clients, addClient, devis, setDevis, chantie
       ? { type: 'warning', message: 'Devis signé. Remettez maintenant au client son exemplaire daté, imprimé et signé par vous deux (article L221-9 du Code de la consommation).' }
       : { type: 'success', message: 'Devis signé et accepté ✓' });
     // Exemplaire signé par e-mail, avec l'accord du client (L221-9) : envoyé aussitôt (tâche confirmation-client)
-    if (signatureData.exemplaireParEmail && enregistre !== false) await envoyerExemplaireSigne({ ...selected, ...signe }, { accordDonne: true });
+    if (signatureData.exemplaireParEmail) await envoyerExemplaireSigne({ ...selected, ...signe }, { accordDonne: true });
   };
 
   // Payment creation handler
@@ -1916,14 +1925,16 @@ export default function DevisPage({ clients, addClient, devis, setDevis, chantie
 
   // Dépannage signé sur place depuis le brouillon : hors établissement, le client reçoit d'abord le devis sur papier ou
   // support durable (C. conso. L221-8). Deux voies : le PDF remis (imprimé ou partagé), puis l'artisan confirme « Devis
-  // remis au client » ; ou « Envoyer » par e-mail, avec l'accord du client. La remise est ENREGISTRÉE (statut « envoyé »,
-  // jour de la remise) avant que la signature s'ouvre ; si la base la refuse, la signature reste fermée.
+  // remis au client » en disant comment (imprimé, ou envoyé) ; ou « Envoyer » par e-mail, avec l'accord du client. La
+  // remise est ENREGISTRÉE (statut « envoyé », jour de la remise, preuve : instant et mode, L221-7) avant que la
+  // signature s'ouvre ; si la base la refuse, la signature reste fermée.
   const remettrePuisFaireSigner = (doc) => remettreAvantSignature({
     doc,
     confirm,
+    choisirMode: () => new Promise((resolve) => setDemandeRemise({ resolve })),
     remettre: printPDF,
     enregistrer: async (maj) => {
-      const avant = { statut: doc.statut, date_envoi: doc.date_envoi };
+      const avant = { statut: doc.statut, date_envoi: doc.date_envoi, remise_au_client: doc.remise_au_client };
       setSelected(s => (s?.id === doc.id ? { ...s, ...maj } : s));
       const enregistre = await onUpdate(doc.id, maj);
       if (!enregistre) setSelected(s => (s?.id === doc.id ? { ...s, ...avant } : s));
@@ -2071,8 +2082,10 @@ export default function DevisPage({ clients, addClient, devis, setDevis, chantie
     // Mode démo : pas de serveur d'envoi — on simule pour que la boucle complète soit vivable.
     if (isDemo || !supabase) {
       if (doc.statut === 'brouillon') {
-        onUpdate(doc.id, { statut: 'envoye', ...(doc.date_envoi ? {} : { date_envoi: jourLocal() }) }, { silencieux: true });
-        setSelected(s => s?.id === doc.id ? { ...s, statut: 'envoye', date_envoi: s.date_envoi || jourLocal() } : s);
+        // Preuve de la remise d'un devis envoyé par e-mail (mode « envoyé », canal e-mail ; C. conso. L221-7)
+        const preuve = preuveEnvoiParEmail(doc);
+        onUpdate(doc.id, { statut: 'envoye', ...(doc.date_envoi ? {} : { date_envoi: jourLocal() }), ...preuve }, { silencieux: true });
+        setSelected(s => s?.id === doc.id ? { ...s, statut: 'envoye', date_envoi: s.date_envoi || jourLocal(), ...preuve } : s);
       }
       // Relance : un devis relancé, ou une facture échue ; sinon un envoi (comme en mode réel)
       const relanceDemo = (relanceDevis && !isFacture) || (isFacture && estEchue(doc));
@@ -2126,11 +2139,14 @@ export default function DevisPage({ clients, addClient, devis, setDevis, chantie
       // Date d'envoi : la première ; l'attente et les relances se comptent depuis elle (avant : depuis la création)
       let statutEnregistre = true;
       if (doc.statut === 'brouillon' || !doc.date_envoi) {
-        const avant = { statut: doc.statut, date_envoi: doc.date_envoi };
-        setSelected(s => s?.id === doc.id ? { ...s, statut: s.statut === 'brouillon' ? 'envoye' : s.statut, date_envoi: s.date_envoi || jourLocal() } : s);
+        // Preuve de la remise d'un devis envoyé par e-mail (mode « envoyé », canal e-mail ; C. conso. L221-7), écrite avec
+        // le statut : pas de preuve pour une facture, ni quand une première remise est déjà enregistrée
+        const preuve = preuveEnvoiParEmail(doc);
+        const avant = { statut: doc.statut, date_envoi: doc.date_envoi, remise_au_client: doc.remise_au_client };
+        setSelected(s => s?.id === doc.id ? { ...s, statut: s.statut === 'brouillon' ? 'envoye' : s.statut, date_envoi: s.date_envoi || jourLocal(), ...preuve } : s);
         // Attendu : si la base refuse, la fiche ne doit pas rester « Envoyé » (avant : « Devis envoyé ! » puis
         // « Brouillon » au rechargement, et l'artisan le renvoyait — recette du 9 oct. 2026)
-        statutEnregistre = await onUpdate(doc.id, { ...(doc.statut === 'brouillon' ? { statut: 'envoye' } : {}), ...(doc.date_envoi ? {} : { date_envoi: jourLocal() }) }, { silencieux: true });
+        statutEnregistre = await onUpdate(doc.id, { ...(doc.statut === 'brouillon' ? { statut: 'envoye' } : {}), ...(doc.date_envoi ? {} : { date_envoi: jourLocal() }), ...preuve }, { silencieux: true });
         if (!statutEnregistre) setSelected(s => s?.id === doc.id ? { ...s, ...avant } : s);
       }
       const relanceFaite = relance || (relanceDevis && !isFacture);
@@ -2742,6 +2758,14 @@ export default function DevisPage({ clients, addClient, devis, setDevis, chantie
         <Bouton variante="principal" pleineLargeur className="sm:w-auto" onClick={() => setShowSendConfirmation(null)}>OK</Bouton>
       </ModalFooter>
     </Modal>
+
+    {/* « Faire signer » sur un brouillon, 2e fenêtre : le client a-t-il reçu le devis, et comment (preuve, L221-7) */}
+    <RemiseDevisModal
+      ouvert={!!demandeRemise}
+      textes={TEXTES_REMISE.apres}
+      onRepondre={(mode) => { demandeRemise?.resolve(mode); setDemandeRemise(null); }}
+      isDark={isDark}
+    />
     </>
   );
 

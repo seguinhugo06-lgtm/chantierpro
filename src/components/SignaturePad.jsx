@@ -226,7 +226,7 @@ export default function SignaturePad({
                 className="w-full mt-5 py-4 rounded-xl font-medium flex items-center justify-center gap-2 disabled:opacity-50 transition-all hover:shadow-lg bg-accent text-sur-accent"
               >
                 <Pen size={20} />
-                Passer a la signature
+                Passer à la signature
               </button>
             </>
           )}
