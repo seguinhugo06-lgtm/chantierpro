@@ -77,8 +77,9 @@ CREATE TABLE IF NOT EXISTS public.entretiens (
   observations TEXT,
   prochain_avant DATE NOT NULL,
   echeance_legale DATE,
-  -- Facture : taux proposé (suggestion), données déclarées par l'artisan
-  logement_plus_2_ans BOOLEAN NOT NULL DEFAULT true,
+  -- Facture : taux proposé (suggestion), données déclarées par l'artisan. « Logement achevé depuis plus de deux ans » n'est
+  -- jamais vrai par défaut (D-38, Hugo, 5 nov. 2026) : le taux réduit et la mention supposent que l'artisan l'ait coché
+  logement_plus_2_ans BOOLEAN NOT NULL DEFAULT false,
   eligible_55 BOOLEAN NOT NULL DEFAULT false,
   eligible_55_detail TEXT,
   prix_ht NUMERIC(10, 2) CHECK (prix_ht IS NULL OR prix_ht >= 0),

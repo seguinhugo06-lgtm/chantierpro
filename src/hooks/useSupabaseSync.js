@@ -1128,7 +1128,8 @@ export const FIELD_MAPPINGS = {
         observations: item.observations || null,
         prochain_avant: item.prochain_avant,
         echeance_legale: item.echeance_legale || null,
-        logement_plus_2_ans: item.logement_plus_2_ans !== false,
+        // Jamais « vrai » par défaut (D-38, 5 nov. 2026) : seule la case cochée par l'artisan donne le taux réduit
+        logement_plus_2_ans: item.logement_plus_2_ans === true,
         eligible_55: !!item.eligible_55,
         eligible_55_detail: item.eligible_55_detail || null,
         prix_ht: num(item.prix_ht),

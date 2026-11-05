@@ -7,6 +7,7 @@ import {
   tauxPropose, manquants, nouveauBrouillon, groupesPoints, pointsCoches, ligneFacture, rappelsDus, texteSms,
   referenceEmissions, numeroEntretienDemo, appareilsDuClient, entretienPrecedent, nomAppareil, dateEnLettres, AIDE_OBLIGATION_RAPPEL,
 } from '../entretien';
+import { FIELD_MAPPINGS } from '../../hooks/useSupabaseSync';
 
 // L'avis du juriste est la source des formules du rappel : les tests y lisent les phrases, caractères compris
 const AVIS = fs.readFileSync(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../docs/metiers/avis-juriste-2026-11-04-entretien.md'), 'utf8');
@@ -183,7 +184,8 @@ describe('entretien — TVA proposée (avis § 5.5) : une suggestion', () => {
     expect(tauxPropose({ categorie: 'chaudiere', logement_plus_2_ans: true }, { franchise: true })).toBe(0);
   });
   it('la ligne de facture porte l’adresse de l’installation et « immeuble achevé depuis plus de deux ans » au taux réduit', () => {
-    const l = ligneFacture({ ...chaudiere(), numero: 'ENT-2026-00001', prix_ht: 120 });
+    // La case est cochée par l'artisan (D-38) : le brouillon ne la coche plus
+    const l = ligneFacture({ ...chaudiere(), logement_plus_2_ans: true, numero: 'ENT-2026-00001', prix_ht: 120 });
     expect(l.tva).toBe(10);
     expect(l.prixUnitaire).toBe(120);
     expect(l.description).toContain('installation : 3 chemin de l’Exemple');
@@ -193,6 +195,45 @@ describe('entretien — TVA proposée (avis § 5.5) : une suggestion', () => {
     expect(hors.tva).toBe(20);
     expect(hors.description).not.toContain('immeuble achevé');
     expect(ligneFacture(chaudiere(), { franchise: true }).tva).toBeUndefined();
+  });
+});
+
+// D-38 (Hugo, 5 nov. 2026), décision 5 : la case « Logement achevé depuis plus de deux ans » n'est jamais cochée d'avance
+describe('entretien — D-38 : « logement achevé depuis plus de deux ans » est un choix de l’artisan, jamais coché d’avance', () => {
+  const maintenant = new Date('2026-11-04T10:00:00');
+  it('un nouveau brouillon ne la coche pas : 20 % et aucune mention de l’âge du logement', () => {
+    const b = nouveauBrouillon({ client, categorieValeur: 'chaudiere', maintenant });
+    expect(b.logement_plus_2_ans).toBe(false);
+    expect(tauxPropose(b)).toBe(20);
+    const l = ligneFacture({ ...b, prix_ht: 120 });
+    expect(l.tva).toBe(20);
+    expect(l.description).not.toContain('immeuble achevé');
+  });
+  it('contre-essai : cochée par l’artisan, le taux réduit et la mention reviennent', () => {
+    const b = { ...nouveauBrouillon({ client, categorieValeur: 'chaudiere', maintenant }), logement_plus_2_ans: true, prix_ht: 120 };
+    expect(tauxPropose(b)).toBe(10);
+    const l = ligneFacture(b);
+    expect(l.tva).toBe(10);
+    expect(l.description).toContain('immeuble achevé depuis plus de deux ans');
+  });
+  it('sans la case, même un appareil déclaré éligible reste à 20 % (pas de 5,5 % ni de mention)', () => {
+    const b = { ...nouveauBrouillon({ client, categorieValeur: 'chaudiere', maintenant }), eligible_55: true };
+    expect(tauxPropose(b)).toBe(20);
+    expect(ligneFacture(b).description).not.toContain('immeuble achevé');
+  });
+  it('l’an dernier n’est pas repris : l’attestation précédente la cochait, la nouvelle ne l’est pas', () => {
+    const precedent = { ...chaudiere(), id: 'e0', realise_le: '2025-11-02T10:00:00', logement_plus_2_ans: true };
+    const b = nouveauBrouillon({ client, precedent, maintenant });
+    expect(b.logement_plus_2_ans).toBe(false);
+    expect(tauxPropose(b)).toBe(20);
+  });
+  it('la base reçoit « faux » quand la valeur manque (avant : « vrai » par défaut, 10 % sans que l’artisan ait choisi)', () => {
+    const ligne = (o) => FIELD_MAPPINGS.entretiens.toSupabase({ id: 'e1', appareil_ref: 'a1', categorie: 'chaudiere', realise_le: '2026-11-04T10:00:00', prochain_avant: '2027-11-04', ...o });
+    expect(ligne({}).logement_plus_2_ans).toBe(false);
+    expect(ligne({ logement_plus_2_ans: undefined }).logement_plus_2_ans).toBe(false);
+    expect(ligne({ logement_plus_2_ans: false }).logement_plus_2_ans).toBe(false);
+    // Contre-essai : le choix de l'artisan passe
+    expect(ligne({ logement_plus_2_ans: true }).logement_plus_2_ans).toBe(true);
   });
 });
 

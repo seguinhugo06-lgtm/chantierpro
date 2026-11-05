@@ -493,7 +493,9 @@ export function nouveauBrouillon({ client, categorieValeur, precedent = null, en
     conseils: { usage: '', ameliorations: '', remplacement: '', choix: [], texte: '' },
     observations: '',
     prochain_avant: prochainParDefaut(realiseLe),
-    logement_plus_2_ans: precedent ? !!precedent.logement_plus_2_ans : true,
+    // D-38 (Hugo, 5 nov. 2026) : jamais cochée d'avance, pas même reprise de l'an dernier. Le taux réduit et la mention
+    // « immeuble achevé depuis plus de deux ans » sont une déclaration que l'artisan fait à chaque attestation.
+    logement_plus_2_ans: false,
     eligible_55: !!precedent?.eligible_55,
     eligible_55_detail: precedent?.eligible_55_detail || '',
     prix_ht: precedent?.prix_ht ?? tarifPour(entreprise, cat) ?? null,

@@ -92,6 +92,15 @@ module.exports = [
       await taper(page, '#entretien-intervenant_nom', 'Paul Exemple');
       const prix = await champParLibelle(page, 'Prix');
       if (prix && (await prix.evaluate((e) => !!e))) await prix.type('120');
+      // D-38 (Hugo, 5 nov. 2026) : « Logement achevé depuis plus de deux ans » n'est jamais cochée d'avance ; sans elle,
+      // la facture serait proposée à 20 % et sans mention. L'artisan la coche : 10 % et la mention (étape 7)
+      const caseLogement = () => page.evaluate(() => {
+        const l = [...document.querySelectorAll('[role="dialog"] label')].find((x) => x.innerText.startsWith('Logement achevé depuis plus de deux ans'));
+        return l ? l.querySelector('input[type="checkbox"]').checked : null;
+      });
+      verifier((await caseLogement()) === false, 'la case « Logement achevé depuis plus de deux ans » n’est pas cochée d’avance');
+      await page.evaluate(() => [...document.querySelectorAll('[role="dialog"] label')].find((x) => x.innerText.startsWith('Logement achevé depuis plus de deux ans'))?.querySelector('input[type="checkbox"]').click());
+      verifier((await caseLogement()) === true, 'l’artisan coche « Logement achevé depuis plus de deux ans »');
       const zone = await page.$('[role="dialog"] canvas');
       await zone.evaluate((c) => c.scrollIntoView({ block: 'center' }));
       await attendre(200);

@@ -80,6 +80,18 @@ export async function verifier({ db, q, en, commeAnonyme, verifier }) {
   verifier(poeleSansMesure === false && !!chaudiereSansMesure && !!pacSansMesure,
     `113 : appareils de mesure exigés pour la chaudière et la PAC, pas pour le poêle (${poeleSansMesure}/${!!chaudiereSansMesure}/${!!pacSansMesure})`);
 
+  // 4 ter. D-38 (Hugo, 5 nov. 2026) : « logement achevé depuis plus de deux ans » n'est jamais vrai par défaut. Une
+  // attestation écrite sans cette valeur la reçoit fausse ; le choix de l'artisan (vrai) est enregistré tel quel
+  const parDefaut = (await q(`SELECT logement_plus_2_ans AS l FROM entretiens WHERE id = $1`, [a.id])).rows[0].l;
+  const choisi = (await en(SOLO, () => q(
+    `INSERT INTO entretiens (user_id, organization_id, client_id, appareil_ref, categorie, realise_le, intervenant_nom, client_nom, client_adresse,
+       adresse_installation, local, appareils, appareils_mesure, co_ppm, prochain_avant, logement_plus_2_ans)
+     VALUES ($1, $2, $3, $4, 'chaudiere', now(), 'Intervenant 113', 'Client 113', 'A', 'A', 'Cuisine',
+       '[{"marque":"M","modele":"X","energie":"gaz"}]'::jsonb, 'Analyseur Exemple', 3, $5::date, true)
+     RETURNING logement_plus_2_ans AS l`, [SOLO, ORG_SOLO, clientSolo, appareil, `${an + 1}-11-01`]))).rows[0].l;
+  verifier(parDefaut === false && choisi === true,
+    `113 : « logement achevé depuis plus de deux ans » faux par défaut, vrai seulement si l'artisan le choisit (${parDefaut}/${choisi})`);
+
   // 5. Client, facture et attestation remplacée : de la même organisation ; on ne remplace qu'une annulée, une fois
   const clientEtranger = await refus(() => creer({ client: clientPatron }));
   const vivante = await refus(() => creer({ remplace: a.id }));

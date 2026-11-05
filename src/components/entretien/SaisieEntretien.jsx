@@ -405,7 +405,7 @@ export default function SaisieEntretien({ client, precedent = null, remplace = n
                   {/* Franchise en base (art. 293 B du CGI) : la facture sort sans TVA, aucun taux n'est proposé (relecture du 4 nov., 6) */}
                   {!franchise && (
                     <Case libelle="Logement achevé depuis plus de deux ans" checked={form.logement_plus_2_ans} onChange={(v) => maj({ logement_plus_2_ans: v })}
-                      aide="TVA proposée sur la facture : 10 % pour l’entretien dans un logement de plus de deux ans, 20 % sinon. Vous pourrez la changer sur la facture." />
+                      aide="À cocher par vous, à chaque attestation. Cochée : la facture est proposée à 10 % et le dit. Sinon : 20 %, sans cette mention. Vous pourrez changer la TVA sur la facture." />
                   )}
                   {!franchise && form.logement_plus_2_ans && peutEtre55(form) && (
                     <>
