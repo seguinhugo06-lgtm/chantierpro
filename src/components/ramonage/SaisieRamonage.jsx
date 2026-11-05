@@ -12,6 +12,7 @@ import {
 import { buildAttestationRamonageHtml } from '../../lib/attestationRamonageHtml';
 import { useConfirm } from '../../context/AppContext';
 import { estFranchiseTva } from '../../lib/franchiseTva';
+import { AIDE_REFUS_RAPPELS } from '../../lib/suiviRappel';
 
 /** Choix exclusif en boutons (44 px) ; `deselection` : toucher le choix actif le retire (constats facultatifs). */
 export function Choix({ libelle, options, valeur, onChange, deselection = false, erreur, id }) {
@@ -362,7 +363,7 @@ export default function SaisieRamonage({ client, precedent = null, remplace = nu
                   disabled={!!client?.rappels_refuses_le} onChange={(e) => setRefusRappels(e.target.checked)} />
                 <span>
                   <span className="block text-base text-encre">Le client refuse les rappels de son prochain ramonage</span>
-                  <span className="block text-sm text-encre-3">{client?.rappels_refuses_le ? 'Déjà noté sur sa fiche.' : 'Noté sur sa fiche : ni e-mail automatique, ni SMS proposé.'}</span>
+                  <span className="block text-sm text-encre-3">{client?.rappels_refuses_le ? 'Déjà noté sur sa fiche.' : AIDE_REFUS_RAPPELS}</span>
                 </span>
               </label>
             </Section>

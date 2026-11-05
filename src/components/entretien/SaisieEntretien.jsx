@@ -16,6 +16,7 @@ import { useConfirm } from '../../context/AppContext';
 import { usePermissions } from '../../hooks/usePermissions';
 import { dateLue } from '../../lib/dates';
 import { estFranchiseTva } from '../../lib/franchiseTva';
+import { AIDE_REFUS_RAPPELS } from '../../lib/suiviRappel';
 
 const jourFr = (jour) => (jour ? dateLue(String(jour).slice(0, 10)).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : '');
 
@@ -423,7 +424,7 @@ export default function SaisieEntretien({ client, precedent = null, remplace = n
                       onChange={(e) => { const v = e.target.value.replace(',', '.'); maj({ prix_ht: v === '' ? null : v }); }} />
                   )}
                   <Case libelle="Le client refuse les rappels de son prochain entretien" checked={refusRappels} disabled={!!client?.rappels_refuses_le} onChange={setRefusRappels}
-                    aide={client?.rappels_refuses_le ? 'Déjà noté sur sa fiche.' : 'Noté sur sa fiche : ni e-mail automatique, ni SMS proposé, pour aucun rappel.'} />
+                    aide={client?.rappels_refuses_le ? 'Déjà noté sur sa fiche.' : AIDE_REFUS_RAPPELS} />
                 </Section>
 
                 <Section titre="Signature">

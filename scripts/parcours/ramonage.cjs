@@ -478,7 +478,8 @@ module.exports = [
       await page.keyboard.press('Escape');
       await attendre(400);
       const fiche = await page.evaluate(() => document.querySelector('[data-testid="onglet-ramonage"]')?.innerText || '');
-      verifier(/a refusé les rappels de ramonage/.test(fiche), 'la fiche le dit');
+      // D-38 (5 nov. 2026) : un refus vaut pour tous les rappels, la fiche le dit
+      verifier(/a refusé les rappels le .* \(ramonage et entretien\)/.test(fiche), 'la fiche le dit, pour le ramonage et l’entretien');
     },
   },
   {

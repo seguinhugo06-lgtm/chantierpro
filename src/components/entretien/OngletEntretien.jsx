@@ -14,6 +14,7 @@ import { appareilsDuClient, rappelsDus, descriptionAppareil, jourDuRappel, jourD
 import SaisieEntretien from './SaisieEntretien';
 import FicheEntretien from './FicheEntretien';
 import RappelEntretien from './RappelEntretien';
+import { messageNePlusRappeler, noteRefusRappels } from '../../lib/suiviRappel';
 
 const jourFr = (jour, court = false) => (jour
   ? dateLue(String(jour).slice(0, 10)).toLocaleDateString('fr-FR', court ? { day: 'numeric', month: 'short', year: 'numeric' } : { day: 'numeric', month: 'long', year: 'numeric' })
@@ -66,7 +67,7 @@ export default function OngletEntretien({ client, entreprise, setPage, setSelect
   const refuserRappels = async (c) => {
     const ok = await confirm({
       title: 'Ne plus rappeler ce client ?',
-      message: `${`${c.prenom || ''} ${c.nom || ''}`.trim()} ne recevra plus aucun rappel, ni d'entretien ni de ramonage (ni SMS proposé, ni e-mail automatique). Ce refus ne s'annule pas.`,
+      message: messageNePlusRappeler(`${c.prenom || ''} ${c.nom || ''}`.trim()),
       confirmText: 'Ne plus rappeler',
       variant: 'warning',
     });
@@ -83,7 +84,7 @@ export default function OngletEntretien({ client, entreprise, setPage, setSelect
           envoiAutoPrevu={!!entreprise?.entretienEnvoiAuto && String(entreprise?.email || '').includes('@')} />
       ))}
       {client.rappels_refuses_le ? (
-        <p className="text-sm text-encre-2">Ce client a refusé les rappels le {jourFr(jourDe(client.rappels_refuses_le))}.</p>
+        <p className="text-sm text-encre-2">{noteRefusRappels(jourFr(jourDe(client.rappels_refuses_le)))}</p>
       ) : appareils.length > 0 && peutSaisir ? (
         <div className="flex justify-start">
           <Bouton variante="discret" taille="compacte" icone={BellOff} onClick={() => refuserRappels(client)}>Le client refuse les rappels</Bouton>
