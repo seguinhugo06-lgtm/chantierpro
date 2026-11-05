@@ -229,8 +229,9 @@ module.exports = [
         { id: 'q1', type: 'irve', intitule: 'IRVE P1', organisme: 'Qualifelec', numero: 'IRVE-375', fin: '2099-06-30', imprimer: true, motsCles: '' },
         { id: 'q2', type: 'rge', intitule: 'QualiPAC chauffage et eau chaude sanitaire', organisme: 'Qualibat', numero: 'E-375', fin: '2099-12-31', imprimer: true },
         { id: 'q3', type: 'pg_gaz', intitule: 'PG installation', organisme: 'Qualigaz', numero: '', fin: '2099-12-31', imprimer: true },
-        // « Seulement si une ligne contient… » sans mot : rien d'imprimé (relecture du 4 nov.)
-        { id: 'q4', type: 'sap', numero: 'SAP-375', fin: '2019-03-01', imprimer: true, ou: 'si', motsCles: '' },
+        // Services à la personne : jamais imprimée (avis du lot 4, 5 nov. 2026), même enregistrée « sur tous mes documents »
+        // avec son numéro et sa date (une fiche d'avant ce changement)
+        { id: 'q4', type: 'sap', numero: 'SAP-375', fin: '2019-03-01', imprimer: true, ou: 'tous', motsCles: '' },
       ];
       const ligne = { id: 'ent-qualifs', nom: 'Élec Exemple', siret: '123 456 789 00012', adresse: '15 rue des Artisans', code_postal: '75012', ville: 'Paris', tva_defaut: 20, decennale_assureur: 'AXA', decennale_numero: 'DEC-1', forme_juridique: 'SARL', capital: '10000', settings_json: { reglages: { qualifications: quals } } };
       const app = { id: 'ent-qualifs', nom: 'Élec Exemple', siret: '123 456 789 00012', adresse: '15 rue des Artisans', codePostal: '75012', ville: 'Paris', tvaDefaut: 20, decennaleAssureur: 'AXA', decennaleNumero: 'DEC-1', formeJuridique: 'SARL', capital: '10000', qualifications: quals };
@@ -263,7 +264,7 @@ module.exports = [
       verifier(html.includes('IRVE (infrastructures de recharge) : IRVE P1 — Qualifelec — N° IRVE-375 — Valide jusqu'), `IRVE imprimé (${(html.match(/.{0,5}IRVE \(infrastructures.{0,50}/) || ['aucun'])[0]})`);
       verifier(/Entreprise RGE \(Reconnu garant de l(?:'|&#39;)environnement\) — Qualification : QualiPAC chauffage et eau chaude sanitaire — Qualibat — N° E-375/.test(html), 'RGE imprimé (libellé du lot 0)');
       verifier(!html.includes('Professionnel du gaz'), 'PG gaz sans numéro : absent');
-      verifier(!html.includes('SAP-375') && !html.includes('Services à la personne'), 'services à la personne « seulement si » sans mot : absent');
+      verifier(!html.includes('SAP-375') && !html.includes('Services à la personne'), 'services à la personne enregistrée « sur tous mes documents » : absente de l’aperçu');
     },
   },
   {
@@ -352,9 +353,9 @@ module.exports = [
     },
   },
   {
-    // D-41 (5 nov. 2026) : la question est posée dans la bienvenue et dans Paramètres, jamais aux membres invités. Un
-    // administrateur invité ouvre Paramètres, mais n'est pas le gérant de l'entreprise : ni question, ni « Mon métier ».
-    nom: 'métiers : administrateur invité : ni la question à la bienvenue, ni « Mon métier » dans Paramètres ; le propriétaire garde les deux (375 px)',
+    // D-41 (5 nov. 2026) : la question de la bienvenue n'est jamais posée à un membre invité, administrateur compris. Paramètres
+    // › Mon métier, lui, reste ouvert à qui peut modifier la fiche (propriétaire et administrateur), selon les droits existants.
+    nom: 'métiers : administrateur invité : pas de question à la bienvenue, mais « Mon métier » reste dans Paramètres, comme pour le propriétaire (375 px)',
     reel: true,
     async executer({ ouvrir, sessionFactice, attendre, verifier }) {
       const admin = creerBase({ entreprise: [{ ...FICHE }] }, { role: 'admin' });
@@ -371,8 +372,8 @@ module.exports = [
         return p.evaluate(() => document.querySelector('[data-parametres="liste"]')?.innerText || '');
       };
       const listeAdmin = await rubriques(admin);
-      verifier(/Identité/.test(listeAdmin) && /Légal/.test(listeAdmin) && !/Mon métier/.test(listeAdmin),
-        `administrateur invité : Paramètres sans « Mon métier » (${listeAdmin.replace(/\s+/g, ' ').slice(0, 120)})`);
+      verifier(/Identité/.test(listeAdmin) && /Légal/.test(listeAdmin) && /Mon métier/.test(listeAdmin),
+        `administrateur invité : Paramètres avec « Mon métier », selon ses droits (${listeAdmin.replace(/\s+/g, ' ').slice(0, 120)})`);
       const proprio = creerBase({ entreprise: [{ ...FICHE }] });
       const listeProprio = await rubriques(proprio);
       verifier(/Mon métier/.test(listeProprio), `propriétaire : Paramètres avec « Mon métier » (${listeProprio.replace(/\s+/g, ' ').slice(0, 120)})`);
@@ -397,7 +398,9 @@ module.exports = [
     },
   },
   {
-    nom: 'qualifications : services à la personne, ajoutée en « Seulement si une ligne contient… » avec une liste de mots vide, rien d’imprimé sans mot (375 px)',
+    // Avis du juriste du lot 4 (5 nov. 2026, point 9) : la déclaration de services à la personne ne s'imprime plus du tout, pour
+    // l'instant. « Où l'imprimer » est figé sur « Ne pas l'imprimer » (les deux autres choix ne s'offrent pas) et l'écran dit pourquoi.
+    nom: 'qualifications : services à la personne, ajoutée figée sur « Ne pas l’imprimer », sans autre choix, avec la raison à l’écran (375 px)',
     async executer({ ouvrir, attendre, verifier }) {
       // Mode démo : la déclaration est ajoutée par l'écran lui-même (type choisi dans la liste de l'app, puis « Ajouter »)
       const { page } = await ouvrir({ page: 'settings', largeur: 375 });
@@ -421,8 +424,14 @@ module.exports = [
       const etat = () => page.evaluate(() => {
         const q = [...document.querySelectorAll('[data-testid="qualification"]')].pop();
         if (!q) return null;
-        const radios = [...q.querySelectorAll('input[type=radio]')].map((r) => ({ texte: r.closest('label')?.innerText.trim(), coche: r.checked }));
-        return { radios, mots: !!q.querySelector('input[id$="-mots"]'), raison: q.querySelector('[data-testid="qualification-raison"]')?.innerText || '', apercu: !!q.querySelector('[data-testid="qualification-apercu"]') };
+        return {
+          radios: q.querySelectorAll('input[type=radio]').length,
+          figee: q.querySelector('[data-testid="qualification-ou-figee"]')?.innerText.trim() || '',
+          mots: !!q.querySelector('input[id$="-mots"]'),
+          raison: q.querySelector('[data-testid="qualification-raison"]')?.innerText.trim() || '',
+          apercu: !!q.querySelector('[data-testid="qualification-apercu"]'),
+          texte: q.innerText,
+        };
       });
       const enregistre = () => page.evaluate(() => {
         try {
@@ -431,34 +440,20 @@ module.exports = [
           return l.length ? { ou: l[l.length - 1].ou, imprimer: l[l.length - 1].imprimer, motsCles: l[l.length - 1].motsCles } : null;
         } catch { return null; }
       });
-      const choisir = (texte) => page.evaluate((t) => {
-        const q = [...document.querySelectorAll('[data-testid="qualification"]')].pop();
-        const l = [...(q?.querySelectorAll('label') || [])].find((x) => x.innerText.trim() === t);
-        l?.querySelector('input')?.click();
-        return !!l;
-      }, texte);
-      // Décision d'Hugo du 5 nov. 2026 (D-41) : par défaut « Seulement si une ligne contient… », liste de mots vide.
-      // Avant : « Ne pas l'imprimer » ; un clic sur « Seulement si » enregistrait des mots vides et l'écran repassait sur « tous ».
+      const RAISON = 'Cette déclaration ne s’imprime pas : une facture de services à la personne demande d’autres mentions (prix TTC, temps passé, intervenant) et une attestation fiscale chaque année, que Mallettico ne fait pas encore.';
       const e0 = await etat();
-      const coche0 = e0?.radios.find((r) => r.coche)?.texte;
-      verifier(coche0 === 'Seulement si une ligne contient…', `ajoutée en « Seulement si une ligne contient… » (coché : ${coche0})`);
-      verifier(e0?.mots, 'le champ des mots est montré dès l’ajout');
-      verifier(/mots cherchés/.test(e0?.raison || '') && !e0?.apercu, `rien n’est imprimé tant que la liste est vide (${e0?.raison})`);
+      verifier(e0?.figee === 'Ne pas l’imprimer', `« Où l’imprimer » figé sur « Ne pas l’imprimer » (${e0?.figee})`);
+      verifier(e0?.radios === 0 && !e0?.mots, `aucun autre choix ne s’offre : ni radio, ni mots cherchés (${e0?.radios} radios)`);
+      verifier(!/Sur tous mes documents|Seulement si une ligne contient/.test(e0?.texte || ''), 'ni « Sur tous mes documents » ni « Seulement si une ligne contient… »');
+      verifier(e0?.raison === RAISON && !e0?.apercu, `l’écran dit pourquoi, mot pour mot, et n’annonce aucun « Imprimé ainsi » (${e0?.raison})`);
       const e1 = await enregistre();
-      verifier(e1?.ou === 'si' && e1?.imprimer === true && !e1?.motsCles, `enregistrée en « si », mots vides (${JSON.stringify(e1)})`);
-      // Le choix est gardé à part des mots : « tous » puis de nouveau « seulement si » ne repasse pas sur « tous »
-      verifier(await choisir('Sur tous mes documents'), 'choix « Sur tous mes documents »');
-      await attendre(700);
-      verifier((await etat())?.radios.find((r) => r.coche)?.texte === 'Sur tous mes documents', 'choix « tous » pris');
-      verifier(await choisir('Seulement si une ligne contient…'), 'retour à « Seulement si une ligne contient… »');
-      await attendre(900);
-      const e = await etat();
-      const coche = e?.radios.find((r) => r.coche)?.texte;
-      verifier(coche === 'Seulement si une ligne contient…', `le choix reste « Seulement si… » sans mot (coché : ${coche})`);
-      verifier(e?.mots, 'le champ des mots est montré dès ce choix');
-      verifier(/mots cherchés/.test(e?.raison || '') && !e?.apercu, `toujours rien d’imprimé sans mot (${e?.raison})`);
-      const e2 = await enregistre();
-      verifier(e2?.ou === 'si', `choix enregistré à part des mots (ou = ${e2?.ou})`);
+      verifier(e1?.ou === 'non' && e1?.imprimer === false, `enregistrée « ne pas l’imprimer » (${JSON.stringify(e1)})`);
+      // Numéro et date saisis : toujours rien d'imprimé, la raison ne change pas
+      await page.evaluate(() => { const q = [...document.querySelectorAll('[data-testid="qualification"]')].pop(); q?.querySelector('input[id$="-numero"]')?.focus(); });
+      await page.keyboard.type('SAP123456789', { delay: 20 });
+      await attendre(1200);
+      const e2 = await etat();
+      verifier(e2?.raison === RAISON && !e2?.apercu && e2?.radios === 0, `numéro saisi : toujours figée, même raison (${e2?.raison})`);
       await page.screenshot({ path: 'audit-ui/sonde-qualif-sap-375.png', fullPage: true });
     },
   },
