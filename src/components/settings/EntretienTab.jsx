@@ -3,7 +3,7 @@ import { Wrench, BellRing, AlertTriangle } from 'lucide-react';
 import Carte from '../ui/Carte';
 import Champ from '../ui/Champ';
 import { Interrupteur } from './RamonageTab';
-import { CATEGORIES, DELAI_RAPPEL_DEFAUT } from '../../lib/entretien';
+import { CATEGORIES, DELAI_RAPPEL_DEFAUT, AIDE_OBLIGATION_RAPPEL } from '../../lib/entretien';
 
 /**
  * Paramètres → Entretien (D-33, migration 113). Activé, le module ajoute l'onglet « Entretien » aux fiches clients
@@ -82,12 +82,8 @@ export default function EntretienTab({ entreprise, setEntreprise }) {
                   Ajoutez votre e-mail dans Paramètres → Mon entreprise : vos clients doivent pouvoir vous répondre. Sans lui, aucun rappel automatique ne part.
                 </p>
               )}
-              {/* D-33 : l'obligation ne s'écrit que dans le rappel d'une chaudière. Texte du juriste (4 nov. 2026, point 9) à
-                  reprendre si Hugo l'étend à la PAC et au poêle : « … seulement quand les données de l'appareil la rendent
-                  certaine : chaudière de 4 à 400 kW (une fois par année civile), pompe à chaleur ou climatisation de 4 à 70 kW
-                  hors contrat de performance énergétique (au moins tous les deux ans), poêle ou insert à bois ou à granulés
-                  (au moins tous les douze mois s'il est utilisé). » */}
-              <p className="text-sm text-encre-3">La date conseillée est la vôtre (douze mois après la visite par défaut). Le rappel cite l’obligation d’entretien et son article seulement pour une chaudière dont les données la rendent certaine : de 4 à 400 kW, une fois par année civile.</p>
+              {/* Texte de la relecture juriste-btp du 4 nov. 2026 (point 9), rétabli par D-38 : les trois appareils */}
+              <p className="text-sm text-encre-3">{AIDE_OBLIGATION_RAPPEL}</p>
             </div>
           </Carte>
 

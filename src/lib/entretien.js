@@ -353,17 +353,43 @@ export function nomAppareil(e) {
 
 const dateFr = (jour) => (jour ? dateLue(String(jour).slice(0, 10)).toLocaleDateString('fr-FR') : '');
 
-/** La phrase d'obligation des rappels (avis § 4.5, mot pour mot), ou '' si ses conditions ne sont pas connues. */
-// D-33 n'autorise l'obligation et sa source que dans le rappel d'une chaudière. Les formules du juriste pour la PAC
-// (R. 224-44-3) et le poêle (R. 1331-68) attendent la décision d'Hugo (relecture du 4 nov. 2026, point 3) :
-//   PAC : « Pour rappel, l’entretien d’une pompe à chaleur ou d’une climatisation de 4 à 70 kW doit être fait au moins
-//          tous les deux ans (article R. 224-44-3 du code de l’environnement) : le prochain doit avoir lieu au plus tard le … »
-//   poêle : « Pour rappel, l’entretien d’un poêle ou d’un insert à bois ou à granulés doit être fait au moins tous les
-//          douze mois lorsqu’il est utilisé (article R. 1331-68 du code de la santé publique). »
-export function phraseObligation(e) {
-  if (e?.categorie !== 'chaudiere' || !obligationConnue(e)) return '';
-  return `Pour rappel, l’entretien d’une chaudière doit être fait une fois par année civile (article R. 224-41-7 du code de l’environnement) : le prochain doit avoir lieu au plus tard le 31 décembre ${Number(jourDe(e.realise_le).slice(0, 4)) + 1}.`;
+const MOIS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+/**
+ * « 4 novembre 2028 », « 1er mars 2028 » depuis « AAAA-MM-JJ ». Calculé sur la chaîne, sans `Date` : ni l'horloge ni le
+ * fuseau de l'appareil n'y changent rien. Même texte côté serveur (supabase/functions/send-scheduled-relances/entretien.ts).
+ */
+export function dateEnLettres(jour) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(jour || ''));
+  if (!m) return '';
+  const j = Number(m[3]);
+  const mois = MOIS[Number(m[2]) - 1];
+  if (!mois || j < 1 || j > 31) return '';
+  return `${j === 1 ? '1er' : j} ${mois} ${m[1]}`;
 }
+
+/**
+ * La phrase d'obligation des rappels (avis juriste-btp du 4 nov. 2026, § 4.5, mot pour mot), ou '' si ses conditions ne
+ * sont pas connues (`obligationConnue`). Décision D-38 (Hugo, 5 nov. 2026) : pour la chaudière, la PAC ou climatisation
+ * et le poêle ou insert (en v3, la chaudière seule, dans l'attente de cette décision). Jamais la date conseillée
+ * présentée comme une échéance légale : la chaudière donne le 31 décembre de l'année suivante, la PAC la visite + 2 ans.
+ * La chaudière garde ses apostrophes typographiques ; la PAC et le poêle, les caractères du fichier de l'avis.
+ */
+export function phraseObligation(e) {
+  if (!obligationConnue(e)) return '';
+  if (e.categorie === 'chaudiere') {
+    return `Pour rappel, l’entretien d’une chaudière doit être fait une fois par année civile (article R. 224-41-7 du code de l’environnement) : le prochain doit avoir lieu au plus tard le 31 décembre ${Number(jourDe(e.realise_le).slice(0, 4)) + 1}.`;
+  }
+  if (e.categorie === 'pac') {
+    return `Pour rappel, l'entretien d'une pompe à chaleur ou d'une climatisation de 4 à 70 kW doit être fait au moins tous les deux ans (article R. 224-44-3 du code de l'environnement) : le prochain doit avoir lieu au plus tard le ${dateEnLettres(echeanceLegale('pac', e.realise_le))}.`;
+  }
+  if (e.categorie === 'poele') {
+    return "Pour rappel, l'entretien d'un poêle ou d'un insert à bois ou à granulés doit être fait au moins tous les douze mois lorsqu'il est utilisé (article R. 1331-68 du code de la santé publique).";
+  }
+  return '';
+}
+
+/** Paramètres → Entretien : ce que le rappel dit de l'obligation (texte de la relecture juriste-btp du 4 nov. 2026, point 9). */
+export const AIDE_OBLIGATION_RAPPEL = 'La date conseillée est la vôtre (douze mois après la visite par défaut). Le rappel cite l’obligation d’entretien et son article seulement quand les données de l’appareil la rendent certaine : chaudière de 4 à 400 kW (une fois par année civile), pompe à chaleur ou climatisation de 4 à 70 kW hors contrat de performance énergétique (au moins tous les deux ans), poêle ou insert à bois ou à granulés (au moins tous les douze mois s’il est utilisé).';
 // Recommandée par juriste-btp (aucun texte ne l'exige ; avis § 4.5, question 6) : elle écarte toute impression de mandat
 export const PHRASE_LIBRE_CHOIX = 'Vous restez libre de confier cet entretien au professionnel qualifié de votre choix.';
 

@@ -1,8 +1,19 @@
 import { describe, it, expect } from 'vitest';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   rappelsAEnvoyerEntretien, emailRappelEntretien, phraseObligationServeur, obligationConnueServeur, fichesQuiEnvoient, ficheValable, fichesSansEmail, dansPortee,
 } from '../../../supabase/functions/send-scheduled-relances/entretien.ts';
 import { phraseObligation, obligationConnue } from '../entretien';
+
+// Les formules du rappel viennent de l'avis du juriste (§ 4.5) : le test les y lit, caractères compris
+const AVIS = fs.readFileSync(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../docs/metiers/avis-juriste-2026-11-04-entretien.md'), 'utf8');
+const formuleDeLAvis = (debut) => {
+  const m = AVIS.match(new RegExp(`^\\*\\*${debut}[^\\n]*?\\*\\* : \`([^\`]+)\``, 'm'));
+  if (!m) throw new Error(`Formule « ${debut} » introuvable dans l'avis du juriste`);
+  return m[1];
+};
 
 // Données fictives seulement
 const client = { id: 'c1', nom: 'Exemple', prenom: 'Lucie', email: 'lucie@exemple.fr' };
@@ -29,7 +40,9 @@ describe('rappels d’entretien côté serveur', () => {
   it('même règle d’obligation et même phrase que l’app', () => {
     const cas = [e(), e({ puissance_kw: null }), e({ puissance_kw: 500 }), e({ categorie: 'pac', puissance_kw: 8 }),
       e({ categorie: 'pac', puissance_kw: 8, contrat_performance: true }), e({ categorie: 'pac', puissance_kw: 3 }), e({ categorie: 'poele', puissance_kw: null }),
-      e({ categorie: 'poele', appareils: [{ energie: 'autre_biomasse' }] }), e({ categorie: 'poele', appareils: [{ energie: 'granules', hydraulique: true }] })];
+      e({ categorie: 'poele', appareils: [{ energie: 'autre_biomasse' }] }), e({ categorie: 'poele', appareils: [{ energie: 'granules', hydraulique: true }] }),
+      e({ categorie: 'poele', appareils: [{ energie: 'granules' }] }), e({ categorie: 'pac', puissance_kw: 8, realise_le: '2026-03-01T09:00:00Z' }),
+      e({ categorie: 'pac', puissance_kw: '70', realise_le: '2028-02-29T09:00:00Z' }), e({ categorie: 'pac', puissance_kw: 4, realise_le: '2026-12-31T09:00:00Z' })];
     for (const x of cas) {
       const app = { ...x, puissance_kw: x.puissance_kw ?? '' };
       expect(obligationConnueServeur(x)).toBe(obligationConnue(app));
@@ -51,12 +64,50 @@ describe('rappels d’entretien côté serveur', () => {
     expect(sans).not.toContain('R. 224-41-7');
     expect(sans).not.toContain('Vous restez libre');
   });
-  it('D-33 : ni article ni phrase de libre choix dans l’e-mail d’une PAC ou d’un poêle (en attente de la décision d’Hugo)', () => {
-    for (const x of [e({ categorie: 'pac', puissance_kw: 8 }), e({ categorie: 'poele', appareils: [{ energie: 'granules' }] })]) {
+  it('D-38 : la PAC de 4 à 70 kW connue reçoit la formule de l’avis (visite + 2 ans) et la phrase de libre choix', () => {
+    const attendue = formuleDeLAvis('PAC / climatisation').replace('{date de la visite + 2 ans}', '4 novembre 2028');
+    const x = e({ categorie: 'pac', puissance_kw: 8, appareils: [{ marque: 'Exemplair', modele: 'Aéro', type: 'air_eau' }] });
+    expect(phraseObligationServeur(x)).toBe(attendue);
+    const { objet, texte, html } = emailRappelEntretien({ entreprise, client, entretien: x, lien: 'https://mallettico.fr/rappel-entretien/j1' });
+    expect(texte).toContain(attendue);
+    expect(texte).toContain('Vous restez libre de confier cet entretien');
+    expect(html).toContain('R. 224-44-3');
+    expect(html).toContain('Vous restez libre de confier cet entretien');
+    // Jamais dans l'objet, jamais « obligatoire », jamais la date conseillée présentée comme une échéance légale
+    expect(objet).not.toMatch(/obligatoire|R\. 224/i);
+    expect(texte).not.toMatch(/obligatoire/i);
+    expect(html).not.toMatch(/obligatoire/i);
+    expect(texte).toContain('est à prévoir avant le 04/11/2027');
+    expect(texte).not.toContain('au plus tard le 4 novembre 2027');
+  });
+  it('D-38 : le poêle ou l’insert reçoit la formule de l’avis et la phrase de libre choix', () => {
+    const x = e({ categorie: 'poele', puissance_kw: null, appareils: [{ energie: 'granules', type: 'poele' }] });
+    const attendue = formuleDeLAvis('Poêle, insert');
+    expect(phraseObligationServeur(x)).toBe(attendue);
+    const { objet, texte, html } = emailRappelEntretien({ entreprise, client, entretien: x, lien: 'x' });
+    expect(texte).toContain(attendue);
+    expect(texte).toContain('Vous restez libre de confier cet entretien');
+    expect(html).toContain('R. 1331-68');
+    expect(objet).not.toMatch(/obligatoire|R\. 1331/i);
+    expect(html).not.toMatch(/obligatoire/i);
+  });
+  it('D-38, contre-essai : PAC de puissance inconnue ou de 3 kW, système sous contrat de performance, poêle « autre biomasse » ou hydraulique : ni article ni libre choix', () => {
+    const sans = [
+      e({ categorie: 'pac', puissance_kw: null }), e({ categorie: 'pac', puissance_kw: 3 }), e({ categorie: 'pac', puissance_kw: 80 }),
+      e({ categorie: 'pac', puissance_kw: 8, contrat_performance: true }),
+      e({ categorie: 'poele', appareils: [{ energie: 'autre_biomasse' }] }), e({ categorie: 'poele', appareils: [{ energie: 'granules', hydraulique: true }] }),
+    ];
+    for (const x of sans) {
+      expect(phraseObligationServeur(x)).toBe('');
       const { texte, html } = emailRappelEntretien({ entreprise, client, entretien: x, lien: 'x' });
       expect(texte).not.toMatch(/R\. 224-44-3|R\. 1331-68|Pour rappel/);
+      expect(texte).not.toContain('Vous restez libre');
       expect(html).not.toMatch(/R\. 224-44-3|R\. 1331-68|Pour rappel/);
     }
+  });
+  it('la visite est lue à l’heure de Paris : une visite à 23 h 30 le 31 décembre (UTC) tombe le 1er janvier à Paris', () => {
+    const x = e({ categorie: 'pac', puissance_kw: 8, realise_le: '2026-12-31T23:30:00Z' });
+    expect(phraseObligationServeur(x)).toContain('au plus tard le 1er janvier 2029');
   });
   it('échappe le texte saisi dans le HTML', () => {
     const { html } = emailRappelEntretien({ entreprise, client: { ...client, prenom: '<b>x</b>' }, entretien: e({ local: '<img>' }), lien: 'x' });

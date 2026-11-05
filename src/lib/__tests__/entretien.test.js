@@ -1,9 +1,20 @@
 import { describe, it, expect } from 'vitest';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   echeanceLegale, prochainParDefaut, apresEcheance, limiteRemise, niveauCO, PHRASES_CO, obligationConnue, phraseObligation,
   tauxPropose, manquants, nouveauBrouillon, groupesPoints, pointsCoches, ligneFacture, rappelsDus, texteSms,
-  referenceEmissions, numeroEntretienDemo, appareilsDuClient, entretienPrecedent, nomAppareil,
+  referenceEmissions, numeroEntretienDemo, appareilsDuClient, entretienPrecedent, nomAppareil, dateEnLettres, AIDE_OBLIGATION_RAPPEL,
 } from '../entretien';
+
+// L'avis du juriste est la source des formules du rappel : les tests y lisent les phrases, caractères compris
+const AVIS = fs.readFileSync(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../docs/metiers/avis-juriste-2026-11-04-entretien.md'), 'utf8');
+const formuleDeLAvis = (debut) => {
+  const m = AVIS.match(new RegExp(`^\\*\\*${debut}[^\\n]*?\\*\\* : \`([^\`]+)\``, 'm'));
+  if (!m) throw new Error(`Formule « ${debut} » introuvable dans l'avis du juriste`);
+  return m[1];
+};
 
 // Données fictives seulement
 const client = { id: 'c1', nom: 'Exemple', prenom: 'Lucie', adresse: '3 chemin de l’Exemple, 24000 Imaginaire', telephone: '06 00 00 00 01', email: 'lucie@exemple.fr' };
@@ -88,11 +99,6 @@ describe('entretien — obligation énoncée seulement si ses conditions sont co
     expect(p).not.toContain('04/11/2027');
     expect(phraseObligation({ categorie: 'chaudiere', puissance_kw: '', realise_le: '2026-11-04T10:00:00' })).toBe('');
   });
-  it('D-33 : la phrase d’obligation ne sort que pour une chaudière (PAC et poêle en attente de la décision d’Hugo)', () => {
-    expect(obligationConnue({ categorie: 'pac', puissance_kw: 8 })).toBe(true);
-    expect(phraseObligation({ categorie: 'pac', puissance_kw: 8, realise_le: '2026-11-04T10:00:00' })).toBe('');
-    expect(phraseObligation({ categorie: 'poele', appareils: [{ energie: 'granules' }], realise_le: '2026-11-04T10:00:00' })).toBe('');
-  });
   it('le SMS d’une chaudière ne cite l’article que si la puissance est connue', () => {
     const e = { categorie: 'chaudiere', puissance_kw: 24, realise_le: '2026-11-04T10:00:00', prochain_avant: '2027-11-04' };
     const ent = { nom: 'Chauffage Exemple', formeJuridique: 'EI', tel: '05 00 00 00 00' };
@@ -100,6 +106,66 @@ describe('entretien — obligation énoncée seulement si ses conditions sont co
     expect(texteSms({ entreprise: ent, entretien: { ...e, puissance_kw: '' }, aujourdhui: '2027-10-10' })).not.toContain('R. 224-41-7');
     expect(texteSms({ entreprise: ent, entretien: e, aujourdhui: '2027-10-10' })).toContain('répondez STOP');
     expect(texteSms({ entreprise: ent, entretien: e, aujourdhui: '2027-10-10' })).not.toMatch(/obligatoire/i);
+  });
+});
+
+// D-38 (Hugo, 5 nov. 2026), décision 1 : l'obligation et son article dans le rappel de la PAC et du poêle aussi
+describe('entretien — D-38 : l’obligation dans le rappel d’une PAC ou d’un poêle, formules du § 4.5 de l’avis (mot pour mot)', () => {
+  const visite = '2026-11-04T10:00:00';
+  const pac = (o = {}) => ({ categorie: 'pac', puissance_kw: 8, realise_le: visite, prochain_avant: '2027-11-04', ...o });
+  const poele = (o = {}) => ({ categorie: 'poele', appareils: [{ energie: 'granules' }], realise_le: visite, prochain_avant: '2027-11-04', ...o });
+
+  it('PAC ou climatisation de 4 à 70 kW connue : la formule de l’avis, avec la visite + 2 ans', () => {
+    const attendue = formuleDeLAvis('PAC / climatisation').replace('{date de la visite + 2 ans}', '4 novembre 2028');
+    expect(phraseObligation(pac())).toBe(attendue);
+    expect(phraseObligation(pac())).toContain('article R. 224-44-3 du code de l\'environnement');
+    expect(phraseObligation(pac({ puissance_kw: 4 }))).toBe(attendue);
+    expect(phraseObligation(pac({ puissance_kw: '70' }))).toBe(attendue);
+  });
+  it('PAC : aucune phrase si la puissance est inconnue, de 3 kW, de plus de 70 kW, ou si un contrat de performance couvre le système', () => {
+    expect(phraseObligation(pac({ puissance_kw: '' }))).toBe('');
+    expect(phraseObligation(pac({ puissance_kw: null }))).toBe('');
+    expect(phraseObligation(pac({ puissance_kw: 3 }))).toBe('');
+    expect(phraseObligation(pac({ puissance_kw: 80 }))).toBe('');
+    expect(phraseObligation(pac({ contrat_performance: true }))).toBe('');
+  });
+  it('poêle ou insert : la formule de l’avis, sans date (« lorsqu’il est utilisé »)', () => {
+    expect(phraseObligation(poele())).toBe(formuleDeLAvis('Poêle, insert'));
+    expect(phraseObligation(poele())).toContain('article R. 1331-68 du code de la santé publique');
+    // Pas de puissance à connaître pour un poêle
+    expect(phraseObligation(poele({ puissance_kw: '' }))).toBe(formuleDeLAvis('Poêle, insert'));
+  });
+  it('poêle : aucune phrase pour « autre biomasse » ou un appareil raccordé à un circuit hydraulique (statut non tranché)', () => {
+    expect(phraseObligation(poele({ appareils: [{ energie: 'autre_biomasse' }] }))).toBe('');
+    expect(phraseObligation(poele({ appareils: [{ energie: 'granules', hydraulique: true }] }))).toBe('');
+  });
+  it('jamais la date conseillée présentée comme une échéance légale : la PAC donne visite + 2 ans, même si la date conseillée est à 12 mois', () => {
+    const p = phraseObligation(pac({ prochain_avant: '2027-11-04' }));
+    expect(p).toContain('au plus tard le 4 novembre 2028');
+    expect(p).not.toContain('2027');
+    expect(p).not.toContain('04/11');
+    // Visite du 29 février : deux ans plus tard n'existe pas, le 28 février (même règle que l'échéance légale)
+    expect(phraseObligation(pac({ realise_le: '2028-02-29T10:00:00' }))).toContain('au plus tard le 28 février 2030');
+    expect(phraseObligation(pac({ realise_le: '2026-02-27T10:00:00' }))).toContain('au plus tard le 27 février 2028');
+  });
+  it('la chaudière ne change pas', () => {
+    const c = { categorie: 'chaudiere', puissance_kw: 24, realise_le: visite };
+    expect(phraseObligation(c)).toBe('Pour rappel, l’entretien d’une chaudière doit être fait une fois par année civile (article R. 224-41-7 du code de l’environnement) : le prochain doit avoir lieu au plus tard le 31 décembre 2027.');
+    expect(phraseObligation({ ...c, puissance_kw: '' })).toBe('');
+  });
+  it('la phrase écrite dans l’avis lui-même : chaque formule du § 4.5 se retrouve dans le texte du juriste', () => {
+    expect(formuleDeLAvis('PAC / climatisation')).toMatch(/^Pour rappel, l'entretien d'une pompe à chaleur ou d'une climatisation de 4 à 70 kW doit être fait au moins tous les deux ans/);
+    expect(formuleDeLAvis('Poêle, insert')).toMatch(/^Pour rappel, l'entretien d'un poêle ou d'un insert à bois ou à granulés doit être fait au moins tous les douze mois lorsqu'il est utilisé/);
+  });
+  it('dateEnLettres : « 1er » le premier du mois, jamais de fuseau', () => {
+    expect(dateEnLettres('2028-03-01')).toBe('1er mars 2028');
+    expect(dateEnLettres('2028-11-04')).toBe('4 novembre 2028');
+    expect(dateEnLettres('2030-02-28')).toBe('28 février 2030');
+    expect(dateEnLettres('')).toBe('');
+    expect(dateEnLettres('pas une date')).toBe('');
+  });
+  it('Paramètres › Entretien dit les trois obligations (texte corrigé par la relecture du 4 nov., point 9)', () => {
+    expect(AIDE_OBLIGATION_RAPPEL).toBe('La date conseillée est la vôtre (douze mois après la visite par défaut). Le rappel cite l’obligation d’entretien et son article seulement quand les données de l’appareil la rendent certaine : chaudière de 4 à 400 kW (une fois par année civile), pompe à chaleur ou climatisation de 4 à 70 kW hors contrat de performance énergétique (au moins tous les deux ans), poêle ou insert à bois ou à granulés (au moins tous les douze mois s’il est utilisé).');
   });
 });
 

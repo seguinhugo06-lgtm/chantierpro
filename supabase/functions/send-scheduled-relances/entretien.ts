@@ -73,12 +73,47 @@ export function obligationConnueServeur(e: EntretienServeur): boolean {
   return e.categorie === 'poele' && !(e.appareils || []).some((a) => a?.energie === 'autre_biomasse' || a?.hydraulique);
 }
 
-/** Même texte que phraseObligation (src/lib/entretien.js), avis § 4.5. D-33 n'autorise l'obligation et sa source que
- * dans le rappel d'une chaudière : PAC et poêle attendent la décision d'Hugo (relecture du 4 nov. 2026, point 3). */
+const MOIS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+
+/** « 4 novembre 2028 », « 1er mars 2028 » depuis « AAAA-MM-JJ » : même texte que dateEnLettres (src/lib/entretien.js). */
+export function dateEnLettresServeur(jour: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(jour || ''));
+  if (!m) return '';
+  const j = Number(m[3]);
+  const mois = MOIS[Number(m[2]) - 1];
+  if (!mois || j < 1 || j > 31) return '';
+  return `${j === 1 ? '1er' : j} ${mois} ${m[1]}`;
+}
+
+/** « AAAA-MM-JJ » décalé de n mois, le jour ramené au dernier du mois s'il n'existe pas (même règle que ajouterMois, src/lib/dates.js). */
+export function ajouterMoisServeur(jour: string, n: number): string {
+  const [a, m, j] = String(jour || '').slice(0, 10).split('-').map(Number);
+  if (!a || !m || !j) return '';
+  const cible = m - 1 + n;
+  const annee = a + Math.floor(cible / 12);
+  const mois = ((cible % 12) + 12) % 12;
+  const dernier = new Date(Date.UTC(annee, mois + 1, 0)).getUTCDate();
+  return `${String(annee).padStart(4, '0')}-${String(mois + 1).padStart(2, '0')}-${String(Math.min(j, dernier)).padStart(2, '0')}`;
+}
+
+/**
+ * Même texte que phraseObligation (src/lib/entretien.js), avis juriste-btp du 4 nov. 2026, § 4.5, mot pour mot. Décision
+ * D-38 (Hugo, 5 nov. 2026) : la chaudière, la PAC ou climatisation et le poêle ou insert, quand leurs conditions sont
+ * connues (puissance, contrat de performance, combustible). La PAC donne la visite + 2 ans, jamais la date conseillée.
+ */
 export function phraseObligationServeur(e: EntretienServeur): string {
-  if (e.categorie !== 'chaudiere' || !obligationConnueServeur(e)) return '';
+  if (!obligationConnueServeur(e)) return '';
   const visite = jourVisite(e.realise_le);
-  return `Pour rappel, l’entretien d’une chaudière doit être fait une fois par année civile (article R. 224-41-7 du code de l’environnement) : le prochain doit avoir lieu au plus tard le 31 décembre ${Number(visite.slice(0, 4)) + 1}.`;
+  if (e.categorie === 'chaudiere') {
+    return `Pour rappel, l’entretien d’une chaudière doit être fait une fois par année civile (article R. 224-41-7 du code de l’environnement) : le prochain doit avoir lieu au plus tard le 31 décembre ${Number(visite.slice(0, 4)) + 1}.`;
+  }
+  if (e.categorie === 'pac') {
+    return `Pour rappel, l'entretien d'une pompe à chaleur ou d'une climatisation de 4 à 70 kW doit être fait au moins tous les deux ans (article R. 224-44-3 du code de l'environnement) : le prochain doit avoir lieu au plus tard le ${dateEnLettresServeur(ajouterMoisServeur(visite, 24))}.`;
+  }
+  if (e.categorie === 'poele') {
+    return "Pour rappel, l'entretien d'un poêle ou d'un insert à bois ou à granulés doit être fait au moins tous les douze mois lorsqu'il est utilisé (article R. 1331-68 du code de la santé publique).";
+  }
+  return '';
 }
 export const LIBRE_CHOIX = 'Vous restez libre de confier cet entretien au professionnel qualifié de votre choix.';
 
