@@ -3,7 +3,7 @@ import {
   limiteEnvoiConsuel, tacheConsuel, tacheConsuelDuChantier, etatConsuel, AIDE_CONSUEL, TACHE_CONSUEL,
   TITRE_COMPTE_RENDU, MENTION_PORTEE, MOTS_INTERDITS, NATURES, MESURES, manquantsCompteRendu, nouveauCompteRendu,
   mesuresImprimees, phraseCompteRendu, numeroCompteRenduDemo, ligneFactureCompteRendu, qualificationIrve, avecEmetteur,
-  TITRE_SANS_MESURE, TAUX_A_VERIFIER, TEXTE_TAUX_A_VERIFIER, TEXTE_DEPANNAGE_SANS_DEVIS, avertissementFactureCompteRendu,
+  TITRE_SANS_MESURE, TAUX_A_VERIFIER, TEXTE_TAUX_A_VERIFIER, TEXTE_DEPANNAGE_SANS_DEVIS, DUREE_AVERTISSEMENT_DEPANNAGE_MS, avertissementFactureCompteRendu,
   suggestionTvaBorne, estLigneBorne, REGIME_BORNE, TEXTE_FOURNITURE, POINTS_DE_CHARGE, LOCAUX,
 } from '../electricite';
 import { buildCompteRenduElectriciteHtml } from '../compteRenduElectriciteHtml';
@@ -243,7 +243,7 @@ describe('Certification du client : une pose de borne à 5,5 % ne la déclenche 
     expect(html).not.toContain('CERTIFICATION DU CLIENT');
     expect(html).not.toContain('rénovation énergétique');
     // Depuis la décision d'Hugo du 5 nov. 2026 (D-39), la borne imprime sa propre mention (avant : rien)
-    expect(html).toContain('pose d&#39;une infrastructure de recharge');
+    expect(html).toContain(MENTION_BORNE);
   });
 
   it('contre-essai : la même ligne sans la marque « borne » déclenche la certification (comportement d’avant)', () => {
@@ -315,18 +315,21 @@ describe('Corrections de juriste-btp (4 nov. 2026)', () => {
 describe('Mention de la pose d’une borne à 5,5 % sur le devis et la facture (décision 3)', () => {
   const borne = { description: 'Pose borne de recharge 7 kW', quantite: 1, prixUnitaire: 600, tva: 5.5, regimeTva: REGIME_BORNE };
   const isolation = { description: 'Isolation des combles', quantite: 1, prixUnitaire: 1000, tva: 5.5 };
-  const HTML = (texte) => texte.replace(/'/g, '&#39;'); // le texte échappé, comme dans le document
   const mention = (lignes, o = {}) => mentionTvaReduiteHtml({ tvaDetails: { 5.5: { base: 1600, montant: 88 } }, lignes, tauxDefaut: 10, ...o });
 
-  it('le texte est celui de la décision, mot pour mot', () => {
-    expect(MENTION_BORNE).toBe("TVA à 5,5 % : pose d'une infrastructure de recharge dans un local à usage d'habitation, destinée aux résidents (CGI art. 278-0 bis, N)");
+  it('le texte est celui de l’avis de juriste-btp du 5 nov. 2026 (point 4), mot pour mot, apostrophes typographiques et point final compris', () => {
+    expect(MENTION_BORNE).toBe('TVA à 5,5 % : pose d’une infrastructure de recharge pour véhicules électriques dans un local à '
+      + 'usage d’habitation, destinée aux résidents (CGI, art. 278-0 bis, N).');
+    // Seul écart avec la proposition de D-39 : « pour véhicules électriques », qui figure dans le N de l'art. 278-0 bis
+    expect(MENTION_BORNE).toContain('infrastructure de recharge pour véhicules électriques');
+    expect(MENTION_BORNE.endsWith('(CGI, art. 278-0 bis, N).')).toBe(true);
     for (const mot of MOTS_INTERDITS) expect(MENTION_BORNE).not.toMatch(mot);
   });
 
   it('une ligne de borne marquée à 5,5 % : la mention est imprimée, seule (devis, facture, facture d’acompte dont les lignes portent la marque)', () => {
     for (const o of [{}, { isFacture: true }, { isFacture: true, isAcompte: true }]) {
       const html = mention([borne], o);
-      expect(html).toContain(HTML(MENTION_BORNE));
+      expect(html).toContain(MENTION_BORNE);
       expect(html).not.toContain('CERTIFICATION DU CLIENT'); // pas de certification de rénovation énergétique pour la borne
     }
     expect(portePoseBorne([borne], 10)).toBe(true);
@@ -334,7 +337,7 @@ describe('Mention de la pose d’une borne à 5,5 % sur le devis et la facture (
 
   it('une autre ligne à 5,5 % (isolation) : pas de mention, la certification reste', () => {
     const html = mention([isolation]);
-    expect(html).not.toContain('pose d&#39;une infrastructure de recharge');
+    expect(html).not.toContain('pose d’une infrastructure de recharge');
     expect(html).toContain('CERTIFICATION DU CLIENT');
     expect(portePoseBorne([isolation], 10)).toBe(false);
   });
@@ -342,13 +345,13 @@ describe('Mention de la pose d’une borne à 5,5 % sur le devis et la facture (
   it('borne et isolation à 5,5 % : la certification pour l’isolation ET la mention pour la borne', () => {
     const html = mention([borne, isolation]);
     expect(html).toContain('CERTIFICATION DU CLIENT');
-    expect(html).toContain(HTML(MENTION_BORNE));
+    expect(html).toContain(MENTION_BORNE);
     // la mention suit la certification (même présentation)
-    expect(html.indexOf('CERTIFICATION DU CLIENT')).toBeLessThan(html.indexOf(HTML(MENTION_BORNE)));
+    expect(html.indexOf('CERTIFICATION DU CLIENT')).toBeLessThan(html.indexOf(MENTION_BORNE));
   });
 
   it('contre-essais : ligne marquée mais passée à 10 %, ligne sans la marque, montant nul, sans les lignes, franchise, avoir', () => {
-    const non = (html) => expect(html).not.toContain(HTML(MENTION_BORNE));
+    const non = (html) => expect(html).not.toContain(MENTION_BORNE);
     non(mention([{ ...borne, tva: 10 }], { tvaDetails: { 10: { base: 600, montant: 60 } } }));
     const { regimeTva, ...sansMarque } = borne; // eslint-disable-line no-unused-vars
     non(mention([sansMarque]));
@@ -372,47 +375,57 @@ describe('Mention de la pose d’une borne à 5,5 % sur le devis et la facture (
       total_ht: 600, tva: 33, total_ttc: 633,
     });
     const ent = { ...entreprise, tvaDefaut: 10 };
-    expect(buildDevisHtml({ doc: doc(true), client, entreprise: ent })).toContain(HTML(MENTION_BORNE));
+    expect(buildDevisHtml({ doc: doc(true), client, entreprise: ent })).toContain(MENTION_BORNE);
     // contre-essai : la même ligne sans la marque n'imprime pas la mention de la borne (mais la certification, comme avant)
     const sans = buildDevisHtml({ doc: doc(false), client, entreprise: ent });
-    expect(sans).not.toContain(HTML(MENTION_BORNE));
+    expect(sans).not.toContain(MENTION_BORNE);
     expect(sans).toContain('CERTIFICATION DU CLIENT');
     // une facture tirée du devis garde ses lignes (donc la marque) : la mention y est aussi
     const facture = { ...doc(true), type: 'facture', facture_type: 'totale', numero: 'FAC-2026-00001' };
-    expect(buildDevisHtml({ doc: facture, client, entreprise: ent })).toContain(HTML(MENTION_BORNE));
+    expect(buildDevisHtml({ doc: facture, client, entreprise: ent })).toContain(MENTION_BORNE);
   });
 });
 
 describe('Facture tirée d’un compte rendu de dépannage chez un particulier : avertir sans bloquer (décision 4)', () => {
   const particulier = { id: 'c1', nom: 'Exemple', categorie: 'Particulier' };
 
-  it('le texte est celui du juriste, sans renvoi à « Dépannage express » (écran absent de cette branche)', () => {
+  it('le texte est celui de l’avis de juriste-btp du 5 nov. 2026 (point 5), mot pour mot ; « Devis », pas « Dépannage express » (écran absent de cette branche)', () => {
     expect(TEXTE_DEPANNAGE_SANS_DEVIS).toBe('Dépannage chez un particulier : un devis détaillé devait lui être remis avant l’intervention '
-      + '(arrêté du 24 janvier 2017, art. 4). Pour le prochain, faites-le depuis « Devis ».');
+      + '(arrêté du 24 janvier 2017, article 4). Si le contrat a été conclu chez lui, aucun paiement ni '
+      + 'aucune contrepartie ne peut être reçu avant sept jours à compter de sa conclusion, sauf travaux '
+      + 'd’entretien ou de réparation urgents qu’il a expressément demandés, dans la limite des pièces de '
+      + 'rechange et travaux strictement nécessaires pour répondre à l’urgence (code de la consommation, '
+      + 'article L. 221-10). Pour le prochain dépannage, faites d’abord le devis depuis « Devis ».');
     expect(TEXTE_DEPANNAGE_SANS_DEVIS).not.toMatch(/Dépannage express/);
+    // L'urgence ne dispense pas du devis : le texte rappelle le devis ET l'exception des travaux urgents (L. 221-10)
+    expect(TEXTE_DEPANNAGE_SANS_DEVIS).toContain('un devis détaillé devait lui être remis avant l’intervention');
+    expect(TEXTE_DEPANNAGE_SANS_DEVIS).toContain('sauf travaux d’entretien ou de réparation urgents');
   });
 
-  it('dépannage + client particulier : l’avertissement', () => {
-    expect(avertissementFactureCompteRendu({ nature: 'depannage' }, particulier)).toBe(TEXTE_DEPANNAGE_SANS_DEVIS);
+  it('dépannage + client particulier : l’avertissement, affiché 10 s (assez longtemps pour être lu)', () => {
+    const attendu = { texte: TEXTE_DEPANNAGE_SANS_DEVIS, duree: 10000 };
+    expect(DUREE_AVERTISSEMENT_DEPANNAGE_MS).toBe(10000);
+    expect(avertissementFactureCompteRendu({ nature: 'depannage' }, particulier)).toEqual(attendu);
     // ni catégorie ni entreprise : un particulier (même règle que la rétractation)
-    expect(avertissementFactureCompteRendu({ nature: 'depannage' }, { nom: 'Martin' })).toBe(TEXTE_DEPANNAGE_SANS_DEVIS);
+    expect(avertissementFactureCompteRendu({ nature: 'depannage' }, { nom: 'Martin' })).toEqual(attendu);
   });
 
   it('contre-essais : syndic, professionnel, entreprise, client inconnu, autre nature → aucun avertissement de dépannage', () => {
     for (const c of [{ categorie: 'Syndic' }, { categorie: 'Professionnel' }, { categorie: 'Architecte' }, { entreprise: 'SARL X' }, null]) {
-      expect(avertissementFactureCompteRendu({ nature: 'depannage' }, c)).toBe('');
+      expect(avertissementFactureCompteRendu({ nature: 'depannage' }, c)).toBeNull();
     }
     for (const nature of ['renovation_partielle', 'renovation_totale', 'autre']) {
-      expect(avertissementFactureCompteRendu({ nature }, particulier)).toBe('');
+      expect(avertissementFactureCompteRendu({ nature }, particulier)).toBeNull();
     }
   });
 
   it('un seul avertissement à la fois : pour le neuf, la borne et le photovoltaïque, le taux à vérifier, jamais celui du dépannage', () => {
     for (const nature of ['neuf', 'borne', 'photovoltaique']) {
-      expect(avertissementFactureCompteRendu({ nature }, particulier)).toBe(TEXTE_TAUX_A_VERIFIER);
-      expect(avertissementFactureCompteRendu({ nature }, null)).toBe(TEXTE_TAUX_A_VERIFIER);
+      // Durée par défaut des notifications : seul l'avertissement du dépannage est allongé
+      expect(avertissementFactureCompteRendu({ nature }, particulier)).toEqual({ texte: TEXTE_TAUX_A_VERIFIER });
+      expect(avertissementFactureCompteRendu({ nature }, null)).toEqual({ texte: TEXTE_TAUX_A_VERIFIER });
     }
-    expect(avertissementFactureCompteRendu({ nature: 'depannage' }, particulier)).not.toBe(TEXTE_TAUX_A_VERIFIER);
+    expect(avertissementFactureCompteRendu({ nature: 'depannage' }, particulier).texte).not.toBe(TEXTE_TAUX_A_VERIFIER);
   });
 
   it('jamais « conforme » ni « certifié » ; c’est un texte à montrer, pas une erreur à lever', () => {

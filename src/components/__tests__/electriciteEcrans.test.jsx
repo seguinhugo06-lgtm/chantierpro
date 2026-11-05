@@ -128,23 +128,54 @@ describe('saisie de l’attestation de ramonage : prix et droit de les voir', ()
   });
 });
 
-describe('rappels de Paramètres : la même exception du dépannage urgent pour l’électricité et le ramonage (point 10 du juriste)', () => {
-  // Clause du rappel de Paramètres › Électricité (relu par juriste-btp le 4 nov. 2026, sur pièces), recopiée dans Ramonage
-  // le 5 nov. 2026 (D-39) : À RELIRE PAR LE JURISTE
-  const CLAUSE = 'sauf dépannage urgent qu’il a expressément demandé, dans la limite des pièces et travaux strictement nécessaires (code de la consommation, article L. 221-10)';
+describe('rappels de Paramètres : le texte exact de l’avis de juriste-btp du 5 nov. 2026 (point 6), pour l’électricité et pour le ramonage', () => {
+  // Textes de l'avis, relus au texte officiel (arrêté du 24 janv. 2017, art. 4 ; code de la consommation L. 221-10 et L. 221-28, 8°)
+  const TEXTE_RAMONAGE = 'Client particulier : un devis détaillé est obligatoire avant tout ramonage (arrêté du 24 janvier 2017, '
+    + 'article 4) et, si le contrat est conclu chez lui, aucun paiement ni aucune contrepartie ne peut être '
+    + 'reçu avant sept jours (code de la consommation, article L. 221-10). Exception, qui ne dispense pas du '
+    + 'devis : des travaux d’entretien ou de réparation urgents, qu’il a expressément demandés, peuvent être '
+    + 'payés sur place et ne donnent pas droit à la rétractation, dans la limite des pièces de rechange et '
+    + 'travaux strictement nécessaires pour répondre à l’urgence (articles L. 221-10, 4° et L. 221-28, 8°). Le '
+    + 'parcours ramonage ne fait pas ce devis : faites-le depuis « Devis ».';
+  const TEXTE_ELECTRICITE = 'Client particulier : un devis détaillé est obligatoire avant tout dépannage, toute réparation ou tout '
+    + 'entretien (arrêté du 24 janvier 2017, article 4) et, si le contrat est conclu chez lui, aucun paiement '
+    + 'ni aucune contrepartie ne peut être reçu avant sept jours (code de la consommation, article L. 221-10). '
+    + 'Exception, qui ne dispense pas du devis : des travaux d’entretien ou de réparation urgents, qu’il a '
+    + 'expressément demandés, peuvent être payés sur place et ne donnent pas droit à la rétractation, dans la '
+    + 'limite des pièces de rechange et travaux strictement nécessaires pour répondre à l’urgence (articles L. '
+    + '221-10, 4° et L. 221-28, 8°). Le compte rendu ne fait pas ce devis : faites-le depuis « Devis ».';
+  // Même exception, mot pour mot, dans les deux écrans : elle ne dispense pas du devis
+  const EXCEPTION = 'Exception, qui ne dispense pas du devis : des travaux d’entretien ou de réparation urgents, qu’il a expressément demandés, '
+    + 'peuvent être payés sur place et ne donnent pas droit à la rétractation, dans la limite des pièces de rechange et travaux strictement '
+    + 'nécessaires pour répondre à l’urgence (articles L. 221-10, 4° et L. 221-28, 8°).';
   const ent = { nom: 'Élec Seguin', formeJuridique: 'SARL', ramonageActif: true };
+  const ramonage = () => rendre(<RamonageTab entreprise={ent} setEntreprise={() => {}} />);
+  const electricite = () => rendre(<ElectriciteTab entreprise={ent} setEntreprise={() => {}} />);
 
-  it('les deux écrans portent la clause, mot pour mot, et renvoient au devis', () => {
-    const ramonage = rendre(<RamonageTab entreprise={ent} setEntreprise={() => {}} />);
-    const electricite = rendre(<ElectriciteTab entreprise={ent} setEntreprise={() => {}} />);
-    expect(ramonage).toContain(CLAUSE);
-    expect(electricite).toContain(CLAUSE);
-    expect(ramonage).toContain('aucun paiement ne peut être reçu avant sept jours, sauf dépannage urgent');
-    expect(ramonage).toMatch(/Le parcours ramonage ne fait pas ce devis : faites-le depuis « Devis »\./);
-    expect(electricite).toMatch(/Le compte rendu ne fait pas ce devis : faites-le depuis « Devis »\./);
+  it('Paramètres › Ramonage porte le texte de l’avis, mot pour mot, et renvoie au devis', () => {
+    expect(ramonage()).toContain(TEXTE_RAMONAGE);
+    expect(ramonage()).toMatch(/Le parcours ramonage ne fait pas ce devis : faites-le depuis « Devis »\./);
+  });
+
+  it('Paramètres › Électricité porte le texte de l’avis, mot pour mot, et renvoie au devis', () => {
+    expect(electricite()).toContain(TEXTE_ELECTRICITE);
+    expect(electricite()).toMatch(/Le compte rendu ne fait pas ce devis : faites-le depuis « Devis »\./);
+  });
+
+  it('la même exception dans les deux écrans (le ramonage est visé : arrêté de 2017, annexe 1)', () => {
+    expect(ramonage()).toContain(EXCEPTION);
+    expect(electricite()).toContain(EXCEPTION);
+  });
+
+  it('contre-essai : l’ancienne clause (« sauf dépannage urgent… », « pièces et travaux strictement nécessaires ») n’y est plus', () => {
+    for (const t of [ramonage(), electricite()]) {
+      expect(t).not.toContain('sauf dépannage urgent');
+      expect(t).not.toContain('pièces et travaux strictement nécessaires');
+      expect(t).toContain('aucun paiement ni aucune contrepartie ne peut être reçu avant sept jours');
+    }
   });
 
   it('le texte de Paramètres › Électricité dit aussi que le compte rendu part par e-mail', () => {
-    expect(rendre(<ElectriciteTab entreprise={ent} setEntreprise={() => {}} />)).toMatch(/à envoyer au client par e-mail/);
+    expect(electricite()).toMatch(/à envoyer au client par e-mail/);
   });
 });

@@ -66,11 +66,13 @@ const estPoseBorne = (l, tauxDefaut) => l.regimeTva === REGIME_BORNE && tauxDeLi
 
 /**
  * Mention imprimée sur le devis et la facture quand une ligne est une pose de borne à 5,5 % (décision d'Hugo du 5 nov.
- * 2026, D-39 : « OK pour tout » à la mention proposée par juriste-btp le 4 nov. 2026). Texte de la décision, gardé tel
- * quel (apostrophes droites comprises) : À RELIRE PAR LE JURISTE, qui vérifiera la lettre N de l'art. 278-0 bis du CGI
- * au texte officiel (docs/metiers/avis-juriste-2026-11-04-electricien.md, point 4).
+ * 2026, D-39). Texte exact de l'avis de juriste-btp du 5 nov. 2026 (point 4), relu au texte officiel : CGI art. 278-0 bis,
+ * N, version en vigueur depuis le 01/03/2026 (Légifrance, LEGIARTI000047622738). Seul écart avec la proposition de D-39 :
+ * « pour véhicules électriques », qui figure dans le N. Le renvoi au CGI reste admis sur une facture jusqu'au 30 juin 2028
+ * (ord. n° 2025-1247, art. 46, II) ; pour les documents datés à partir du 01/01/2027, la tâche « Mentions CIBS »
+ * (docs/metier-btp.md § 4) le remplacera par l'art. L. 213-250 du code des impositions sur les biens et services.
  */
-export const MENTION_BORNE = "TVA à 5,5 % : pose d'une infrastructure de recharge dans un local à usage d'habitation, destinée aux résidents (CGI art. 278-0 bis, N)";
+export const MENTION_BORNE = 'TVA à 5,5 % : pose d’une infrastructure de recharge pour véhicules électriques dans un local à usage d’habitation, destinée aux résidents (CGI, art. 278-0 bis, N).';
 
 /**
  * Le document porte-t-il une pose de borne à 5,5 % ? (une ligne marquée, au taux de 5,5 %, à montant non nul)

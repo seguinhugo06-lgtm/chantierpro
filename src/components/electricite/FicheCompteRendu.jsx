@@ -69,10 +69,11 @@ export default function FicheCompteRendu({
       const creee = await addDevis(donneesFactureCompteRendu({ compteRendu: cr, entreprise }));
       if (!creee) return; // refus déjà dit (limite, droits, base)
       const lie = await suivreCompteRendu(cr.id, { facture_id: creee.id });
-      // Avertir sans bloquer (D-36, D-39) : le taux à vérifier, ou le devis d'un dépannage chez un particulier
+      // Avertir sans bloquer (D-36, D-39) : le taux à vérifier, ou le devis d'un dépannage chez un particulier (10 s : le texte
+      // est long, il doit pouvoir être lu)
       const avertissement = avertissementFactureCompteRendu(cr, client);
       if (lie === false) showToast?.('La facture est créée, mais son lien avec le compte rendu n’a pas été enregistré.', 'error');
-      else if (avertissement) showToast?.(avertissement, 'warning');
+      else if (avertissement) showToast?.(avertissement.texte, 'warning', avertissement.duree);
       onOuvrirFacture(creee);
     } finally {
       setAction(null);

@@ -257,22 +257,34 @@ export const TEXTE_TAUX_A_VERIFIER = 'Vérifiez le taux de TVA de la facture : l
 
 /**
  * Facture tirée d'un compte rendu de dépannage chez un particulier, sans devis (décision d'Hugo du 5 nov. 2026, D-39 :
- * avertir sans bloquer). Texte de juriste-btp, relu au texte le 4 nov. 2026 (arrêté du 24 janv. 2017, annexe 1 et art. 4, I ;
- * docs/metiers/avis-juriste-2026-11-04-electricien.md, point 5), dont seul le renvoi change : « Dépannage express » est un
- * écran de `cloud/metier-depannage`, absent ici, d'où « Devis ». Le renvoi est À RELIRE PAR LE JURISTE.
+ * avertir sans bloquer). Texte exact de l'avis de juriste-btp du 5 nov. 2026 (point 5), relu au texte officiel : arrêté du
+ * 24 janv. 2017, annexe 1 (« électricité », aucun seuil) et art. 4 ; code de la consommation L. 221-10 (aucun paiement
+ * avant sept jours après un contrat conclu hors établissement, sauf travaux urgents, 4°). L'urgence ne dispense pas du
+ * devis. « Devis » est l'écran qui existe sur cette branche.
  */
-export const TEXTE_DEPANNAGE_SANS_DEVIS = 'Dépannage chez un particulier : un devis détaillé devait lui être remis avant '
-  + 'l’intervention (arrêté du 24 janvier 2017, art. 4). Pour le prochain, faites-le depuis « Devis ».';
+export const TEXTE_DEPANNAGE_SANS_DEVIS = 'Dépannage chez un particulier : un devis détaillé devait lui être remis avant l’intervention (arrêté du '
+  + '24 janvier 2017, article 4). Si le contrat a été conclu chez lui, aucun paiement ni aucune contrepartie '
+  + 'ne peut être reçu avant sept jours à compter de sa conclusion, sauf travaux d’entretien ou de '
+  + 'réparation urgents qu’il a expressément demandés, dans la limite des pièces de rechange et travaux '
+  + 'strictement nécessaires pour répondre à l’urgence (code de la consommation, article L. 221-10). Pour le '
+  + 'prochain dépannage, faites d’abord le devis depuis « Devis ».';
 
 /**
- * L'avertissement montré (jamais un blocage) quand la facture vient d'être tirée d'un compte rendu, ou ''. Un seul à la
- * fois : le taux à vérifier (neuf, borne, photovoltaïque) ou le devis d'un dépannage. Le second ne vise qu'un client
- * particulier (`estClientParticulier`, src/lib/retractation.js : ni syndic, ni professionnel, ni client inconnu).
+ * Durée d'affichage de cet avertissement : assez longue pour être lue (trois phrases), 10 s comme le message de l'émission
+ * hors ligne (DevisPage.jsx). Elle vaut vraiment 10 s : une notification plus ancienne n'efface plus la nouvelle (AppContext).
+ */
+export const DUREE_AVERTISSEMENT_DEPANNAGE_MS = 10000;
+
+/**
+ * L'avertissement montré (jamais un blocage) quand la facture vient d'être tirée d'un compte rendu : { texte, duree? },
+ * ou null. Un seul à la fois : le taux à vérifier (neuf, borne, photovoltaïque), ou le devis d'un dépannage. Ce dernier ne
+ * vise qu'un client particulier (`estClientParticulier`, src/lib/retractation.js : ni syndic, ni professionnel, ni client
+ * inconnu) ; il ne cherche pas de devis existant (suite possible, hors décision).
  */
 export function avertissementFactureCompteRendu(cr, client) {
-  if (TAUX_A_VERIFIER.includes(cr?.nature)) return TEXTE_TAUX_A_VERIFIER;
-  if (cr?.nature === 'depannage' && estClientParticulier(client)) return TEXTE_DEPANNAGE_SANS_DEVIS;
-  return '';
+  if (TAUX_A_VERIFIER.includes(cr?.nature)) return { texte: TEXTE_TAUX_A_VERIFIER };
+  if (cr?.nature === 'depannage' && estClientParticulier(client)) return { texte: TEXTE_DEPANNAGE_SANS_DEVIS, duree: DUREE_AVERTISSEMENT_DEPANNAGE_MS };
+  return null;
 }
 
 /**
