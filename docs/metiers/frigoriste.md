@@ -65,12 +65,12 @@ Règles transverses (TVA 20/10/5,5, devis obligatoire en dépannage et entretien
 
 ## 5. TVA propre au métier
 
-- **PAC air-air (climatiseurs réversibles fixes) : 5,5 % depuis le 18 juillet 2026**, sous conditions. Base : CGI art. 278-0 bis A modifié par la loi de finances pour 2026 ; arrêté du 13 juillet 2026 (JO du 17 juil.) qui fixe les performances [23, 26] [résumé].
+- **PAC air-air (climatiseurs réversibles fixes) : 5,5 % depuis le 18 juillet 2026**, sous conditions. Base : CGI art. 278-0 bis A, I, 3° modifié par la loi de finances pour 2026 (loi n° 2026-103, art. 92) ; arrêté du 13 juillet 2026, art. 1 et 2 (JORF n° 0165 du 17 juil. 2026) qui fixe les performances ; il ne fixe aucune date d'effet : en vigueur le 18 juil. 2026, lendemain de sa publication (C. civ. art. 1). Lus au texte le 5 nov. 2026 (avis juriste-btp du lot 4, point 10).
   - Logement à usage d'habitation achevé depuis plus de 2 ans [24].
-  - Puissance ≤ 12 kW : classe ≥ **A+** en multi-split, ≥ **A++** en mono-split, en chaud (SCOP) **et** en froid (SEER) [24, 23] ; seuils propres au-delà de 12 kW (non lus) ; critères F-Gas et de connectivité cités [27] **(à vérifier)**.
-  - Couvre fourniture et pose, et l'entretien et la réparation selon la FFB et la CAPEB [25, 24] ; un site dit que la pose reste à 10 % [27] **(à vérifier : sources divergentes)**.
+  - Puissance ≤ 12 kW : classe ≥ **A+** en multi-split, ≥ **A++** en mono-split, en chaud (SCOP) **et** en froid (SEER) ; au-delà de 12 kW, seuils fixés seulement pour les PAC en toiture ; fluide conforme au règlement (UE) 2024/573 « à la date de signature du devis » ; connexion à un réseau numérique pour piloter la température par plages horaires (arrêté du 13 juil. 2026, art. 1, lu au texte le 5 nov. 2026).
+  - Couvre la fourniture comme la pose : l'exclusion du 10 % ne fait pas obstacle au 5,5 % (BOI-TVA-LIQ-30-20-90-20, § 50, remarque, lu au texte le 5 nov. 2026) ; l'entretien et la réparation, selon la FFB et la CAPEB [25, 24].
   - Un second arrêté du 14 août 2026 est cité par la FFB [25] : contenu non lu **(à vérifier)**.
-- **Climatiseur non réversible, ou réversible hors critères** : avant cette réforme, fourniture à 20 % (gros équipement, CGI ann. IV art. 30-00 A) et pose à 10 % [23 via résumé] **(à vérifier)**. Les sources se contredisent sur le point de départ (20 % ou 10 %).
+- **Climatiseur non réversible, ou PAC air/air hors des critères du 5,5 %** : fourniture au taux normal, pièces constitutives et éléments de raccordement compris (unités, supports, liaisons, réseau aéraulique, diffuseurs et grilles d'un gainable, bacs de dégivrage, pompe de relevage non intégrée) ; pose et travaux d'installation à 10 % dans un logement achevé depuis plus de deux ans, avec la certification du client. Entretien isolé : 10 %, main-d'œuvre et fournitures nécessaires. Sources : CGI ann. IV art. 30-00 A, 4 ; BOI-TVA-LIQ-30-20-90-20-20260909, § 50, 70, 80, 100 et 110, et RES n° 2010/57 (lus au texte le 5 nov. 2026).
 - **Froid commercial** (client professionnel) : 20 %, autoliquidation en sous-traitance : voir `commun.md`.
 - Conséquence pour l'app : le taux dépend **du matériel** (classe énergétique), pas seulement du logement. Un sélecteur « PAC air-air éligible 5,5 % » sans vérification des classes serait un risque fiscal pour l'artisan.
 
