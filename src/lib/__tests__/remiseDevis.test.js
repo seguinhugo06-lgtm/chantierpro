@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { devisRemis, remiseDuDevis, remettreAvantSignature, TEXTES_REMISE } from '../remiseDevis';
+import { ECRITURE_EN_ATTENTE } from '../erreursEcriture';
 
 /**
  * Remise du devis avant la signature sur place (C. conso. L221-8, décision d'Hugo du 5 nov. 2026, D-40) : un devis jamais
@@ -72,8 +73,8 @@ describe('« Faire signer » sur un brouillon : remise, enregistrement, puis sig
     expect(signatureOuverte(journal)).toBe(false);
     expect(journal.at(-1)).toBe(`message : ${TEXTES_REMISE.nonEnregistree}`);
   });
-  it('une écriture mise en file hors ligne (symbole, vrai) compte comme enregistrée : la signature s’ouvre', async () => {
-    const { journal, options } = artisan({ reponses: [true, true], enregistre: Symbol('en attente') });
+  it('une écriture mise en file hors ligne (ECRITURE_EN_ATTENTE) compte comme enregistrée : la signature s’ouvre', async () => {
+    const { journal, options } = artisan({ reponses: [true, true], enregistre: ECRITURE_EN_ATTENTE });
     expect(await remettreAvantSignature(options)).toBe(true);
     expect(signatureOuverte(journal)).toBe(true);
   });

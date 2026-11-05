@@ -13,9 +13,9 @@
  * - la case « urgence demandée par le client » ne change jamais le prix : elle sert au droit (L221-10, 4° ;
  *   L221-28, 8°), pas au tarif. Aucune majoration « urgence » (décision d'Hugo du 5 nov. 2026, D-40) ; seules les
  *   majorations de la grille (nuit, dimanche et jour férié) peuvent s'ajouter, et aucune hors de la grille ;
- * - devis gratuit, et seulement sur un dépannage (décision d'Hugo du 5 nov. 2026, D-40) : pas de devis payant, et la
- *   mention « Devis gratuit. » ne s'imprime jamais sur un devis ordinaire (express, case « urgence demandée » ou case
- *   facultative « Dépannage, réparation ou entretien » de l'éditeur) ;
+ * - devis gratuit, et seulement sur un dépannage : devis express, case « urgence demandée », ou case facultative
+ *   « Dépannage, réparation ou entretien » de l'éditeur (décision d'Hugo du 5 nov. 2026, D-40). Pas de devis payant,
+ *   et jamais « Devis gratuit. » sur un devis ordinaire ;
  * - la grille est saisie HT, comme les lignes du devis (aucun écart d'arrondi) ; elle s'imprime TTC, aux deux taux
  *   d'un dépannage (10 % : logement achevé depuis plus de deux ans ; 20 % : sinon), car l'art. 3 exige des prix
  *   TTC et un seul taux rendrait faux les prix d'un logement récent (juriste-btp) ;
