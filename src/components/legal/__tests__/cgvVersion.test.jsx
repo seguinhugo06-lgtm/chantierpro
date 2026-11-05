@@ -14,8 +14,12 @@ import { CGV_VERSION, CGV_ARTICLE_4_PLANS, CGV_ARTICLE_4_TVA, CGV_ARTICLE_4_SELO
 const lu = (html) => html.replace(/<[^>]*>/g, ' ').replace(/&#x27;/g, "'").replace(/&amp;/g, '&').replace(/[\s  ]+/g, ' ').trim();
 const pageCgv = () => renderToStaticMarkup(<LegalPages page="cgv" couleur="#12336F" setPage={() => {}} />);
 
-/** Ce que le générateur d'avant (20 oct. 2026) écrivait pour chaque plan, lu dans `plans` : la référence du figé. */
-function articleQuatreDepuisPlans(plans) {
+/**
+ * Ce que le générateur d'avant (20 oct. 2026) écrivait pour chaque plan, lu dans `plans` : la référence du figé.
+ * `complements` : une phrase que les CGV ajoutent à la description d'un plan sans qu'elle figure dans ses libellés (clé :
+ * identifiant du plan). Écrite ici en toutes lettres, pas lue dans cgv.js : le test la compare au texte des CGV.
+ */
+function articleQuatreDepuisPlans(plans, complements = {}) {
   return PLAN_ORDER.map((id) => {
     const plan = plans[id];
     const payant = plan.priceMonthly > 0;
@@ -25,7 +29,7 @@ function articleQuatreDepuisPlans(plans) {
         ? `${prixAbonnement(plan)} par mois (ou ${prixAbonnement(plan, 'an')} par an)${plan.offreLancement ? ` — ${plan.offreLancement.toLowerCase()}, conservé tant que l'abonnement reste actif` : ''}`
         : `${prixAbonnement(plan)} par mois`,
       // Seulement ce que le plan comprend (un libellé `included: false` n'est pas une promesse)
-      description: `${plan.description}. ${plan.featureLabels.filter((f) => f.included !== false).map((f) => f.name).join(' · ')}.`,
+      description: `${plan.description}. ${plan.featureLabels.filter((f) => f.included !== false).map((f) => f.name).join(' · ')}.${complements[id] ? ` ${complements[id]}` : ''}`,
     };
   });
 }
@@ -55,17 +59,34 @@ describe('CGV : l\'article 4 figé suit PLANS (garde-fou)', () => {
 describe('CGV : la dictée (FONCTIONS.ia) dans l\'article 4', () => {
   // Les plans avec leurs lignes de dictée (masquées tant que l'IA est éteinte) donnent le texte « avec IA » de l'article 4.
   const plansAvecIa = Object.fromEntries(PLAN_ORDER.map((id) => [id, { ...PLANS[id], featureLabels: LIBELLES_COMPLETS[id] }]));
+  // Décision d'Hugo du 5 nov. 2026 (D-37) : les CGV ajoutent à l'offre Équipe que le plafond du jour compte les échecs.
+  const ECHECS_COMPRIS = '100 analyses par jour et par personne, échecs compris.';
 
-  it('le texte « avec IA » de l\'article 4 est celui que donnent PLANS avec les lignes de dictée', () => {
-    expect(articleQuatreDepuisPlans(plansAvecIa), 'mettre à jour ARTICLE_4_AVEC_IA (src/lib/cgv.js)').toEqual(CGV_ARTICLE_4_SELON_IA.avecIa);
+  it('le texte « avec IA » de l\'article 4 est celui que donnent PLANS avec les lignes de dictée, plus la phrase des échecs pour Équipe', () => {
+    expect(articleQuatreDepuisPlans(plansAvecIa, { equipe: ECHECS_COMPRIS }), 'mettre à jour ARTICLE_4_AVEC_IA (src/lib/cgv.js)').toEqual(CGV_ARTICLE_4_SELON_IA.avecIa);
+    // Sans la phrase, le texte des CGV ne serait plus celui de PLANS : le garde-fou voit bien la différence
+    expect(articleQuatreDepuisPlans(plansAvecIa)).not.toEqual(CGV_ARTICLE_4_SELON_IA.avecIa);
   });
 
-  it('les textes de l\'offre sont exacts : 5, 100, et pas de « sans limite » sans son plafond (C. conso. L121-2)', () => {
+  it('les textes de l\'offre sont exacts : 5, 100 par abonnement, partagés, et pas de « sans limite » sans son plafond (C. conso. L121-2)', () => {
     const [gratuit, artisan, equipe] = CGV_ARTICLE_4_SELON_IA.avecIa.map((l) => l.description);
-    expect(gratuit).toContain('5 dictées par mois');
-    expect(artisan).toContain('100 dictées par mois');
-    expect(equipe).toContain('Dictées sans limite mensuelle (100 par jour et par personne au plus)');
+    expect(gratuit).toContain('5 dictées par mois, partagées entre les utilisateurs de l’entreprise');
+    expect(artisan).toContain('100 dictées par mois par abonnement, partagées entre ses utilisateurs et ses entreprises');
+    expect(equipe).toContain('Dictées sans limite mensuelle (100 analyses par jour et par personne au plus)');
     expect(CGV_ARTICLE_4_SELON_IA.sansIa.map((l) => l.description).join(' ')).not.toMatch(/dictée/i);
+    // L'ancienne formule, sans « analyses » ni « partagées », ne reste nulle part
+    const tout = [...CGV_ARTICLE_4_SELON_IA.avecIa.map((l) => l.description), CGV_ARTICLE_4_DICTEES].join(' ');
+    expect(tout).not.toMatch(/\(100 par jour/);
+    expect(tout).not.toMatch(/\b100 dictées par mois(?! par abonnement)/);
+  });
+
+  it('les CGV disent que le plafond du jour compte les échecs (offre Équipe) et que, au plan Gratuit, les dictées des autres entreprises gratuites comptent aussi', () => {
+    const equipe = CGV_ARTICLE_4_SELON_IA.avecIa[2].description;
+    expect(equipe.endsWith(` ${ECHECS_COMPRIS}`)).toBe(true);
+    expect(equipe).toContain('100 analyses par jour et par personne, échecs compris');
+    // Mot pour mot, avis de juriste-btp du 4 nov. 2026 (C.2), retenu le 5 nov. ; le texte sans IA n'en dit rien
+    expect(CGV_ARTICLE_4_DICTEES).toContain('au plan Gratuit, vos dictées dans vos autres entreprises au plan Gratuit comptent aussi.');
+    expect(CGV_ARTICLE_4_SELON_IA.sansIa.map((l) => l.description).join(' ')).not.toMatch(/échecs compris|autres entreprises/);
   });
 
   it('IA allumée : la version des CGV change, et sa date d\'attente (3 nov.) a été remplacée par celle de la livraison', () => {
@@ -118,7 +139,7 @@ describe('CGV : version et page', () => {
     expect(texte).toContain(CGV_ARTICLE_4_TVA);
     // Ce qui compte comme une dictée : seulement avec la dictée (version de l'allumage), jamais avant
     if (FONCTIONS.ia) expect(texte).toContain(lu(CGV_ARTICLE_4_DICTEES));
-    else expect(texte).not.toMatch(/une dictée compte/);
+    else expect(texte).not.toMatch(/une dictée compte|échecs compris|autres entreprises au plan Gratuit/);
   });
 });
 

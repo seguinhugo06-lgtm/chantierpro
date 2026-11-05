@@ -225,14 +225,14 @@ module.exports = [
     async executer(ctx) {
       const { attendre, cliquer, saisir, verifier } = ctx;
       const { page } = await ouvrirDictee(ctx, () => json({
-        error: 'Vos 5 dictées du mois sont utilisées. Saisissez votre devis à la main, ou passez au plan Artisan : 100 dictées par mois.',
+        error: 'Vos 5 dictées du mois sont utilisées. Saisissez votre devis à la main, ou passez au plan Artisan : 100 dictées par mois par abonnement, partagées entre ses utilisateurs et ses entreprises.',
         code: 'QUOTA_ATTEINT', quota: { limite: 5, utilise: 5, plan: 'gratuit' },
       }, 429));
       await saisir(page, '#dictee-texte', 'Facture pour Madame Leroy : dépannage 150 euros');
       await cliquer(page, 'Analyser ma dictée', { dans: '[role="dialog"]' });
       await attendre(1500);
       const d = await dialogue(page);
-      verifier(d.alerte === 'Vos 5 dictées du mois sont utilisées. Saisissez votre devis à la main, ou passez au plan Artisan : 100 dictées par mois.',
+      verifier(d.alerte === 'Vos 5 dictées du mois sont utilisées. Saisissez votre devis à la main, ou passez au plan Artisan : 100 dictées par mois par abonnement, partagées entre ses utilisateurs et ses entreprises.',
         `le message du serveur est affiché tel quel (${d.alerte})`);
       verifier(d.boutons.includes('Saisir mon devis à la main') && d.boutons.includes('Voir les offres'), `suites proposées (${d.boutons.join(' | ')})`);
     },
@@ -338,19 +338,120 @@ module.exports = [
   },
   {
     // Contrôle local du 4 nov. 2026 : rien ne prouvait qu'un chef de chantier ne voit pas « Dicter » (droitsDictee).
-    nom: 'dictée : un chef de chantier n’a ni bouton « Dicter » ni fenêtre ; le gérant, si (contre-essai)',
+    // Décision d'Hugo du 5 nov. 2026 (D-37) : la dictée est réservée au propriétaire et à l'administrateur. Le comptable ne
+    // pourrait pas retirer son accord (Paramètres lui est fermé) ; il garde ses droits sur les devis. Contre-essai : le
+    // propriétaire et l'administrateur ont le bouton (la page est bien chargée, le bouton n'est pas absent pour une autre raison).
+    nom: 'dictée : le propriétaire et l’administrateur ont « Dicter » ; le comptable et le chef de chantier n’ont ni bouton ni fenêtre, et le comptable crée toujours un devis',
     reel: true,
     async executer({ ouvrir, sessionFactice, attendre, verifier }) {
-      for (const role of ['chef_chantier', 'owner']) {
+      const vus = {};
+      for (const role of ['chef_chantier', 'comptable', 'admin', 'owner']) {
+        const base = creerBase({ accords_ia: [accordDonne()] }, { filtrer: ['accords_ia'], role });
+        const { page } = await ouvrir({ reel: true, distReel: construireDistIa(), largeur: 375, page: 'devis', session: sessionFactice(), avantChargement: fauxMicro, supabase: base.reponse });
+        await attendre(2500);
+        vus[role] = await page.evaluate(() => ({
+          bouton: !!document.querySelector('button[aria-label="Dictée vocale"]'),
+          fenetre: !!document.querySelector('#dictee-texte'),
+          creerUnDevis: /Créer mon premier devis|Nouveau devis/.test(document.body.innerText),
+        }));
+      }
+      for (const role of ['owner', 'admin']) verifier(vus[role].bouton, `${role} : le bouton « Dicter » est là (${JSON.stringify(vus[role])})`);
+      for (const role of ['comptable', 'chef_chantier']) {
+        verifier(!vus[role].bouton && !vus[role].fenetre, `${role} : ni bouton « Dicter » ni fenêtre (${JSON.stringify(vus[role])})`);
+      }
+      verifier(vus.comptable.creerUnDevis === true, `comptable : il crée toujours un devis à la main (${JSON.stringify(vus.comptable)})`);
+      verifier(vus.chef_chantier.creerUnDevis === false, `chef de chantier : pas de création de devis (la vérification distingue bien les rôles) (${JSON.stringify(vus.chef_chantier)})`);
+    },
+  },
+  {
+    // Décision d'Hugo du 5 nov. 2026 (D-37) : la FAQ ne promet pas la dictée à ceux qui ne l'ont pas (le comptable), et ses
+    // quotas disent qui partage le compteur et que le plafond du jour compte des « analyses ».
+    nom: 'dictée : la FAQ n’explique la dictée qu’à ceux qui peuvent dicter, avec les quotas « partagés » et les « analyses » par jour',
+    reel: true,
+    async executer({ ouvrir, sessionFactice, cliquer, attendre, verifier }) {
+      const faq = {};
+      for (const role of ['comptable', 'owner']) {
         const base = creerBase({ accords_ia: [accordDonne()] }, { filtrer: ['accords_ia'], role });
         const { page } = await ouvrir({ reel: true, distReel: construireDistIa(), largeur: 375, session: sessionFactice(), avantChargement: fauxMicro, supabase: base.reponse });
         await attendre(2500);
-        const etat = await page.evaluate(() => ({
-          bouton: !!document.querySelector('button[aria-label="Dictée vocale"]'),
-          fenetre: !!document.querySelector('#dictee-texte'),
+        await cliquer(page, 'Mon compte');
+        await cliquer(page, 'Aide');
+        await attendre(500);
+        await cliquer(page, 'FAQ', { dans: '[role="dialog"]' });
+        await attendre(400);
+        // Les réponses sont dans des <details> repliés : textContent les lit, innerText non
+        faq[role] = await page.evaluate(() => ({
+          texte: (document.querySelector('[role="dialog"]')?.textContent || '').replace(/\s+/g, ' '),
+          questions: [...document.querySelectorAll('[role="dialog"] summary')].map((x) => x.textContent.trim()).length,
         }));
-        if (role === 'owner') verifier(etat.bouton, 'gérant : le bouton « Dicter » est là');
-        else verifier(!etat.bouton && !etat.fenetre, `chef de chantier : ni bouton « Dicter » ni fenêtre (${JSON.stringify(etat)})`);
+      }
+      verifier(faq.owner.questions > 5 && faq.comptable.questions > 5, `la FAQ est chargée dans les deux cas (${faq.owner.questions}, ${faq.comptable.questions} questions)`);
+      verifier(!faq.comptable.texte.includes('Comment fonctionne la dictée') && !faq.comptable.texte.includes('Touchez « Dicter »'),
+        'comptable : la FAQ ne lui explique pas une dictée qu’il n’a pas');
+      verifier(faq.owner.texte.includes('Comment fonctionne la dictée'), 'propriétaire : la question sur la dictée est là');
+      verifier(faq.owner.texte.includes('Plan Gratuit : 5 dictées par mois, partagées entre les utilisateurs de l’entreprise ; plan Artisan : 100 dictées par mois par abonnement, partagées entre ses utilisateurs et ses entreprises ; plan Équipe : dictées sans limite mensuelle (100 analyses par jour et par personne au plus).'),
+        `propriétaire : les quotas sont dits mot pour mot (${faq.owner.texte.slice(faq.owner.texte.indexOf('Plan Gratuit'), faq.owner.texte.indexOf('Plan Gratuit') + 120)})`);
+    },
+  },
+  {
+    // Décision d'Hugo du 5 nov. 2026 (D-37) : les CGV de l'allumage (article 4) disent que le quota est partagé, que le
+    // plafond du jour compte les échecs, et qu'au plan Gratuit les dictées des autres entreprises gratuites comptent aussi.
+    // Textes de juriste-btp (avis du 4 nov., C.2), mot pour mot ; le build livré (IA éteinte) n'en dit rien.
+    nom: 'dictée : les CGV (IA allumée) disent le quota partagé, les échecs compris et les autres entreprises gratuites ; IA éteinte, rien de cela',
+    reel: true,
+    async executer({ ouvrir, verifier }) {
+      const lu = (t) => String(t || '').replace(/[\u00a0\u202f]/g, ' ').replace(/\s+/g, ' ').trim();
+      const avec = lu(await texteDe((await ouvrir({ reel: true, distReel: construireDistIa(), chemin: '/cgv', largeur: 375 })).page));
+      verifier(avec.includes('5 dictées par mois, partagées entre les utilisateurs de l’entreprise'), 'CGV : le plan Gratuit partage ses 5 dictées entre les utilisateurs de l’entreprise');
+      verifier(avec.includes('100 dictées par mois par abonnement, partagées entre ses utilisateurs et ses entreprises'), 'CGV : le plan Artisan compte par abonnement');
+      verifier(avec.includes('Dictées sans limite mensuelle (100 analyses par jour et par personne au plus). 100 analyses par jour et par personne, échecs compris.'),
+        'CGV : le plan Équipe dit « analyses », puis « échecs compris »');
+      verifier(avec.includes('au plan Gratuit, vos dictées dans vos autres entreprises au plan Gratuit comptent aussi.'), 'CGV : au plan Gratuit, les dictées des autres entreprises gratuites comptent aussi');
+      verifier(!/\(100 par jour/.test(avec), 'CGV : plus de « (100 par jour… » sans « analyses »');
+      const sans = lu(await texteDe((await ouvrir({ chemin: '/cgv', largeur: 375 })).page));
+      verifier(sans.includes('Article 4 - Plans tarifaires') && !/dictée|échecs compris|autres entreprises au plan Gratuit/i.test(sans), 'build livré (IA éteinte) : les CGV ne parlent ni de dictée, ni d’échecs, ni d’autres entreprises');
+    },
+  },
+  {
+    // Décision d'Hugo du 5 nov. 2026 (D-37) : la ligne « Dictées » de la page des tarifs dit qui partage le quota et que le
+    // plafond du jour compte des « analyses ». Ces valeurs sont longues : ni le tableau (ou la liste, au téléphone) ni les
+    // cartes ne doivent déborder de la page. Sur le build livré (IA éteinte), la ligne n'existe pas (parcours « site »).
+    nom: 'dictée : la page des tarifs (IA allumée) dit les quotas partagés dans la ligne « Dictées », sans déborder (375 et 1440 px)',
+    reel: true,
+    async executer({ ouvrir, cliquer, attendre, verifier }) {
+      const ATTENDU = [
+        '5 par mois, partagées entre les utilisateurs de l’entreprise',
+        '100 par mois par abonnement, partagées entre ses utilisateurs et ses entreprises',
+        'Sans limite mensuelle (100 analyses par jour et par personne au plus)',
+      ];
+      const lu = (t) => String(t || '').replace(/[\u00a0\u202f]/g, ' ').replace(/\s+/g, ' ').trim();
+      for (const largeur of [375, 1440]) {
+        const a = `(${largeur} px)`;
+        const { page } = await ouvrir({ reel: true, distReel: construireDistIa(), chemin: '/', largeur });
+        await attendre(2500);
+        await cliquer(page, 'Comparer les plans en détail', { dans: '#pricing' });
+        await attendre(900);
+        const etat = await page.evaluate(() => {
+          const visible = (el) => el.getClientRects().length > 0;
+          const lignes = [...document.querySelectorAll('#pricing [data-ligne]')].filter(visible);
+          const ligne = lignes.find((l) => /^Dictées$/.test((l.querySelector('[data-libelle]')?.textContent || '').trim()));
+          const cases = ligne ? [...ligne.querySelectorAll('[data-case]')] : [];
+          const cartes = [...document.querySelectorAll('#pricing [data-plan] [data-limite="dictees"] dd')];
+          return {
+            lignes: lignes.length,
+            tableau: cases.map((c) => c.textContent),
+            debordeCase: cases.some((c) => c.scrollWidth > c.clientWidth + 1),
+            cartes: cartes.map((d) => d.textContent),
+            debordeCarte: cartes.some((d) => d.scrollWidth > d.clientWidth + 1),
+            page: document.documentElement.scrollWidth - window.innerWidth,
+            petit: [...cases, ...cartes].some((c) => parseFloat(getComputedStyle(c).fontSize) < 12),
+          };
+        });
+        verifier(etat.lignes >= 5, `la comparaison des plans est ouverte ${a} (${etat.lignes} lignes)`);
+        verifier(JSON.stringify(etat.tableau.map(lu)) === JSON.stringify(ATTENDU), `ligne « Dictées » du tableau : les trois textes, dans l’ordre des plans ${a} (${etat.tableau.map(lu).join(' | ')})`);
+        verifier(JSON.stringify(etat.cartes.map(lu)) === JSON.stringify(ATTENDU), `cartes : la même ligne « Dictées » ${a} (${etat.cartes.map(lu).join(' | ')})`);
+        verifier(!etat.debordeCase && !etat.debordeCarte && etat.page <= 0, `rien ne déborde, ni dans les cases, ni dans les cartes, ni dans la page ${a} (case ${etat.debordeCase}, carte ${etat.debordeCarte}, page +${etat.page} px)`);
+        verifier(!etat.petit, `texte de 12 px au moins ${a}`);
       }
     },
   },

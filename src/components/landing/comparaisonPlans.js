@@ -51,9 +51,12 @@ export function libelleAffiche(nom) {
   return fine(nom);
 }
 
-/** « 5 par mois », « 10 », « Vous + 1 », « Illimité » : la valeur de `limits` telle qu'on la lit. */
-export function valeurDeLimite(cle, valeur) {
-  const speciale = valeurLimiteIa(cle, valeur);
+/**
+ * « 5 par mois », « 10 », « Vous + 1 », « Illimité » : la valeur de `limits` telle qu'on la lit. Le plan ne sert qu'à la ligne
+ * de l'interrupteur des fonctions (qui dit qui partage le quota, src/lib/limitesDictees.js).
+ */
+export function valeurDeLimite(cle, valeur, planId) {
+  const speciale = valeurLimiteIa(cle, valeur, planId);
   if (speciale) return speciale;
   if (valeur < 0) return 'Illimité';
   if (cle === 'equipe') return `Vous + ${valeur}`;
@@ -77,7 +80,7 @@ export function lignesDeComparaison(plans, ordre) {
     cle,
     libelle,
     // Une clé absente de `limits` vaut « illimité », comme dans `autoriserCreation` (DataContext.jsx : `?? -1`)
-    valeurs: liste.map((plan) => valeurDeLimite(cle, plan.limits?.[cle] ?? -1)),
+    valeurs: liste.map((plan) => valeurDeLimite(cle, plan.limits?.[cle] ?? -1, plan.id)),
   }));
 
   // Fonctions de chaque plan, cumulées quand sa liste commence par « Tout le plan … »

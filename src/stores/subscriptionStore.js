@@ -58,7 +58,10 @@ export const PLANS = {
       { name: '10 clients', included: true },
       { name: '2 chantiers', included: true },
       { name: '50 photos de chantier', included: true },
-      { name: '5 dictées par mois', included: true },
+      // Texte de juriste-btp (avis du 4 nov. 2026, C.2), retenu par Hugo le 5 nov. (D-37) : le compteur du plan Gratuit est
+      // celui de l'entreprise. Les dictées du même compte dans ses autres entreprises gratuites comptent aussi : c'est dit
+      // dans les CGV (article 4).
+      { name: '5 dictées par mois, partagées entre les utilisateurs de l’entreprise', included: true },
       { name: 'Vous + 1 collaborateur', included: true },
       { name: 'Signature en ligne des devis', included: true },
       { name: 'Relances automatiques', included: true },
@@ -102,7 +105,8 @@ export const PLANS = {
       // (juriste-btp, 4 nov. 2026 : C. conso. L121-2 ; C. civ. 1190) : retiré quand l'IA est allumée.
       { name: 'Tout le plan Gratuit, sans limite', nomAvecIa: 'Tout le plan Gratuit', included: true },
       { name: 'Devis, clients, chantiers et photos illimités', included: true },
-      { name: '100 dictées par mois', included: true },
+      // Aux plans payants le compteur suit l'abonnement (migration 107, colonne `payeur`) : texte de juriste-btp, D-37.
+      { name: '100 dictées par mois par abonnement, partagées entre ses utilisateurs et ses entreprises', included: true },
       { name: 'Vous + 1 collaborateur', included: true }
     ],
     badge: 'Pour un artisan seul',
@@ -140,8 +144,9 @@ export const PLANS = {
     featureLabels: [
       { name: 'Tout le plan Artisan', included: true },
       { name: 'Vous + 10 collaborateurs, chacun avec son rôle', included: true },
-      // « Sans limite » seul serait trompeur (C. conso. L121-2) : le plafond du jour est annoncé (migration 107).
-      { name: 'Dictées sans limite mensuelle (100 par jour et par personne au plus)', included: true }
+      // « Sans limite » seul serait trompeur (C. conso. L121-2) : le plafond du jour est annoncé (migration 107). Il compte
+      // toutes les analyses, échecs compris : « analyses » et non « dictées » (D-37) ; les CGV le disent (article 4).
+      { name: 'Dictées sans limite mensuelle (100 analyses par jour et par personne au plus)', included: true }
     ],
     badge: 'Pour une équipe',
     support: 'prioritaire'
@@ -251,8 +256,9 @@ export const UPGRADE_CONTEXTS = {
     // Le nombre exact vient du serveur (message de voice-intent, affiché dans la fenêtre de dictée) : le titre n'en écrit pas.
     title: 'Vos dictées du mois sont utilisées',
     // Relecture juriste-btp du 3 nov. 2026 : « vous ne rentrez plus rien à la main » était faux (l'artisan relit et corrige).
-    // Textes de l'offre du 4 nov. 2026 (décision d'Hugo) : pas de « sans limite » sans son plafond (C. conso. L121-2).
-    subtitle: 'La dictée prépare un brouillon de devis à partir de ce que vous dites ; vous le relisez. Plan Artisan : 100 dictées par mois. Plan Équipe : dictées sans limite mensuelle (100 par jour et par personne au plus).',
+    // Textes de l'offre du 4 nov. 2026 (décision d'Hugo) : pas de « sans limite » sans son plafond (C. conso. L121-2) ;
+    // « par abonnement » et « analyses » : décision du 5 nov. (D-37).
+    subtitle: 'La dictée prépare un brouillon de devis à partir de ce que vous dites ; vous le relisez. Plan Artisan : 100 dictées par mois par abonnement, partagées entre ses utilisateurs et ses entreprises. Plan Équipe : dictées sans limite mensuelle (100 analyses par jour et par personne au plus).',
     highlight: 'dictees',
     recommendedPlan: 'artisan'
   },

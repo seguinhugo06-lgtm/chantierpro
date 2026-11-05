@@ -1,5 +1,6 @@
 /**
- * Règles de voice-intent : qui peut dicter, le quota mensuel de l'organisation, les erreurs rendues à l'app.
+ * Règles de voice-intent : qui peut dicter, le quota mensuel (par abonnement aux plans payants, par entreprise et par compte
+ * au plan Gratuit), les erreurs rendues à l'app.
  * Sans import distant : testé sous vitest (src/lib/__tests__/voiceIntentServeur.test.js). index.ts ne fait que
  * brancher ces règles sur Supabase et sur l'API d'Anthropic.
  *
@@ -9,8 +10,18 @@
  * délai, réseau) est close en « échec » et ne décompte pas ; un refus du modèle ou une réponse illisible, provoqués par
  * la dictée, sont clos en « échec » mais décomptent (motifs `refus`, `illisible`, comptés par la base). Une réponse
  * coupée par le plafond de jetons (`max_tokens`) a son motif à part, `coupee`, qui décompte aussi : une dictée très
- * longue la provoque (relecture gardien-securite du 4 nov., 3). Le délai ne décompte pas (décision d'Hugo attendue).
+ * longue la provoque (relecture gardien-securite du 4 nov., 3). Le délai ne décompte pas (décision d'Hugo du 5 nov. 2026, D-37).
  * Une exception imprévue rend 503 IA_INDISPONIBLE, avec corsHeaders (filet global).
+ *
+ * Qui dicte : le propriétaire (owner) et l'administrateur (admin) seulement ; tout autre rôle reçoit 403 SANS_DROIT, avant
+ * tout décompte. Le comptable n'en fait plus partie (décision d'Hugo du 5 nov. 2026, D-37) : Paramètres › Données lui est
+ * fermé, il ne pourrait pas retirer son accord. Ce fichier ne garde aucune liste de rôles : la base fait foi (réservation,
+ * migration 107) et un test compare sa liste à celle de l'app (src/lib/permissions.js).
+ *
+ * Coupe-circuit global (migration 107, motif `global`, réponse 503 IA_INDISPONIBLE) : DEUX compteurs indépendants sur 24 heures
+ * (D-37) — 1 000 analyses pour l'ensemble des comptes au plan Gratuit, 3 000 pour l'ensemble des plans payants. Un appel n'est
+ * regardé que contre le compteur de son plan : un abus de comptes gratuits ne coupe pas les payants. Chaque appel compte, même
+ * en échec.
  */
 
 import { corsHeaders } from '../_shared/cors.ts';
@@ -18,10 +29,12 @@ import { identifierAppelant, type Utilisateur } from '../_shared/appelant.ts';
 import { MODELE, requeteDictee } from './consignes.ts';
 
 /**
- * Nombre d'usages par mois (par organisation, et par abonnement aux plans payants), selon le plan (-1 : sans limite mensuelle). Recopie de
+ * Nombre d'usages par mois, selon le plan (-1 : sans limite mensuelle) : aux plans payants PAR ABONNEMENT (partagé entre ses
+ * utilisateurs et ses entreprises), au plan Gratuit par entreprise (partagé entre ses utilisateurs) et par compte (les
+ * dictées du même compte dans ses autres entreprises gratuites comptent aussi) ; c'est la migration 107 qui compte. Recopie de
  * `PLANS[plan].limits.dictees` (src/stores/subscriptionStore.js), seule source de vérité : un test vérifie que les deux
  * disent la même chose. Décision d'Hugo du 4 nov. 2026 : 5 au plan Gratuit, 100 au plan Artisan, sans limite mensuelle
- * au plan Équipe, avec 100 par jour et par personne au plus (plafond du jour, migration 107).
+ * au plan Équipe, avec 100 analyses par jour et par personne au plus (plafond du jour, migration 107 ; D-37).
  * La fonction `assistant` n'a pas encore de quota décidé : tant qu'elle n'est pas listée ici, elle est refusée.
  */
 export const LIMITES: Record<string, Record<string, number>> = {
@@ -35,10 +48,14 @@ export const LIMITES: Record<string, Record<string, number>> = {
  */
 export const ACCORD_IA_VERSION = '2026-11-03';
 
-/** Offre proposée quand le quota du mois est atteint (textes de l'offre, décision d'Hugo du 4 nov. 2026). */
+/**
+ * Offre proposée quand le quota du mois est atteint. Textes de l'offre, mot pour mot : décision d'Hugo du 4 nov. 2026 pour les
+ * quotas, et du 5 nov. pour « par abonnement, partagées entre ses utilisateurs et ses entreprises » et « 100 analyses par
+ * jour » (D-37 ; avis de juriste-btp du 4 nov. 2026, C.2).
+ */
 const SUITE_QUOTA: Record<string, string> = {
-  gratuit: 'passez au plan Artisan : 100 dictées par mois.',
-  artisan: 'passez au plan Équipe : dictées sans limite mensuelle (100 par jour et par personne au plus).',
+  gratuit: 'passez au plan Artisan : 100 dictées par mois par abonnement, partagées entre ses utilisateurs et ses entreprises.',
+  artisan: 'passez au plan Équipe : dictées sans limite mensuelle (100 analyses par jour et par personne au plus).',
 };
 
 export const MESSAGES = {
@@ -46,7 +63,8 @@ export const MESSAGES = {
   vide: 'Dictée vide ou trop courte.',
   tropLongue: 'Dictée trop longue (5000 caractères maximum). Coupez-la en deux.',
   horsOrganisation: 'Cette entreprise n’est pas la vôtre. Saisissez votre devis à la main.',
-  sansDroit: 'Votre rôle ne permet pas de créer un devis.',
+  // Seuls le propriétaire et l'administrateur dictent (D-37) : le comptable peut créer un devis, mais pas le dicter.
+  sansDroit: 'Votre rôle ne permet pas d’utiliser la dictée.',
   quota: (limite: number, plan = 'gratuit') => SUITE_QUOTA[plan]
     ? `Vos ${limite} dictées du mois sont utilisées. Saisissez votre devis à la main, ou ${SUITE_QUOTA[plan]}`
     : `Vos ${limite} dictées du mois sont utilisées. Saisissez votre devis à la main.`,
@@ -202,7 +220,8 @@ async function traiter(req: Request, dep: Dependances): Promise<Response> {
   if ('horsOrganisation' in reservation) return erreur('HORS_ORGANISATION', MESSAGES.horsOrganisation, 403);
   if ('sansDroit' in reservation) return erreur('SANS_DROIT', MESSAGES.sansDroit, 403);
   if (!reservation.autorise && reservation.motif === 'global') {
-    journal('erreur', 'coupe-circuit global atteint (usage_ia_log, 24 h) : dictée refusée');
+    // Deux compteurs (D-37) : la réservation rend le plan de l'appelant, donc le compteur qui a coupé.
+    journal('erreur', `coupe-circuit global atteint (${reservation.plan === 'gratuit' ? 'plan gratuit : 1 000' : 'plans payants : 3 000'} analyses en 24 h, usage_ia_log) : dictée refusée`);
     return erreur('IA_INDISPONIBLE', MESSAGES.indisponible, 503);
   }
   if (!reservation.autorise && reservation.motif === 'plafond') return erreur('PLAFOND', MESSAGES.plafond, 429);

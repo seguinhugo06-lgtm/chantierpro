@@ -12,9 +12,11 @@
  * /cgv) n'embarque pas `PLANS` pour afficher un texte figé.
  *
  * 4 nov. 2026 (allumage de la dictée, décision d'Hugo) : quand FONCTIONS.ia est allumé, chaque plan porte son quota de
- * dictées (5 / 100 / sans limite mensuelle, 100 par jour et par personne au plus) : l'article 4 et la version changent
- * d'eux-mêmes. LE JOUR DE LA LIVRAISON, remplacer « 2026-11-03 » (valeur d'attente, signalée par cgvVersion.test.jsx)
- * par la date réelle, la même que CGU_VERSION (src/lib/cgu.js).
+ * dictées (5 / 100 / sans limite mensuelle, 100 analyses par jour et par personne au plus) : l'article 4 et la version
+ * changent d'eux-mêmes. 5 nov. 2026 (D-37) : le quota se dit « partagé » (entre les utilisateurs de l'entreprise au plan
+ * Gratuit, par abonnement aux plans payants), le plafond du jour compte les échecs, et les CGV le disent. LE JOUR DE LA
+ * LIVRAISON, remplacer « 2026-11-03 » (valeur d'attente, signalée par cgvVersion.test.jsx) par la date réelle, la même
+ * que CGU_VERSION (src/lib/cgu.js).
  */
 import { FONCTIONS } from './fonctions';
 
@@ -59,28 +61,35 @@ const ARTICLE_4_SANS_IA = Object.freeze([
   }),
 ]);
 
-/** Article 4 avec la dictée (FONCTIONS.ia allumé) : les mêmes lignes, plus le quota de dictées de chaque plan. */
+/**
+ * Article 4 avec la dictée (FONCTIONS.ia allumé) : les mêmes lignes, plus le quota de dictées de chaque plan.
+ * Offre Équipe : après le libellé de l'offre, la phrase « 100 analyses par jour et par personne, échecs compris. » (décision
+ * d'Hugo du 5 nov. 2026, D-37) : le plafond du jour compte toutes les analyses, y compris celles qui échouent (migration
+ * 107 : chaque appel compte, même en échec). Elle n'est pas dans les libellés de `PLANS` (l'offre ne la porte pas).
+ */
 const ARTICLE_4_AVEC_IA = Object.freeze([
   Object.freeze({
     plan: 'Gratuit',
     prix: ARTICLE_4_SANS_IA[0].prix,
-    description: 'Pour découvrir Mallettico. 5 devis par mois · Factures sans limite · 10 clients · 2 chantiers · 50 photos de chantier · 5 dictées par mois · Vous + 1 collaborateur · Signature en ligne des devis · Relances automatiques · Catalogue complet et bibliothèque : plus de 1 000 prestations chiffrées.',
+    description: 'Pour découvrir Mallettico. 5 devis par mois · Factures sans limite · 10 clients · 2 chantiers · 50 photos de chantier · 5 dictées par mois, partagées entre les utilisateurs de l’entreprise · Vous + 1 collaborateur · Signature en ligne des devis · Relances automatiques · Catalogue complet et bibliothèque : plus de 1 000 prestations chiffrées.',
   }),
   Object.freeze({
     plan: 'Artisan',
     prix: ARTICLE_4_SANS_IA[1].prix,
-    description: 'L\'essentiel pour un artisan autonome. Tout le plan Gratuit · Devis, clients, chantiers et photos illimités · 100 dictées par mois · Vous + 1 collaborateur.',
+    description: 'L\'essentiel pour un artisan autonome. Tout le plan Gratuit · Devis, clients, chantiers et photos illimités · 100 dictées par mois par abonnement, partagées entre ses utilisateurs et ses entreprises · Vous + 1 collaborateur.',
   }),
   Object.freeze({
     plan: 'Équipe',
     prix: ARTICLE_4_SANS_IA[2].prix,
-    description: 'Pour les entreprises avec collaborateurs. Tout le plan Artisan · Vous + 10 collaborateurs, chacun avec son rôle · Dictées sans limite mensuelle (100 par jour et par personne au plus).',
+    description: 'Pour les entreprises avec collaborateurs. Tout le plan Artisan · Vous + 10 collaborateurs, chacun avec son rôle · Dictées sans limite mensuelle (100 analyses par jour et par personne au plus). 100 analyses par jour et par personne, échecs compris.',
   }),
 ]);
 
-/** Phrase de l'article 4 (avec la dictée) qui dit ce qui compte comme une dictée (juriste-btp, 4 nov. 2026, C.1).
- *  À revoir si Hugo décide de décompter le délai dépassé (aujourd'hui non décompté, migration 107). */
-export const CGV_ARTICLE_4_DICTEES = 'Dictées : une dictée compte dès qu’elle est analysée, y compris quand l’analyse échoue à cause de la dictée elle-même (trop longue, incompréhensible ou refusée par l’intelligence artificielle). Une panne de Mallettico ou de son prestataire ne compte pas. Le compteur repart à zéro le 1er de chaque mois, heure de Paris.';
+/** Phrase de l'article 4 (avec la dictée) qui dit ce qui compte comme une dictée (juriste-btp, 4 nov. 2026, C.1), puis, au
+ *  plan Gratuit, les dictées des autres entreprises du même compte (juriste-btp, 4 nov. 2026, C.2 ; décision d'Hugo du
+ *  5 nov., D-37) : la dernière proposition est celle de l'avis, mot pour mot, reliée à la phrase d'avant par un point-virgule.
+ *  Le délai dépassé ne décompte pas (décision d'Hugo du 5 nov. 2026, D-37) : cette phrase reste vraie telle quelle. */
+export const CGV_ARTICLE_4_DICTEES = 'Dictées : une dictée compte dès qu’elle est analysée, y compris quand l’analyse échoue à cause de la dictée elle-même (trop longue, incompréhensible ou refusée par l’intelligence artificielle). Une panne de Mallettico ou de son prestataire ne compte pas. Le compteur repart à zéro le 1er de chaque mois, heure de Paris ; au plan Gratuit, vos dictées dans vos autres entreprises au plan Gratuit comptent aussi.';
 
 /** Article 4 de la version en vigueur. */
 export const CGV_ARTICLE_4_PLANS = FONCTIONS.ia ? ARTICLE_4_AVEC_IA : ARTICLE_4_SANS_IA;

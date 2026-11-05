@@ -258,3 +258,110 @@ Partir de A tel que livré, puis l'équivalent de `99b9b370` :
 8. Le comptable, le délai, le coupe-circuit et les textes « pour l'entreprise » : décisions d'Hugo.
 9. Vérification complète : verte (niveau complet) sur `6b361e1`, le dernier commit de code, arbre propre.
 10. B : liste exacte ci-dessus (fichiers, tests, site.cjs, dates de cgu.js et cgv.js).
+
+## Décisions d'Hugo du 5 nov. (lot 4)
+
+Session locale de correction, branche **`corr4-ia`**, partie d'`origin/main` (`868b924c`, où le commit A de l'IA est déjà livré, l'IA éteinte). Elle applique les décisions d'Hugo du 5 nov. 2026 (« OK pour tout », numérotées **D-37**), sans les rouvrir. **`FONCTIONS.ia` reste à `false`** ; le commit B n'est pas fait (la session locale le fera après la pose de la clé). Rien n'est poussé, rien n'est appliqué en production, aucun secret ni `CLAUDE.md` ni `.claude/` touchés ; la migration 107, appliquée nulle part, est modifiée en place.
+
+| Commit | Contenu |
+|---|---|
+| `c9ba9019` | migration 107 (rôles, coupe-circuit à deux compteurs) et son banc ; `permissions.js`, `droitsDictee.js` et leurs tests |
+| `ac7ddb84` | textes de quota (offre, CGV, FAQ, messages du serveur, page des tarifs), `regles.ts`, FAQ selon le droit de dicter, parcours de la dictée |
+| `78855333` | `docs/etat-production.md` (lignes 107 et `voice-intent`) |
+| (ce commit) | ce rapport |
+
+### Contrôle des corrections v3
+
+Non refait ici : la fiche du lot dit qu'il a été fait. Aucun point v3 n'a été rouvert.
+
+### Décisions appliquées
+
+#### 1. Quota par abonnement, et les textes qui le disent
+
+Le compteur n'a pas bougé (colonne `payeur`, `107_quota_ia.sql`). Les textes de l'avis de juriste-btp (C.2), mot pour mot :
+
+| Texte | Où |
+|---|---|
+| « 5 dictées par mois, partagées entre les utilisateurs de l’entreprise » | `src/stores/subscriptionStore.js:64` (offre Gratuit) ; `src/lib/cgv.js:74` (CGV, article 4) ; `src/App.jsx:2527` (FAQ) ; `src/lib/limitesDictees.js:21` (page des tarifs, sans le mot « dictées » qui est le titre de la ligne) |
+| « 100 dictées par mois par abonnement, partagées entre ses utilisateurs et ses entreprises » | `subscriptionStore.js:109` (offre Artisan) et `:261` (sous-titre de la fenêtre d'offre) ; `cgv.js:79` ; `supabase/functions/voice-intent/regles.ts:57` (message du serveur au quota Gratuit atteint) ; `App.jsx:2527` ; `limitesDictees.js:22` |
+| « au plan Gratuit, vos dictées dans vos autres entreprises au plan Gratuit comptent aussi. » | `cgv.js:92` (paragraphe des dictées de l'article 4) |
+
+- **Tous ces textes sont « avec IA »** : ils suivent l'interrupteur comme ceux qui existaient (libellés de `PLANS` retirés quand l'IA est éteinte, article 4 « avec IA », FAQ, ligne des tarifs, serveur fermé sans `IA_DICTEE`). Rien ne change à l'écran tant qu'elle est éteinte : constaté par le parcours « les CGV (IA allumée)… ; IA éteinte, rien de cela » (build livré), par `cgvVersion.test.jsx` (texte sans IA inchangé) et par le parcours `site` (voir plus bas).
+- **La page des tarifs** : `valeurDeLimite(cle, valeur, planId)` prend maintenant le plan (`comparaisonPlans.js:58`, appelé avec `plan.id` à la l. 83), parce que le partage dépend du plan et non du nombre. Sans plan, la ligne ne dit rien du partage (rien d'inventé).
+- **Commentaires C.3 alignés** (« par organisation » → par abonnement aux plans payants, par entreprise et par compte au plan Gratuit) : `107_quota_ia.sql` (titre, conception, `COMMENT ON TABLE`), `regles.ts` (en-tête, `LIMITES`), `voice-intent/index.ts`, `src/lib/dicteeQuota.js`, `DicteeModal.jsx`.
+- **Tests** : `cgvVersion.test.jsx` (le texte figé « avec IA » est celui que donne `PLANS`, plus la phrase des échecs ; textes exacts ; phrase des autres entreprises mot pour mot ; rien sans IA) ; `limitesDictees.test.js` (les trois valeurs ; la valeur de chaque plan est son libellé d'offre sans le mot « dictées » : une seule formule pour l'app et le site) ; `voiceIntentServeur.test.js` (messages exacts du quota ; le serveur et l'app disent la même chose, lu dans `LIBELLES_COMPLETS`). Le test « `LIMITES` = `PLANS[plan].limits.dictees` » est resté vert (les nombres ne changent pas). Parcours sur le build IA : FAQ, CGV, page des tarifs à 375 et 1 440 px.
+- **Contre-essais** : libellé Artisan de `PLANS` remis à « 100 dictées par mois » → **3 tests rouges** (CGV, valeur des tarifs, serveur/app) ; phrase des autres entreprises retirée de `CGV_ARTICLE_4_DICTEES` → **1 test rouge**.
+
+#### 2. Plafond du jour : toutes les analyses comptent, échecs compris
+
+Le décompte n'a pas bougé (chaque appel compte, même en échec : `107_quota_ia.sql`, plafond du jour). Textes :
+
+- offre Équipe « Dictées sans limite mensuelle (100 analyses par jour et par personne au plus) » : `subscriptionStore.js:149` (offre) et `:261` (sous-titre) ; `cgv.js:84` ; `regles.ts:58` (message du quota Artisan atteint) ; `App.jsx:2527` (FAQ) ; `limitesDictees.js:14` (page des tarifs : « Sans limite mensuelle (100 analyses par jour et par personne au plus) ») ;
+- **CGV** : « 100 analyses par jour et par personne, échecs compris. » ajouté à la description de l'offre Équipe (`cgv.js:84`, sous l'interrupteur) ;
+- le message du serveur pour le plafond du jour **ne change pas** (`regles.ts` `plafondJour`, il dit déjà « 100 analyses par jour et par personne »).
+- **Tests** : `cgvVersion.test.jsx` (la description Équipe se termine par la phrase ; le garde-fou la compare à `PLANS` plus la phrase, et voit la différence sans elle) ; `limitesDictees.test.js` ; `voiceIntentServeur.test.js` ; parcours « les CGV (IA allumée) ».
+- **Contre-essais** : phrase « échecs compris » retirée → **2 tests rouges** ; `DICTEES_SANS_LIMITE` remis à « (100 par jour… » → **2 tests rouges**.
+
+#### 3. Dictée réservée au propriétaire et à l'administrateur
+
+- **App** : `src/lib/permissions.js:38`, `'ia-devis'` → `comptable: false`. « Dicter » n'a qu'un point d'entrée, le bouton de l'en-tête (`App.jsx:1807`), puis l'écran d'accord (`:2127`) et la fenêtre (`:2144`) : tous trois derrière `FONCTIONS.ia && dictee.peutDicter` (`droitsDictee.js:13`, qui lit `canAccess('ia-devis')`). Les autres droits du comptable ne changent pas : `devis` (page `full`, créer, modifier, envoyer, voir), clients, finances ; « Saisir mon devis à la main » lui reste (`peutSaisirAMain`).
+- **Serveur** : `107_quota_ia.sql:223`, `v_role NOT IN ('owner', 'admin')` → `SANS_DROIT`, avant tout verrou et tout décompte (commentaire d'en-tête mis à jour, l. 33-39). `voice-intent` ne garde **aucune liste de rôles** (la base fait foi) : rien à aligner ; son message `sansDroit` (`regles.ts:67`) est réécrit, voir « À relire par le juriste ».
+- **Tests** :
+  - banc `scripts/banc/107.mjs:121-156` : comptable, chef de chantier, ouvrier et lecture seule reçoivent `SANS_DROIT` et rien n'est compté ; le refus précède le calcul du quota (dans une entreprise gratuite au quota épuisé, le comptable reçoit `SANS_DROIT` et son patron « quota ») ; l'administrateur et le propriétaire dictent (contre-épreuve) ;
+  - vitest : `permissions.test.js` (page `ia-devis` : owner et admin seulement ; le comptable garde tous ses droits sur les devis), `droitsDictee.test.js` (le comptable : `peutDicter: false`, `peutSaisirAMain: true`, `voitPrix: true` ; **et l'app et la migration listent les mêmes rôles**, lus dans le fichier SQL : ce désaccord est ce qui laissait dicter sans pouvoir retirer son accord) ; `voiceIntentServeur.test.js` (403 `SANS_DROIT`, sans appel à l'API) ;
+  - parcours `dictée : le propriétaire et l’administrateur ont « Dicter » ; le comptable et le chef de chantier n’ont ni bouton ni fenêtre, et le comptable crée toujours un devis` : le faux Supabase le permettait (`creerBase(…, { role })`), donc fait, avec contre-épreuves (le propriétaire et l'administrateur ont le bouton ; le chef de chantier ne crée pas de devis, la vérification distingue bien les rôles).
+- **Contre-essais** : comptable remis dans la liste de 107 → **3 vérifications du banc rouges** + le test « mêmes rôles » ; `comptable: 'full'` remis dans `permissions.js` → **3 tests rouges** + le parcours (« comptable : ni bouton « Dicter » ni fenêtre ({"bouton":true…}) ») ; ancien message `sansDroit` remis → 1 test rouge.
+- **Textes (mentions de rôle)** : cherchées dans la FAQ, les CGU (art. 7 et 11), la politique de confidentialité (art. 2, 3, 4), l'écran d'accord, Paramètres › Données et les descriptions de rôles (`getRoleDescription`). **Aucune ne promet la dictée à un rôle.** La seule qui le faisait sans le dire était la FAQ (« Touchez « Dicter »… »), montrée à tous les rôles : elle ne l'est plus qu'à ceux qui peuvent dicter (`HelpModal` reçoit `peutDicter`, `App.jsx:2116`, `:2380`, `:2527`). Parcours « la FAQ n’explique la dictée qu’à ceux qui peuvent dicter… » ; contre-essai (condition retirée) → le parcours échoue (« comptable : la FAQ ne lui explique pas une dictée qu’il n’a pas »).
+
+#### 4. Coupe-circuit global séparé
+
+- **Où** : `107_quota_ia.sql:265-270`, deux compteurs indépendants sur 24 h glissantes, lus dans la colonne `plan` de `usage_ia_log` : **1 000 analyses pour l'ensemble des comptes au plan Gratuit, 3 000 pour l'ensemble des plans payants** ; l'appel n'est regardé que contre le compteur de son plan ; le motif reste `global`. Une ligne sans plan (insérée à la main) compte avec les payants. Aucun droit ni verrou changé.
+- **Commentaires qui disent les deux seuils** : en-tête de 107 (l. 50-54) et commentaire du code (l. 260-264), `regles.ts` (l. 21-24) et `docs/etat-production.md` (lignes 107 et `voice-intent`). `regles.ts:224` : le journal de la fonction dit quel compteur a coupé (« plan gratuit : 1 000 » ou « plans payants : 3 000 ») ; la réponse à l'artisan est la même (503 « Dictée indisponible… »).
+- **Requête de contrôle après application** ajoutée à l'en-tête de 107 (l. 76-78) : `… ~ 'v_role NOT IN \(''owner'', ''admin''\)'` et `… ~ 'THEN 1000 ELSE 3000'` doivent rendre `t, t` ; le banc la rejoue sur le vrai corps de la fonction.
+- **Banc** (`scripts/banc/107.mjs:280-336`) : 1 000 gratuites vieilles de 25 h ne coupent rien ; à 999 gratuites la 1 000e passe et la suivante est coupée (`global`, rien de compté), pendant que **l'appel payant passe, même avec 2 500 analyses payantes en plus** (3 500 au total) ; à 2 999 payantes (Artisan et Équipe confondus) la 3 000e passe, la suivante est coupée, et **l'appel gratuit passe** ; 3 000 lignes sans plan coupent les payants, pas les gratuits.
+- **Contre-essais** : l'ancien compteur unique de 3 000 remis → **5 vérifications rouges** (à 1 000 gratuites l'appel gratuit n'est plus coupé ; avec 1 000 gratuites et 2 500 payantes l'appel payant est coupé ; l'appel gratuit est coupé par l'abus des payants ; les lignes sans plan ; la requête de contrôle) ; deux seuils mais sans distinguer le plan → **3 vérifications rouges** (dont « avec 1 000 gratuites et 2 500 payantes, l'appel payant passe »).
+- Vitest : `voiceIntentServeur.test.js` (le journal nomme le bon compteur ; la réponse est la même) ; contre-essai (ancien journal) → test rouge.
+
+#### 5. Pas d'e-mail aux abonnés
+
+Rien à coder, rien fait : la nouvelle version des CGV suffit. Le délai dépassé ne compte toujours pas : les commentaires qui disaient « décision d'Hugo attendue » le disent décidé (`107_quota_ia.sql` en-tête, `regles.ts` en-tête, `cgv.js`).
+
+### À relire par le juriste
+
+Textes qui ne sont ni de l'avis du 4 nov. ni de la fiche (ma main) :
+
+1. **« Votre rôle ne permet pas d’utiliser la dictée. »** (`regles.ts:67`, message du serveur pour `SANS_DROIT`). Il remplace « Votre rôle ne permet pas de créer un devis. », devenu faux pour le comptable (il peut créer un devis). Vu seulement par un appel direct ou une app périmée : l'app n'offre plus « Dicter » à ces rôles.
+2. **Place de la phrase des autres entreprises gratuites** (`cgv.js:92`). Le texte est celui de l'avis, mot pour mot, y compris la minuscule : je l'ai relié à la phrase d'avant du paragraphe des dictées par un point-virgule (« …le 1er de chaque mois, heure de Paris ; au plan Gratuit, vos dictées dans vos autres entreprises au plan Gratuit comptent aussi. »). L'avis dit « dans les CGV » sans dire où : à confirmer.
+3. **Description Équipe dans les CGV** (`cgv.js:84`) : « … Dictées sans limite mensuelle (100 analyses par jour et par personne au plus). 100 analyses par jour et par personne, échecs compris. » Les deux textes sont ceux d'Hugo, mis bout à bout ; la répétition de « 100 analyses par jour et par personne » se lit un peu lourdement. À alléger si le juriste le préfère.
+4. **Valeurs de la page des tarifs** (`limitesDictees.js:21-22`) : « 5 par mois, partagées entre les utilisateurs de l’entreprise » et « 100 par mois par abonnement, partagées entre ses utilisateurs et ses entreprises » : les textes de C.2 sans le mot « dictées », titre de la ligne (un test les lie aux libellés d'offre).
+
+Toujours à relire au texte officiel, comme avant (Légifrance et EUR-Lex inaccessibles aux sessions cloud) : L121-2, L121-5, C. civ. 1190, RGPD art. 28.3 a), 28.3 dernier alinéa et 28.4.
+
+### Ce qui n'a pas pu être fait, ou reste à la session locale
+
+- **D-37 n'est pas consignée dans `docs/decisions.md`** : tous les lots y ajoutent leur ligne et se heurteraient à la fusion. Ligne proposée : « | D-37 | 05/11/2026 | Dictée IA, décisions d'Hugo (« OK pour tout ») : quota dit « par abonnement, partagées entre ses utilisateurs et ses entreprises » aux plans payants et « partagées entre les utilisateurs de l’entreprise » au plan Gratuit ; plafond du jour dit « 100 analyses par jour et par personne », échecs compris (offre Équipe et CGV) ; dictée réservée au propriétaire et à l'administrateur (le comptable la perd) ; coupe-circuit global en deux compteurs (1 000 analyses par 24 h pour l'ensemble des comptes gratuits, 3 000 pour l'ensemble des plans payants) ; pas d'e-mail aux abonnés, la nouvelle version des CGV suffit ; le délai dépassé ne compte toujours pas | Avis de juriste-btp du 4 nov. 2026 (`docs/avis-juriste-2026-11-04-ia.md`, C.1 et C.2) ; le comptable ne peut pas retirer son accord (Paramètres lui est fermé) ; un abus de comptes gratuits ne doit pas couper les payants | décidé |».
+- **`docs/etat-production.md`** : seules les lignes 107 et `voice-intent` ont changé de contenu. Leur statut (« non livrées », « à appliquer ») et la ligne « dernière mise à jour » sont ceux d'avant la livraison du commit A : à refaire par la session locale.
+- **Commit B, un point de plus** : `scripts/parcours/site.cjs`, point 5 de « Ce que B doit changer ». Quand ses limites attendues viendront de `valeurDeLimite` de `comparaisonPlans.js`, passer le plan en troisième argument (l. 1241 : `valeurDeLimite(cle, plan.limits[cle] ?? -1, plan.id)` ; l. 1337 : `valeurDeLimite(cle, PLANS[id].limits[cle], id)`). Sans cela le parcours attendrait « 5 par mois » au lieu de « 5 par mois, partagées entre les utilisateurs de l’entreprise ». Les parcours `dictee` ci-dessus le font déjà (build IA). Les numéros de ligne de la liste « Ce que B doit changer » (`cgvVersion.test.jsx`, `cgv.js`, `subscriptionStore.js`) ont bougé avec ce lot : se fier aux noms.
+- **Cosmétique, au téléphone** : dans la liste « Comparer les plans en détail » à 375 px, les trois valeurs de la ligne « Dictées » sont côte à côte et la valeur Artisan occupe huit lignes étroites. Lisible, rien ne déborde (parcours, mesuré), mais dense. À 1 440 px : deux ou trois lignes. Mise en page non touchée (hors lot).
+- **Application en production** : 107 (modifiée), 109, puis redéploiement de `voice-intent` (`regles.ts` change : textes, message `SANS_DROIT`, journal du coupe-circuit) : ordre inchangé (§ 6). Après 107, la requête de contrôle de son en-tête doit rendre `t, t`.
+- **Pour le gardien de sécurité**, ce qui a changé dans 107 : (a) la liste de rôles (l. 223) ; (b) le coupe-circuit (l. 265-270 : un compteur par plan, sans verrou global comme avant, donc un léger dépassement possible sous appels simultanés) ; (c) des commentaires et le `COMMENT ON TABLE` ; (d) la requête de contrôle de l'en-tête. Aucun `GRANT`/`REVOKE`, aucune table ni colonne, aucun verrou changé.
+- **Restent ouverts, non décidés, non faits** (gardien du 4 nov., point 4, et `docs/cloud/ia-socle.md`) : un plafond quotidien par abonnement, une alerte à l'exploitant quand un coupe-circuit se déclenche (aujourd'hui seul le journal de la fonction le dit), le lieu du calcul, la durée du journal.
+- **Textes historiques non réécrits** : `docs/cloud/ia-socle.md` (l. 329 et 361) décrit encore la règle « owner, admin, comptable » et l'ancien message du refus ; la section « Décisions d'Hugo (non appliquées) » plus haut dans ce rapport (« Corrections de la relecture du 4 nov. ») liste comme ouvertes des décisions que ce lot applique. Ce qui est dit ici fait foi.
+- **Vérification complète** (`--complet`, audit d'interface) : non lancée ici, comme le dit la règle du lot.
+
+### Commandes lancées et résultats
+
+| Commande | Résultat |
+|---|---|
+| `git fetch origin && git checkout -B corr4-ia origin/main`, `npm ci` | OK, départ `868b924c` |
+| `npm run banc:migrations` avant toute modification | Tout est vert (767 vérifications), dont 57 pour 107 |
+| `npm run banc:migrations` sur `78855333` | **Tout est vert (776 vérifications)**, dont **66** pour 107 |
+| `npx vitest run src/lib/__tests__/voiceIntentServeur.test.js` (les tests de `voice-intent` : le fichier importe `regles.ts` et `consignes.ts`) | 41 tests verts |
+| `npm run verifier -- --rapide` (pendant le travail) | vert |
+| `npm run verifier` (standard) sur `78855333`, arbre propre | **Tout est vert** : tests 1 423 (13 de plus qu'avant le lot), lint 0 erreur, smoke, build |
+| `npm run build` puis `npm run parcours -- dictee` (build IA, `scripts/lib/vite-ia.config.mjs`), sur `78855333` | 16 parcours (13 d'avant + 3 nouveaux : FAQ, CGV, page des tarifs) : **15 réussis, 1 expiré** (« Network.setCacheDisabled timed out » : le navigateur de test n'a pas répondu, machine très chargée, charge moyenne de 9 à 13) ; relancé seul : réussi. Le premier lancement avait connu le même cas sur un autre parcours (« API indisponible… »), réussi seul lui aussi : aucun des deux n'est touché par ce lot |
+| `npm run parcours -- site` (build livré, IA éteinte), sur `78855333` | **12 parcours réussis** (dont « tarifs et construit en public », 226 vérifications) : la page des tarifs sans IA n'a pas bougé |
+| 11 contre-essais (défaut remis, le test ou la vérification devient rouge, fichier restauré, somme de contrôle identique) | tous rouges comme attendu : chacun est dit sous sa décision |
+| Constat de la page des tarifs avec l'IA allumée, à 375 et 1 440 px (captures non versionnées) | valeurs lisibles, rien ne déborde ; voir « Cosmétique, au téléphone » |
+
+Non lancé ici : `npm run verifier -- --complet` (banc, parcours complets, audit d'interface), qui revient à la session locale sur l'assemblage.

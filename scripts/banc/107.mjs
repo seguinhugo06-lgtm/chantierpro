@@ -1,4 +1,5 @@
-// Vérifications de la migration 107 : quota mensuel de l'IA par organisation et par fonction, journal des jetons.
+// Vérifications de la migration 107 : quota mensuel de l'IA (par abonnement aux plans payants, par organisation et par compte
+// au plan gratuit) et par fonction, journal des jetons, rôles autorisés, coupe-circuit global à deux compteurs.
 // Seul le serveur (la fonction Edge, après vérification du jeton) réserve et clôt ; un utilisateur ou un visiteur ne
 // peut ni réserver, ni clore, ni lire, ni écrire, ni effacer pour remettre son compteur à zéro.
 import fs from 'node:fs';
@@ -48,11 +49,12 @@ export async function verifier({ db, q, en, commeAnonyme, compte, verifier }) {
   await q(`INSERT INTO organization_members (organization_id, user_id, role) VALUES ($1, $2, 'owner')`, [ORG_TESTEUR, TESTEUR]);
   await q(`INSERT INTO subscriptions (user_id, plan, status, current_period_end) VALUES ($1, 'artisan', 'active', now() - interval '1 day')`, [TESTEUR]);
 
-  // Le salarié du socle est ouvrier : pour les vérifications du plan de l'entreprise, il passe comptable (droit de
-  // créer un devis). Le refus d'un ouvrier est vérifié plus bas.
-  await q(`UPDATE organization_members SET role = 'comptable' WHERE organization_id = $1 AND user_id = $2`, [ORG_PATRON, SALARIE]);
+  // Le salarié du socle est ouvrier : pour les vérifications du plan de l'entreprise, il passe administrateur (seuls le
+  // propriétaire et l'administrateur dictent, décision d'Hugo du 5 nov. 2026, D-37). Le refus des autres rôles est
+  // vérifié plus bas.
+  await q(`UPDATE organization_members SET role = 'admin' WHERE organization_id = $1 AND user_id = $2`, [ORG_PATRON, SALARIE]);
 
-  // ── Plan gratuit : 5 dictées par mois pour l'organisation (décision d'Hugo du 4 nov. 2026) ──
+  // ── Plan gratuit : 5 dictées par mois, partagées entre les utilisateurs de l'entreprise (décisions d'Hugo des 4 et 5 nov. 2026) ──
   const premieres = [];
   for (let i = 0; i < 5; i++) premieres.push(await reserver(SOLO, ORG_SOLO));
   verifier(premieres.every((r) => r.autorise === true && r.id != null && r.plan === 'gratuit' && r.limite === 5),
@@ -116,13 +118,42 @@ export async function verifier({ db, q, en, commeAnonyme, compte, verifier }) {
   verifier(statutNul.plan === 'equipe', `107 : une ligne gratuite au statut NULL ne masque pas le plan Équipe du patron (${statutNul.plan})`);
   await q(`DELETE FROM subscriptions WHERE user_id = $1 AND status IS NULL`, [SALARIE]);
 
-  // ── Rôle sans droit de créer un devis : refusé, rien n'est compté ──
-  await q(`UPDATE organization_members SET role = 'ouvrier' WHERE organization_id = $1 AND user_id = $2`, [ORG_PATRON, SALARIE]);
-  const avantOuvrier = await lignes(ORG_PATRON);
-  const ouvrier = await erreurDe(() => reserver(SALARIE, ORG_PATRON));
-  verifier(/SANS_DROIT/.test(ouvrier || '') && (await lignes(ORG_PATRON)) === avantOuvrier,
-    `107 : un ouvrier ne peut pas dicter, et rien n'est compté (${ouvrier})`);
-  await q(`UPDATE organization_members SET role = 'comptable' WHERE organization_id = $1 AND user_id = $2`, [ORG_PATRON, SALARIE]);
+  // ── Seuls le propriétaire et l'administrateur dictent (D-37) : tout autre rôle est refusé, rien n'est compté ──
+  // Le comptable en faisait partie jusqu'au 5 nov. 2026 : il ne pouvait pas retirer son accord (Paramètres lui est fermé).
+  const refus = {};
+  for (const role of ['comptable', 'chef_chantier', 'ouvrier', 'readonly']) {
+    await q(`UPDATE organization_members SET role = $3 WHERE organization_id = $1 AND user_id = $2`, [ORG_PATRON, SALARIE, role]);
+    const avant = await lignes(ORG_PATRON);
+    const erreur = await erreurDe(() => reserver(SALARIE, ORG_PATRON));
+    refus[role] = /SANS_DROIT/.test(erreur || '') && (await lignes(ORG_PATRON)) === avant;
+  }
+  verifier(refus.comptable === true, '107 : un comptable ne peut pas dicter (SANS_DROIT), et rien n\'est compté');
+  verifier(refus.chef_chantier === true && refus.ouvrier === true && refus.readonly === true,
+    `107 : ni un chef de chantier, ni un ouvrier, ni la lecture seule ne peuvent dicter, et rien n'est compté (${JSON.stringify(refus)})`);
+  // Le refus de rôle vient avant le calcul du quota : dans une entreprise gratuite dont le quota est épuisé, le comptable
+  // reçoit SANS_DROIT (et non « quota atteint »), alors que son patron reçoit bien « quota atteint ».
+  const ORG_ROLES = '10700000-0000-4000-8000-0000000000b1';
+  const PATRON_ROLES = '10700000-0000-4000-8000-000000000011';
+  const COMPTABLE_ROLES = '10700000-0000-4000-8000-000000000012';
+  await q(`INSERT INTO auth.users (id, email) VALUES ($1, 'patron-roles@107.fr'), ($2, 'comptable-roles@107.fr')`, [PATRON_ROLES, COMPTABLE_ROLES]);
+  await q(`INSERT INTO organizations (id, name, slug, owner_id) VALUES ($1, 'Rôles 107', 'roles-107', $2)`, [ORG_ROLES, PATRON_ROLES]);
+  await q(`INSERT INTO organization_members (organization_id, user_id, role) VALUES ($1, $2, 'owner'), ($1, $3, 'comptable')`, [ORG_ROLES, PATRON_ROLES, COMPTABLE_ROLES]);
+  await q(`INSERT INTO usage_ia_log (organization_id, user_id, fonction, mois, statut, plan, created_at)
+    SELECT $1, $2, 'dictee', date_trunc('month', now() AT TIME ZONE 'Europe/Paris')::date, 'reussi', 'gratuit', now() - interval '2 days'
+      FROM generate_series(1, 5)`, [ORG_ROLES, PATRON_ROLES]);
+  const avantComptable = await lignes(ORG_ROLES);
+  const comptableQuotaEpuise = await erreurDe(() => reserver(COMPTABLE_ROLES, ORG_ROLES));
+  const patronQuotaEpuise = await reserver(PATRON_ROLES, ORG_ROLES);
+  verifier(/SANS_DROIT/.test(comptableQuotaEpuise || '') && (await lignes(ORG_ROLES)) === avantComptable
+    && patronQuotaEpuise.autorise === false && patronQuotaEpuise.motif === 'quota',
+  `107 : le refus de rôle précède le calcul du quota (comptable : ${comptableQuotaEpuise} ; patron : ${patronQuotaEpuise.motif})`);
+  // Contre-épreuve : l'administrateur et le propriétaire de l'entreprise du patron dictent (le comptable seul est exclu)
+  await q(`UPDATE organization_members SET role = 'admin' WHERE organization_id = $1 AND user_id = $2`, [ORG_PATRON, SALARIE]);
+  const adminDicte = await reserver(SALARIE, ORG_PATRON);
+  const proprietaireDicte = await reserver(PATRON, ORG_PATRON);
+  verifier(adminDicte.autorise === true && proprietaireDicte.autorise === true,
+    `107 : un administrateur et le propriétaire dictent (${adminDicte.autorise}, ${proprietaireDicte.autorise})`);
+  await q(`DELETE FROM usage_ia_log WHERE id IN ($1, $2)`, [adminDicte.id, proprietaireDicte.id]);
 
   // ── Plan gratuit : une nouvelle organisation ne rouvre pas le quota (relecture gardien-securite H1) ──
   const ORG_NEUVE = '10700000-0000-4000-8000-0000000000a3';
@@ -176,7 +207,7 @@ export async function verifier({ db, q, en, commeAnonyme, compte, verifier }) {
       OR has_table_privilege('service_role', 'public.usage_ia_log', 'DELETE') AS ecrit`)).rows[0].ecrit;
   verifier(journalEcrit === false, '107 : service_role ne peut ni écrire ni effacer le journal directement');
 
-  // ── Plan Artisan : 100 dictées par mois pour l'organisation (décision d'Hugo du 4 nov. 2026) ──
+  // ── Plan Artisan : 100 dictées par mois par abonnement (décisions d'Hugo des 4 et 5 nov. 2026) ──
   // 99 dictées déjà faites ce mois-ci, datées d'avant-hier (hors plafond du jour) : la 100e passe, la 101e est refusée.
   await q(`INSERT INTO usage_ia_log (organization_id, user_id, fonction, mois, statut, created_at)
     SELECT $1, $2, 'dictee', date_trunc('month', now() AT TIME ZONE 'Europe/Paris')::date, 'reussi', now() - interval '2 days'
@@ -246,12 +277,63 @@ export async function verifier({ db, q, en, commeAnonyme, compte, verifier }) {
     `107 : au plan gratuit, la 21e analyse du jour est refusée (${vingtieme.autorise},${vingtEtUnieme.motif})`);
   await q(`DELETE FROM usage_ia_log WHERE user_id = $1`, [GRATUIT_JOUR]);
 
-  // ── Coupe-circuit global : 3 000 analyses par jour, tous comptes ──
-  await q(`INSERT INTO usage_ia_log (organization_id, user_id, fonction, mois, statut, created_at)
-    SELECT $1, NULL, 'dictee', (now() AT TIME ZONE 'Europe/Paris')::date, 'reussi', now() - interval '5 hours' FROM generate_series(1, 3000)`, [ORG_PATRON]);
-  const global = await reserverBrut(PAYEUR, ORG_PAYEUR);
-  verifier(global.autorise === false && global.motif === 'global', `107 : au-delà de 3 000 analyses par jour au total, coupe-circuit (${global.motif})`);
-  await q(`DELETE FROM usage_ia_log WHERE user_id IS NULL AND created_at > now() - interval '6 hours' AND created_at < now() - interval '4 hours'`);
+  // ── Coupe-circuit global : DEUX compteurs sur 24 heures (D-37, décision d'Hugo du 5 nov. 2026) ──
+  // 1 000 analyses pour l'ensemble des comptes au plan gratuit, 3 000 pour l'ensemble des plans payants. Un appel n'est
+  // regardé que contre le compteur de son plan : un abus de comptes gratuits ne coupe pas les payants, et l'inverse.
+  // Lignes de remplissage : sans compte (user_id NULL), datées de 5 h (hors plafonds par minute et par jour).
+  const GLOBAL_GRATUIT = '10700000-0000-4000-8000-000000000005';
+  const ORG_GLOBAL_GRATUIT = '10700000-0000-4000-8000-0000000000a9';
+  await q(`INSERT INTO auth.users (id, email) VALUES ($1, 'global@107.fr')`, [GLOBAL_GRATUIT]);
+  await q(`INSERT INTO organizations (id, name, slug, owner_id) VALUES ($1, 'Global 107', 'global-107', $2)`, [ORG_GLOBAL_GRATUIT, GLOBAL_GRATUIT]);
+  await q(`INSERT INTO organization_members (organization_id, user_id, role) VALUES ($1, $2, 'owner')`, [ORG_GLOBAL_GRATUIT, GLOBAL_GRATUIT]);
+  const remplir = (n, plan, age = '5 hours') => q(`INSERT INTO usage_ia_log (organization_id, user_id, fonction, mois, statut, plan, created_at)
+    SELECT $1, NULL, 'dictee', date_trunc('month', now() AT TIME ZONE 'Europe/Paris')::date, 'reussi', $2, now() - interval '${age}'
+      FROM generate_series(1, $3::int)`, [ORG_PATRON, plan, n]);
+  const viderRemplissage = () => q(`DELETE FROM usage_ia_log WHERE user_id IS NULL AND organization_id = $1`, [ORG_PATRON]);
+  const effacerAppels = (...comptes) => q(`DELETE FROM usage_ia_log WHERE user_id = ANY($1::uuid[])`, [comptes]);
+
+  // Au-delà de 24 heures, rien ne compte
+  await remplir(1000, 'gratuit', '25 hours');
+  const vieilles = await reserverBrut(GLOBAL_GRATUIT, ORG_GLOBAL_GRATUIT);
+  verifier(vieilles.autorise === true, `107 : 1 000 analyses gratuites vieilles de plus de 24 h ne coupent rien (${JSON.stringify(vieilles)})`);
+  await viderRemplissage(); await effacerAppels(GLOBAL_GRATUIT);
+
+  // Compteur des comptes gratuits : 999 déjà faites, la 1 000e passe, la suivante est coupée ; un appel payant passe encore
+  await remplir(999, 'gratuit');
+  const milliemeGratuite = await reserverBrut(GLOBAL_GRATUIT, ORG_GLOBAL_GRATUIT);
+  const avantCoupure = await compte(`SELECT count(*) AS n FROM usage_ia_log WHERE fonction = 'dictee'`);
+  const gratuiteCoupee = await reserverBrut(GLOBAL_GRATUIT, ORG_GLOBAL_GRATUIT);
+  const apresCoupure = await compte(`SELECT count(*) AS n FROM usage_ia_log WHERE fonction = 'dictee'`);
+  // Les plans payants ont déjà fait 2 500 analyses : avec les 1 000 gratuites, le total passe 3 000, mais le seuil des
+  // payants (3 000 analyses payantes) n'est pas atteint. Un seul compteur commun couperait ici les payants à cause des gratuits.
+  await remplir(2500, 'artisan');
+  const payantPendantAbusGratuit = await reserverBrut(PAYEUR, ORG_PAYEUR);
+  verifier(milliemeGratuite.autorise === true && gratuiteCoupee.autorise === false && gratuiteCoupee.motif === 'global' && gratuiteCoupee.plan === 'gratuit'
+    && apresCoupure === avantCoupure,
+  `107 : à 1 000 analyses gratuites en 24 h, un appel gratuit est coupé (global) et rien n'est compté (${JSON.stringify(gratuiteCoupee)})`);
+  verifier(payantPendantAbusGratuit.autorise === true && payantPendantAbusGratuit.plan === 'artisan',
+    `107 : avec 1 000 gratuites et 2 500 payantes (3 500 au total), un appel payant passe : un abus de comptes gratuits ne coupe pas les payants (${JSON.stringify(payantPendantAbusGratuit)})`);
+  await viderRemplissage(); await effacerAppels(GLOBAL_GRATUIT, PAYEUR);
+
+  // Compteur des plans payants : 2 999 déjà faites (Artisan et Équipe confondus), la 3 000e passe, la suivante est coupée ;
+  // un appel gratuit passe encore
+  await remplir(1500, 'artisan'); await remplir(1499, 'equipe');
+  const troismillieme = await reserverBrut(PAYEUR, ORG_PAYEUR);
+  const payanteCoupee = await reserverBrut(PAYEUR, ORG_PAYEUR);
+  const gratuitPendantAbusPayant = await reserverBrut(GLOBAL_GRATUIT, ORG_GLOBAL_GRATUIT);
+  verifier(troismillieme.autorise === true && payanteCoupee.autorise === false && payanteCoupee.motif === 'global' && payanteCoupee.plan === 'artisan',
+    `107 : à 3 000 analyses payantes en 24 h, un appel payant est coupé (global) (${JSON.stringify(payanteCoupee)})`);
+  verifier(gratuitPendantAbusPayant.autorise === true && gratuitPendantAbusPayant.plan === 'gratuit',
+    `107 : pendant ce temps, un appel gratuit passe : les deux compteurs sont indépendants (${JSON.stringify(gratuitPendantAbusPayant)})`);
+  await viderRemplissage(); await effacerAppels(GLOBAL_GRATUIT, PAYEUR);
+
+  // Une ligne sans plan (insérée à la main) compte avec les payants, jamais avec les gratuits
+  await remplir(3000, null);
+  const sansPlanPayant = await reserverBrut(PAYEUR, ORG_PAYEUR);
+  const sansPlanGratuit = await reserverBrut(GLOBAL_GRATUIT, ORG_GLOBAL_GRATUIT);
+  verifier(sansPlanPayant.autorise === false && sansPlanPayant.motif === 'global' && sansPlanGratuit.autorise === true,
+    `107 : 3 000 lignes sans plan comptent avec les payants, pas avec les gratuits (${sansPlanPayant.motif}, ${sansPlanGratuit.autorise})`);
+  await viderRemplissage(); await effacerAppels(GLOBAL_GRATUIT, PAYEUR);
 
   // ── Jetons inconnus : gardés NULL (pas 0) ──
   const inconnue = await reserverBrut(PAYEUR, ORG_PAYEUR);
@@ -323,6 +405,11 @@ export async function verifier({ db, q, en, commeAnonyme, compte, verifier }) {
   '107 : ni un utilisateur ni un visiteur ne lisent l\'abonnement (et le payeur) d\'un autre');
   verifier(/usage_ia:p:/.test((await q(`SELECT pg_get_functiondef('public.reserver_usage_ia(uuid,uuid,text,jsonb)'::regprocedure) AS d`)).rows[0].d),
     '107 : la réservation prend un verrou par abonnement (quota partagé entre organisations)');
+  // La requête de contrôle de l'en-tête (à lancer en production après l'application) rend bien « vrai, vrai » sur ce corps
+  const controle = (await q(`SELECT pg_get_functiondef('public.reserver_usage_ia(uuid,uuid,text,jsonb)'::regprocedure) ~ 'v_role NOT IN \\(''owner'', ''admin''\\)' AS roles,
+      pg_get_functiondef('public.reserver_usage_ia(uuid,uuid,text,jsonb)'::regprocedure) ~ 'THEN 1000 ELSE 3000' AS seuils`)).rows[0];
+  verifier(controle.roles === true && controle.seuils === true,
+    `107 : la requête de contrôle de l'en-tête (propriétaire et administrateur, seuils 1 000 / 3 000) rend vrai (${JSON.stringify(controle)})`);
 
   const luParSolo = await en(SOLO, () => q('SELECT count(*) AS n FROM usage_ia_log')).catch(() => ({ rows: [{ n: 0 }] }));
   verifier(Number(luParSolo.rows[0].n) === 0, '107 : un utilisateur ne lit aucune ligne, même les siennes');
