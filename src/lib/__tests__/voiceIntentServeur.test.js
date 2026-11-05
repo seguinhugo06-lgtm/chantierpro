@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { PLANS } from '../../stores/subscriptionStore';
+import { PLANS, LIBELLES_COMPLETS } from '../../stores/subscriptionStore';
 import { traiterDictee, classerErreurApi, ouvertePour, LIMITES, MESSAGES, ACCORD_IA_VERSION } from '../../../supabase/functions/voice-intent/regles.ts';
 import { requeteDictee, MODELE, EFFORT } from '../../../supabase/functions/voice-intent/consignes.ts';
 
@@ -238,7 +238,7 @@ describe('voice-intent : corrections du 3 nov.', () => {
     }
   });
 
-  it('rôle sans droit de créer un devis : 403 SANS_DROIT, sans appel à l’API', async () => {
+  it('rôle qui ne dicte pas (propriétaire et administrateur seulement, D-37) : 403 SANS_DROIT, sans appel à l’API', async () => {
     const dep = dependances({ reserver: vi.fn(async () => ({ sansDroit: true })) });
     const r = await lire(await traiterDictee(demande(), dep));
     expect(r.status).toBe(403);
@@ -247,12 +247,34 @@ describe('voice-intent : corrections du 3 nov.', () => {
     expect(dep.appeler).not.toHaveBeenCalled();
   });
 
+  // Le comptable peut créer un devis mais ne dicte plus : « votre rôle ne permet pas de créer un devis » serait faux pour lui.
+  it('le message du refus de rôle parle de la dictée, pas de la création d’un devis', () => {
+    expect(MESSAGES.sansDroit).toBe('Votre rôle ne permet pas d’utiliser la dictée.');
+    expect(MESSAGES.sansDroit).not.toMatch(/devis/);
+  });
+
   it('coupe-circuit global : 503 IA_INDISPONIBLE (pas « quota »), sans appel à l’API', async () => {
     const dep = dependances({ reserver: vi.fn(async () => ({ autorise: false, motif: 'global', limite: null, utilise: null, plan: 'artisan' })) });
     const r = await lire(await traiterDictee(demande(), dep));
     expect(r.status).toBe(503);
     expect(r.corps.code).toBe('IA_INDISPONIBLE');
     expect(dep.appeler).not.toHaveBeenCalled();
+  });
+
+  // D-37 : deux compteurs (1 000 analyses par 24 h pour les comptes gratuits, 3 000 pour les plans payants). Le journal de
+  // la fonction dit lequel a coupé, pour que l'exploitant sache qui a abusé ; la réponse à l'artisan est la même.
+  it('coupe-circuit global : le journal dit quel compteur a coupé (gratuit : 1 000, payants : 3 000), la réponse est la même', async () => {
+    const lus = {};
+    for (const plan of ['gratuit', 'artisan', 'equipe']) {
+      const dep = dependances({ reserver: vi.fn(async () => ({ autorise: false, motif: 'global', limite: null, utilise: null, plan })) });
+      const r = await lire(await traiterDictee(demande(), dep));
+      expect([r.status, r.corps.code, r.corps.error]).toEqual([503, 'IA_INDISPONIBLE', MESSAGES.indisponible]);
+      lus[plan] = dep.journal.mock.calls.map((c) => c[1]).join(' | ');
+    }
+    expect(lus.gratuit).toMatch(/plan gratuit : 1 000 analyses en 24 h/);
+    expect(lus.artisan).toMatch(/plans payants : 3 000 analyses en 24 h/);
+    expect(lus.equipe).toMatch(/plans payants : 3 000 analyses en 24 h/);
+    expect(lus.gratuit).not.toMatch(/3 000/);
   });
 
   it('exception imprévue : 503 IA_INDISPONIBLE avec corsHeaders', async () => {
@@ -269,11 +291,21 @@ describe('voice-intent : allumage (4 nov. 2026)', () => {
     expect(LIMITES.dictee).toEqual({ gratuit: 5, artisan: 100, equipe: -1 });
   });
 
-  it('messages exacts du quota atteint : l’offre suivante, avec son plafond (pas de « sans limite » seul)', () => {
-    expect(MESSAGES.quota(5, 'gratuit')).toBe('Vos 5 dictées du mois sont utilisées. Saisissez votre devis à la main, ou passez au plan Artisan : 100 dictées par mois.');
-    expect(MESSAGES.quota(100, 'artisan')).toBe('Vos 100 dictées du mois sont utilisées. Saisissez votre devis à la main, ou passez au plan Équipe : dictées sans limite mensuelle (100 par jour et par personne au plus).');
+  // Décision d'Hugo du 5 nov. 2026 (D-37), textes de juriste-btp (avis du 4 nov., C.2) : le compteur des plans payants suit
+  // l'abonnement, et le plafond du jour compte des « analyses ».
+  it('messages exacts du quota atteint : l’offre suivante, partagée par abonnement, avec son plafond (pas de « sans limite » seul)', () => {
+    expect(MESSAGES.quota(5, 'gratuit')).toBe('Vos 5 dictées du mois sont utilisées. Saisissez votre devis à la main, ou passez au plan Artisan : 100 dictées par mois par abonnement, partagées entre ses utilisateurs et ses entreprises.');
+    expect(MESSAGES.quota(100, 'artisan')).toBe('Vos 100 dictées du mois sont utilisées. Saisissez votre devis à la main, ou passez au plan Équipe : dictées sans limite mensuelle (100 analyses par jour et par personne au plus).');
     expect(MESSAGES.quota(3, 'inconnu')).toBe('Vos 3 dictées du mois sont utilisées. Saisissez votre devis à la main.');
-    for (const plan of ['gratuit', 'artisan']) expect(MESSAGES.quota(1, plan)).not.toMatch(/sans limite(?! mensuelle \(100 par jour)/);
+    for (const plan of ['gratuit', 'artisan']) expect(MESSAGES.quota(1, plan)).not.toMatch(/sans limite(?! mensuelle \(100 analyses par jour)/);
+    for (const plan of ['gratuit', 'artisan']) expect(MESSAGES.quota(1, plan)).not.toMatch(/\(100 par jour|100 dictées par mois\.|100 dictées par mois(?! par abonnement)/);
+  });
+
+  it('le serveur et l’application disent la même chose de l’offre (une seule formule, lue dans les libellés des plans)', () => {
+    const libelle = (id) => LIBELLES_COMPLETS[id].find((f) => /dict[ée]e/i.test(f.name)).name;
+    const enMinuscule = (t) => t.charAt(0).toLowerCase() + t.slice(1);
+    expect(MESSAGES.quota(5, 'gratuit').endsWith(`passez au plan Artisan : ${libelle('artisan')}.`)).toBe(true);
+    expect(MESSAGES.quota(100, 'artisan').endsWith(`passez au plan Équipe : ${enMinuscule(libelle('equipe'))}.`)).toBe(true);
   });
 
   it('quota du plan Artisan : 429 avec le message de l’offre Équipe, et le quota rendu à l’app', async () => {

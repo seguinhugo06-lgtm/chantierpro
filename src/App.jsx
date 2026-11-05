@@ -161,7 +161,8 @@ export default function App() {
 
   // RBAC: organization role + permissions
   const { canAccess, canAccessBilling, canViewPrices, canPerform, role: userRole, loading: orgLoading, orgId } = usePermissions();
-  // Dictée : page « ia-devis » et droit de créer un devis (comme reserver_usage_ia, migration 107) ; montants selon canViewPrices.
+  // Dictée : page « ia-devis » (propriétaire et administrateur seulement, D-37) et droit de créer un devis (comme
+  // reserver_usage_ia, migration 107) ; montants selon canViewPrices.
   const dictee = droitsDictee({ canAccess, canPerform, canViewPrices });
 
   // PWA install hook
@@ -2112,7 +2113,7 @@ export default function App() {
       )}
 
       {/* Global Help Modal */}
-      {showHelp && <HelpModal setShowHelp={setShowHelp} isDark={isDark} />}
+      {showHelp && <HelpModal setShowHelp={setShowHelp} isDark={isDark} peutDicter={dictee.peutDicter} />}
       {showRetour && (
         <Suspense fallback={null}>
           <RetourModal isOpen={showRetour} onClose={() => setShowRetour(false)} isDark={isDark} couleur={couleur} showToast={showToast} page={page} user={user} orgId={orgId} />
@@ -2376,7 +2377,7 @@ export default function App() {
 
 // Guide d'utilisation (menu de l'avatar › Aide). Charte « Glacier vif » : jetons, icônes lucide au lieu des émojis,
 // encarts neutres (les tons ne décorent pas, audit UX du 20 oct. 2026, § 2.8) ; ui/Modal (feuille du bas au téléphone).
-function HelpModal({ setShowHelp, isDark: _isDark }) {
+function HelpModal({ setShowHelp, isDark: _isDark, peutDicter = false }) {
   const [helpSection, setHelpSection] = useState('overview');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -2519,9 +2520,11 @@ function HelpModal({ setShowHelp, isDark: _isDark }) {
           { q: 'Comment changer mon plan ?', a: 'Dans Mon plan, vous voyez votre plan actuel et pouvez évoluer vers Artisan ou Équipe pour débloquer plus de fonctionnalités.' },
           { q: 'Comment exporter mes données comptables ?', a: 'Dans Finances > Export Comptable, exportez vos écritures au format FEC, CSV ou Excel, à remettre à votre comptable.' },
           { q: 'Comment fonctionne la trésorerie ?', a: 'Dans Finances > Trésorerie, visualisez vos flux de trésorerie en temps réel avec un prévisionnel automatique.' },
-          // Quotas de la dictée (D-35), relus par juriste-btp le 4 nov. Le plafond de 100 par jour compte aussi nos échecs :
-          // texte à revoir selon la décision d'Hugo (question 2 du juriste) ; « pour l'entreprise » : question 3.
-          ...(FONCTIONS.ia ? [{ q: 'Comment fonctionne la dictée ?', a: 'Touchez « Dicter », puis décrivez le client et les travaux, à la voix ou au clavier. Une intelligence artificielle (Claude, d’Anthropic) prépare un brouillon : client, chantier et lignes du devis. Elle peut se tromper : vous relisez et corrigez tout avant de créer. Avant votre première dictée, et de nouveau si vous retirez votre accord, un écran vous explique ce qui est envoyé et vous demande votre accord. Plan Gratuit : 5 dictées par mois ; plan Artisan : 100 dictées par mois ; plan Équipe : dictées sans limite mensuelle (100 par jour et par personne au plus). Une dictée trop longue ou incompréhensible compte quand même ; une panne de notre côté ne compte pas.' }] : []),
+          // Quotas de la dictée (D-35) : textes de juriste-btp du 4 nov. (avis C.2), retenus par Hugo le 5 nov. (D-37) :
+          // « partagées entre… » (quota par abonnement aux plans payants) et « 100 analyses par jour » (le plafond compte aussi
+          // nos échecs, les CGV le disent). Seuls ceux qui peuvent dicter (propriétaire, administrateur) voient cette
+          // question : la FAQ ne promet pas la dictée à un comptable, qui n'a pas le bouton.
+          ...(FONCTIONS.ia && peutDicter ? [{ q: 'Comment fonctionne la dictée ?', a: 'Touchez « Dicter », puis décrivez le client et les travaux, à la voix ou au clavier. Une intelligence artificielle (Claude, d’Anthropic) prépare un brouillon : client, chantier et lignes du devis. Elle peut se tromper : vous relisez et corrigez tout avant de créer. Avant votre première dictée, et de nouveau si vous retirez votre accord, un écran vous explique ce qui est envoyé et vous demande votre accord. Plan Gratuit : 5 dictées par mois, partagées entre les utilisateurs de l’entreprise ; plan Artisan : 100 dictées par mois par abonnement, partagées entre ses utilisateurs et ses entreprises ; plan Équipe : dictées sans limite mensuelle (100 analyses par jour et par personne au plus). Une dictée trop longue ou incompréhensible compte quand même ; une panne de notre côté ne compte pas.' }] : []),
           { q: 'Comment relancer un client ?', a: 'Mallettico détecte les devis en attente et vous propose des relances automatiques par email.' },
           { q: 'Comment ajouter un acompte ?', a: 'Lors de la création de la facture d\'acompte, indiquez le pourcentage souhaité. Le solde sera calculé automatiquement.' },
           { q: 'Les données sont-elles sécurisées ?', a: 'Elles sont chiffrées, et la base de données est hébergée à Paris. Vous pouvez les exporter et supprimer votre compte à tout moment, depuis les Réglages.' },
