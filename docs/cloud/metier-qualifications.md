@@ -219,3 +219,99 @@ Relecture gardien-securite de cette session (migration 110) : rien de bloquant ;
 - Vérification complète verte sur `f9a7dcc`, audit à 0 défaut ; contre-essais faits (6 parcours rouges sur l'ancien code).
 - À décider par Hugo : 9 points ci-dessus (SAP par défaut, climatisation, prix, bienvenue, membres, « 20 métiers », page de signature, réseau, D-36).
 
+
+
+## Décisions d'Hugo du 5 nov. (lot 4)
+
+Session de correction du 5 nov. 2026, branche locale `corr4-metier-qualifications`, partie de `cloud/metier-qualifications` à `856b863f`. Hugo a répondu « OK pour tout » aux décisions que les sessions précédentes avaient laissées ; elles sont consignées sous D-41 (`docs/decisions.md` de la session locale) et ne sont pas rouvertes ici. Rien n'est fusionné ni poussé (la branche a 52 commits de retard sur `origin/main`, non rattrapés : consigne), aucune production touchée, aucune migration appliquée, `CLAUDE.md` et `.claude/` intacts. Commits de code : `8f8896b0` (services à la personne), `2a1f7118` (question du métier), `7938dd74` (prix retirés), `9471fb0a` (climatisation), `a7c2c3d8` (parcours), `e6da183f` (commentaire de la 110).
+
+Les neuf points laissés à Hugo le 4 nov. (section précédente) sont tous tranchés : 1 (services à la personne) → décision 3 ; 2 (climatisation) → décision 2 ; 3 (prix) → décision 1 ; 4 (Q-bienvenue) → la question reste dans la bienvenue et dans Paramètres ; 5 (membres invités) → décision 4 ; 6 (« 20 métiers » dans la règle marketing et le Pilote) → session locale ; 7 (page de signature) → pas de filtre SQL en plus (point tranché par la session locale, commentaire de la 110 mis à jour) ; 8 (réseau) → sans objet ici ; 9 (D-36) → confirmée.
+
+### Contrôle des corrections de la relecture du 4 nov. (consigne v3)
+
+| Point de la consigne v3 | État | Preuve |
+|---|---|---|
+| 1. Vérification finale sur la pointe | fait (non rejouée ici) | Sortie de `npm run verifier -- --complet` recopiée plus haut : vert sur `f9a7dcc`, dernier commit de code (1350 tests, banc 677, parcours 2451,9 s, audit 0 défaut). `856b863f` ne touche que ce rapport (`git show --stat`). Le niveau complet est laissé à la session locale. |
+| 2. Services à la personne : « Seulement si une ligne contient… » | fait | `src/lib/qualifications.js` l. 62-66 et 105-112 (`ou` gardé à part des mots), l. 194-201 (`viseLeDocument` : sans mot, jamais) ; `MesQualifications.jsx` l. 106-116 (le radio se choisit, le champ des mots paraît dès `q.ou === 'si'`) ; `qualificationsListe.test.js` (« seulement si » sans mot) ; parcours « services à la personne », vert ici. |
+| 3. Avis du juriste du 4 nov. versé | fait | `docs/metiers/avis-juriste-2026-11-04-lot1.md` (transmis tel quel, ce qu'il ne couvre pas y est dit). |
+| 4. Modèles de climatisation | fait | `src/lib/data/modeles/chauffage.js` l. 11-62 et 249-270 (« Fourniture … » à 20 %, « Pose … » au taux de l'entreprise), `modeles/index.js` l. 122 (un taux par ligne), `tvaClimatisationModeles.test.js` ; balayage élargi ici (décision 2). |
+| 5. Repli de `createEntreprise` | fait | `src/services/entrepriseService.js` l. 494-501 ; `entrepriseService.test.js` l. 164-186 (PGRST204 puis insertion sans la colonne ; une autre erreur n'est pas rejouée) ; parcours « compte neuf SANS fiche », vert ici. |
+| 6. Lots alternés | fait | `src/lib/metiers.js` l. 112 (`lotsAlternes`), `DevisComposer.jsx` l. 1730 ; `metiers.test.js` l. 98-111 ; le parcours « éditeur de devis » exige un lot de chaque métier, vert ici. |
+| 7. Bienvenue sur un second appareil | fait | `src/App.jsx` l. 2110 (la bienvenue attend `entrepriseLoading` et `orgLoading`), l. 2626-2628 (puces préremplies) ; parcours « second appareil », vert ici. |
+| 8. Membre invité non gérant | fait, puis durci | v3 : `hasFull('settings')`, donc propriétaire ET administrateur. Un administrateur invité recevait la question : écart avec D-41, corrigé (décision 4). |
+| 9. « Passer » et fermeture | fait | `src/App.jsx` l. 2781-2811 (`enregistrerMetier`, `fermer`) ; parcours « Passer avec deux puces cochées », vert ici. |
+| 10. Bouton de 44 px | fait | `DevisComposer.jsx` l. 1797 (`min-h-[44px]`), mesuré par le parcours « éditeur de devis ». |
+| 11. « 17 métiers » | fait en partie | `scripts/site-captures.cjs` corrigé par v3, puis libellé « Parcourir les 20 métiers » ici (décision 1). Pas fait, à la session locale : `.claude/rules/marketing.md` l. 12 et le Pilote (`scripts/pilote/page/reseaux-donnees.js`). |
+| 12. Qualifications « seulement si » sur la page de signature | fait | Acceptées, écrites dans l'en-tête de la 110 ; commentaire mis à jour ici (l. 240-244) : pas de filtre SQL en plus. |
+| 13. « Enregistré » visible | fait | `MonMetierTab.jsx` l. 33 ; `MesQualifications.jsx` l. 99 et 149. |
+| 14. Repli signalé une fois par session | fait | `entrepriseService.js` l. 83-91 (`captureException`) ; test l. 165-179. |
+| 15. Chiffres et traces | fait | Banc : 23 vérifications pour la 110, total 677, rejoué ici (677) ; ligne 108 dans `docs/etat-production.md` l. 72 ; trace du lot 0 dans `docs/cloud/metiers.md`. |
+| Juriste 1 : étagère et tringle à 20 % | fait | `trade-library.js` l. 2014 (Multiservice) et l. 1530 (Menuiserie) ; `metiers.test.js` l. 90-96 (toute la bibliothèque). |
+| Juriste 2 : textes services à la personne | fait | Mot pour mot : `qualifications.js` l. 152, 156, 176 ; `MesQualifications.jsx` l. 90-91 et 123. |
+| Juriste 3 : textes Qualiopi | fait | Mot pour mot : `qualifications.js` l. 50 et 162. |
+| Gardien 1 : prix d'achat sur la page de signature | fait | Migration 110 l. 66-97 (`lignes_pour_le_client`) et l. 192 ; banc 110. La page `/pay/:token` relève de la 114, déjà sur `main`. |
+| Gardien 2 : jamais 108 après 110 | fait | `docs/etat-production.md` l. 72-73 et en-tête de la 110. |
+
+### Décisions appliquées
+
+#### 1. Prix retirés : Ramonage, Froid et climatisation, Multiservice
+- **Fait** : les 37 lignes de ces trois métiers n'ont plus de `prixUnitaire` (désignation, unité, quantité et taux de TVA gardés). `src/lib/templates/trade-library.js` l. 17-21 (règle en tête de fichier), l. 1913-2021 (`ramonage` l. 1918, `froid` l. 1959, `multiservice` l. 1994). Nouveau `src/lib/templates/prixBibliotheque.js` (`aUnPrix`, `totalDuLot`, `metierSansPrix`, « Prix à saisir »).
+- **Comment l'app traitait déjà une ligne sans prix** (constaté avant de coder) : une ligne libre de l'éditeur arrive avec le curseur sur le prix (`DevisComposer.jsx` l. 338) ; la « trame de métier » arrive à 0 (l. 341) ; avant l'envoi, `DevisPage.jsx` l. 1869 signale « N lignes sans prix » ; le catalogue exige un prix supérieur à 0 (`Catalogue.jsx` l. 322-323). Aucun écran ne disait « prix à saisir » : il est introduit, avec un champ de prix **vide** (pas « 0 ») pour les lignes venues de ces métiers.
+- **Éditeur de devis** (`DevisComposer.jsx`) : l. 321 et 431 (champ vide), l. 1536-1551 (total de lot de la bibliothèque), l. 1567-1580 (prestations et note « Ce métier est livré sans prix… »), l. 1757-1770 (bloc « Votre métier »), l. 1798 (bouton « Parcourir les 20 métiers », sans « chiffrés »).
+- **Site** : `src/components/landing/metiers.js` l. 33-43 (`apercuDuLot` rend `null`), `MetiersSection.jsx` l. 55 et 173 (« Prix à saisir » à la place du total, aucun montant par ligne, note adaptée). Captures : `audit-ui/site-metiers-ramonage-375.png` et `-1440.png`, `audit-ui/sonde-ramoneur-*.png` (non versées : dossier ignoré).
+- **Hors périmètre respecté** : le diff de `trade-library.js` ne touche que l'en-tête et ces trois métiers (toutes les lignes retirées sont des `prixUnitaire`) ; la branche n'a ajouté aucun article au référentiel (`git diff 4da73220 HEAD -- src/lib/data/articles-btp*.js` est vide) ; les prix des modèles existants (`ramonage`, `nettoyage`, climatisation) sont intacts.
+- **Tests** : `src/lib/__tests__/prixBibliotheque.test.js` (9 tests : aucune ligne de ces trois métiers n'a de prix supérieur à 0, ni de prix du tout ; ils gardent désignation, unité, quantité, TVA ; les dix-sept autres métiers gardent tous leurs prix) ; `landing/__tests__/metiers.test.js` (+2 : `null`, jamais 0 ni NaN) ; parcours « ramoneur » (17 vérifications : « Prix à saisir » dans les lots et la bibliothèque, aucun 0 € ni NaN, Électricité garde ses prix, un lot et une prestation arrivent avec des prix vides et le curseur sur le prix) ; parcours « site : sections » (+ les trois métiers à 375 et 1440 px, Plomberie garde ses trois totaux).
+- **Contre-essai** : sur l'ancienne bibliothèque (avec prix), 3 des nouveaux tests sont rouges (2 dans `prixBibliotheque.test.js`, 1 dans le test de l'explorateur) ; sur l'ancien code produit reconstruit, les parcours « ramoneur » et « site : sections » sont rouges.
+- À savoir : la **ligne** ajoutée à un devis affiche « Total HT 0,00 € » (total calculé de toute ligne dont le prix est vide, comme une ligne libre) ; son champ de prix, lui, est vide.
+
+#### 2. Climatisation : fourniture à 20 %, pose à 10 %, gainable comprise
+- **Déjà fait, vérifié** dans les quatre endroits que balaie le test des chaudières du lot 0 : modèles de devis (`chauffage.js` : `pac-mono`, `pac-multi-2-3`, `pac-multi-4-5`, `gainable` : unité extérieure, unité gainable, réseau de gaines et bouches séparés en « Fourniture » à 20 % et « Pose » au taux de l'entreprise) ; bibliothèque des métiers (`chauffage` et `froid` : toute fourniture de matériel de climatisation à 20 %, toute pose à 10 %, aucune ligne mêlée) ; bibliothèque d'ouvrages, lot 08 (les douze ouvrages split, multisplit et gainable sont à 20 % tout entiers) ; référentiel du catalogue (aucun article gainable). Aucun changement de données n'a été nécessaire.
+- **Test** : `src/lib/__tests__/tvaClimatisation.test.js` (15 tests, 158 lignes). Les quatre modèles suivent la règle à un taux d'entreprise de 10 % et de 5,5 % ; aucune « F&P » de climatisation dans aucune famille de modèles ; chaque modèle garde le total d'avant la séparation (2100, 6330, 10230, 7475 : les prix de `main` ne bougent pas).
+- **Contre-essai** : sur les modèles tels qu'ils étaient sur `main` (lignes « F&P », sans taux par ligne), 3 tests sont rouges ; un modèle gainable écrit à l'ancienne est relevé par la fonction de contrôle du test.
+- **Constaté, non touché** (hors de ce que la branche a modifié, avis du juriste nécessaire) : (a) le référentiel propose à 10 %, faute de taux, « PAC air/air monosplit », « multisplit (2, 3, 4+ unités) » et « Unité intérieure supplémentaire » (`articles-btp-suite.js` l. 273-280) : un article unique fourniture et pose ne peut pas porter deux taux ; (b) les ouvrages du lot 10 `RE_03_02_001` à `005`, dont « Gainable PAC air/air 7kW » (`RE_03_02_005`), sont à 5,5 % : présomption d'éligibilité aux critères de l'art. 30-0 D ter, 1° bis (avis du 3 nov. au soir, point 10), sans les vérifier.
+
+#### 3. Services à la personne : « Seulement si une ligne contient… » par défaut
+- **Fait** : ajoutée depuis Paramètres, la déclaration est en « Seulement si une ligne contient… » avec une liste de mots **vide** : rien ne s'imprime tant que l'artisan n'a pas mis ses mots. `src/lib/qualifications.js` l. 80-86 (type : `ouParDefaut: 'si'`), l. 105-117 (`ouDe`, `ouParDefaut`), l. 124-127 (`nouvelleQualification`) ; `MesQualifications.jsx` l. 37. Une déclaration enregistrée sans choix (fiche importée) vaut « seulement si » ; un « tous » choisi explicitement est respecté.
+- **Les quatre points du mode, vérifiés** (déjà faits par v3) : il se choisit, il est séparé des mots, le champ des mots paraît dès le choix, vide il n'imprime rien.
+- **Texte imprimé, libellé, aide, avertissement** : ceux de l'avis du 4 nov., mot pour mot, déjà en place (`qualifications.js` l. 176, 156 ; `MesQualifications.jsx` l. 90-91, 123) : rien d'inventé.
+- **Jamais sur un travail exclu** : par défaut, rien ne s'imprime ; avec des mots, seulement sur un document qui en contient ; aucun mot par défaut. Aucune liste de « travaux exclus » n'est codée : elle n'a aucune source (voir les réserves).
+- **Tests** : `qualificationsListe.test.js` l. 132-193 (7 tests : l'ajout, mots vides → rien sur aucun document, un mot présent dans une ligne ou un lot → la mention exacte, mot absent → rien, devis d'électricité ou de plomberie → rien même avec des mots de services à la personne, les deux générateurs, fiche sans choix, contre-essai « tous mes documents ») ; parcours « services à la personne » (13 vérifications). Deux tests existants ont été ajustés : ils posaient une déclaration sans choix, qui valait « tous » avant et vaut « seulement si » maintenant.
+- **Contre-essai** : le défaut muté en « tous » rend 6 tests rouges, en « non » 5 ; sur l'ancien fichier, 7 ; le parcours est rouge sur l'ancien code produit (« coché : Ne pas l'imprimer »).
+
+#### 4. Question du métier : propriétaire seulement, jamais un membre invité
+- **Vérifié** : v3 posait la question à `hasFull('settings')`, c'est-à-dire au propriétaire et à l'administrateur. Un administrateur invité la recevait et voyait Paramètres › Mon métier : pas conforme à « jamais aux membres invités ». Les rôles sans accès à Paramètres (comptable, chef de chantier, ouvrier, lecture) ne la recevaient déjà pas.
+- **Fait** : `src/lib/metiers.js` l. 97 (`peutChoisirSonMetier(role)` : propriétaire seul) ; `src/App.jsx` l. 2110-2112 et 2623-2628 (fenêtre de bienvenue) ; `src/components/Settings.jsx` l. 248-251 et 1066 (la rubrique « Mon métier » n'existe pas pour un membre invité). Un administrateur invité garde tout le reste de Paramètres.
+- **Tests** : `metiers.test.js` l. 116-138 (tout rôle donné par invitation, `getInvitableRoles()`, est refusé, administrateur compris ; le propriétaire seul est accepté ; rôle inconnu ou pas encore lu, non ; les rôles sans accès à Paramètres) ; parcours « membre invité non gérant » (chef de chantier, v3) et nouveau parcours « administrateur invité » (ni question, ni « Mon métier » ; le propriétaire garde les deux).
+- **Contre-essai** : dans le test, l'ancienne règle (`hasFullAccess('admin', 'settings')`) est vraie alors que la nouvelle est fausse ; le parcours « administrateur invité » est rouge sur l'ancien code produit.
+
+### Textes nouveaux à relire par le juriste
+
+Aucun texte légal nouveau : les textes des services à la personne et de Qualiopi sont inchangés, mot pour mot ceux de l'avis du 4 nov. Textes d'interface ajoutés (pas de promesse, à relire si la session locale le juge utile) :
+- « Prix à saisir » (éditeur : lots et prestations sans prix ; site : carte du lot).
+- « Ce métier est livré sans prix : saisissez les vôtres, puis « Enregistrer comme modèle ». » (panneau Bibliothèque de l'éditeur).
+- « Pour ce métier, les lots types viennent sans prix : vous saisissez les vôtres. » (explorateur du site).
+- Libellé du bouton « Parcourir les 20 métiers » (remplace « Parcourir les 20 métiers chiffrés »).
+
+### Ce qui n'a pas été fait, et réserves
+
+1. **Prix des quatre modèles de climatisation** : conservés. Ils existaient sur `main` (même total avant et après la séparation, test) ; seule la répartition entre fourniture et pose a été posée par la session du 4 nov., sans source. Hugo a validé la règle 20/10, pas ces montants : à confirmer, ou à retirer comme ceux des trois métiers.
+2. **Textes du site non touchés (marketing, session locale)** : ils lient « chiffré » ou « prix indicatifs » à tous les métiers alors que trois n'ont plus de prix : titre et chapeau de `MetiersSection.jsx` l. 121-122 (« Votre métier est déjà chiffré… avec des prix indicatifs »), `featuresContent.js` l. 186, 352, 355, 368 (« Les lots types de 20 métiers, avec des prix indicatifs ») et 508, `faq.js` l. 74, la case « 17 métiers du bâtiment » de `FaitsSection.jsx` (le « 1 000+ prestations chiffrées » reste vrai : compté avant l'ajout des trois métiers), `.claude/rules/marketing.md` l. 12 et le Pilote. À reformuler avec le passage « 17 → 20 », relecture selon la règle marketing.
+3. **Référentiel et ouvrages de climatisation** : constats de la décision 2, non corrigés.
+4. **Services à la personne, garde dure** : aucune liste de travaux exclus (électricité, plomberie, chauffage) n'est codée, faute de source de mots ; la protection est le défaut vide et l'avertissement du juriste à l'écran. Si Hugo veut un refus d'impression sur ces mots, il faut d'abord les lister.
+5. **Administrateur invité** : il perd Paramètres › Mon métier (lecture littérale de « jamais aux membres invités ») ; une seule ligne à changer (`peutChoisirSonMetier`) si Hugo veut qu'il puisse choisir.
+6. **Niveau complet** (`--complet` : parcours entiers et audit d'interface, environ 41 min) non rejoué ici : session locale, sur l'assemblage.
+7. **Migration 110** : seul un commentaire a changé (il est dans le corps de la fonction : son md5 change, elle n'est appliquée nulle part) ; aucun comportement SQL modifié, donc pas de contre-essai du banc.
+
+### Pour l'assemblage (information)
+
+`git merge-tree --write-tree origin/main HEAD` (à blanc, rien fusionné) : conflits dans `docs/cloud/metiers.md`, `docs/etat-production.md`, `src/components/ArticlePicker.jsx` (garder `tvaArticleReferentiel` de `main`), `src/lib/data/modeles/index.js` (commentaire seulement : garder le texte de `main`, relu au texte le 3 nov., puis les deux lignes sur le taux par ligne) et `src/lib/devisHtmlBuilder.js`. Avant cette session, la fusion donnait les mêmes conflits plus `src/App.jsx` : il ne conflicte plus.
+
+### Commandes lancées et résultats
+
+- `npm ci` : fait. Base de départ, tests ciblés : 73 verts avant modification.
+- Contre-essais décrits plus haut (défaut muté, ancienne bibliothèque, modèles de `main`, ancien code produit reconstruit) : tous rouges comme attendu, fichiers rétablis, arbre propre.
+- `npm run verifier -- --rapide` (arbre modifié) : 1387 tests verts (1350 + 37 nouveaux), lint 0 erreur (240 avertissements, 241 avant : un de moins), smoke vert.
+- `npm run banc:migrations` : « Tout est vert (677 vérifications) » (inchangé).
+- `npm run verifier` (standard) sur `e6da183f`, arbre propre : tests 1387/1387, lint 0 erreur, smoke, build : « Tout est vert ».
+- `npm run parcours -- metiers` sur le build de `e6da183f` : 12 parcours réussis (dont les trois nouveaux ou refaits : services à la personne, administrateur invité, ramoneur).
+- `npm run parcours -- "site : sections"` : réussi (166 vérifications, 375 et 1440 px).
