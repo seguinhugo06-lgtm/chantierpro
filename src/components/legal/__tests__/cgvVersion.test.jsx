@@ -16,10 +16,8 @@ const pageCgv = () => renderToStaticMarkup(<LegalPages page="cgv" couleur="#1233
 
 /**
  * Ce que le générateur d'avant (20 oct. 2026) écrivait pour chaque plan, lu dans `plans` : la référence du figé.
- * `complements` : une phrase que les CGV ajoutent à la description d'un plan sans qu'elle figure dans ses libellés (clé :
- * identifiant du plan). Écrite ici en toutes lettres, pas lue dans cgv.js : le test la compare au texte des CGV.
  */
-function articleQuatreDepuisPlans(plans, complements = {}) {
+function articleQuatreDepuisPlans(plans) {
   return PLAN_ORDER.map((id) => {
     const plan = plans[id];
     const payant = plan.priceMonthly > 0;
@@ -29,7 +27,7 @@ function articleQuatreDepuisPlans(plans, complements = {}) {
         ? `${prixAbonnement(plan)} par mois (ou ${prixAbonnement(plan, 'an')} par an)${plan.offreLancement ? ` — ${plan.offreLancement.toLowerCase()}, conservé tant que l'abonnement reste actif` : ''}`
         : `${prixAbonnement(plan)} par mois`,
       // Seulement ce que le plan comprend (un libellé `included: false` n'est pas une promesse)
-      description: `${plan.description}. ${plan.featureLabels.filter((f) => f.included !== false).map((f) => f.name).join(' · ')}.${complements[id] ? ` ${complements[id]}` : ''}`,
+      description: `${plan.description}. ${plan.featureLabels.filter((f) => f.included !== false).map((f) => f.name).join(' · ')}.`,
     };
   });
 }
@@ -59,13 +57,12 @@ describe('CGV : l\'article 4 figé suit PLANS (garde-fou)', () => {
 describe('CGV : la dictée (FONCTIONS.ia) dans l\'article 4', () => {
   // Les plans avec leurs lignes de dictée (masquées tant que l'IA est éteinte) donnent le texte « avec IA » de l'article 4.
   const plansAvecIa = Object.fromEntries(PLAN_ORDER.map((id) => [id, { ...PLANS[id], featureLabels: LIBELLES_COMPLETS[id] }]));
-  // Décision d'Hugo du 5 nov. 2026 (D-37) : les CGV ajoutent à l'offre Équipe que le plafond du jour compte les échecs.
-  const ECHECS_COMPRIS = '100 analyses par jour et par personne, échecs compris.';
-
-  it('le texte « avec IA » de l\'article 4 est celui que donnent PLANS avec les lignes de dictée, plus la phrase des échecs pour Équipe', () => {
-    expect(articleQuatreDepuisPlans(plansAvecIa, { equipe: ECHECS_COMPRIS }), 'mettre à jour ARTICLE_4_AVEC_IA (src/lib/cgv.js)').toEqual(CGV_ARTICLE_4_SELON_IA.avecIa);
-    // Sans la phrase, le texte des CGV ne serait plus celui de PLANS : le garde-fou voit bien la différence
-    expect(articleQuatreDepuisPlans(plansAvecIa)).not.toEqual(CGV_ARTICLE_4_SELON_IA.avecIa);
+  it('le texte « avec IA » de l\'article 4 est celui que donnent PLANS avec les lignes de dictée', () => {
+    expect(articleQuatreDepuisPlans(plansAvecIa), 'mettre à jour ARTICLE_4_AVEC_IA (src/lib/cgv.js)').toEqual(CGV_ARTICLE_4_SELON_IA.avecIa);
+    // Cas témoin : un libellé de dictée changé dans PLANS est détecté
+    const change = Object.fromEntries(PLAN_ORDER.map((id) => [id, { ...plansAvecIa[id], featureLabels: plansAvecIa[id].featureLabels.map((f) => ({ ...f })) }]));
+    change.artisan.featureLabels.find((f) => /dict[ée]e/i.test(f.name)).name = '100 dictées par mois';
+    expect(articleQuatreDepuisPlans(change)).not.toEqual(CGV_ARTICLE_4_SELON_IA.avecIa);
   });
 
   it('les textes de l\'offre sont exacts : 5, 100 par abonnement, partagés, et pas de « sans limite » sans son plafond (C. conso. L121-2)', () => {
@@ -80,12 +77,21 @@ describe('CGV : la dictée (FONCTIONS.ia) dans l\'article 4', () => {
     expect(tout).not.toMatch(/\b100 dictées par mois(?! par abonnement)/);
   });
 
-  it('les CGV disent que le plafond du jour compte les échecs (offre Équipe) et que, au plan Gratuit, les dictées des autres entreprises gratuites comptent aussi', () => {
-    const equipe = CGV_ARTICLE_4_SELON_IA.avecIa[2].description;
-    expect(equipe.endsWith(` ${ECHECS_COMPRIS}`)).toBe(true);
-    expect(equipe).toContain('100 analyses par jour et par personne, échecs compris');
-    // Mot pour mot, avis de juriste-btp du 4 nov. 2026 (C.2), retenu le 5 nov. ; le texte sans IA n'en dit rien
-    expect(CGV_ARTICLE_4_DICTEES).toContain('au plan Gratuit, vos dictées dans vos autres entreprises au plan Gratuit comptent aussi.');
+  // Texte du juriste après relecture au texte officiel, 5 nov. 2026 (avis du lot 4, point 3), recopié par programme, mot pour mot.
+  const PARAGRAPHE_DICTEES = "Dictées : une dictée compte dès qu’elle est analysée, y compris quand l’analyse échoue à cause de la dictée elle-même (trop longue, incompréhensible ou refusée par l’intelligence artificielle). Une panne de Mallettico ou de son prestataire ne compte pas dans les dictées du mois. Aux plans payants, les dictées du mois comprennent toutes celles faites dans l’entreprise, quelle que soit l’offre de leur auteur, et celles faites avec le même abonnement dans ses autres entreprises. Au plan Gratuit, elles comprennent toutes celles faites dans l’entreprise, vos dictées faites au plan Gratuit dans vos autres entreprises, et celles faites ce mois-ci avec votre propre abonnement payant. Le compteur repart à zéro le 1er de chaque mois, heure de Paris. La dictée est réservée au propriétaire de l’entreprise et à ses administrateurs. Chaque personne peut lancer au plus 100 analyses par jour aux plans payants, 20 au plan Gratuit, et 5 par minute, échecs compris, même dus à une panne de Mallettico ou de son prestataire ; ce plafond du jour repart à zéro à minuit, heure de Paris. La dictée peut être momentanément indisponible si la capacité journalière du service est atteinte ; une dictée refusée pour ce motif ne compte pas.";
+
+  it('le paragraphe des dictées de l\'article 4 est celui du juriste, mot pour mot', () => {
+    expect(CGV_ARTICLE_4_DICTEES).toBe(PARAGRAPHE_DICTEES);
+  });
+
+  it('il dit ce qui compte (plans payants, plan Gratuit), le rôle, les plafonds du jour et de la minute pannes comprises, et le coupe-circuit', () => {
+    expect(CGV_ARTICLE_4_DICTEES).toContain('Une panne de Mallettico ou de son prestataire ne compte pas dans les dictées du mois.');
+    expect(CGV_ARTICLE_4_DICTEES).toContain('Au plan Gratuit, elles comprennent toutes celles faites dans l’entreprise, vos dictées faites au plan Gratuit dans vos autres entreprises, et celles faites ce mois-ci avec votre propre abonnement payant.');
+    expect(CGV_ARTICLE_4_DICTEES).toContain('La dictée est réservée au propriétaire de l’entreprise et à ses administrateurs.');
+    expect(CGV_ARTICLE_4_DICTEES).toContain('100 analyses par jour aux plans payants, 20 au plan Gratuit, et 5 par minute, échecs compris, même dus à une panne de Mallettico ou de son prestataire');
+    expect(CGV_ARTICLE_4_DICTEES).toContain('une dictée refusée pour ce motif ne compte pas.');
+    // La phrase de D-37 qui se lisait mal à côté de « une panne ne compte pas » n'est plus dans la description d'Équipe
+    expect(CGV_ARTICLE_4_SELON_IA.avecIa.map((l) => l.description).join(' ')).not.toMatch(/échecs compris/);
     expect(CGV_ARTICLE_4_SELON_IA.sansIa.map((l) => l.description).join(' ')).not.toMatch(/échecs compris|autres entreprises/);
   });
 
@@ -139,7 +145,7 @@ describe('CGV : version et page', () => {
     expect(texte).toContain(CGV_ARTICLE_4_TVA);
     // Ce qui compte comme une dictée : seulement avec la dictée (version de l'allumage), jamais avant
     if (FONCTIONS.ia) expect(texte).toContain(lu(CGV_ARTICLE_4_DICTEES));
-    else expect(texte).not.toMatch(/une dictée compte|échecs compris|autres entreprises au plan Gratuit/);
+    else expect(texte).not.toMatch(/une dictée compte|échecs compris|autres entreprises/);
   });
 });
 

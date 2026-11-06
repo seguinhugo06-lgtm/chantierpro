@@ -139,6 +139,15 @@ module.exports = [
         'CGU : sous-traitance (art. 11) et relecture de la dictée (art. 7)');
       verifier(c.includes('exécuter le contrat qui le lie à Mallettico') && !c.includes('consent au traitement de ses données'),
         'CGU : la base légale du contrat (art. 11) part avec la nouvelle version');
+      // Relecture au texte officiel du RGPD, 5 nov. 2026 (avis du lot 4, point 2) : textes du juriste, comparés mot pour mot par cguArticle11.test.jsx
+      const cguNorme = c.replace(/\s+/g, ' ');
+      verifier(cguNorme.includes('(règlement (UE) 2016/679)') && !cguNorme.includes('Règlement UE 2016/679'), 'CGU : « règlement (UE) 2016/679 »');
+      verifier(cguNorme.includes('L’utilisateur donne à Mallettico une autorisation écrite générale de recourir aux sous-traitants ultérieurs')
+        && cguNorme.includes('sauf si ce droit interdit une telle information pour des motifs importants d’intérêt public')
+        && cguNorme.includes('lui notifie toute violation de ces données dans les meilleurs délais après en avoir pris connaissance')
+        && cguNorme.includes('permet la réalisation d’audits, y compris des inspections, par l’utilisateur ou un auditeur qu’il a mandaté, et y contribue')
+        && !/si la loi le permet|audits raisonnables/.test(cguNorme),
+      'CGU art. 11 : les deux paragraphes du RGPD art. 28 (28.2, 28.3 a) à h), 28.4, 33.2), sans l’ancien texte élargi');
       verifier(t.includes('nous enregistrons votre compte, la date et la version du texte accepté'), 'politique : l’accord avant la première dictée est déclaré');
     },
   },
@@ -154,6 +163,8 @@ module.exports = [
       verifier(c.includes(`Version du ${CGU_VERSION_DATE}`) && !c.includes('sous-traitants ultérieurs'), 'CGU : version inchangée, sans clause de sous-traitance');
       verifier(c.includes('consent au traitement de ses données') && !c.includes('exécuter le contrat qui le lie à Mallettico'),
         'CGU : l’ancienne phrase de l’article 11 reste tant que la version ne change pas');
+      verifier(c.includes('(Règlement UE 2016/679)') && !c.includes('autorisation écrite générale') && !c.includes('motifs importants d’intérêt public'),
+        'CGU : rien du nouvel article 11 à l’écran tant que l’IA est éteinte');
     },
   },
   {
@@ -389,39 +400,42 @@ module.exports = [
       verifier(!faq.comptable.texte.includes('Comment fonctionne la dictée') && !faq.comptable.texte.includes('Touchez « Dicter »'),
         'comptable : la FAQ ne lui explique pas une dictée qu’il n’a pas');
       verifier(faq.owner.texte.includes('Comment fonctionne la dictée'), 'propriétaire : la question sur la dictée est là');
-      verifier(faq.owner.texte.includes('Plan Gratuit : 5 dictées par mois, partagées entre les utilisateurs de l’entreprise ; plan Artisan : 100 dictées par mois par abonnement, partagées entre ses utilisateurs et ses entreprises ; plan Équipe : dictées sans limite mensuelle (100 analyses par jour et par personne au plus).'),
-        `propriétaire : les quotas sont dits mot pour mot (${faq.owner.texte.slice(faq.owner.texte.indexOf('Plan Gratuit'), faq.owner.texte.indexOf('Plan Gratuit') + 120)})`);
+      // Texte du juriste, relecture au texte officiel du 5 nov. 2026 (avis du lot 4, point 3), mot pour mot
+      const QUOTAS_FAQ = "Plan Gratuit : 5 dictées par mois, partagées entre les utilisateurs de l’entreprise ; plan Artisan : 100 dictées par mois par abonnement, partagées entre ses utilisateurs et ses entreprises ; plan Équipe : dictées sans limite mensuelle (100 analyses par jour et par personne au plus). Seuls le propriétaire de l’entreprise et ses administrateurs peuvent dicter. Une dictée trop longue ou incompréhensible compte quand même ; une panne de notre côté ne compte pas dans vos dictées du mois, mais compte dans le maximum d’analyses du jour.";
+      verifier(faq.owner.texte.includes(QUOTAS_FAQ), `propriétaire : les quotas, le rôle et les pannes sont dits mot pour mot (${faq.owner.texte.slice(faq.owner.texte.indexOf('Plan Gratuit'), faq.owner.texte.indexOf('Plan Gratuit') + 120)})`);
     },
   },
   {
-    // Décision d'Hugo du 5 nov. 2026 (D-37) : les CGV de l'allumage (article 4) disent que le quota est partagé, que le
-    // plafond du jour compte les échecs, et qu'au plan Gratuit les dictées des autres entreprises gratuites comptent aussi.
-    // Textes de juriste-btp (avis du 4 nov., C.2), mot pour mot ; le build livré (IA éteinte) n'en dit rien.
-    nom: 'dictée : les CGV (IA allumée) disent le quota partagé, les échecs compris et les autres entreprises gratuites ; IA éteinte, rien de cela',
+    // Décision d'Hugo du 5 nov. 2026 (D-37), texte du juriste après relecture au texte officiel (avis du lot 4, point 3) : le
+    // paragraphe des dictées de l'article 4 dit ce qui compte, qui partage le compteur, le rôle, les plafonds du jour et de la
+    // minute (pannes comprises) et le coupe-circuit. Mot pour mot ; le build livré (IA éteinte) n'en dit rien.
+    nom: 'dictée : les CGV (IA allumée) portent le paragraphe des dictées du juriste, mot pour mot ; IA éteinte, rien de cela',
     reel: true,
     async executer({ ouvrir, verifier }) {
       const lu = (t) => String(t || '').replace(/[\u00a0\u202f]/g, ' ').replace(/\s+/g, ' ').trim();
+      const PARAGRAPHE = "Dictées : une dictée compte dès qu’elle est analysée, y compris quand l’analyse échoue à cause de la dictée elle-même (trop longue, incompréhensible ou refusée par l’intelligence artificielle). Une panne de Mallettico ou de son prestataire ne compte pas dans les dictées du mois. Aux plans payants, les dictées du mois comprennent toutes celles faites dans l’entreprise, quelle que soit l’offre de leur auteur, et celles faites avec le même abonnement dans ses autres entreprises. Au plan Gratuit, elles comprennent toutes celles faites dans l’entreprise, vos dictées faites au plan Gratuit dans vos autres entreprises, et celles faites ce mois-ci avec votre propre abonnement payant. Le compteur repart à zéro le 1er de chaque mois, heure de Paris. La dictée est réservée au propriétaire de l’entreprise et à ses administrateurs. Chaque personne peut lancer au plus 100 analyses par jour aux plans payants, 20 au plan Gratuit, et 5 par minute, échecs compris, même dus à une panne de Mallettico ou de son prestataire ; ce plafond du jour repart à zéro à minuit, heure de Paris. La dictée peut être momentanément indisponible si la capacité journalière du service est atteinte ; une dictée refusée pour ce motif ne compte pas.";
       const avec = lu(await texteDe((await ouvrir({ reel: true, distReel: construireDistIa(), chemin: '/cgv', largeur: 375 })).page));
       verifier(avec.includes('5 dictées par mois, partagées entre les utilisateurs de l’entreprise'), 'CGV : le plan Gratuit partage ses 5 dictées entre les utilisateurs de l’entreprise');
       verifier(avec.includes('100 dictées par mois par abonnement, partagées entre ses utilisateurs et ses entreprises'), 'CGV : le plan Artisan compte par abonnement');
-      verifier(avec.includes('Dictées sans limite mensuelle (100 analyses par jour et par personne au plus). 100 analyses par jour et par personne, échecs compris.'),
-        'CGV : le plan Équipe dit « analyses », puis « échecs compris »');
-      verifier(avec.includes('au plan Gratuit, vos dictées dans vos autres entreprises au plan Gratuit comptent aussi.'), 'CGV : au plan Gratuit, les dictées des autres entreprises gratuites comptent aussi');
-      verifier(!/\(100 par jour/.test(avec), 'CGV : plus de « (100 par jour… » sans « analyses »');
+      verifier(avec.includes('Dictées sans limite mensuelle (100 analyses par jour et par personne au plus).') && !avec.includes('(100 par jour'), 'CGV : le plan Équipe dit « analyses »');
+      verifier(avec.includes(PARAGRAPHE), 'CGV : le paragraphe des dictées de l’article 4 est celui du juriste, mot pour mot');
+      verifier(avec.includes('vos dictées faites au plan Gratuit dans vos autres entreprises') && avec.includes('La dictée est réservée au propriétaire de l’entreprise et à ses administrateurs.'),
+        'CGV : les autres entreprises gratuites et le rôle');
       const sans = lu(await texteDe((await ouvrir({ chemin: '/cgv', largeur: 375 })).page));
-      verifier(sans.includes('Article 4 - Plans tarifaires') && !/dictée|échecs compris|autres entreprises au plan Gratuit/i.test(sans), 'build livré (IA éteinte) : les CGV ne parlent ni de dictée, ni d’échecs, ni d’autres entreprises');
+      verifier(sans.includes('Article 4 - Plans tarifaires') && !/dictée|échecs compris|autres entreprises/i.test(sans), 'build livré (IA éteinte) : les CGV ne parlent ni de dictée, ni d’échecs, ni d’autres entreprises');
     },
   },
   {
-    // Décision d'Hugo du 5 nov. 2026 (D-37) : la ligne « Dictées » de la page des tarifs dit qui partage le quota et que le
-    // plafond du jour compte des « analyses ». Ces valeurs sont longues : ni le tableau (ou la liste, au téléphone) ni les
+    // Décision d'Hugo du 5 nov. 2026 (D-37), valeurs courtes du juriste (relecture au texte officiel du 5 nov.) : la ligne
+    // « Dictées » de la page des tarifs dit « par entreprise » et « par abonnement », et que le plafond du jour compte des
+    // « analyses ». Le détail est dans les offres et les CGV. La cellule Équipe est longue : ni le tableau (ou la liste, au téléphone) ni les
     // cartes ne doivent déborder de la page. Sur le build livré (IA éteinte), la ligne n'existe pas (parcours « site »).
-    nom: 'dictée : la page des tarifs (IA allumée) dit les quotas partagés dans la ligne « Dictées », sans déborder (375 et 1440 px)',
+    nom: 'dictée : la page des tarifs (IA allumée) dit « par entreprise » et « par abonnement » dans la ligne « Dictées », sans déborder (375 et 1440 px)',
     reel: true,
     async executer({ ouvrir, cliquer, attendre, verifier }) {
       const ATTENDU = [
-        '5 par mois, partagées entre les utilisateurs de l’entreprise',
-        '100 par mois par abonnement, partagées entre ses utilisateurs et ses entreprises',
+        '5 par mois, par entreprise',
+        '100 par mois, par abonnement',
         'Sans limite mensuelle (100 analyses par jour et par personne au plus)',
       ];
       const lu = (t) => String(t || '').replace(/[\u00a0\u202f]/g, ' ').replace(/\s+/g, ' ').trim();

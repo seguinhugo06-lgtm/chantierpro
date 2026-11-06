@@ -1,6 +1,6 @@
 /**
- * Règles de voice-intent : qui peut dicter, le quota mensuel (par abonnement aux plans payants, par entreprise et par compte
- * au plan Gratuit), les erreurs rendues à l'app.
+ * Règles de voice-intent : qui peut dicter, le quota mensuel (par organisation, et par abonnement aux plans payants), les
+ * erreurs rendues à l'app.
  * Sans import distant : testé sous vitest (src/lib/__tests__/voiceIntentServeur.test.js). index.ts ne fait que
  * brancher ces règles sur Supabase et sur l'API d'Anthropic.
  *
@@ -29,9 +29,11 @@ import { identifierAppelant, type Utilisateur } from '../_shared/appelant.ts';
 import { MODELE, requeteDictee } from './consignes.ts';
 
 /**
- * Nombre d'usages par mois, selon le plan (-1 : sans limite mensuelle) : aux plans payants PAR ABONNEMENT (partagé entre ses
- * utilisateurs et ses entreprises), au plan Gratuit par entreprise (partagé entre ses utilisateurs) et par compte (les
- * dictées du même compte dans ses autres entreprises gratuites comptent aussi) ; c'est la migration 107 qui compte. Recopie de
+ * Nombre d'usages par mois, selon le plan (-1 : sans limite mensuelle), par organisation, et par abonnement aux plans payants :
+ * aux plans payants, toutes les lignes de l'entreprise (quel que soit leur auteur) plus celles du même abonnement dans ses autres
+ * entreprises ; au plan Gratuit, toutes celles de l'entreprise, plus les dictées du même compte faites au plan Gratuit ailleurs,
+ * plus ce qu'il a payé lui-même ce mois-ci (règle exacte relue par le juriste le 5 nov. 2026) ; c'est la migration 107 qui compte.
+ * Une réservation jamais close (panne de notre côté) ne compte au mois que 10 minutes. Recopie de
  * `PLANS[plan].limits.dictees` (src/stores/subscriptionStore.js), seule source de vérité : un test vérifie que les deux
  * disent la même chose. Décision d'Hugo du 4 nov. 2026 : 5 au plan Gratuit, 100 au plan Artisan, sans limite mensuelle
  * au plan Équipe, avec 100 analyses par jour et par personne au plus (plafond du jour, migration 107 ; D-37).
@@ -70,7 +72,7 @@ export const MESSAGES = {
     : `Vos ${limite} dictées du mois sont utilisées. Saisissez votre devis à la main.`,
   plafond: 'Trop de dictées en peu de temps. Réessayez un peu plus tard, ou saisissez votre devis à la main.',
   // Texte de juriste-btp (4 nov. 2026) : le plafond compte tous les appels, nos pannes comprises ; « vous avez fait 100
-  // dictées » pouvait être faux (C. conso. L121-2).
+  // dictées » pouvait être faux (C. conso. L121-2). Pour tous les plans, 20 au Gratuit comme 100 aux plans payants.
   plafondJour: (parJour: number) =>
     `Vous avez atteint le maximum de ${parJour} analyses par jour et par personne. Saisissez votre devis à la main, ou réessayez demain.`,
   accordRequis: 'Votre accord pour l’analyse par l’intelligence artificielle n’est pas enregistré : il a été retiré, ou le texte de l’écran d’accord a changé. Rien n’a été transmis à Anthropic. Relisez l’écran d’accord, ou saisissez votre devis à la main.',
@@ -226,8 +228,10 @@ async function traiter(req: Request, dep: Dependances): Promise<Response> {
   }
   if (!reservation.autorise && reservation.motif === 'plafond') return erreur('PLAFOND', MESSAGES.plafond, 429);
   if (!reservation.autorise && reservation.motif === 'plafond_jour') {
-    // Au plan gratuit, le plafond du jour (20) compte aussi les échecs non décomptés : « 20 dictées » serait faux.
-    return erreur('PLAFOND_JOUR', reservation.plan === 'gratuit' ? MESSAGES.plafond : MESSAGES.plafondJour(reservation.parJour ?? 100), 429);
+    // Tous les plans, le Gratuit compris (relecture du juriste au texte officiel, 5 nov. 2026) : le message dit « analyses »,
+    // donc 20 au Gratuit et 100 aux plans payants (`parJour`, rendu par la base), et « réessayez demain » : le plafond repart
+    // à minuit, heure de Paris. L'ancien « Réessayez un peu plus tard » (réservé au plafond de la minute) était faux.
+    return erreur('PLAFOND_JOUR', MESSAGES.plafondJour(reservation.parJour ?? 100), 429);
   }
   if (!reservation.autorise) {
     return erreur('QUOTA_ATTEINT', MESSAGES.quota(reservation.limite ?? 0, reservation.plan), 429,

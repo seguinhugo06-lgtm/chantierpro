@@ -6,8 +6,8 @@
  * c'est elle qui fait la différence avec les autres logiciels — sans devenir
  * un poste de dépense à fonds perdu.
  *
- * En réel, le quota est tenu par le serveur, par mois : par abonnement aux plans payants, par entreprise et par compte au
- * plan Gratuit (fonction voice-intent, table usage_ia_log, migration 107). C'est lui qui refuse au-delà de
+ * En réel, le quota est tenu par le serveur, par mois, par organisation et par abonnement aux plans payants (fonction
+ * voice-intent, table usage_ia_log, migration 107). C'est lui qui refuse au-delà de
  * PLANS[plan].limits.dictees. Ce compteur dans le navigateur ne
  * sert plus qu'au mode démo, qui analyse la dictée sur place sans appeler Claude.
  */

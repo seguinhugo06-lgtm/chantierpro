@@ -324,6 +324,17 @@ describe('voice-intent : allumage (4 nov. 2026)', () => {
     expect(dep.appeler).not.toHaveBeenCalled();
   });
 
+  // Relecture du juriste au texte officiel, 5 nov. 2026 : au Gratuit le plafond du jour est de 20, et il faut attendre minuit :
+  // « Réessayez un peu plus tard » (message du plafond de la minute) était faux.
+  it('plafond du jour au plan Gratuit (20) : le même message que les plans payants, avec 20 et « réessayez demain »', async () => {
+    const dep = dependances({ reserver: vi.fn(async () => ({ autorise: false, motif: 'plafond_jour', parJour: 20, limite: 5, utilise: null, plan: 'gratuit' })) });
+    const r = await lire(await traiterDictee(demande(), dep));
+    expect([r.status, r.corps.code]).toEqual([429, 'PLAFOND_JOUR']);
+    expect(r.corps.error).toBe('Vous avez atteint le maximum de 20 analyses par jour et par personne. Saisissez votre devis à la main, ou réessayez demain.');
+    expect(r.corps.error).not.toMatch(/un peu plus tard/);
+    expect(dep.appeler).not.toHaveBeenCalled();
+  });
+
   it('sans accord de l’artisan : 403 ACCORD_REQUIS, rien de réservé ni envoyé ; l’accord est lu à la version attendue', async () => {
     const dep = dependances({ accord: vi.fn(async () => 'absent') });
     const r = await lire(await traiterDictee(demande(), dep));

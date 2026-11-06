@@ -277,7 +277,7 @@ export default function DicteeModal({
     if (analyseLanceeRef.current) return;
 
     // Le quota se vérifie à l'analyse : c'est elle qui appelle Claude, pas le micro. En réel, c'est le serveur qui
-    // compte, par mois, par abonnement aux plans payants et par entreprise et par compte au plan Gratuit (voice-intent,
+    // compte, par mois, par organisation et par abonnement aux plans payants (voice-intent,
     // migration 107) ; le compteur du navigateur ne sert qu'au
     // mode démo, qui analyse sur place.
     const { planId } = useSubscriptionStore.getState();

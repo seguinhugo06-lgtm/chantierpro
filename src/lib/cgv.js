@@ -62,10 +62,11 @@ const ARTICLE_4_SANS_IA = Object.freeze([
 ]);
 
 /**
- * Article 4 avec la dictée (FONCTIONS.ia allumé) : les mêmes lignes, plus le quota de dictées de chaque plan.
- * Offre Équipe : après le libellé de l'offre, la phrase « 100 analyses par jour et par personne, échecs compris. » (décision
- * d'Hugo du 5 nov. 2026, D-37) : le plafond du jour compte toutes les analyses, y compris celles qui échouent (migration
- * 107 : chaque appel compte, même en échec). Elle n'est pas dans les libellés de `PLANS` (l'offre ne la porte pas).
+ * Article 4 avec la dictée (FONCTIONS.ia allumé) : les mêmes lignes, plus le quota de dictées de chaque plan, tel que le
+ * disent les libellés de `PLANS`. Le plafond du jour, qui compte toutes les analyses, y compris celles qui échouent, est
+ * dit dans le paragraphe `CGV_ARTICLE_4_DICTEES` (relecture du juriste au texte officiel, 5 nov. 2026) : la phrase
+ * « 100 analyses par jour et par personne, échecs compris » ajoutée ici par D-37 se lisait mal à côté de « une panne ne compte
+ * pas » ; elle est remplacée par ce paragraphe.
  */
 const ARTICLE_4_AVEC_IA = Object.freeze([
   Object.freeze({
@@ -81,15 +82,21 @@ const ARTICLE_4_AVEC_IA = Object.freeze([
   Object.freeze({
     plan: 'Équipe',
     prix: ARTICLE_4_SANS_IA[2].prix,
-    description: 'Pour les entreprises avec collaborateurs. Tout le plan Artisan · Vous + 10 collaborateurs, chacun avec son rôle · Dictées sans limite mensuelle (100 analyses par jour et par personne au plus). 100 analyses par jour et par personne, échecs compris.',
+    description: 'Pour les entreprises avec collaborateurs. Tout le plan Artisan · Vous + 10 collaborateurs, chacun avec son rôle · Dictées sans limite mensuelle (100 analyses par jour et par personne au plus).',
   }),
 ]);
 
-/** Phrase de l'article 4 (avec la dictée) qui dit ce qui compte comme une dictée (juriste-btp, 4 nov. 2026, C.1), puis, au
- *  plan Gratuit, les dictées des autres entreprises du même compte (juriste-btp, 4 nov. 2026, C.2 ; décision d'Hugo du
- *  5 nov., D-37) : la dernière proposition est celle de l'avis, mot pour mot, reliée à la phrase d'avant par un point-virgule.
- *  Le délai dépassé ne décompte pas (décision d'Hugo du 5 nov. 2026, D-37) : cette phrase reste vraie telle quelle. */
-export const CGV_ARTICLE_4_DICTEES = 'Dictées : une dictée compte dès qu’elle est analysée, y compris quand l’analyse échoue à cause de la dictée elle-même (trop longue, incompréhensible ou refusée par l’intelligence artificielle). Une panne de Mallettico ou de son prestataire ne compte pas. Le compteur repart à zéro le 1er de chaque mois, heure de Paris ; au plan Gratuit, vos dictées dans vos autres entreprises au plan Gratuit comptent aussi.';
+/**
+ * Paragraphe de l'article 4 (avec la dictée) qui dit ce qui compte comme une dictée, qui partage le compteur, qui peut
+ * dicter, les plafonds du jour et de la minute (échecs et pannes compris) et l'indisponibilité du coupe-circuit. Texte du
+ * juriste, mot pour mot, après relecture au texte officiel le 5 nov. 2026 (avis du lot 4, point 3 ; audit-ui/cloud/v4/
+ * avis-juriste-lot4.md du worktree de la session locale, hors dépôt). Il met en œuvre D-37 sans la changer : il remplace la phrase
+ * « au plan Gratuit, vos dictées dans vos autres entreprises au plan Gratuit comptent aussi » par sa forme exacte.
+ * Les phrases sur le rôle, les pannes et le coupe-circuit sont vraies avec la migration 107 de cette branche : dictée limitée à
+ * owner et admin, réservation non close comptée 10 minutes seulement, plafond du jour comptant toutes les lignes.
+ * Le délai dépassé ne décompte pas (décision d'Hugo du 5 nov. 2026, D-37).
+ */
+export const CGV_ARTICLE_4_DICTEES = 'Dictées : une dictée compte dès qu’elle est analysée, y compris quand l’analyse échoue à cause de la dictée elle-même (trop longue, incompréhensible ou refusée par l’intelligence artificielle). Une panne de Mallettico ou de son prestataire ne compte pas dans les dictées du mois. Aux plans payants, les dictées du mois comprennent toutes celles faites dans l’entreprise, quelle que soit l’offre de leur auteur, et celles faites avec le même abonnement dans ses autres entreprises. Au plan Gratuit, elles comprennent toutes celles faites dans l’entreprise, vos dictées faites au plan Gratuit dans vos autres entreprises, et celles faites ce mois-ci avec votre propre abonnement payant. Le compteur repart à zéro le 1er de chaque mois, heure de Paris. La dictée est réservée au propriétaire de l’entreprise et à ses administrateurs. Chaque personne peut lancer au plus 100 analyses par jour aux plans payants, 20 au plan Gratuit, et 5 par minute, échecs compris, même dus à une panne de Mallettico ou de son prestataire ; ce plafond du jour repart à zéro à minuit, heure de Paris. La dictée peut être momentanément indisponible si la capacité journalière du service est atteinte ; une dictée refusée pour ce motif ne compte pas.';
 
 /** Article 4 de la version en vigueur. */
 export const CGV_ARTICLE_4_PLANS = FONCTIONS.ia ? ARTICLE_4_AVEC_IA : ARTICLE_4_SANS_IA;

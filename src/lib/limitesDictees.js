@@ -14,18 +14,18 @@ import { FONCTIONS } from './fonctions';
 export const DICTEES_SANS_LIMITE = 'Sans limite mensuelle (100 analyses par jour et par personne au plus)';
 
 /**
- * Qui partage le quota du mois : textes de juriste-btp (avis du 4 nov. 2026, C.2), retenus par Hugo le 5 nov. (D-37). Ils
- * suivent les libellés des offres (`featureLabels` de PLANS) moins le mot « dictées », qui est le titre de la ligne ; un test
- * le vérifie. Au plan Gratuit le compteur est celui de l'entreprise ; aux plans payants, celui de l'abonnement.
+ * Qui compte le quota du mois : valeurs COURTES de la cellule, textes du juriste (relecture au texte officiel du 5 nov. 2026,
+ * avis du lot 4, point 3) : « 5 par mois, par entreprise » au plan Gratuit, « 100 par mois, par abonnement » à l'Artisan.
+ * Le détail (utilisateurs, autres entreprises, ce qui compte) est dans les libellés des offres et dans l'article 4 des CGV.
  */
-export const DICTEES_PARTAGE_GRATUIT = ', partagées entre les utilisateurs de l’entreprise';
-export const DICTEES_PARTAGE_PAYANT = ' par abonnement, partagées entre ses utilisateurs et ses entreprises';
+export const DICTEES_PARTAGE_GRATUIT = ', par entreprise';
+export const DICTEES_PARTAGE_PAYANT = ', par abonnement';
 
 /** Lignes de limites à ajouter au tableau des tarifs : celle des dictées, quand l'IA est allumée. */
 export const LIMITES_IA = FONCTIONS.ia ? [{ cle: 'dictees', libelle: 'Dictées', mot: /dict[ée]es?/i }] : [];
 
 /**
- * La valeur de la ligne des dictées (« 5 par mois, partagées… », « 100 par mois par abonnement, partagées… », ou sans limite
+ * La valeur de la ligne des dictées (« 5 par mois, par entreprise », « 100 par mois, par abonnement », ou sans limite
  * mensuelle) ; null pour une autre ligne. Sans le plan, aucun partage n'est annoncé (rien que le nombre).
  * @param {string} cle
  * @param {number} valeur  `limits.dictees` du plan (-1 : sans limite mensuelle)

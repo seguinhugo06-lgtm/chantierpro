@@ -7,16 +7,17 @@ import { FONCTIONS } from '../fonctions';
 // Tableau des tarifs, IA allumée (décision d'Hugo du 4 nov. 2026) : les dictées sont une limite appliquée par le serveur.
 // « Sans limite » ne s'écrit jamais sans le plafond du jour (C. conso. L121-2, juriste-btp du 4 nov. 2026).
 // Décision du 5 nov. 2026 (D-37) : le quota se dit « partagé » (avis de juriste-btp, C.2) et le plafond du jour compte des « analyses ».
+// Valeurs courtes de la cellule : texte du juriste après relecture au texte officiel (5 nov. 2026, avis du lot 4, point 3).
 describe('tarifs : la ligne des dictées', () => {
-  it('5 par mois partagé entre les utilisateurs de l’entreprise, 100 par abonnement, puis « sans limite mensuelle » avec son plafond (jamais « Illimité »)', () => {
+  it('5 par mois, par entreprise ; 100 par mois, par abonnement ; puis « sans limite mensuelle » avec son plafond (jamais « Illimité »)', () => {
     expect(['gratuit', 'artisan', 'equipe'].map((id) => valeurDeLimite('dictees', PLANS[id].limits.dictees, id))).toEqual([
-      '5 par mois, partagées entre les utilisateurs de l’entreprise',
-      '100 par mois par abonnement, partagées entre ses utilisateurs et ses entreprises',
+      '5 par mois, par entreprise',
+      '100 par mois, par abonnement',
       DICTEES_SANS_LIMITE,
     ]);
     expect(DICTEES_SANS_LIMITE).toBe('Sans limite mensuelle (100 analyses par jour et par personne au plus)');
-    expect(DICTEES_PARTAGE_GRATUIT).toBe(', partagées entre les utilisateurs de l’entreprise');
-    expect(DICTEES_PARTAGE_PAYANT).toBe(' par abonnement, partagées entre ses utilisateurs et ses entreprises');
+    expect(DICTEES_PARTAGE_GRATUIT).toBe(', par entreprise');
+    expect(DICTEES_PARTAGE_PAYANT).toBe(', par abonnement');
   });
 
   it('sans le plan, la ligne ne dit rien du partage (rien d’inventé) ; une autre limite n’est pas touchée', () => {
@@ -34,15 +35,15 @@ describe('tarifs : la ligne des dictées', () => {
     for (const nom of noms) expect(ditUneLimite(nom), nom).toBe(FONCTIONS.ia);
   });
 
-  // La page des tarifs et les offres disent la même chose : la valeur de la ligne est le libellé de l'offre, moins le mot
-  // « dictées » (le titre de la ligne). Si l'un change sans l'autre, le site et l'application se contredisent.
-  it('la valeur de chaque plan est son libellé d’offre sans le mot « dictées » (une seule formule pour l’application et le site)', () => {
+  // Les cellules sont courtes : le détail est dans les libellés des offres. Le nombre et le plafond du jour doivent pourtant être
+  // les mêmes dans la cellule et dans le libellé du plan.
+  it('le nombre et le plafond de chaque cellule sont ceux du libellé d’offre du plan', () => {
     for (const id of PLAN_ORDER) {
       const libelle = LIBELLES_COMPLETS[id].find((f) => /dict[ée]e/i.test(f.name))?.name;
       expect(libelle, `${id} : un libellé de dictée`).toBeTruthy();
-      const sansLeMot = libelle.replace(/dictées /i, '');
-      const attendu = sansLeMot.charAt(0).toUpperCase() + sansLeMot.slice(1);
-      expect(valeurDeLimite('dictees', PLANS[id].limits.dictees, id), id).toBe(attendu);
+      const cellule = valeurDeLimite('dictees', PLANS[id].limits.dictees, id);
+      if (PLANS[id].limits.dictees < 0) expect(libelle.toLowerCase()).toContain(cellule.toLowerCase());
+      else expect(libelle.startsWith(`${PLANS[id].limits.dictees} dictées par mois`)).toBe(true);
     }
   });
 
@@ -50,10 +51,6 @@ describe('tarifs : la ligne des dictées', () => {
     const { limites } = lignesDeComparaison(PLANS, PLAN_ORDER);
     const ligne = limites.find((l) => l.cle === 'dictees');
     if (!FONCTIONS.ia) { expect(ligne).toBeUndefined(); return; }
-    expect(ligne.valeurs).toEqual([
-      '5 par mois, partagées entre les utilisateurs de l’entreprise',
-      '100 par mois par abonnement, partagées entre ses utilisateurs et ses entreprises',
-      DICTEES_SANS_LIMITE,
-    ]);
+    expect(ligne.valeurs).toEqual(['5 par mois, par entreprise', '100 par mois, par abonnement', DICTEES_SANS_LIMITE]);
   });
 });
