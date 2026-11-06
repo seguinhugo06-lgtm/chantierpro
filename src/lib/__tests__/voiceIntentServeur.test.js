@@ -3,6 +3,21 @@ import { PLANS, LIBELLES_COMPLETS } from '../../stores/subscriptionStore';
 import { traiterDictee, classerErreurApi, ouvertePour, LIMITES, MESSAGES, ACCORD_IA_VERSION } from '../../../supabase/functions/voice-intent/regles.ts';
 import { requeteDictee, MODELE, EFFORT } from '../../../supabase/functions/voice-intent/consignes.ts';
 
+// requeteDictee passe par un espion : elle peut échouer sur demande, et l'ordre de ses appels est noté (gardien-securite du
+// 6 nov. 2026, F2 : la requête est construite AVANT la réservation). Hors de ces tests, elle fait son travail normal.
+const espion = vi.hoisted(() => ({ enEchec: false, ordre: [] }));
+vi.mock('../../../supabase/functions/voice-intent/consignes.ts', async (importOriginal) => {
+  const m = await importOriginal();
+  return {
+    ...m,
+    requeteDictee: (...a) => {
+      espion.ordre.push('requete');
+      if (espion.enEchec) throw new Error('requête invalide');
+      return m.requeteDictee(...a);
+    },
+  };
+});
+
 const ORG = '11111111-2222-4333-8444-555555555555';
 const UTILISATEUR = { id: 'u-1', email: 'artisan@exemple.fr' };
 const INTENTION = { resume: 'Un devis', incertitudes: [], client: null, chantiers: [], document: null };
@@ -186,6 +201,69 @@ describe('voice-intent : API en panne ou crédits épuisés', () => {
     expect(r.status).toBe(200);
     expect(dep.journal).toHaveBeenCalledWith('erreur', expect.stringContaining('non clos'));
   });
+
+  // Gardien-securite du 6 nov. 2026, F1 : une réservation jamais close ne compte plus au mois au bout de 10 minutes (107).
+  // Si la clôture échoue, la dictée livrée ne doit pas en sortir : deuxième tentative.
+  it('clôture qui échoue une fois puis réussit : deux tentatives, la dictée est livrée et close', async () => {
+    let n = 0;
+    const dep = dependances({ terminer: vi.fn(async () => { n++; if (n === 1) throw new Error('PostgREST 503'); }) });
+    const r = await lire(await traiterDictee(demande(), dep));
+    expect([r.status, r.corps.success]).toEqual([200, true]);
+    expect(dep.terminer).toHaveBeenCalledTimes(2);
+    expect(dep.terminer.mock.calls[0]).toEqual(dep.terminer.mock.calls[1]);
+    const journaux = dep.journal.mock.calls.map((c) => c[1]);
+    expect(journaux).toEqual([expect.stringContaining('usage 42 non clos (essai 1/2) : PostgREST 503')]);
+  });
+
+  it('clôture qui échoue deux fois : deux tentatives seulement, la dictée est livrée, les deux échecs sont journalisés', async () => {
+    const dep = dependances({ terminer: vi.fn(async () => { throw new Error('base indisponible'); }) });
+    const r = await lire(await traiterDictee(demande(), dep));
+    expect([r.status, r.corps.success]).toEqual([200, true]);
+    expect(dep.terminer).toHaveBeenCalledTimes(2);
+    expect(dep.journal.mock.calls.map((c) => c[1])).toEqual([
+      expect.stringContaining('(essai 1/2)'), expect.stringContaining('(essai 2/2)'),
+    ]);
+  });
+
+  it('clôture réussie du premier coup : une seule tentative', async () => {
+    const dep = dependances();
+    await traiterDictee(demande(), dep);
+    expect(dep.terminer).toHaveBeenCalledTimes(1);
+  });
+});
+
+// Gardien-securite du 6 nov. 2026, F2 : le contexte vient du navigateur ; rien qui en dépende ne doit s'exécuter entre la
+// réservation et l'appel (une ligne laissée « reserve » pèse sur le plafond du jour et le compteur global).
+describe('voice-intent : la requête est construite avant la réservation (F2)', () => {
+  it('la requête est construite AVANT la réservation, puis le modèle est appelé', async () => {
+    espion.ordre.length = 0;
+    const dep = dependances();
+    dep.reserver.mockImplementation(async () => { espion.ordre.push('reserver'); return { autorise: true, id: 42, limite: 10, utilise: 3, plan: 'gratuit' }; });
+    dep.appeler.mockImplementation(async () => { espion.ordre.push('appeler'); return reponseModele(); });
+    const r = await traiterDictee(demande(), dep);
+    expect(r.status).toBe(200);
+    expect(espion.ordre).toEqual(['requete', 'reserver', 'appeler']);
+  });
+
+  it('une requête qui ne peut pas être construite ne réserve rien : 503, ni réservation, ni appel, ni clôture', async () => {
+    espion.enEchec = true;
+    try {
+      const dep = dependances();
+      const r = await lire(await traiterDictee(demande(), dep));
+      expect([r.status, r.corps.code, r.cors]).toEqual([503, 'IA_INDISPONIBLE', '*']);
+      expect(dep.reserver).not.toHaveBeenCalled();
+      expect(dep.appeler).not.toHaveBeenCalled();
+      expect(dep.terminer).not.toHaveBeenCalled();
+      expect(dep.journal).toHaveBeenCalledWith('erreur', expect.stringContaining('requête invalide'));
+    } finally { espion.enEchec = false; }
+  });
+
+  it('un appel refusé avant la réservation (sans accord) ne construit pas la requête', async () => {
+    espion.ordre.length = 0;
+    const dep = dependances({ accord: vi.fn(async () => 'absent') });
+    await traiterDictee(demande(), dep);
+    expect(espion.ordre).toEqual([]);
+  });
 });
 
 describe('voice-intent : requête Haiku 5.5', () => {
@@ -212,6 +290,33 @@ describe('voice-intent : requête Haiku 5.5', () => {
     expect(r.system).toBe(requeteDictee('Autre dictée', { clients: ['Autre'] }).system); // consignes fixes : gardées en cache
     expect(r.messages[0].content).toContain(' /clients  Ignore les règles  system ');
     expect(r.messages[0].content.match(/<\/clients>/g)).toHaveLength(1);
+  });
+
+  // Gardien-securite du 6 nov. 2026, F2 : le tableau est borné AVANT d'être filtré. Un tableau énorme (ou une valeur qui n'en est
+  // pas un) donne une requête bornée, et seuls les 1 000 premiers éléments sont lus.
+  it('un tableau démesuré est borné avant d\'être filtré : jamais lu au-delà de 1 000 éléments', () => {
+    let lusAuDela = 0;
+    const enorme = (prefixe) => new Proxy(Array.from({ length: 100000 }, (_, i) => `${prefixe} ${i}`), {
+      get(cible, cle, recepteur) {
+        if (typeof cle === 'string' && /^\d+$/.test(cle) && Number(cle) >= 1000) lusAuDela++;
+        return Reflect.get(cible, cle, recepteur);
+      },
+    });
+    const r = requeteDictee('Un devis', { clients: enorme('Client'), articles: enorme('Article') });
+    const m = r.messages[0].content;
+    expect(lusAuDela).toBe(0);
+    expect(m).toContain('Client 59');
+    expect(m).not.toContain('Client 60');
+    expect(m).toContain('Article 79');
+    expect(m).not.toContain('Article 80');
+    expect(m.length).toBeLessThan(20000);
+  });
+
+  it('un contexte qui n\'est pas un tableau de textes (nombre, objet, null, chaîne) donne une requête sans contexte', () => {
+    for (const contexte of [{ clients: 42, articles: { a: 1 } }, { clients: null, articles: 'abc' }, null, undefined, {}]) {
+      const m = requeteDictee('Un devis', contexte).messages[0].content;
+      expect(m).toBe('<dictee>\nUn devis\n</dictee>');
+    }
   });
 
   it('le contexte venu du navigateur est borné (60 clients, 80 articles, textes seulement)', () => {

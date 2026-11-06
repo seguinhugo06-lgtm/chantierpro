@@ -207,6 +207,12 @@ async function traiter(req: Request, dep: Dependances): Promise<Response> {
     return erreur('IA_INDISPONIBLE', MESSAGES.indisponible, 503);
   }
 
+  // La requête au modèle est construite AVANT la réservation (gardien-securite du 6 nov. 2026, F2) : le contexte vient du
+  // navigateur, une requête invalide ne doit rien réserver (une exception tombe dans le filet global : 503, rien de réservé),
+  // et aucun travail dépendant de l'entrée ne s'exécute entre la réservation et l'appel (une ligne laissée « reserve » pèse
+  // sur le plafond du jour et le compteur global).
+  const requete = requeteDictee(transcript, corps.contexte as never);
+
   // Réservation AVANT l'appel : deux dictées simultanées ne dépassent pas le quota (verrou côté base).
   let reservation: Reservation;
   try {
@@ -240,14 +246,20 @@ async function traiter(req: Request, dep: Dependances): Promise<Response> {
 
   const id = reservation.id;
   const debut = maintenant();
+  // Clôture : deux tentatives (gardien-securite du 6 nov. 2026, F1). Une réservation jamais close ne compte plus au quota du
+  // mois au bout de 10 minutes (107) : si la base a un incident pendant la clôture, la dictée livrée ne doit pas en sortir.
+  // Si la 1re tentative a réussi mais que sa réponse s'est perdue, la 2e rend « déjà clos » : journalisé, sans effet.
   const terminer = async (fin: Omit<Fin, 'modele' | 'dureeMs'>) => {
-    try { await dep.terminer(id, { modele: MODELE, dureeMs: Math.max(0, Math.round(maintenant() - debut)), ...fin }); }
-    catch (e) { journal('erreur', `usage ${id} non clos : ${(e as Error).message}`); }
+    const corpsFin: Fin = { modele: MODELE, dureeMs: Math.max(0, Math.round(maintenant() - debut)), ...fin };
+    for (let essai = 1; essai <= 2; essai++) {
+      try { await dep.terminer(id, corpsFin); return; }
+      catch (e) { journal('erreur', `usage ${id} non clos (essai ${essai}/2) : ${(e as Error).message}`); }
+    }
   };
 
   let message: Message;
   try {
-    message = await dep.appeler(requeteDictee(transcript, corps.contexte as never));
+    message = await dep.appeler(requete);
   } catch (e) {
     const motif = classerErreurApi(e);
     journal('erreur', `API indisponible (${motif}) : ${(e as Error)?.message || e}`);

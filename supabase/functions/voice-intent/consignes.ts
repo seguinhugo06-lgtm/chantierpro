@@ -152,8 +152,15 @@ export const JETONS_MAX = 3000;
 
 type Contexte = { clients?: unknown; articles?: unknown } | null | undefined;
 
+/**
+ * Le tableau vient du navigateur : borné AVANT d'être filtré (1 000 éléments lus au plus, gardien-securite du 6 nov. 2026,
+ * F2), pour que le travail ne dépende pas de sa taille ; puis les `max` premiers textes non vides, de 120 caractères au plus.
+ */
+const LECTURE_MAX = 1000;
 const listeDeTextes = (v: unknown, max: number): string[] =>
-  Array.isArray(v) ? v.filter((x) => typeof x === 'string' && x.trim()).slice(0, max).map((x) => (x as string).slice(0, 120)) : [];
+  Array.isArray(v)
+    ? v.slice(0, LECTURE_MAX).filter((x) => typeof x === 'string' && x.trim()).slice(0, max).map((x) => (x as string).slice(0, 120))
+    : [];
 
 /**
  * Comment se servir du contexte : dans les consignes (fixes ; aucun cache n'est demandé : pas de cache_control, à envisager après une première mesure). Le contexte
