@@ -7,7 +7,8 @@
 -- n'y a pas de quota côté serveur. Hugo ne voyait pas non plus ce que l'IA coûte.
 -- Effet : chaque appel est RÉSERVÉ avant l'appel à l'API (refusé au-delà du quota du plan pour le mois en cours,
 -- heure de Paris), puis CLOS avec le modèle, les jetons consommés, la durée et l'issue. Décomptent : les appels
--- réservés, réussis, et les échecs que la dictée peut provoquer (refus du modèle, réponse illisible, réponse coupée par
+-- réussis, les réservations de moins de 10 minutes (une réservation jamais close ne compte plus ensuite : panne de
+-- notre côté, juriste du 5 nov.), et les échecs que la dictée peut provoquer (refus du modèle, réponse illisible, réponse coupée par
 -- le plafond de jetons : une dictée très longue la provoque ; relecture gardien-securite du 4 nov., 3) ; une panne de
 -- notre côté (API en panne, crédits épuisés, clé refusée, délai, réseau) ne coûte pas de dictée à l'artisan (le délai
 -- dépassé ne compte toujours pas : décision d'Hugo du 5 nov. 2026, D-37). Rien ne change à
@@ -15,10 +16,12 @@
 --
 -- Conception :
 -- - Générique : une ligne par appel, avec la fonction (`dictee`, plus tard `assistant`…). Le quota se compte par mois et
---   par fonction : aux plans payants PAR ABONNEMENT (« 100 dictées par mois par abonnement, partagées entre ses
---   utilisateurs et ses entreprises »), au plan gratuit par organisation et par compte (« 5 dictées par mois, partagées
---   entre les utilisateurs de l'entreprise », avec celles du même compte dans ses autres entreprises gratuites) ; le
---   journal sert aussi au suivi des coûts.
+--   par fonction, par organisation et, aux plans payants, par abonnement (« 100 dictées par mois par abonnement,
+--   partagées entre ses utilisateurs et ses entreprises »). Règle exacte (juriste, 5 nov. 2026) : aux plans payants, toutes
+--   les lignes de l'organisation, quel que soit leur auteur ou leur payeur, plus celles du même payeur dans ses autres
+--   organisations ; au plan gratuit (« 5 dictées par mois, partagées entre les utilisateurs de l'entreprise »), toutes les
+--   lignes de l'organisation, plus les dictées du même compte faites au plan gratuit ailleurs, plus ce que le compte a
+--   payé lui-même ce mois-ci. Le journal sert aussi au suivi des coûts.
 -- - Le quota par plan vient de PLANS[plan].limits (src/stores/subscriptionStore.js) : la fonction Edge le passe
 --   (`p_limites`, {"gratuit":5,"artisan":100,"equipe":-1}, -1 = illimité ; décision d'Hugo du 4 nov. 2026), recopié dans
 --   supabase/functions/voice-intent/regles.ts et comparé à PLANS par un test. Un plan absent de p_limites vaut 0.
@@ -74,8 +77,10 @@
 --     → 0, f, f
 --   SELECT has_table_privilege('service_role', 'public.usage_ia_log', 'INSERT,UPDATE,DELETE') AS serveur_ecrit;   → f
 --   SELECT pg_get_functiondef('public.reserver_usage_ia(uuid,uuid,text,jsonb)'::regprocedure) ~ 'v_role NOT IN \(''owner'', ''admin''\)' AS roles,
---          pg_get_functiondef('public.reserver_usage_ia(uuid,uuid,text,jsonb)'::regprocedure) ~ 'THEN 1000 ELSE 3000' AS seuils;
---     → t, t   (propriétaire et administrateur seulement ; coupe-circuit à 1 000 analyses gratuites / 3 000 payantes par 24 h)
+--          pg_get_functiondef('public.reserver_usage_ia(uuid,uuid,text,jsonb)'::regprocedure) ~ 'THEN 1000 ELSE 3000' AS seuils,
+--          pg_get_functiondef('public.reserver_usage_ia(uuid,uuid,text,jsonb)'::regprocedure) ~ 'statut = ''reserve'' AND created_at > now\(\) - interval ''10 minutes''' AS fenetre;
+--     → t, t, t   (propriétaire et administrateur seulement ; coupe-circuit à 1 000 analyses gratuites / 3 000 payantes par 24 h ;
+--                  une réservation jamais close ne compte au mois que 10 minutes)
 --   SELECT jobname, schedule FROM cron.job WHERE jobname = 'purger-journal-ia';   → 1 ligne, 17 3 * * *
 --   Après le déploiement de voice-intent et une dictée :
 --   SELECT fonction, statut, modele, jetons_entree, jetons_sortie, duree_ms FROM public.usage_ia_log ORDER BY id DESC LIMIT 5;
@@ -100,7 +105,7 @@ CREATE TABLE IF NOT EXISTS public.usage_ia_log (
   termine_le TIMESTAMPTZ
 );
 COMMENT ON TABLE public.usage_ia_log IS
-  'Appels à l''IA (migration 107) : quota mensuel par fonction (au plan gratuit par organisation et par compte, aux plans payants par abonnement), jetons et durée. Aucun texte dicté stocké. Accès : service_role seulement.';
+  'Appels à l''IA (migration 107) : quota mensuel par organisation, et par abonnement aux plans payants (au plan gratuit, aussi par compte), par fonction ; jetons et durée. Aucun texte dicté stocké. Accès : service_role seulement.';
 -- Table déjà créée par une version antérieure de ce fichier (banc, préproduction) : la colonne est ajoutée.
 ALTER TABLE public.usage_ia_log ADD COLUMN IF NOT EXISTS payeur UUID;
 CREATE INDEX IF NOT EXISTS idx_usage_ia_payeur ON public.usage_ia_log (payeur, fonction, mois) WHERE payeur IS NOT NULL;
@@ -269,12 +274,18 @@ BEGIN
     RETURN jsonb_build_object('autorise', false, 'motif', 'global', 'plan', v_plan, 'limite', v_limite, 'utilise', NULL);
   END IF;
 
-  -- Décomptent : réservés, réussis, et échecs que la dictée peut provoquer (refus, illisible, coupée). Au plan gratuit :
-  -- aussi ceux du même compte dans ses autres organisations gratuites (pas ce qu'un salarié a dicté dans l'entreprise
-  -- payante de son patron). Aux plans payants : aussi ceux du même abonnement dans ses autres organisations.
+  -- Décomptent : les réussis, les échecs que la dictée peut provoquer (refus, illisible, coupée) et les réservations en
+  -- cours, pendant 10 minutes seulement : une réservation jamais close (`terminer` en échec, fonction arrêtée après la
+  -- réservation : une panne de notre côté) ne compte plus au bout de 10 minutes, comme la promesse des CGV (relecture du
+  -- juriste au texte officiel, 5 nov. 2026, avis du lot 4, point 3). Le plafond de la minute, celui du jour et le coupe-circuit,
+  -- eux, comptent toutes les lignes, closes ou non. Au plan gratuit : aussi ceux du même compte dans ses autres organisations
+  -- gratuites (pas ce qu'un salarié a dicté dans l'entreprise payante de son patron). Aux plans payants : aussi ceux du même
+  -- abonnement dans ses autres organisations.
   SELECT count(*) INTO v_utilise FROM public.usage_ia_log
    WHERE fonction = p_fonction AND mois = v_mois
-     AND (statut IN ('reserve', 'reussi') OR (statut = 'echec' AND motif IN ('refus', 'illisible', 'coupee')))
+     AND (statut = 'reussi'
+          OR (statut = 'reserve' AND created_at > now() - interval '10 minutes')
+          OR (statut = 'echec' AND motif IN ('refus', 'illisible', 'coupee')))
      AND (organization_id = v_org
           -- Au gratuit, aussi ce que le compte a payé lui-même ce mois-ci (passé d'Artisan au gratuit : pas 5 de plus).
           OR (v_plan = 'gratuit' AND (payeur = p_user_id OR (user_id = p_user_id AND plan = 'gratuit')))

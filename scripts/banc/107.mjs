@@ -29,11 +29,13 @@ export async function verifier({ db, q, en, commeAnonyme, compte, verifier }) {
   };
   const reserverBrut = async (uid, org, fonction = 'dictee', limites = LIMITES) =>
     (await commeServeur(() => q(RESERVER, [uid, org, fonction, limites]))).rows[0].r;
-  // Hors vérification du plafond anti-abus (5 par minute, 100 par jour) : la réservation est datée d'avant-hier, dans
-  // le même mois de quota, pour que les vérifications du quota mensuel ne butent pas sur le plafond.
+  // Hors vérification du plafond de la minute (5 par minute) : la réservation est datée d'il y a 5 minutes, dans le même mois
+  // de quota, pour que les vérifications du quota mensuel ne butent pas sur ce plafond. Elle reste une réservation EN COURS :
+  // elle compte au quota mensuel pendant 10 minutes (juriste, 5 nov. 2026) ; une réservation plus vieille et jamais close ne
+  // compte plus (vérifié plus bas). Seule la ligne qui vient d'être réservée est déplacée.
   const reserver = async (...args) => {
     const r = await reserverBrut(...args);
-    await q(`UPDATE usage_ia_log SET created_at = now() - interval '2 days' WHERE created_at > now() - interval '1 day'`);
+    if (r.id != null) await q(`UPDATE usage_ia_log SET created_at = now() - interval '5 minutes' WHERE id = $1`, [r.id]);
     return r;
   };
   const terminer = async (id, statut, motif = null) =>
@@ -244,6 +246,8 @@ export async function verifier({ db, q, en, commeAnonyme, compte, verifier }) {
   // ── Plan Équipe : sans limite mensuelle, 100 par jour ET PAR PERSONNE (décision d'Hugo du 4 nov. 2026) ──
   // 500 dictées de l'entreprise ce mois-ci (avant-hier) ne bloquent rien ; un salarié à 99 aujourd'hui fait sa 100e,
   // pas sa 101e ; le patron, dans la même entreprise, dicte encore.
+  // Les réservations des vérifications d'avant (datées d'il y a 5 minutes) sortent du jour : on part de zéro aujourd'hui.
+  await q(`UPDATE usage_ia_log SET created_at = now() - interval '2 days' WHERE user_id IN ($1, $2) AND created_at > now() - interval '1 day'`, [PATRON, SALARIE]);
   await q(`INSERT INTO usage_ia_log (organization_id, user_id, fonction, mois, statut, created_at)
     SELECT $1, $2, 'dictee', date_trunc('month', now() AT TIME ZONE 'Europe/Paris')::date, 'reussi', now() - interval '2 days'
       FROM generate_series(1, 500)`, [ORG_PATRON, PATRON]);
@@ -281,6 +285,8 @@ export async function verifier({ db, q, en, commeAnonyme, compte, verifier }) {
   // 1 000 analyses pour l'ensemble des comptes au plan gratuit, 3 000 pour l'ensemble des plans payants. Un appel n'est
   // regardé que contre le compteur de son plan : un abus de comptes gratuits ne coupe pas les payants, et l'inverse.
   // Lignes de remplissage : sans compte (user_id NULL), datées de 5 h (hors plafonds par minute et par jour).
+  // Les réservations des vérifications d'avant (datées d'il y a 5 minutes) sortent d'abord des 24 heures : on part de zéro.
+  await q(`UPDATE usage_ia_log SET created_at = now() - interval '2 days' WHERE created_at > now() - interval '1 day'`);
   const GLOBAL_GRATUIT = '10700000-0000-4000-8000-000000000005';
   const ORG_GLOBAL_GRATUIT = '10700000-0000-4000-8000-0000000000a9';
   await q(`INSERT INTO auth.users (id, email) VALUES ($1, 'global@107.fr')`, [GLOBAL_GRATUIT]);
@@ -334,6 +340,49 @@ export async function verifier({ db, q, en, commeAnonyme, compte, verifier }) {
   verifier(sansPlanPayant.autorise === false && sansPlanPayant.motif === 'global' && sansPlanGratuit.autorise === true,
     `107 : 3 000 lignes sans plan comptent avec les payants, pas avec les gratuits (${sansPlanPayant.motif}, ${sansPlanGratuit.autorise})`);
   await viderRemplissage(); await effacerAppels(GLOBAL_GRATUIT, PAYEUR);
+
+  // ── Une réservation jamais close ne compte au quota du mois que 10 minutes (juriste, 5 nov. 2026, avis du lot 4, point 3) ──
+  // Une panne de notre côté (`terminer` en échec, fonction arrêtée après la réservation) laisse une ligne « reserve » : elle ne doit
+  // pas coûter une dictée à l'artisan, comme les CGV le promettent. Les plafonds de la minute et du jour, eux, comptent tout.
+  const FENETRE = '10700000-0000-4000-8000-000000000021';
+  const ORG_FENETRE = '10700000-0000-4000-8000-0000000000c1';
+  await q(`INSERT INTO auth.users (id, email) VALUES ($1, 'fenetre@107.fr')`, [FENETRE]);
+  await q(`INSERT INTO organizations (id, name, slug, owner_id) VALUES ($1, 'Fenêtre 107', 'fenetre-107', $2)`, [ORG_FENETRE, FENETRE]);
+  await q(`INSERT INTO organization_members (organization_id, user_id, role) VALUES ($1, $2, 'owner')`, [ORG_FENETRE, FENETRE]);
+  const enCours = [];
+  for (let i = 0; i < 5; i++) enCours.push(await reserver(FENETRE, ORG_FENETRE));
+  const quotaAtteint = await reserver(FENETRE, ORG_FENETRE);
+  verifier(enCours.every((r) => r.autorise === true) && quotaAtteint.autorise === false && quotaAtteint.motif === 'quota' && quotaAtteint.utilise === 5,
+    `107 : cinq réservations en cours (moins de 10 minutes) comptent : la 6e est refusée (${JSON.stringify(quotaAtteint)})`);
+  // Une réservation jamais close, vieille de 11 minutes, ne compte plus : une place se libère
+  await q(`UPDATE usage_ia_log SET created_at = now() - interval '11 minutes' WHERE id = $1`, [enCours[0].id]);
+  const placeLiberee = await reserver(FENETRE, ORG_FENETRE);
+  verifier(placeLiberee.autorise === true && placeLiberee.utilise === 5,
+    `107 : une réservation jamais close, vieille de plus de 10 minutes, ne compte plus au mois (${JSON.stringify(placeLiberee)})`);
+  // Close en réussite, même vieille, elle compte toujours : le quota est de nouveau atteint
+  await terminer(enCours[1].id, 'reussi');
+  await q(`UPDATE usage_ia_log SET created_at = now() - interval '11 minutes' WHERE id = $1`, [enCours[1].id]);
+  const reussiVieux = await reserver(FENETRE, ORG_FENETRE);
+  verifier(reussiVieux.autorise === false && reussiVieux.motif === 'quota' && reussiVieux.utilise === 5,
+    `107 : une dictée réussie compte tout le mois, quelle que soit son ancienneté (${JSON.stringify(reussiVieux)})`);
+  // Elle compte en revanche au plafond du jour (20 au plan gratuit) : « échecs compris, même dus à une panne ». Sauté dans les
+  // onze minutes qui suivent minuit (heure de Paris) : une ligne vieille de 11 minutes appartiendrait alors à la veille.
+  const FENETRE_JOUR = '10700000-0000-4000-8000-000000000022';
+  const ORG_FENETRE_JOUR = '10700000-0000-4000-8000-0000000000c2';
+  await q(`INSERT INTO auth.users (id, email) VALUES ($1, 'fenetre-jour@107.fr')`, [FENETRE_JOUR]);
+  await q(`INSERT INTO organizations (id, name, slug, owner_id) VALUES ($1, 'Fenêtre jour 107', 'fenetre-jour-107', $2)`, [ORG_FENETRE_JOUR, FENETRE_JOUR]);
+  await q(`INSERT INTO organization_members (organization_id, user_id, role) VALUES ($1, $2, 'owner')`, [ORG_FENETRE_JOUR, FENETRE_JOUR]);
+  const memeJour = (await q(`SELECT (now() - interval '11 minutes') >= (date_trunc('day', now() AT TIME ZONE 'Europe/Paris') AT TIME ZONE 'Europe/Paris') AS ok`)).rows[0].ok;
+  if (memeJour) {
+    await q(`INSERT INTO usage_ia_log (organization_id, user_id, fonction, mois, statut, plan, created_at)
+      SELECT $1, $2, 'dictee', date_trunc('month', now() AT TIME ZONE 'Europe/Paris')::date, 'reserve', 'gratuit', now() - interval '11 minutes'
+        FROM generate_series(1, 20)`, [ORG_FENETRE_JOUR, FENETRE_JOUR]);
+    const plafondJour = await reserverBrut(FENETRE_JOUR, ORG_FENETRE_JOUR);
+    verifier(plafondJour.autorise === false && plafondJour.motif === 'plafond_jour' && plafondJour.par_jour === 20,
+      `107 : 20 réservations jamais closes ne comptent plus au mois mais comptent au plafond du jour (${JSON.stringify(plafondJour)})`);
+  } else {
+    verifier(true, '107 : contrôle du plafond du jour sauté (moins de 11 minutes après minuit, heure de Paris)');
+  }
 
   // ── Jetons inconnus : gardés NULL (pas 0) ──
   const inconnue = await reserverBrut(PAYEUR, ORG_PAYEUR);
@@ -407,9 +456,10 @@ export async function verifier({ db, q, en, commeAnonyme, compte, verifier }) {
     '107 : la réservation prend un verrou par abonnement (quota partagé entre organisations)');
   // La requête de contrôle de l'en-tête (à lancer en production après l'application) rend bien « vrai, vrai » sur ce corps
   const controle = (await q(`SELECT pg_get_functiondef('public.reserver_usage_ia(uuid,uuid,text,jsonb)'::regprocedure) ~ 'v_role NOT IN \\(''owner'', ''admin''\\)' AS roles,
-      pg_get_functiondef('public.reserver_usage_ia(uuid,uuid,text,jsonb)'::regprocedure) ~ 'THEN 1000 ELSE 3000' AS seuils`)).rows[0];
-  verifier(controle.roles === true && controle.seuils === true,
-    `107 : la requête de contrôle de l'en-tête (propriétaire et administrateur, seuils 1 000 / 3 000) rend vrai (${JSON.stringify(controle)})`);
+      pg_get_functiondef('public.reserver_usage_ia(uuid,uuid,text,jsonb)'::regprocedure) ~ 'THEN 1000 ELSE 3000' AS seuils,
+      pg_get_functiondef('public.reserver_usage_ia(uuid,uuid,text,jsonb)'::regprocedure) ~ 'statut = ''reserve'' AND created_at > now\\(\\) - interval ''10 minutes''' AS fenetre`)).rows[0];
+  verifier(controle.roles === true && controle.seuils === true && controle.fenetre === true,
+    `107 : la requête de contrôle de l'en-tête (propriétaire et administrateur, seuils 1 000 / 3 000, réservation de 10 minutes) rend vrai (${JSON.stringify(controle)})`);
 
   const luParSolo = await en(SOLO, () => q('SELECT count(*) AS n FROM usage_ia_log')).catch(() => ({ rows: [{ n: 0 }] }));
   verifier(Number(luParSolo.rows[0].n) === 0, '107 : un utilisateur ne lit aucune ligne, même les siennes');
